@@ -104,6 +104,8 @@ using TensorOperations: TensorOperations, @tensor, @tensoropt, @ncon, ncon
 using TensorOperations: IndexTuple, Index2Tuple, linearize, AbstractBackend
 const TO = TensorOperations
 
+using MatrixAlgebraKit: MatrixAlgebraKit as MAK
+
 using LRUCache
 
 using TensorKitSectors
@@ -212,6 +214,7 @@ include("tensors/treetransformers.jl")
 include("tensors/indexmanipulations.jl")
 include("tensors/diagonal.jl")
 include("tensors/truncation.jl")
+include("tensors/matrixalgebrakit.jl")
 include("tensors/factorizations.jl")
 include("tensors/braidingtensor.jl")
 
