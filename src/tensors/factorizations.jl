@@ -222,10 +222,7 @@ matrices. See the corresponding documentation for more information.
 
 See also `eigen` and `eigh`.
 """
-function eig(t::AbstractTensorMap, p::Index2Tuple; kwargs...)
-    tcopy = permutedcopy_oftype(t, factorisation_scalartype(eig, t), p)
-    return eig!(tcopy; kwargs...)
-end
+eig(t::AbstractTensorMap, p::Index2Tuple; kwargs...) = MAK.eig_full(t; kwargs...)
 
 """
     eigh(t::AbstractTensorMap, (leftind, rightind)::Index2Tuple) -> D, V
