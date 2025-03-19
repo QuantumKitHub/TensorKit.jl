@@ -107,6 +107,8 @@ const TO = TensorOperations
 using MatrixAlgebraKit: MatrixAlgebraKit as MAK
 
 using LRUCache
+using OhMyThreads
+using ScopedValues
 
 using TensorKitSectors
 import TensorKitSectors: dim, BraidingStyle, FusionStyle, ⊠, ⊗
@@ -204,6 +206,7 @@ end
 #-------------------------------------
 # general definitions
 include("tensors/abstracttensor.jl")
+include("tensors/backends.jl")
 include("tensors/blockiterator.jl")
 include("tensors/tensor.jl")
 include("tensors/adjoint.jl")
