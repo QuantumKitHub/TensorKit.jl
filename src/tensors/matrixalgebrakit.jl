@@ -4,7 +4,7 @@ end
 
 function factorisation_scalartype(::typeof(MAK.eig_full!), t::AbstractTensorMap)
     T = complex(scalartype(t))
-    return promote_type(ComplexF32, typeof(zero(T) / sqrt(abs2(one(T)))))
+    return promote_type(Float32, typeof(zero(T) / sqrt(abs2(one(T)))))
 end
 
 function MAK.check_input(::typeof(MAK.eig_full!), t::AbstractTensorMap, (D, V))
