@@ -26,3 +26,18 @@ Run `f` in a scope where the `blockscheduler` is determined by `scheduler' and `
                                      kwargs...)
     @with blockscheduler => select_scheduler(scheduler; kwargs...) f()
 end
+
+# TODO: disable for trivial symmetry or small tensors?
+default_blockscheduler(t::AbstractTensorMap) = blockscheduler[]
+
+# MatrixAlgebraKit
+# ----------------
+"""
+    BlockAlgorithm{A,S}(alg, scheduler)
+
+Generic wrapper for implementing block-wise algorithms.
+"""
+struct BlockAlgorithm{A,S} <: MatrixAlgebraKit.AbstractAlgorithm
+    alg::A
+    scheduler::S
+end
