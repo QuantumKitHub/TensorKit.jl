@@ -121,7 +121,7 @@ using Base: @boundscheck, @propagate_inbounds, @constprop,
             SizeUnknown, HasLength, HasShape, IsInfinite, EltypeUnknown, HasEltype
 using Base.Iterators: product, filter
 
-using LinearAlgebra: LinearAlgebra
+using LinearAlgebra: LinearAlgebra, BlasFloat
 using LinearAlgebra: norm, dot, normalize, normalize!, tr,
                      axpy!, axpby!, lmul!, rmul!, mul!, ldiv!, rdiv!,
                      adjoint, adjoint!, transpose, transpose!,
@@ -129,6 +129,7 @@ using LinearAlgebra: norm, dot, normalize, normalize!, tr,
                      eigen, eigen!, svd, svd!,
                      isposdef, isposdef!, ishermitian, rank, cond,
                      Diagonal, Hermitian
+using MatrixAlgebraKit
 
 import Base.Meta
 
