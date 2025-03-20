@@ -78,16 +78,16 @@ function MatrixAlgebraKit.initialize_output(::typeof(svd_full!), t::AbstractTens
     V_dom = fuse(domain(t))
     U = similar(t, domain(t) ← V_cod)
     S = similar(t, real(scalartype(t)), V_cod ← V_dom)
-    Vᴴ = similar(t, domain(t) ← V_dom)
+    Vᴴ = similar(t, V_dom ← domain(t))
     return U, S, Vᴴ
 end
 
 function MatrixAlgebraKit.initialize_output(::typeof(svd_compact!), t::AbstractTensorMap,
                                             ::MatrixAlgebraKit.AbstractAlgorithm)
     V_cod = V_dom = infimum(fuse(codomain(t)), fuse(domain(t)))
-    U = similar(t, domain(t) ← V_cod)
-    S = DiagonalTensorMap{real(scalartype(t))}(undef, V_cod ← V_dom)
-    Vᴴ = similar(t, domain(t) ← V_dom)
+    U = similar(t, codomain(t) ← V_cod)
+    S = DiagonalTensorMap{real(scalartype(t))}(undef, V_cod)
+    Vᴴ = similar(t, V_dom ← domain(t))
     return U, S, Vᴴ
 end
 
