@@ -18,7 +18,7 @@ macro check_eltype(x, y, f=:identity, g=:eltype)
     else
         msg *= string(f) * "(" * string(y) * ")"
     end
-    return :($g($x) == $f($g($y)) || throw(ArgumentError($msg)))
+    return esc(:($g($x) == $f($g($y)) || throw(ArgumentError($msg))))
 end
 
 # function factorisation_scalartype(::typeof(MAK.eig_full!), t::AbstractTensorMap)
