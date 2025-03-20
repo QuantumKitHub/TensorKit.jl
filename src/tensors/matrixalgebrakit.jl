@@ -28,10 +28,11 @@ end
 
 # Singular value decomposition
 # ----------------------------
-const T_USVᴴ = Tuple{<:AbstractTensorMap,<:AbstractTensorMap,<:AbstractTensorMap}
+const _T_USVᴴ = Tuple{<:AbstractTensorMap,<:AbstractTensorMap,<:AbstractTensorMap}
+const _T_USVᴴ_diag = Tuple{<:AbstractTensorMap,<:DiagonalTensorMap,<:AbstractTensorMap}
 
 function MatrixAlgebraKit.check_input(::typeof(svd_full!), t::AbstractTensorMap,
-                                      (U, S, Vᴴ)::T_USVᴴ)
+                                      (U, S, Vᴴ)::_T_USVᴴ)
     # scalartype checks
     @check_eltype U t
     @check_eltype S t real
@@ -51,7 +52,7 @@ function MatrixAlgebraKit.check_input(::typeof(svd_full!), t::AbstractTensorMap,
 end
 
 function MatrixAlgebraKit.check_input(::typeof(svd_compact!), t::AbstractTensorMap,
-                                      (U, S, Vᴴ)::T_USVᴴ)
+                                      (U, S, Vᴴ)::_T_USVᴴ_diag)
     # scalartype checks
     @check_eltype U t
     @check_eltype S t real
@@ -137,40 +138,41 @@ end
 
 # Eigenvalue decomposition
 # ------------------------
-function MatrixAlgebraKit.check_input(::typeof(eigh_full!), t::AbstractTensorMap, (D, V))
+const _T_DV = Tuple{<:DiagonalTensorMap,<:AbstractTensorMap}
+function MatrixAlgebraKit.check_input(::typeof(eigh_full!), t::AbstractTensorMap,
+                                      (D, V)::_T_DV)
     domain(t) == codomain(t) ||
         throw(ArgumentError("Eigenvalue decomposition requires square input tensor"))
 
+    # scalartype checks
+    @check_eltype D t real
+    @check_eltype V t
+
+    # space checks
     V_D = fuse(domain(t))
-
-    (D isa DiagonalTensorMap &&
-     scalartype(D) == real(scalartype(t)) &&
-     V_D == space(D, 1)) ||
-        throw(ArgumentError("`eigh_full!` requires diagonal tensor D with isomorphic domain and real `scalartype`"))
-
-    V isa AbstractTensorMap &&
-        scalartype(V) == scalartype(t) &&
-        space(V) == (codomain(t) ← V_D) ||
-        throw(ArgumentError("`eigh_full!` requires square tensor V with isomorphic domain and equal `scalartype`"))
+    V_D == space(D, 1) ||
+        throw(SpaceMismatch("`eigh_full!(t, (D, V))` requires diagonal `D` with `domain(D) == fuse(domain(t))`"))
+    space(V) == (codomain(t) ← V_D) ||
+        throw(SpaceMismatch("`eigh_full!(t, (D, V))` requires `space(V) == (codomain(t) ← fuse(domain(t)))`"))
 
     return nothing
 end
 
-function MatrixAlgebraKit.check_input(::typeof(eig_full!), t::AbstractTensorMap, (D, V))
+function MatrixAlgebraKit.check_input(::typeof(eig_full!), t::AbstractTensorMap,
+                                      (D, V)::_T_DV)
     domain(t) == codomain(t) ||
         throw(ArgumentError("Eigenvalue decomposition requires square input tensor"))
-    Tc = complex(scalartype(t))
+
+    # scalartype checks
+    @check_eltype D t complex
+    @check_eltype V t complex
+
+    # space checks
     V_D = fuse(domain(t))
-
-    (D isa DiagonalTensorMap &&
-     scalartype(D) == Tc &&
-     V_D == space(D, 1)) ||
-        throw(ArgumentError("`eig_full!` requires diagonal tensor D with isomorphic domain and complex `scalartype`"))
-
-    V isa AbstractTensorMap &&
-        scalartype(V) == Tc &&
-        space(V) == (codomain(t) ← V_D) ||
-        throw(ArgumentError("`eig_full!` requires square tensor V with isomorphic domain and complex `scalartype`"))
+    V_D == space(D, 1) ||
+        throw(SpaceMismatch("`eig_full!(t, (D, V))` requires diagonal `D` with `domain(D) == fuse(domain(t))`"))
+    space(V) == (codomain(t) ← V_D) ||
+        throw(SpaceMismatch("`eig_full!(t, (D, V))` requires `space(V) == (codomain(t) ← fuse(domain(t)))`"))
 
     return nothing
 end
