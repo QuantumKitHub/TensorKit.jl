@@ -535,7 +535,8 @@ function _tsvd!(t::TensorMap{<:BlasFloat}, alg::Union{SVD,SDD},
                 ::NoTruncation, p::Real=2)
     scheduler = default_blockscheduler(t)
     svd_alg = alg isa SDD ? LAPACK_DivideAndConquer() : LAPACK_QRIteration()
-    return MatrixAlgebraKit.svd_compact!(t; alg=BlockAlgorithm(svd_alg, scheduler))
+    return MatrixAlgebraKit.svd_compact!(t; alg=BlockAlgorithm(svd_alg, scheduler))...,
+           zero(real(scalartype(t)))
 end
 function _tsvd!(t::TensorMap{<:RealOrComplexFloat}, alg::Union{SVD,SDD},
                 trunc::TruncationScheme, p::Real=2)
