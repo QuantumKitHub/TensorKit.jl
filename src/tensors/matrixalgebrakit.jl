@@ -9,6 +9,18 @@ for f in (:eig_full, :eig_vals, :eig_trunc, :eigh_full, :eigh_vals, :eigh_trunc,
     end
 end
 
+# TODO: move to MatrixAlgebraKit?
+macro check_eltype(x, y, f=:identity, g=:eltype)
+    msg = "unexpected scalar type: "
+    msg *= string(g) * "(" * string(x) * ") != "
+    if f == :identity
+        msg *= string(g) * "(" * string(y) * ")"
+    else
+        msg *= string(f) * "(" * string(y) * ")"
+    end
+    return :($g($x) == $f($g($y)) || throw(ArgumentError($msg)))
+end
+
 # function factorisation_scalartype(::typeof(MAK.eig_full!), t::AbstractTensorMap)
 #     T = scalartype(t)
 #     return promote_type(Float32, typeof(zero(T) / sqrt(abs2(one(T)))))
@@ -16,42 +28,43 @@ end
 
 # Singular value decomposition
 # ----------------------------
-function MatrixAlgebraKit.check_input(::typeof(svd_full!), t::AbstractTensorMap, (U, S, Vᴴ))
+const T_USVᴴ = Tuple{<:AbstractTensorMap,<:AbstractTensorMap,<:AbstractTensorMap}
+
+function MatrixAlgebraKit.check_input(::typeof(svd_full!), t::AbstractTensorMap,
+                                      (U, S, Vᴴ)::T_USVᴴ)
+    # scalartype checks
+    @check_eltype U t
+    @check_eltype S t real
+    @check_eltype Vᴴ t
+
+    # space checks
     V_cod = fuse(codomain(t))
     V_dom = fuse(domain(t))
-
-    (U isa AbstractTensorMap &&
-     scalartype(U) == scalartype(t) &&
-     space(U) == (codomain(t) ← V_cod)) ||
-        throw(ArgumentError("`svd_full!` requires unitary tensor U with same `scalartype`"))
-    (S isa AbstractTensorMap &&
-     scalartype(S) == real(scalartype(t)) &&
-     space(S) == (V_cod ← V_dom)) ||
-        throw(ArgumentError("`svd_full!` requires rectangular tensor S with real `scalartype`"))
-    (Vᴴ isa AbstractTensorMap &&
-     scalartype(Vᴴ) == scalartype(t) &&
-     space(Vᴴ) == (V_dom ← domain(t))) ||
-        throw(ArgumentError("`svd_full!` requires unitary tensor Vᴴ with same `scalartype`"))
+    space(U) == (codomain(t) ← V_cod) ||
+        throw(SpaceMismatch("`svd_full!(t, (U, S, Vᴴ))` requires `space(U) == (codomain(t) ← fuse(domain(t)))`"))
+    space(S) == (V_cod ← V_dom) ||
+        throw(SpaceMismatch("`svd_full!(t, (U, S, Vᴴ))` requires `space(S) == (fuse(codomain(t)) ← fuse(domain(t))`"))
+    space(Vᴴ) == (V_dom ← domain(t)) ||
+        throw(SpaceMismatch("`svd_full!(t, (U, S, Vᴴ))` requires `space(Vᴴ) == (fuse(domain(t)) ← domain(t))`"))
 
     return nothing
 end
 
 function MatrixAlgebraKit.check_input(::typeof(svd_compact!), t::AbstractTensorMap,
-                                      (U, S, Vᴴ))
-    V_cod = V_dom = infimum(fuse(codomain(t)), fuse(domain(t)))
+                                      (U, S, Vᴴ)::T_USVᴴ)
+    # scalartype checks
+    @check_eltype U t
+    @check_eltype S t real
+    @check_eltype Vᴴ t
 
-    (U isa AbstractTensorMap &&
-     scalartype(U) == scalartype(t) &&
-     space(U) == (codomain(t) ← V_cod)) ||
-        throw(ArgumentError("`svd_compact!` requires isometric tensor U with same `scalartype`"))
-    (S isa DiagonalTensorMap &&
-     scalartype(S) == real(scalartype(t)) &&
-     space(S) == (V_cod ← V_dom)) ||
-        throw(ArgumentError("`svd_compact!` requires diagonal tensor S with real `scalartype`"))
-    (Vᴴ isa AbstractTensorMap &&
-     scalartype(Vᴴ) == scalartype(t) &&
-     space(Vᴴ) == (V_dom ← domain(t))) ||
-        throw(ArgumentError("`svd_compact!` requires isometric tensor Vᴴ with same `scalartype`"))
+    # space checks
+    V_cod = V_dom = infimum(fuse(codomain(t)), fuse(domain(t)))
+    space(U) == (codomain(t) ← V_cod) ||
+        throw(SpaceMismatch("`svd_compact!(t, (U, S, Vᴴ))` requires `space(U) == (codomain(t) ← infimum(fuse(domain(t)), fuse(codomain(t)))`"))
+    space(S) == (V_cod ← V_dom) ||
+        throw(SpaceMismatch("`svd_compact!(t, (U, S, Vᴴ))` requires diagonal `S` with `domain(S) == (infimum(fuse(codomain(t)), fuse(domain(t)))`"))
+    space(Vᴴ) == (V_dom ← domain(t)) ||
+        throw(SpaceMismatch("`svd_compact!(t, (U, S, Vᴴ))` requires `space(Vᴴ) == (infimum(fuse(domain(t)), fuse(codomain(t))) ← domain(t))`"))
 
     return nothing
 end
