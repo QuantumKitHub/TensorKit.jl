@@ -222,7 +222,10 @@ matrices. See the corresponding documentation for more information.
 
 See also `eigen` and `eigh`.
 """
-eig(t::AbstractTensorMap, p::Index2Tuple; kwargs...) = MAK.eig_full(t; kwargs...)
+function eig(t::AbstractTensorMap, p::Index2Tuple; kwargs...)
+    tcopy = permutedcopy_oftype(t, factorisation_scalartype(eig, t), p)
+    return eig!(tcopy; kwargs...)
+end
 
 """
     eigh(t::AbstractTensorMap, (leftind, rightind)::Index2Tuple) -> D, V
@@ -528,6 +531,12 @@ function tsvd!(t::AdjointTensorMap; trunc=NoTruncation(), p::Real=2, alg=SDD())
 end
 
 # implementation dispatches on algorithm
+function _tsvd!(t::TensorMap{<:BlasFloat}, alg::Union{SVD,SDD},
+                ::NoTruncation, p::Real=2)
+    scheduler = default_blockscheduler(t)
+    svd_alg = alg isa SDD ? LAPACK_DivideAndConquer() : LAPACK_QRIteration()
+    return MatrixAlgebraKit.svd_compact!(t; alg=BlockAlgorithm(svd_alg, scheduler))
+end
 function _tsvd!(t::TensorMap{<:RealOrComplexFloat}, alg::Union{SVD,SDD},
                 trunc::TruncationScheme, p::Real=2)
     # early return
@@ -614,50 +623,53 @@ function LinearAlgebra.eigvals!(t::AdjointTensorMap{<:RealOrComplexFloat}; kwarg
                       for (c, b) in blocks(t))
 end
 
-function eigh!(t::TensorMap{<:RealOrComplexFloat})
-    InnerProductStyle(t) === EuclideanInnerProduct() || throw_invalid_innerproduct(:eigh!)
-    domain(t) == codomain(t) ||
-        throw(SpaceMismatch("`eigh!` requires domain and codomain to be the same"))
+eigh!(t::TensorMap{<:RealOrComplexFloat}) = eigh_full!(t)
+eig!(t::TensorMap{<:RealOrComplexFloat}) = eig_full!(t)
 
-    T = scalartype(t)
-    I = sectortype(t)
-    S = spacetype(t)
-    dims = SectorDict{I,Int}(c => size(b, 1) for (c, b) in blocks(t))
-    W = S(dims)
+# function eigh!(t::TensorMap{<:RealOrComplexFloat})
+# InnerProductStyle(t) === EuclideanInnerProduct() || throw_invalid_innerproduct(:eigh!)
+# domain(t) == codomain(t) ||
+#     throw(SpaceMismatch("`eigh!` requires domain and codomain to be the same"))
 
-    Tr = real(T)
-    A = similarstoragetype(t, Tr)
-    D = DiagonalTensorMap{Tr,S,A}(undef, W)
-    V = similar(t, domain(t) ← W)
-    for (c, b) in blocks(t)
-        values, vectors = MatrixAlgebra.eigh!(b)
-        copy!(block(D, c), Diagonal(values))
-        copy!(block(V, c), vectors)
-    end
-    return D, V
-end
+# T = scalartype(t)
+# I = sectortype(t)
+# S = spacetype(t)
+# dims = SectorDict{I,Int}(c => size(b, 1) for (c, b) in blocks(t))
+# W = S(dims)
 
-function eig!(t::TensorMap{<:RealOrComplexFloat}; kwargs...)
-    domain(t) == codomain(t) ||
-        throw(SpaceMismatch("`eig!` requires domain and codomain to be the same"))
+# Tr = real(T)
+# A = similarstoragetype(t, Tr)
+# D = DiagonalTensorMap{Tr,S,A}(undef, W)
+# V = similar(t, domain(t) ← W)
+# for (c, b) in blocks(t)
+#     values, vectors = MatrixAlgebra.eigh!(b)
+#     copy!(block(D, c), Diagonal(values))
+#     copy!(block(V, c), vectors)
+# end
+# return D, V
+# end
 
-    T = scalartype(t)
-    I = sectortype(t)
-    S = spacetype(t)
-    dims = SectorDict{I,Int}(c => size(b, 1) for (c, b) in blocks(t))
-    W = S(dims)
+# function eig!(t::TensorMap{<:RealOrComplexFloat}; kwargs...)
+#     domain(t) == codomain(t) ||
+#         throw(SpaceMismatch("`eig!` requires domain and codomain to be the same"))
 
-    Tc = complex(T)
-    A = similarstoragetype(t, Tc)
-    D = DiagonalTensorMap{Tc,S,A}(undef, W)
-    V = similar(t, Tc, domain(t) ← W)
-    for (c, b) in blocks(t)
-        values, vectors = MatrixAlgebra.eig!(b; kwargs...)
-        copy!(block(D, c), Diagonal(values))
-        copy!(block(V, c), vectors)
-    end
-    return D, V
-end
+#     T = scalartype(t)
+#     I = sectortype(t)
+#     S = spacetype(t)
+#     dims = SectorDict{I,Int}(c => size(b, 1) for (c, b) in blocks(t))
+#     W = S(dims)
+
+#     Tc = complex(T)
+#     A = similarstoragetype(t, Tc)
+#     D = DiagonalTensorMap{Tc,S,A}(undef, W)
+#     V = similar(t, Tc, domain(t) ← W)
+#     for (c, b) in blocks(t)
+#         values, vectors = MatrixAlgebra.eig!(b; kwargs...)
+#         copy!(block(D, c), Diagonal(values))
+#         copy!(block(V, c), vectors)
+#     end
+#     return D, V
+# end
 
 #--------------------------------------------------#
 # Checks for hermiticity and positive definiteness #
