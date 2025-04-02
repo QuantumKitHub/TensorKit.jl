@@ -311,6 +311,13 @@ end
 #------------------------------------------------------------------------------------------
 const RealOrComplexFloat = Union{AbstractFloat,Complex{<:AbstractFloat}}
 
+function _reverse!(t::AbstractTensorMap; dims=:)
+    for (c, b) in blocks(t)
+        reverse!(b; dims)
+    end
+    return t
+end
+
 function leftorth!(t::TensorMap{<:RealOrComplexFloat};
                    alg::Union{QR,QRpos,QL,QLpos,SVD,SDD,Polar}=QRpos(),
                    atol::Real=zero(float(real(scalartype(t)))),
@@ -318,47 +325,44 @@ function leftorth!(t::TensorMap{<:RealOrComplexFloat};
                               eps(real(float(one(scalartype(t))))) * iszero(atol))
     InnerProductStyle(t) === EuclideanInnerProduct() ||
         throw_invalid_innerproduct(:leftorth!)
-    if !iszero(rtol)
-        atol = max(atol, rtol * norm(t))
-    end
-    I = sectortype(t)
-    dims = SectorDict{I,Int}()
 
-    # compute QR factorization for each block
-    if !isempty(blocks(t))
-        generator = Base.Iterators.map(blocks(t)) do (c, b)
-            Qc, Rc = MatrixAlgebra.leftorth!(b, alg, atol)
-            dims[c] = size(Qc, 2)
-            return c => (Qc, Rc)
+    if alg isa QR
+        return left_orth!(t; kind=:qr, atol, rtol)
+    elseif alg isa QRpos
+        return left_orth!(t; kind=:qrpos, atol, rtol)
+    elseif alg isa SDD
+        return left_orth!(t; kind=:svd, atol, rtol)
+    elseif alg isa Polar
+        return left_orth!(t; kind=:polar, atol, rtol)
+    elseif alg isa SVD
+        kind = :svd
+        if iszero(atol) && iszero(rtol)
+            alg′ = LAPACK_QRIteration()
+            return left_orth!(t; kind, alg=BlockAlgorithm(alg′, default_blockscheduler(t)),
+                              atol, rtol)
+        else
+            trunc = MatrixAlgebraKit.TruncationKeepAbove(atol, rtol)
+            svd_alg = LAPACK_QRIteration()
+            scheduler = default_blockscheduler(t)
+            alg′ = MatrixAlgebraKit.TruncatedAlgorithm(BlockAlgorithm(svd_alg, scheduler),
+                                                       trunc)
+            return left_orth!(t; kind, alg=alg′, atol, rtol)
         end
-        QRdata = SectorDict(generator)
+    elseif alg isa QL
+        _reverse!(t; dims=2)
+        Q, R = left_orth!(t; kind=:qr, atol, rtol)
+        _reverse!(Q; dims=2)
+        _reverse!(R)
+        return Q, R
+    elseif alg isa QLpos
+        _reverse!(t; dims=2)
+        Q, R = left_orth!(t; kind=:qrpos, atol, rtol)
+        _reverse!(Q; dims=2)
+        _reverse!(R)
+        return Q, R
     end
 
-    # construct new space
-    S = spacetype(t)
-    V = S(dims)
-    if alg isa Polar
-        @assert V ≅ domain(t)
-        W = domain(t)
-    elseif length(domain(t)) == 1 && domain(t) ≅ V
-        W = domain(t)
-    elseif length(codomain(t)) == 1 && codomain(t) ≅ V
-        W = codomain(t)
-    else
-        W = ProductSpace(V)
-    end
-
-    # construct output tensors
-    T = float(scalartype(t))
-    Q = similar(t, T, codomain(t) ← W)
-    R = similar(t, T, W ← domain(t))
-    if !isempty(blocks(t))
-        for (c, (Qc, Rc)) in QRdata
-            copy!(block(Q, c), Qc)
-            copy!(block(R, c), Rc)
-        end
-    end
-    return Q, R
+    throw(ArgumentError("Algorithm $alg not implemented for leftorth!"))
 end
 
 function leftnull!(t::TensorMap{<:RealOrComplexFloat};
@@ -685,8 +689,8 @@ function LinearAlgebra.ishermitian(t::TensorMap)
 end
 
 function LinearAlgebra.isposdef!(t::TensorMap)
-    domain(t) == codomain(t) ||
-        throw(SpaceMismatch("`isposdef` requires domain and codomain to be the same"))
+    domain(t) ≅ codomain(t) ||
+        throw(SpaceMismatch("`isposdef` requires domain and codomain to be isomorphic"))
     InnerProductStyle(spacetype(t)) === EuclideanInnerProduct() || return false
     for (c, b) in blocks(t)
         isposdef!(b) || return false
