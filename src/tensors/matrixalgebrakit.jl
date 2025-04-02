@@ -130,6 +130,12 @@ function MatrixAlgebraKit.svd_compact!(t::AbstractTensorMap, (U, S, Vᴴ),
     return U, S, Vᴴ
 end
 
+function MatrixAlgebraKit.svd_trunc!(t::AbstractTensorMap, USVᴴ,
+                                     alg::MatrixAlgebraKit.TruncatedAlgorithm)
+    USVᴴ′ = svd_compact!(t, USVᴴ, alg.alg)
+    return MatrixAlgebraKit.truncate!(svd_trunc!, USVᴴ′, alg.trunc)
+end
+
 function MatrixAlgebraKit.default_svd_algorithm(t::AbstractTensorMap{<:BlasFloat};
                                                 scheduler=default_blockscheduler(t),
                                                 kwargs...)
