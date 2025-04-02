@@ -56,4 +56,9 @@ flip(V::CartesianSpace) = V
 infimum(V₁::CartesianSpace, V₂::CartesianSpace) = CartesianSpace(min(V₁.d, V₂.d))
 supremum(V₁::CartesianSpace, V₂::CartesianSpace) = CartesianSpace(max(V₁.d, V₂.d))
 
+function Base.setdiff(V::CartesianSpace, W::CartesianSpace)
+    V ≿ W || throw(ArgumentError("$(W) is not a subspace of $(V)"))
+    return CartesianSpace(dim(V) - dim(W))
+end
+
 Base.show(io::IO, V::CartesianSpace) = print(io, "ℝ^$(V.d)")

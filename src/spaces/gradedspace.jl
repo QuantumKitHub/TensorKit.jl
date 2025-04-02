@@ -183,6 +183,12 @@ function supremum(V₁::GradedSpace{I}, V₂::GradedSpace{I}) where {I<:Sector}
                       for c in union(sectors(V₁), sectors(V₂)); dual=Visdual)
 end
 
+function Base.setdiff(V::GradedSpace{I}, W::GradedSpace{I}) where {I<:Sector}
+    V ≿ W && isdual(V) == isdual(W) ||
+        throw(SpaceMismatch("$(W) is not a subspace of $(V)"))
+    return typeof(V)(c => dim(V, c) - dim(W, c) for c in sectors(V))
+end
+
 function Base.show(io::IO, V::GradedSpace{I}) where {I<:Sector}
     print(io, type_repr(typeof(V)), "(")
     separator = ""

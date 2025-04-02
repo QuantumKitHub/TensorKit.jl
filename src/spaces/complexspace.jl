@@ -69,4 +69,10 @@ function supremum(V₁::ComplexSpace, V₂::ComplexSpace)
            throw(SpaceMismatch("Supremum of space and dual space does not exist"))
 end
 
+function Base.setdiff(V::ComplexSpace, W::ComplexSpace)
+    (V ≿ W && isdual(V) == isdual(W)) ||
+        throw(ArgumentError("$(W) is not a subspace of $(V)"))
+    return ComplexSpace(dim(V) - dim(W), isdual(V))
+end
+
 Base.show(io::IO, V::ComplexSpace) = print(io, isdual(V) ? "(ℂ^$(V.d))'" : "ℂ^$(V.d)")
