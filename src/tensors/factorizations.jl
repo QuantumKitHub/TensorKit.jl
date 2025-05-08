@@ -331,19 +331,22 @@ function leftorth!(t::TensorMap{<:RealOrComplexFloat};
     InnerProductStyle(t) === EuclideanInnerProduct() ||
         throw_invalid_innerproduct(:leftorth!)
 
+    VC = MatrixAlgebraKit.initialize_output(left_orth!, t)
+
     if alg isa QR
-        return left_orth!(t; kind=:qr, atol, rtol)
+        return left_orth!(t, VC; kind=:qr, atol, rtol)
     elseif alg isa QRpos
-        return left_orth!(t; kind=:qrpos, atol, rtol)
+        return left_orth!(t, VC; kind=:qrpos, atol, rtol)
     elseif alg isa SDD
-        return left_orth!(t; kind=:svd, atol, rtol)
+        return left_orth!(t, VC; kind=:svd, atol, rtol)
     elseif alg isa Polar
-        return left_orth!(t; kind=:polar, atol, rtol)
+        return left_orth!(t, VC; kind=:polar, atol, rtol)
     elseif alg isa SVD
         kind = :svd
         if iszero(atol) && iszero(rtol)
             alg′ = LAPACK_QRIteration()
-            return left_orth!(t; kind, alg=BlockAlgorithm(alg′, default_blockscheduler(t)),
+            return left_orth!(t, VC; kind,
+                              alg=BlockAlgorithm(alg′, default_blockscheduler(t)),
                               atol, rtol)
         else
             trunc = MatrixAlgebraKit.TruncationKeepAbove(atol, rtol)
@@ -351,17 +354,17 @@ function leftorth!(t::TensorMap{<:RealOrComplexFloat};
             scheduler = default_blockscheduler(t)
             alg′ = MatrixAlgebraKit.TruncatedAlgorithm(BlockAlgorithm(svd_alg, scheduler),
                                                        trunc)
-            return left_orth!(t; kind, alg=alg′, atol, rtol)
+            return left_orth!(t, VC; kind, alg=alg′, atol, rtol)
         end
     elseif alg isa QL
         _reverse!(t; dims=2)
-        Q, R = left_orth!(t; kind=:qr, atol, rtol)
+        Q, R = left_orth!(t, VC; kind=:qr, atol, rtol)
         _reverse!(Q; dims=2)
         _reverse!(R)
         return Q, R
     elseif alg isa QLpos
         _reverse!(t; dims=2)
-        Q, R = left_orth!(t; kind=:qrpos, atol, rtol)
+        Q, R = left_orth!(t, VC; kind=:qrpos, atol, rtol)
         _reverse!(Q; dims=2)
         _reverse!(R)
         return Q, R
