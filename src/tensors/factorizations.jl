@@ -694,8 +694,8 @@ function LinearAlgebra.ishermitian(t::TensorMap)
 end
 
 function LinearAlgebra.isposdef!(t::TensorMap)
-    domain(t) ≅ codomain(t) ||
-        throw(SpaceMismatch("`isposdef` requires domain and codomain to be isomorphic"))
+    domain(t) == codomain(t) ||
+        throw(SpaceMismatch("`isposdef` requires domain and codomain to be the same"))
     InnerProductStyle(spacetype(t)) === EuclideanInnerProduct() || return false
     for (c, b) in blocks(t)
         isposdef!(b) || return false
