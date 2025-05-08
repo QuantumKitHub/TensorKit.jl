@@ -268,6 +268,11 @@ function LinearAlgebra.isposdef(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple)
     return isposdef!(tcopy)
 end
 
+function isisometry(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple)
+    t = permute(t, (p₁, p₂); copy=false)
+    return isisometry(t)
+end
+
 function tsvd(t::AbstractTensorMap; kwargs...)
     tcopy = copy_oftype(t, float(scalartype(t)))
     return tsvd!(tcopy; kwargs...)
@@ -694,6 +699,15 @@ function LinearAlgebra.isposdef!(t::TensorMap)
     InnerProductStyle(spacetype(t)) === EuclideanInnerProduct() || return false
     for (c, b) in blocks(t)
         isposdef!(b) || return false
+    end
+    return true
+end
+
+# TODO: tolerances are per-block, not global or weighted - does that matter?
+function isisometry(t::AbstractTensorMap; kwargs...)
+    domain(t) ≾ codomain(t) || return false
+    for (_, b) in blocks(t)
+        MatrixAlgebra.isisometry(b; kwargs...) || return false
     end
     return true
 end
