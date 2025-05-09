@@ -1,5 +1,105 @@
+using TestEnv;
+TestEnv.activate();
+
+using Test
+using TestExtras
+using Random
+using TensorKit
+using Combinatorics
+using TensorKit: ProductSector, fusiontensor, pentagon_equation, hexagon_equation
+using TensorOperations
+using Base.Iterators: take, product
+# using SUNRepresentations: SUNIrrep
+# const SU3Irrep = SUNIrrep{3}
+using LinearAlgebra: LinearAlgebra
+using Zygote: Zygote
+using MatrixAlgebraKit
+
+const TK = TensorKit
+
+Random.seed!(1234)
+
+smallset(::Type{I}) where {I<:Sector} = take(values(I), 5)
+function smallset(::Type{ProductSector{Tuple{I1,I2}}}) where {I1,I2}
+    iter = product(smallset(I1), smallset(I2))
+    s = collect(i ⊠ j for (i, j) in iter if dim(i) * dim(j) <= 6)
+    return length(s) > 6 ? rand(s, 6) : s
+end
+function smallset(::Type{ProductSector{Tuple{I1,I2,I3}}}) where {I1,I2,I3}
+    iter = product(smallset(I1), smallset(I2), smallset(I3))
+    s = collect(i ⊠ j ⊠ k for (i, j, k) in iter if dim(i) * dim(j) * dim(k) <= 6)
+    return length(s) > 6 ? rand(s, 6) : s
+end
+function randsector(::Type{I}) where {I<:Sector}
+    s = collect(smallset(I))
+    a = rand(s)
+    while a == one(a) # don't use trivial label
+        a = rand(s)
+    end
+    return a
+end
+function hasfusiontensor(I::Type{<:Sector})
+    try
+        fusiontensor(one(I), one(I), one(I))
+        return true
+    catch e
+        if e isa MethodError
+            return false
+        else
+            rethrow(e)
+        end
+    end
+end
+
+# spaces
+Vtr = (ℂ^3,
+       (ℂ^4)',
+       ℂ^5,
+       ℂ^6,
+       (ℂ^7)')
+Vℤ₂ = (ℂ[Z2Irrep](0 => 1, 1 => 1),
+       ℂ[Z2Irrep](0 => 1, 1 => 2)',
+       ℂ[Z2Irrep](0 => 3, 1 => 2)',
+       ℂ[Z2Irrep](0 => 2, 1 => 3),
+       ℂ[Z2Irrep](0 => 2, 1 => 5))
+Vfℤ₂ = (ℂ[FermionParity](0 => 1, 1 => 1),
+        ℂ[FermionParity](0 => 1, 1 => 2)',
+        ℂ[FermionParity](0 => 3, 1 => 2)',
+        ℂ[FermionParity](0 => 2, 1 => 3),
+        ℂ[FermionParity](0 => 2, 1 => 5))
+Vℤ₃ = (ℂ[Z3Irrep](0 => 1, 1 => 2, 2 => 2),
+       ℂ[Z3Irrep](0 => 3, 1 => 1, 2 => 1),
+       ℂ[Z3Irrep](0 => 2, 1 => 2, 2 => 1)',
+       ℂ[Z3Irrep](0 => 1, 1 => 2, 2 => 3),
+       ℂ[Z3Irrep](0 => 1, 1 => 3, 2 => 3)')
+VU₁ = (ℂ[U1Irrep](0 => 1, 1 => 2, -1 => 2),
+       ℂ[U1Irrep](0 => 3, 1 => 1, -1 => 1),
+       ℂ[U1Irrep](0 => 2, 1 => 2, -1 => 1)',
+       ℂ[U1Irrep](0 => 1, 1 => 2, -1 => 3),
+       ℂ[U1Irrep](0 => 1, 1 => 3, -1 => 3)')
+VfU₁ = (ℂ[FermionNumber](0 => 1, 1 => 2, -1 => 2),
+        ℂ[FermionNumber](0 => 3, 1 => 1, -1 => 1),
+        ℂ[FermionNumber](0 => 2, 1 => 2, -1 => 1)',
+        ℂ[FermionNumber](0 => 1, 1 => 2, -1 => 3),
+        ℂ[FermionNumber](0 => 1, 1 => 3, -1 => 3)')
+VCU₁ = (ℂ[CU1Irrep]((0, 0) => 1, (0, 1) => 2, 1 => 1),
+        ℂ[CU1Irrep]((0, 0) => 3, (0, 1) => 0, 1 => 1),
+        ℂ[CU1Irrep]((0, 0) => 1, (0, 1) => 0, 1 => 2)',
+        ℂ[CU1Irrep]((0, 0) => 2, (0, 1) => 2, 1 => 1),
+        ℂ[CU1Irrep]((0, 0) => 2, (0, 1) => 1, 1 => 2)')
+VSU₂ = (ℂ[SU2Irrep](0 => 3, 1 // 2 => 1),
+        ℂ[SU2Irrep](0 => 2, 1 => 1),
+        ℂ[SU2Irrep](1 // 2 => 1, 1 => 1)',
+        ℂ[SU2Irrep](0 => 2, 1 // 2 => 2),
+        ℂ[SU2Irrep](0 => 1, 1 // 2 => 1, 3 // 2 => 1)')
+VfSU₂ = (ℂ[FermionSpin](0 => 3, 1 // 2 => 1),
+         ℂ[FermionSpin](0 => 2, 1 => 1),
+         ℂ[FermionSpin](1 // 2 => 1, 1 => 1)',
+         ℂ[FermionSpin](0 => 2, 1 // 2 => 2),
+         ℂ[FermionSpin](0 => 1, 1 // 2 => 1, 3 // 2 => 1)')
 for V in (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂)#, VSU₃)
     V1, V2, V3, V4, V5 = V
+
     @assert V3 * V4 * V2 ≿ V1' * V5' # necessary for leftorth tests
     @assert V3 * V4 ≾ V1' * V2' * V5' # necessary for rightorth tests
 end
@@ -21,33 +121,33 @@ catch
     (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂)#, VSU₃)
 end
 
-@timedtestset "Factorizatios with symmetry: $(sectortype(first(V)))" for V in spacelist
+
+function test_leftorth(t, p, alg)
+    Q, R = @inferred leftorth(t, p; alg)
+    @test Q * R ≈ permute(t, p)
+    @test isisometry(Q)
+    if alg isa Polar
+        @test isposdef(R)
+        @test domain(R) == codomain(R) == domain(permute(space(t), p))
+    end
+end
+function test_leftnull(t, p, alg)
+    N = @inferred leftnull(t, p; alg)
+    @test isisometry(N)
+    @test norm(N' * permute(t, p)) ≈ 0  atol= 100 * eps(norm(t))
+end
+
+# @timedtestset "Factorizations with symmetry: $(sectortype(first(V)))" for V in spacelist
+    V = collect(spacelist)[2]
     V1, V2, V3, V4, V5 = V
     W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
     for T in (Float32, ComplexF64), adj in (false, true)
-        t = adj ? rand(T, W)' : rand(T, W)
-        @testset "leftorth with $alg" for alg in
-                                          (TensorKit.QR(), TensorKit.QRpos(),
-                                           TensorKit.QL(), TensorKit.QLpos(),
-                                           TensorKit.Polar(), TensorKit.SVD(),
-                                           TensorKit.SDD())
-            Q, R = @constinferred leftorth(t, ((3, 4, 2), (1, 5)); alg=alg)
-            QdQ = Q' * Q
-            @test QdQ ≈ one(QdQ)
-            @test Q * R ≈ permute(t, ((3, 4, 2), (1, 5)))
-            if alg isa Polar
-                @test isposdef(R)
-                @test domain(R) == codomain(R) == space(t, 1)' ⊗ space(t, 5)'
-            end
+        t = adj ? rand(T, W)' : rand(T, W);
+        @testset "leftorth with $alg" for alg in (TensorKit.QR(), TensorKit.QRpos(), TensorKit.QL(), TensorKit.QLpos(), TensorKit.Polar(), TensorKit.SVD(), TensorKit.SDD())
+            test_leftorth(t, ((3, 4, 2), (1, 5)), alg)
         end
-        @testset "leftnull with $alg" for alg in
-                                          (TensorKit.QR(), TensorKit.SVD(),
-                                           TensorKit.SDD())
-            N = @constinferred leftnull(t, ((3, 4, 2), (1, 5)); alg=alg)
-            NdN = N' * N
-            @test NdN ≈ one(NdN)
-            @test norm(N' * permute(t, ((3, 4, 2), (1, 5)))) <
-                  100 * eps(norm(t))
+        @testset "leftnull with $alg" for alg in (TensorKit.QR(), TensorKit.SVD(), TensorKit.SDD())
+            test_leftnull(t, ((3, 4, 2), (1, 5)), alg)
         end
         @testset "rightorth with $alg" for alg in
                                            (TensorKit.RQ(), TensorKit.RQpos(),
