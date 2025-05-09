@@ -383,36 +383,26 @@ function leftnull!(t::TensorMap{<:RealOrComplexFloat};
                               eps(real(float(one(scalartype(t))))) * iszero(atol))
     InnerProductStyle(t) === EuclideanInnerProduct() ||
         throw_invalid_innerproduct(:leftnull!)
-    if !iszero(rtol)
-        atol = max(atol, rtol * norm(t))
-    end
-    I = sectortype(t)
-    dims = SectorDict{I,Int}()
 
-    # compute QR factorization for each block
-    V = codomain(t)
-    if !isempty(blocksectors(V))
-        generator = Base.Iterators.map(blocksectors(V)) do c
-            Nc = MatrixAlgebra.leftnull!(block(t, c), alg, atol)
-            dims[c] = size(Nc, 2)
-            return c => Nc
+    if alg == SVD() || alg == SDD()
+        kind = :svd
+        alg_svd = BlockAlgorithm(alg == SVD() ? MatrixAlgebraKit.LAPACK_QRIteration() :
+                                 MatrixAlgebraKit.LAPACK_DivideAndConquer(),
+                                 default_blockscheduler(t))
+        trunc = if iszero(atol) && iszero(rtol)
+            nothing
+        else
+            (; atol, rtol)
         end
-        Ndata = SectorDict(generator)
+        return left_null!(t; kind, alg_svd, trunc)
     end
 
-    # construct new space
-    S = spacetype(t)
-    W = S(dims)
+    (iszero(atol) && iszero(rtol)) ||
+        throw(ArgumentError("`leftnull!` with nonzero atol or rtol requires SVD or SDD algorithm"))
 
-    # construct output tensor
-    T = float(scalartype(t))
-    N = similar(t, T, V ← W)
-    if !isempty(blocksectors(V))
-        for (c, Nc) in Ndata
-            copy!(block(N, c), Nc)
-        end
-    end
-    return N
+    kind = :qr
+    alg_qr = (; positive=alg == QRpos())
+    return left_null!(t; kind, alg_qr)
 end
 
 function rightorth!(t::TensorMap{<:RealOrComplexFloat};

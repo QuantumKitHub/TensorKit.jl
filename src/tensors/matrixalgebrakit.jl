@@ -33,6 +33,14 @@ function _select_truncation(f, ::AbstractTensorMap,
                             trunc::MatrixAlgebraKit.TruncationStrategy)
     return trunc
 end
+function _select_truncation(::typeof(left_null!), ::AbstractTensorMap, trunc::NamedTuple)
+    return MatrixAlgebraKit.null_truncation_strategy(; trunc...)
+end
+
+function MatrixAlgebraKit.diagview(t::AbstractTensorMap)
+    return SectorDict(c => MatrixAlgebraKit.diagview(b) for (c, b) in blocks(t))
+end
+
 # function factorisation_scalartype(::typeof(MAK.eig_full!), t::AbstractTensorMap)
 #     T = scalartype(t)
 #     return promote_type(Float32, typeof(zero(T) / sqrt(abs2(one(T)))))
@@ -101,6 +109,11 @@ function MatrixAlgebraKit.initialize_output(::typeof(svd_compact!), t::AbstractT
     S = DiagonalTensorMap{real(scalartype(t))}(undef, V_cod)
     Vᴴ = similar(t, V_dom ← domain(t))
     return U, S, Vᴴ
+end
+
+function MatrixAlgebraKit.initialize_output(::typeof(svd_trunc!), t::AbstractTensorMap,
+                                            alg::MatrixAlgebraKit.AbstractAlgorithm)
+    return MatrixAlgebraKit.initialize_output(svd_compact!, t, alg)
 end
 
 # TODO: svd_vals
@@ -613,8 +626,69 @@ function MatrixAlgebraKit.left_orth!(t::AbstractTensorMap, VC;
     throw(ArgumentError("`left_orth!` received unknown value `kind = $kind`"))
 end
 
+# Nullspace
+# ---------
+function MatrixAlgebraKit.check_input(::typeof(left_null!), t::AbstractTensorMap, N)
+    # scalartype checks
+    @check_eltype N t
+
+    # space checks
+    V_Q = infimum(fuse(codomain(t)), fuse(domain(t)))
+    V_N = setdiff(fuse(codomain(t)), V_Q)
+    space(N) == (codomain(t) ← V_N) ||
+        throw(SpaceMismatch("`left_null!(t, N)` requires `space(N) == (codomain(t) ← setdiff(fuse(codomain(t)), infimum(fuse(codomain(t)), fuse(domain(t))))`"))
+
+    return nothing
+end
+
+function MatrixAlgebraKit.initialize_output(::typeof(left_null!), t::AbstractTensorMap)
+    V_Q = infimum(fuse(codomain(t)), fuse(domain(t)))
+    V_N = setdiff(fuse(codomain(t)), V_Q)
+    N = similar(t, codomain(t) ← V_N)
+    return N
+end
+
+# TODO: the following functions shouldn't be necessary if the AbstractArray restrictions are
+# removed
+function MatrixAlgebraKit.left_null(t::AbstractTensorMap; kwargs...)
+    return left_null!(MatrixAlgebraKit.copy_input(left_null, t); kwargs...)
+end
+function MatrixAlgebraKit.left_null!(t::AbstractTensorMap; kwargs...)
+    N = MatrixAlgebraKit.initialize_output(left_null!, t)
+    return left_null!(t, N; kwargs...)
+end
+
+function MatrixAlgebraKit.left_null!(t::AbstractTensorMap, N;
+                                     trunc=nothing,
+                                     kind=isnothing(trunc) ? :qr : :svd,
+                                     alg_qr=(; positive=true),
+                                     alg_svd=(;))
+    MatrixAlgebraKit.check_input(left_null!, t, N)
+
+    if !isnothing(trunc) && kind != :svd
+        throw(ArgumentError("truncation not supported for left_null with kind=$kind"))
+    end
+
+    if kind == :qr
+        alg_qr′ = MatrixAlgebraKit._select_algorithm(qr_null!, t, alg_qr)
+        return qr_null!(t, N, alg_qr′)
+    elseif kind == :svd && isnothing(trunc)
+        alg_svd′ = MatrixAlgebraKit._select_algorithm(svd_full!, t, alg_svd)
+        # TODO: refactor into separate function
+        U, _, _ = svd_full!(t, alg_svd′)
+        for (c, b) in blocks(N)
+            bU = block(U, c)
+            m, n = size(bU)
+            copy!(b, @view(bU[1:m, (n + 1):m]))
+        end
+        return N
+    elseif kind == :svd
+        alg_svd′ = MatrixAlgebraKit._select_algorithm(svd_full!, t, alg_svd)
+        U, S, _ = svd_full!(t, alg_svd′)
+        trunc′ = _select_truncation(left_null!, t, trunc)
+        return MatrixAlgebraKit.truncate!(left_null!, (U, S), trunc′)
     else
-        throw(ArgumentError("`left_orth!` received unknown value `kind = $kind`"))
+        throw(ArgumentError("`left_null!` received unknown value `kind = $kind`"))
     end
 end
 
@@ -642,4 +716,58 @@ function MatrixAlgebraKit.truncate!(::typeof(svd_trunc!), (U, S, Vᴴ),
     end
 
     return Ũ, S̃, Ṽᴴ
+end
+
+function MatrixAlgebraKit.truncate!(::typeof(left_null!),
+                                    (U, S)::Tuple{<:AbstractTensorMap,
+                                                  <:AbstractTensorMap},
+                                    strategy::MatrixAlgebraKit.TruncationStrategy)
+    extended_S = SectorDict(c => vcat(MatrixAlgebraKit.diagview(b),
+                                      zeros(eltype(b), max(0, size(b, 2) - size(b, 1))))
+                            for (c, b) in blocks(S))
+    ind = MatrixAlgebraKit.findtruncated(extended_S, strategy)
+    V_truncated = spacetype(S)(c => length(axes(b, 1)[ind[c]]) for (c, b) in blocks(S))
+    Ũ = similar(U, codomain(U) ← V_truncated)
+    for (c, b) in blocks(Ũ)
+        copy!(b, @view(block(U, c)[:, ind[c]]))
+    end
+    return Ũ
+end
+
+const BlockWiseTruncations = Union{MatrixAlgebraKit.TruncationKeepAbove,
+                                   MatrixAlgebraKit.TruncationKeepBelow,
+                                   MatrixAlgebraKit.TruncationKeepFiltered}
+
+# TODO: relative tolerances should be global
+function MatrixAlgebraKit.findtruncated(values::SectorDict, strategy::BlockWiseTruncations)
+    return SectorDict(c => MatrixAlgebraKit.findtruncated(v, strategy) for (c, v) in values)
+end
+function MatrixAlgebraKit.findtruncated(vals::SectorDict,
+                                        strategy::MatrixAlgebraKit.TruncationKeepSorted)
+    allpairs = mapreduce(vcat, vals) do (c, v)
+        return map(Base.Fix1(=>, c), axes(v, 1))
+    end
+    by((c, i)) = strategy.sortby(vals[c][i])
+    sort!(allpairs; by, strategy.rev)
+
+    howmany = zero(Base.promote_op(dim, valtype(values)))
+    i = 1
+    while i ≤ length(allpairs)
+        howmany += dim(first(allpairs[i]))
+
+        howmany == strategy.howmany && break
+
+        if howmany > strategy.howmany
+            i -= 1
+            break
+        end
+
+        i += 1
+    end
+
+    ind = SectorDict(c => allpairs[findall(==(c) ∘ first, view(allpairs, 1:i))]
+                     for c in keys(vals))
+    filter!(!isempty ∘ last, ind) # TODO: this might not be necessary
+
+    return ind
 end
