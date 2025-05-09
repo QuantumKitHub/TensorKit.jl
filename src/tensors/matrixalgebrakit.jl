@@ -21,6 +21,18 @@ macro check_eltype(x, y, f=:identity, g=:eltype)
     return esc(:($g($x) == $f($g($y)) || throw(ArgumentError($msg))))
 end
 
+function MatrixAlgebraKit._select_algorithm(_, ::AbstractTensorMap,
+                                            alg::MatrixAlgebraKit.AbstractAlgorithm)
+    return alg
+end
+function MatrixAlgebraKit._select_algorithm(f, t::AbstractTensorMap, alg::NamedTuple)
+    return MatrixAlgebraKit.select_algorithm(f, t; alg...)
+end
+
+function _select_truncation(f, ::AbstractTensorMap,
+                            trunc::MatrixAlgebraKit.TruncationStrategy)
+    return trunc
+end
 # function factorisation_scalartype(::typeof(MAK.eig_full!), t::AbstractTensorMap)
 #     T = scalartype(t)
 #     return promote_type(Float32, typeof(zero(T) / sqrt(abs2(one(T)))))
@@ -76,7 +88,7 @@ function MatrixAlgebraKit.initialize_output(::typeof(svd_full!), t::AbstractTens
                                             ::MatrixAlgebraKit.AbstractAlgorithm)
     V_cod = fuse(codomain(t))
     V_dom = fuse(domain(t))
-    U = similar(t, domain(t) ← V_cod)
+    U = similar(t, codomain(t) ← V_cod)
     S = similar(t, real(scalartype(t)), V_cod ← V_dom)
     Vᴴ = similar(t, V_dom ← domain(t))
     return U, S, Vᴴ
@@ -476,18 +488,19 @@ function MatrixAlgebraKit.check_input(::typeof(left_polar!), t, (W, P))
     @check_eltype P t
 
     # space checks
-    space(W) == (codomain(t) ← fuse(domain(t))) ||
+    space(W) == space(t) ||
         throw(SpaceMismatch("`left_polar!(t, (W, P))` requires `space(W) == (codomain(t) ← domain(t))`"))
-    space(P) == (fuse(domain(t)) ← domain(t)) ||
+    space(P) == (domain(t) ← domain(t)) ||
         throw(SpaceMismatch("`left_polar!(t, (W, P))` requires `space(P) == (domain(t) ← domain(t))`"))
 
     return nothing
 end
 
 # TODO: do we really not want to fuse the spaces?
-function MatrixAlgebraKit.initialize_output(::typeof(left_polar!), t::AbstractTensorMap)
-    W = similar(t, codomain(t) ← fuse(domain(t)))
-    P = similar(t, fuse(domain(t)) ← domain(t))
+function MatrixAlgebraKit.initialize_output(::typeof(left_polar!), t::AbstractTensorMap,
+                                            ::MatrixAlgebraKit.AbstractAlgorithm)
+    W = similar(t, space(t))
+    P = similar(t, domain(t) ← domain(t))
     return W, P
 end
 
@@ -558,40 +571,48 @@ function MatrixAlgebraKit.initialize_output(::typeof(right_orth!), t::AbstractTe
     return C, Vᴴ
 end
 
-function MatrixAlgebraKit.left_orth!(t::AbstractTensorMap, VC; kwargs...)
-    MatrixAlgebraKit.check_input(left_orth!, t, VC)
-    atol = get(kwargs, :atol, 0)
-    rtol = get(kwargs, :rtol, 0)
-    kind = get(kwargs, :kind, iszero(atol) && iszero(rtol) ? :qrpos : :svd)
-
-    if !(iszero(atol) && iszero(rtol)) && kind != :svd
-        throw(ArgumentError("nonzero tolerance not supported for left_orth with kind=$kind"))
+function MatrixAlgebraKit.left_orth!(t::AbstractTensorMap, VC;
+                                     trunc=nothing,
+                                     kind=isnothing(trunc) ?
+                                          :qr : :svd,
+                                     alg_qr=(; positive=true),
+                                     alg_polar=(;),
+                                     alg_svd=(;))
+    if !isnothing(trunc) && kind != :svd
+        throw(ArgumentError("truncation not supported for left_orth with kind=$kind"))
     end
 
     if kind == :qr
-        alg = get(kwargs, :alg, MatrixAlgebraKit.select_algorithm(qr_compact!, t))
-        return qr_compact!(t, VC, alg)
-    elseif kind == :qrpos
-        alg = get(kwargs, :alg,
-                  MatrixAlgebraKit.select_algorithm(qr_compact!, t; positive=true))
-        return qr_compact!(t, VC, alg)
-    elseif kind == :polar
-        alg = get(kwargs, :alg, MatrixAlgebraKit.select_algorithm(left_polar!, t))
-        return left_polar!(t, VC, alg)
-    elseif kind == :svd && iszero(atol) && iszero(rtol)
-        alg = get(kwargs, :alg, MatrixAlgebraKit.select_algorithm(svd_compact!, t))
+        alg_qr′ = MatrixAlgebraKit._select_algorithm(qr_compact!, t, alg_qr)
+        return qr_compact!(t, VC, alg_qr′)
+    end
+
+    if kind == :polar
+        alg_polar′ = MatrixAlgebraKit._select_algorithm(left_polar!, t, alg_polar)
+        return left_polar!(t, VC, alg_polar′)
+    end
+
+    if kind == :svd && isnothing(trunc)
+        alg_svd′ = MatrixAlgebraKit._select_algorithm(svd_compact!, t, alg_svd)
         V, C = VC
         S = DiagonalTensorMap{real(scalartype(t))}(undef, domain(V) ← codomain(C))
-        U, S, Vᴴ = svd_compact!(t, (V, S, C), alg)
+        U, S, Vᴴ = svd_compact!(t, (V, S, C), alg_svd′)
         return U, lmul!(S, Vᴴ)
-    elseif kind == :svd
-        alg_svd = MatrixAlgebraKit.select_algorithm(svd_compact!, t)
-        trunc = MatrixAlgebraKit.TruncationKeepAbove(atol, rtol)
-        alg = get(kwargs, :alg, MatrixAlgebraKit.TruncatedAlgorithm(alg_svd, trunc))
+    end
+
+    if kind == :svd
+        alg_svd′ = MatrixAlgebraKit._select_algorithm(svd_compact!, t, alg_svd)
+        alg_svd_trunc = MatrixAlgebraKit.select_algorithm(svd_trunc!, t; trunc,
+                                                          alg=alg_svd′)
         V, C = VC
         S = DiagonalTensorMap{real(scalartype(t))}(undef, domain(V) ← codomain(C))
-        U, S, Vᴴ = svd_trunc!(t, (V, S, C), alg)
+        U, S, Vᴴ = svd_trunc!(t, (V, S, C), alg_svd_trunc)
         return U, lmul!(S, Vᴴ)
+    end
+
+    throw(ArgumentError("`left_orth!` received unknown value `kind = $kind`"))
+end
+
     else
         throw(ArgumentError("`left_orth!` received unknown value `kind = $kind`"))
     end

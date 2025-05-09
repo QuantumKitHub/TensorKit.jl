@@ -326,51 +326,54 @@ end
 function leftorth!(t::TensorMap{<:RealOrComplexFloat};
                    alg::Union{QR,QRpos,QL,QLpos,SVD,SDD,Polar}=QRpos(),
                    atol::Real=zero(float(real(scalartype(t)))),
-                   rtol::Real=(alg ∉ (SVD(), SDD())) ? zero(float(real(scalartype(t)))) :
-                              eps(real(float(one(scalartype(t))))) * iszero(atol))
+                   rtol::Real=(alg ∉ (SVD(), SDD())) ?
+                              zero(float(real(scalartype(t)))) :
+                              eps(real(float(one(scalartype(t))))) *
+                              iszero(atol))
     InnerProductStyle(t) === EuclideanInnerProduct() ||
         throw_invalid_innerproduct(:leftorth!)
-
-    VC = MatrixAlgebraKit.initialize_output(left_orth!, t)
-
-    if alg isa QR
-        return left_orth!(t, VC; kind=:qr, atol, rtol)
-    elseif alg isa QRpos
-        return left_orth!(t, VC; kind=:qrpos, atol, rtol)
-    elseif alg isa SDD
-        return left_orth!(t, VC; kind=:svd, atol, rtol)
-    elseif alg isa Polar
-        return left_orth!(t, VC; kind=:polar, atol, rtol)
-    elseif alg isa SVD
-        kind = :svd
-        if iszero(atol) && iszero(rtol)
-            alg′ = LAPACK_QRIteration()
-            return left_orth!(t, VC; kind,
-                              alg=BlockAlgorithm(alg′, default_blockscheduler(t)),
-                              atol, rtol)
-        else
-            trunc = MatrixAlgebraKit.TruncationKeepAbove(atol, rtol)
-            svd_alg = LAPACK_QRIteration()
-            scheduler = default_blockscheduler(t)
-            alg′ = MatrixAlgebraKit.TruncatedAlgorithm(BlockAlgorithm(svd_alg, scheduler),
-                                                       trunc)
-            return left_orth!(t, VC; kind, alg=alg′, atol, rtol)
-        end
-    elseif alg isa QL
-        _reverse!(t; dims=2)
-        Q, R = left_orth!(t, VC; kind=:qr, atol, rtol)
-        _reverse!(Q; dims=2)
-        _reverse!(R)
-        return Q, R
-    elseif alg isa QLpos
-        _reverse!(t; dims=2)
-        Q, R = left_orth!(t, VC; kind=:qrpos, atol, rtol)
-        _reverse!(Q; dims=2)
-        _reverse!(R)
-        return Q, R
+    if alg == SVD() || alg == SDD()
+        return _leftorth!(t, alg; atol, rtol)
+    else
+        (iszero(atol) && iszero(rtol)) ||
+            throw(ArgumentError("`leftorth!` with nonzero atol or rtol requires SVD or SDD algorithm"))
+        return _leftorth!(t, alg)
     end
+end
 
-    throw(ArgumentError("Algorithm $alg not implemented for leftorth!"))
+# this promotes the algorithm to a positional argument for type stability reasons
+# since polar has different number of output legs
+# TODO: this seems like duplication from MatrixAlgebraKit.left_orth!, but that function
+# only has its logic with the output already specified, which breaks for polar
+function _leftorth!(t::TensorMap{<:RealOrComplexFloat}, alg::Union{SVD,SDD}; atol::Real,
+                    rtol::Real)
+    alg′ = alg == SVD() ? MatrixAlgebraKit.LAPACK_QRIteration() :
+           MatrixAlgebraKit.LAPACK_DivideAndConquer()
+    alg_svd = BlockAlgorithm(alg′, default_blockscheduler(t))
+    if iszero(atol) && iszero(rtol)
+        U, S, Vᴴ = svd_compact!(t, alg_svd)
+        return U, lmul!(S, Vᴴ)
+    else
+        trunc = MatrixAlgebraKit.TruncationKeepAbove(atol, rtol)
+        alg_svd = MatrixAlgebraKit.select_algorithm(svd_trunc!, t; trunc,
+                                                    alg=alg_svd)
+
+        U, S, Vᴴ = svd_trunc!(t, alg_svd)
+        return U, lmul!(S, Vᴴ)
+    end
+end
+function _leftorth!(t::TensorMap{<:RealOrComplexFloat}, alg::Union{QR,QRpos})
+    return qr_compact!(t; positive=alg == QRpos())
+end
+function _leftorth!(t::TensorMap{<:RealOrComplexFloat}, alg::Union{QL,QLpos})
+    _reverse!(t; dims=2)
+    Q, R = qr_compact!(t; positive=alg == QLpos())
+    _reverse!(Q; dims=2)
+    _reverse!(R)
+    return Q, R
+end
+function _leftorth!(t::TensorMap{<:RealOrComplexFloat}, ::Polar)
+    return MatrixAlgebraKit.left_polar!(t)
 end
 
 function leftnull!(t::TensorMap{<:RealOrComplexFloat};
