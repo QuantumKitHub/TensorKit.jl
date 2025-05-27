@@ -296,9 +296,9 @@ function MatrixAlgebraKit.check_input(::typeof(qr_null!), t::AbstractTensorMap,
 
     # space checks
     V_Q = infimum(fuse(codomain(t)), fuse(domain(t)))
-    V_N = setdiff(fuse(codomain(t)), V_Q)
+    V_N = ⊖(fuse(codomain(t)), V_Q)
     space(N) == (codomain(t) ← V_N) ||
-        throw(SpaceMismatch("`qr_null!(t, N)` requires `space(N) == (codomain(t) ← setdiff(fuse(codomain(t)), infimum(fuse(codomain(t)), fuse(domain(t))))`"))
+        throw(SpaceMismatch("`qr_null!(t, N)` requires `space(N) == (codomain(t) ← ⊖(fuse(codomain(t)), infimum(fuse(codomain(t)), fuse(domain(t))))`"))
 
     return nothing
 end
@@ -322,7 +322,7 @@ end
 function MatrixAlgebraKit.initialize_output(::typeof(qr_null!), t::AbstractTensorMap,
                                             ::MatrixAlgebraKit.AbstractAlgorithm)
     V_Q = infimum(fuse(codomain(t)), fuse(domain(t)))
-    V_N = setdiff(fuse(codomain(t)), V_Q)
+    V_N = ⊖(fuse(codomain(t)), V_Q)
     N = similar(t, codomain(t) ← V_N)
     return N
 end
@@ -414,9 +414,9 @@ function MatrixAlgebraKit.check_input(::typeof(lq_null!), t::AbstractTensorMap, 
 
     # space checks
     V_Q = infimum(fuse(codomain(t)), fuse(domain(t)))
-    V_N = setdiff(fuse(domain(t)), V_Q)
+    V_N = ⊖(fuse(domain(t)), V_Q)
     space(N) == (V_N ← domain(t)) ||
-        throw(SpaceMismatch("`lq_null!(t, N)` requires `space(N) == setdiff(fuse(domain(t)), infimum(fuse(codomain(t)), fuse(domain(t)))`"))
+        throw(SpaceMismatch("`lq_null!(t, N)` requires `space(N) == ⊖(fuse(domain(t)), infimum(fuse(codomain(t)), fuse(domain(t)))`"))
 
     return nothing
 end
@@ -440,7 +440,7 @@ end
 function MatrixAlgebraKit.initialize_output(::typeof(lq_null!), t::AbstractTensorMap,
                                             ::MatrixAlgebraKit.AbstractAlgorithm)
     V_Q = infimum(fuse(codomain(t)), fuse(domain(t)))
-    V_N = setdiff(fuse(domain(t)), V_Q)
+    V_N = ⊖(fuse(domain(t)), V_Q)
     N = similar(t, V_N ← domain(t))
     return N
 end
@@ -634,16 +634,16 @@ function MatrixAlgebraKit.check_input(::typeof(left_null!), t::AbstractTensorMap
 
     # space checks
     V_Q = infimum(fuse(codomain(t)), fuse(domain(t)))
-    V_N = setdiff(fuse(codomain(t)), V_Q)
+    V_N = ⊖(fuse(codomain(t)), V_Q)
     space(N) == (codomain(t) ← V_N) ||
-        throw(SpaceMismatch("`left_null!(t, N)` requires `space(N) == (codomain(t) ← setdiff(fuse(codomain(t)), infimum(fuse(codomain(t)), fuse(domain(t))))`"))
+        throw(SpaceMismatch("`left_null!(t, N)` requires `space(N) == (codomain(t) ← ⊖(fuse(codomain(t)), infimum(fuse(codomain(t)), fuse(domain(t))))`"))
 
     return nothing
 end
 
 function MatrixAlgebraKit.initialize_output(::typeof(left_null!), t::AbstractTensorMap)
     V_Q = infimum(fuse(codomain(t)), fuse(domain(t)))
-    V_N = setdiff(fuse(codomain(t)), V_Q)
+    V_N = ⊖(fuse(codomain(t)), V_Q)
     N = similar(t, codomain(t) ← V_N)
     return N
 end

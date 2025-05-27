@@ -149,6 +149,12 @@ function ⊕(V₁::GradedSpace{I}, V₂::GradedSpace{I}) where {I<:Sector}
     return typeof(V₁)(dims; dual=dual1)
 end
 
+function ⊖(V::GradedSpace{I}, W::GradedSpace{I}) where {I<:Sector}
+    V ≿ W && isdual(V) == isdual(W) ||
+        throw(SpaceMismatch("$(W) is not a subspace of $(V)"))
+    return typeof(V)(c => dim(V, c) - dim(W, c) for c in sectors(V))
+end
+
 function flip(V::GradedSpace{I}) where {I<:Sector}
     if isdual(V)
         typeof(V)(c => dim(V, c) for c in sectors(V))
@@ -181,12 +187,6 @@ function supremum(V₁::GradedSpace{I}, V₂::GradedSpace{I}) where {I<:Sector}
         throw(SpaceMismatch("Supremum of space and dual space does not exist"))
     return typeof(V₁)((Visdual ? dual(c) : c) => max(dim(V₁, c), dim(V₂, c))
                       for c in union(sectors(V₁), sectors(V₂)); dual=Visdual)
-end
-
-function Base.setdiff(V::GradedSpace{I}, W::GradedSpace{I}) where {I<:Sector}
-    V ≿ W && isdual(V) == isdual(W) ||
-        throw(SpaceMismatch("$(W) is not a subspace of $(V)"))
-    return typeof(V)(c => dim(V, c) - dim(W, c) for c in sectors(V))
 end
 
 function Base.show(io::IO, V::GradedSpace{I}) where {I<:Sector}

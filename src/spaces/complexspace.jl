@@ -50,11 +50,18 @@ Base.conj(V::ComplexSpace) = ComplexSpace(dim(V), !isdual(V))
 
 Base.oneunit(::Type{ComplexSpace}) = ComplexSpace(1)
 Base.zero(::Type{ComplexSpace}) = ComplexSpace(0)
+
 function ⊕(V₁::ComplexSpace, V₂::ComplexSpace)
     return isdual(V₁) == isdual(V₂) ?
            ComplexSpace(dim(V₁) + dim(V₂), isdual(V₁)) :
            throw(SpaceMismatch("Direct sum of a vector space and its dual does not exist"))
 end
+function ⊖(V::ComplexSpace, W::ComplexSpace)
+    (V ≿ W && isdual(V) == isdual(W)) ||
+        throw(ArgumentError("$(W) is not a subspace of $(V)"))
+    return ComplexSpace(dim(V) - dim(W), isdual(V))
+end
+
 fuse(V₁::ComplexSpace, V₂::ComplexSpace) = ComplexSpace(V₁.d * V₂.d)
 flip(V::ComplexSpace) = dual(V)
 
@@ -67,12 +74,6 @@ function supremum(V₁::ComplexSpace, V₂::ComplexSpace)
     return isdual(V₁) == isdual(V₂) ?
            ComplexSpace(max(dim(V₁), dim(V₂)), isdual(V₁)) :
            throw(SpaceMismatch("Supremum of space and dual space does not exist"))
-end
-
-function Base.setdiff(V::ComplexSpace, W::ComplexSpace)
-    (V ≿ W && isdual(V) == isdual(W)) ||
-        throw(ArgumentError("$(W) is not a subspace of $(V)"))
-    return ComplexSpace(dim(V) - dim(W), isdual(V))
 end
 
 Base.show(io::IO, V::ComplexSpace) = print(io, isdual(V) ? "(ℂ^$(V.d))'" : "ℂ^$(V.d)")
