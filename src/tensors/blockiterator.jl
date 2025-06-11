@@ -33,8 +33,9 @@ end
 ```
 """
 function foreachblock(f, t::AbstractTensorMap, ts::AbstractTensorMap...; scheduler=nothing)
-    foreach(blocks(t)) do (c, b)
-        return f(c, (b, map(Base.Fix2(block, c), ts)...))
+    allsectors = union(blocksectors(t), blocksectors.(ts)...)
+    foreach(allsectors) do c
+        return f(c, map(Base.Fix2(block, c), (t, ts...)))
     end
     return nothing
 end
