@@ -324,57 +324,55 @@ function _reverse!(t::AbstractTensorMap; dims=:)
 end
 
 function leftorth!(t::TensorMap{<:RealOrComplexFloat};
-                   alg::Union{QR,QRpos,QL,QLpos,SVD,SDD,Polar}=QRpos(),
-                   atol::Real=zero(float(real(scalartype(t)))),
-                   rtol::Real=(alg ∉ (SVD(), SDD())) ?
-                              zero(float(real(scalartype(t)))) :
-                              eps(real(float(one(scalartype(t))))) *
-                              iszero(atol))
+                   alg::Union{QR,QRpos,QL,QLpos,SVD,SDD,Polar,Nothing}=nothing,
+                   kwargs...)
+    #    atol::Real=zero(float(real(scalartype(t)))),
+    #    rtol::Real=(alg ∉ (SVD(), SDD())) ?
+    #               zero(float(real(scalartype(t)))) :
+    #               eps(real(float(one(scalartype(t))))) *
+    #               iszero(atol))
     InnerProductStyle(t) === EuclideanInnerProduct() ||
         throw_invalid_innerproduct(:leftorth!)
-    if alg == SVD() || alg == SDD()
-        return _leftorth!(t, alg; atol, rtol)
-    else
-        (iszero(atol) && iszero(rtol)) ||
-            throw(ArgumentError("`leftorth!` with nonzero atol or rtol requires SVD or SDD algorithm"))
-        return _leftorth!(t, alg)
-    end
+    return _leftorth!(t, alg; kwargs...)
+
+    # if alg == SVD() || alg == SDD()
+    #     return _leftorth!(t, alg; atol, rtol)
+    # else
+    #     (iszero(atol) && iszero(rtol)) ||
+    #         throw(ArgumentError("`leftorth!` with nonzero atol or rtol requires SVD or SDD algorithm"))
+    #     return _leftorth!(t, alg)
+    # end
 end
 
 # this promotes the algorithm to a positional argument for type stability reasons
 # since polar has different number of output legs
 # TODO: this seems like duplication from MatrixAlgebraKit.left_orth!, but that function
 # only has its logic with the output already specified, which breaks for polar
-function _leftorth!(t::TensorMap{<:RealOrComplexFloat}, alg::Union{SVD,SDD}; atol::Real,
-                    rtol::Real)
-    alg′ = alg == SVD() ? MatrixAlgebraKit.LAPACK_QRIteration() :
-           MatrixAlgebraKit.LAPACK_DivideAndConquer()
-    alg_svd = BlockAlgorithm(alg′, default_blockscheduler(t))
-    if iszero(atol) && iszero(rtol)
-        U, S, Vᴴ = svd_compact!(t, alg_svd)
-        return U, lmul!(S, Vᴴ)
+function _leftorth!(t::TensorMap{<:RealOrComplexFloat}, alg; kwargs...)
+    trunc = isempty(kwargs) ? nothing : (; kwargs...)
+    if isnothing(alg)
+        return left_orth!(t; trunc)
+    elseif alg == SVD()
+        return left_orth!(t; kind=:svd, alg_svd=:LAPACK_QRIteration, trunc)
+    elseif alg == SDD()
+        return left_orth!(t; kind=:svd, alg_svd=:LAPACK_DivideAndConquer, trunc)
+    elseif alg == QR()
+        return left_orth!(t; kind=:qr, alg_qr=(; positive=false), trunc)
+    elseif alg == QRpos()
+        return left_orth!(t; kind=:qr, alg_qr=(; positive=true), trunc)
+    elseif alg == QL() || alg == QLpos()
+        _reverse!(t; dims=2)
+        Q, R = left_orth!(t; kind=:qr, alg_qr=(; positive=alg == QLpos()), trunc)
+        _reverse!(Q; dims=2)
+        _reverse!(R)
+        return Q, R
+    elseif alg == Polar()
+        return left_orth!(t; kind=:polar, trunc)
     else
-        trunc = MatrixAlgebraKit.TruncationKeepAbove(atol, rtol)
-        alg_svd = MatrixAlgebraKit.select_algorithm(svd_trunc!, t; trunc,
-                                                    alg=alg_svd)
-
-        U, S, Vᴴ = svd_trunc!(t, alg_svd)
-        return U, lmul!(S, Vᴴ)
+        throw(ArgumentError(lazy"Invalid algorithm: $alg"))
     end
 end
-function _leftorth!(t::TensorMap{<:RealOrComplexFloat}, alg::Union{QR,QRpos})
-    return qr_compact!(t; positive=alg == QRpos())
-end
-function _leftorth!(t::TensorMap{<:RealOrComplexFloat}, alg::Union{QL,QLpos})
-    _reverse!(t; dims=2)
-    Q, R = qr_compact!(t; positive=alg == QLpos())
-    _reverse!(Q; dims=2)
-    _reverse!(R)
-    return Q, R
-end
-function _leftorth!(t::TensorMap{<:RealOrComplexFloat}, ::Polar)
-    return MatrixAlgebraKit.left_polar!(t)
-end
+
 
 function leftnull!(t::TensorMap{<:RealOrComplexFloat};
                    alg::Union{QR,QRpos,SVD,SDD}=QRpos(),
