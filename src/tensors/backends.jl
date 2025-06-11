@@ -28,7 +28,8 @@ Run `f` in a scope where the `blockscheduler` is determined by `scheduler' and `
 end
 
 # TODO: disable for trivial symmetry or small tensors?
-default_blockscheduler(t::AbstractTensorMap) = blockscheduler[]
+default_blockscheduler(t::AbstractTensorMap) = default_blockscheduler(typeof(t))
+default_blockscheduler(::Type{T}) where {T<:AbstractTensorMap} = blockscheduler[]
 
 # MatrixAlgebraKit
 # ----------------
