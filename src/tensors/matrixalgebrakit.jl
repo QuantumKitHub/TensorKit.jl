@@ -1,3 +1,11 @@
+# convenience to set default
+macro check_space(x, V)
+    return esc(:($MatrixAlgebraKit.@check_size($x, $V, $space)))
+end
+macro check_scalar(x, y, op=:identity, eltype=:scalartype)
+    return esc(:($MatrixAlgebraKit.@check_scalar($x, $y, $op, $eltype)))
+end
+
 # Generic
 # -------
 for f in (:eig_full, :eig_vals, :eig_trunc, :eigh_full, :eigh_vals, :eigh_trunc, :svd_full,
@@ -6,6 +14,31 @@ for f in (:eig_full, :eig_vals, :eig_trunc, :eigh_full, :eigh_vals, :eigh_trunc,
                                                t::AbstractTensorMap{<:BlasFloat})
         T = factorisation_scalartype($f, t)
         return copy_oftype(t, T)
+    end
+    f! = Symbol(f, :!)
+    @eval function MatrixAlgebraKit.select_algorithm(::typeof($f!), t::AbstractTensorMap,
+                                                     alg::Alg=nothing;
+                                                     kwargs...) where {Alg}
+        return MatrixAlgebraKit.select_algorithm($f!, typeof(t), alg; kwargs...)
+    end
+    @eval function MatrixAlgebraKit.select_algorithm(::typeof($f!), ::Type{T},
+                                                     alg::Alg=nothing;
+                                                     scheduler=default_blockscheduler(T),
+                                                     kwargs...) where {T<:AbstractTensorMap,
+                                                                       Alg}
+        mat_alg = MatrixAlgebraKit.select_algorithm($f!, blocktype(T), alg; kwargs...)
+        return BlockAlgorithm(mat_alg, scheduler)
+    end
+end
+
+for f in (:qr, :lq, :svd, :eig, :eigh, :polar)
+    default_f_algorithm = Symbol(:default_, f, :_algorithm)
+    @eval function MatrixAlgebraKit.$default_f_algorithm(::Type{T};
+                                                         scheduler=default_blockscheduler(T),
+                                                         kwargs...) where {T<:AbstractTensorMap}
+        return BlockAlgorithm(MatrixAlgebraKit.$default_f_algorithm(blocktype(T);
+                                                                    kwargs...),
+                              scheduler)
     end
 end
 
@@ -21,14 +54,6 @@ macro check_eltype(x, y, f=:identity, g=:eltype)
     return esc(:($g($x) == $f($g($y)) || throw(ArgumentError($msg))))
 end
 
-function MatrixAlgebraKit._select_algorithm(_, ::AbstractTensorMap,
-                                            alg::MatrixAlgebraKit.AbstractAlgorithm)
-    return alg
-end
-function MatrixAlgebraKit._select_algorithm(f, t::AbstractTensorMap, alg::NamedTuple)
-    return MatrixAlgebraKit.select_algorithm(f, t; alg...)
-end
-
 function _select_truncation(f, ::AbstractTensorMap,
                             trunc::MatrixAlgebraKit.TruncationStrategy)
     return trunc
@@ -41,11 +66,6 @@ function MatrixAlgebraKit.diagview(t::AbstractTensorMap)
     return SectorDict(c => MatrixAlgebraKit.diagview(b) for (c, b) in blocks(t))
 end
 
-# function factorisation_scalartype(::typeof(MAK.eig_full!), t::AbstractTensorMap)
-#     T = scalartype(t)
-#     return promote_type(Float32, typeof(zero(T) / sqrt(abs2(one(T)))))
-# end
-
 # Singular value decomposition
 # ----------------------------
 const _T_USVᴴ = Tuple{<:AbstractTensorMap,<:AbstractTensorMap,<:AbstractTensorMap}
@@ -54,19 +74,16 @@ const _T_USVᴴ_diag = Tuple{<:AbstractTensorMap,<:DiagonalTensorMap,<:AbstractT
 function MatrixAlgebraKit.check_input(::typeof(svd_full!), t::AbstractTensorMap,
                                       (U, S, Vᴴ)::_T_USVᴴ)
     # scalartype checks
-    @check_eltype U t
-    @check_eltype S t real
-    @check_eltype Vᴴ t
+    @check_scalar U t
+    @check_scalar S t real
+    @check_scalar Vᴴ t
 
     # space checks
     V_cod = fuse(codomain(t))
     V_dom = fuse(domain(t))
-    space(U) == (codomain(t) ← V_cod) ||
-        throw(SpaceMismatch("`svd_full!(t, (U, S, Vᴴ))` requires `space(U) == (codomain(t) ← fuse(domain(t)))`"))
-    space(S) == (V_cod ← V_dom) ||
-        throw(SpaceMismatch("`svd_full!(t, (U, S, Vᴴ))` requires `space(S) == (fuse(codomain(t)) ← fuse(domain(t))`"))
-    space(Vᴴ) == (V_dom ← domain(t)) ||
-        throw(SpaceMismatch("`svd_full!(t, (U, S, Vᴴ))` requires `space(Vᴴ) == (fuse(domain(t)) ← domain(t))`"))
+    @check_space(U, codomain(t) ← V_cod)
+    @check_space(S, V_cod ← V_dom)
+    @check_space(Vᴴ, V_dom ← domain(t))
 
     return nothing
 end
@@ -80,12 +97,9 @@ function MatrixAlgebraKit.check_input(::typeof(svd_compact!), t::AbstractTensorM
 
     # space checks
     V_cod = V_dom = infimum(fuse(codomain(t)), fuse(domain(t)))
-    space(U) == (codomain(t) ← V_cod) ||
-        throw(SpaceMismatch("`svd_compact!(t, (U, S, Vᴴ))` requires `space(U) == (codomain(t) ← infimum(fuse(domain(t)), fuse(codomain(t)))`"))
-    space(S) == (V_cod ← V_dom) ||
-        throw(SpaceMismatch("`svd_compact!(t, (U, S, Vᴴ))` requires diagonal `S` with `domain(S) == (infimum(fuse(codomain(t)), fuse(domain(t)))`"))
-    space(Vᴴ) == (V_dom ← domain(t)) ||
-        throw(SpaceMismatch("`svd_compact!(t, (U, S, Vᴴ))` requires `space(Vᴴ) == (infimum(fuse(domain(t)), fuse(codomain(t))) ← domain(t))`"))
+    @check_space(U, codomain(t) ← V_cod)
+    @check_space(S, V_cod ← V_dom)
+    @check_space(Vᴴ, V_dom ← domain(t))
 
     return nothing
 end
@@ -124,7 +138,7 @@ function MatrixAlgebraKit.svd_full!(t::AbstractTensorMap, (U, S, Vᴴ),
 
     foreachblock(t, U, S, Vᴴ; alg.scheduler) do _, (b, u, s, vᴴ)
         if isempty(b) # TODO: remove once MatrixAlgebraKit supports empty matrices
-            one!(length(u) > 0 ? u : vᴴ)
+            MatrixAlgebraKit.one!(length(u) > 0 ? u : vᴴ)
             zerovector!(s)
         else
             u′, s′, vᴴ′ = MatrixAlgebraKit.svd_full!(b, (u, s, vᴴ), alg.alg)
@@ -161,12 +175,6 @@ function MatrixAlgebraKit.svd_trunc!(t::AbstractTensorMap, USVᴴ,
     return MatrixAlgebraKit.truncate!(svd_trunc!, USVᴴ′, alg.trunc)
 end
 
-function MatrixAlgebraKit.default_svd_algorithm(t::AbstractTensorMap{<:BlasFloat};
-                                                scheduler=default_blockscheduler(t),
-                                                kwargs...)
-    return BlockAlgorithm(LAPACK_DivideAndConquer(; kwargs...), scheduler)
-end
-
 # Eigenvalue decomposition
 # ------------------------
 const _T_DV = Tuple{<:DiagonalTensorMap,<:AbstractTensorMap}
@@ -176,15 +184,13 @@ function MatrixAlgebraKit.check_input(::typeof(eigh_full!), t::AbstractTensorMap
         throw(ArgumentError("Eigenvalue decomposition requires square input tensor"))
 
     # scalartype checks
-    @check_eltype D t real
-    @check_eltype V t
+    @check_scalar D t real
+    @check_scalar V t
 
     # space checks
     V_D = fuse(domain(t))
-    V_D == space(D, 1) ||
-        throw(SpaceMismatch("`eigh_full!(t, (D, V))` requires diagonal `D` with `domain(D) == fuse(domain(t))`"))
-    space(V) == (codomain(t) ← V_D) ||
-        throw(SpaceMismatch("`eigh_full!(t, (D, V))` requires `space(V) == (codomain(t) ← fuse(domain(t)))`"))
+    @check_space(D, V_D ← V_D)
+    @check_space(V, codomain(t) ← V_D)
 
     return nothing
 end
@@ -195,15 +201,13 @@ function MatrixAlgebraKit.check_input(::typeof(eig_full!), t::AbstractTensorMap,
         throw(ArgumentError("Eigenvalue decomposition requires square input tensor"))
 
     # scalartype checks
-    @check_eltype D t complex
-    @check_eltype V t complex
+    @check_scalar D t complex
+    @check_scalar V t complex
 
     # space checks
     V_D = fuse(domain(t))
-    V_D == space(D, 1) ||
-        throw(SpaceMismatch("`eig_full!(t, (D, V))` requires diagonal `D` with `domain(D) == fuse(domain(t))`"))
-    space(V) == (codomain(t) ← V_D) ||
-        throw(SpaceMismatch("`eig_full!(t, (D, V))` requires `space(V) == (codomain(t) ← fuse(domain(t)))`"))
+    @check_space(D, V_D ← V_D)
+    @check_space(V, codomain(t) ← V_D)
 
     return nothing
 end
@@ -243,48 +247,32 @@ for f in (:eigh_full!, :eig_full!)
     end
 end
 
-function MatrixAlgebraKit.default_eig_algorithm(t::AbstractTensorMap{<:BlasFloat};
-                                                scheduler=default_blockscheduler(t),
-                                                kwargs...)
-    return BlockAlgorithm(LAPACK_Expert(; kwargs...), scheduler)
-end
-function MatrixAlgebraKit.default_eigh_algorithm(t::AbstractTensorMap{<:BlasFloat};
-                                                 scheduler=default_blockscheduler(t),
-                                                 kwargs...)
-    return BlockAlgorithm(LAPACK_MultipleRelativelyRobustRepresentations(; kwargs...),
-                          scheduler)
-end
-
 # QR decomposition
 # ----------------
 function MatrixAlgebraKit.check_input(::typeof(qr_full!), t::AbstractTensorMap,
                                       (Q,
                                        R)::Tuple{<:AbstractTensorMap,<:AbstractTensorMap})
     # scalartype checks
-    @check_eltype Q t
-    @check_eltype R t
+    @check_scalar Q t
+    @check_scalar R t
 
     # space checks
     V_Q = fuse(codomain(t))
-    space(Q) == (codomain(t) ← V_Q) ||
-        throw(SpaceMismatch("`qr_full!(t, (Q, R))` requires `space(Q) == (codomain(t) ← fuse(codomain(t)))`"))
-    space(R) == (V_Q ← domain(t)) ||
-        throw(SpaceMismatch("`qr_full!(t, (Q, R))` requires `space(R) == (fuse(codomain(t)) ← domain(t)`"))
+    @check_space(Q, codomain(t) ← V_Q)
+    @check_space(R, V_Q ← domain(t))
 
     return nothing
 end
 
 function MatrixAlgebraKit.check_input(::typeof(qr_compact!), t::AbstractTensorMap, (Q, R))
     # scalartype checks
-    @check_eltype Q t
-    @check_eltype R t
+    @check_scalar Q t
+    @check_scalar R t
 
     # space checks
     V_Q = infimum(fuse(codomain(t)), fuse(domain(t)))
-    space(Q) == (codomain(t) ← V_Q) ||
-        throw(SpaceMismatch("`qr_compact!(t, (Q, R))` requires `space(Q) == (codomain(t) ← infimum(fuse(codomain(t)), fuse(domain(t)))`"))
-    space(R) == (V_Q ← domain(t)) ||
-        throw(SpaceMismatch("`qr_compact!(t, (Q, R))` requires `space(R) == (infimum(fuse(codomain(t)), fuse(domain(t))) ← domain(t))`"))
+    @check_space(Q, codomain(t) ← V_Q)
+    @check_space(R, V_Q ← domain(t))
 
     return nothing
 end
@@ -292,13 +280,12 @@ end
 function MatrixAlgebraKit.check_input(::typeof(qr_null!), t::AbstractTensorMap,
                                       N::AbstractTensorMap)
     # scalartype checks
-    @check_eltype N t
+    @check_scalar N t
 
     # space checks
     V_Q = infimum(fuse(codomain(t)), fuse(domain(t)))
     V_N = ⊖(fuse(codomain(t)), V_Q)
-    space(N) == (codomain(t) ← V_N) ||
-        throw(SpaceMismatch("`qr_null!(t, N)` requires `space(N) == (codomain(t) ← ⊖(fuse(codomain(t)), infimum(fuse(codomain(t)), fuse(domain(t))))`"))
+    @check_space(N, codomain(t) ← V_N)
 
     return nothing
 end
@@ -370,11 +357,6 @@ function MatrixAlgebraKit.qr_null!(t::AbstractTensorMap, N, alg::BlockAlgorithm)
     return N
 end
 
-function MatrixAlgebraKit.default_qr_algorithm(t::AbstractTensorMap{<:BlasFloat};
-                                               scheduler=default_blockscheduler(t),
-                                               kwargs...)
-    return BlockAlgorithm(LAPACK_HouseholderQR(; kwargs...), scheduler)
-end
 
 # LQ decomposition
 # ----------------
@@ -395,28 +377,25 @@ end
 
 function MatrixAlgebraKit.check_input(::typeof(lq_compact!), t::AbstractTensorMap, (L, Q))
     # scalartype checks
-    @check_eltype L t
-    @check_eltype Q t
+    @check_scalar L t
+    @check_scalar Q t
 
     # space checks
     V_Q = infimum(fuse(codomain(t)), fuse(domain(t)))
-    space(L) == (codomain(t) ← V_Q) ||
-        throw(SpaceMismatch("`lq_compact!(t, (L, Q))` requires `space(L) == infimum(fuse(codomain(t)), fuse(domain(t)))`"))
-    space(Q) == (V_Q ← domain(t)) ||
-        throw(SpaceMismatch("`lq_compact!(t, (L, Q))` requires `space(Q) == infimum(fuse(codomain(t)), fuse(domain(t)))`"))
+    @check_space(L, codomain(t) ← V_Q)
+    @check_space(Q, V_Q ← domain(t))
 
     return nothing
 end
 
 function MatrixAlgebraKit.check_input(::typeof(lq_null!), t::AbstractTensorMap, N)
     # scalartype checks
-    @check_eltype N t
+    @check_scalar N t
 
     # space checks
     V_Q = infimum(fuse(codomain(t)), fuse(domain(t)))
     V_N = ⊖(fuse(domain(t)), V_Q)
-    space(N) == (V_N ← domain(t)) ||
-        throw(SpaceMismatch("`lq_null!(t, N)` requires `space(N) == ⊖(fuse(domain(t)), infimum(fuse(codomain(t)), fuse(domain(t)))`"))
+    @check_space(N, V_N ← domain(t))
 
     return nothing
 end
@@ -497,21 +476,19 @@ function MatrixAlgebraKit.check_input(::typeof(left_polar!), t, (W, P))
         throw(ArgumentError("Polar decomposition requires `codomain(t) ≿ domain(t)`"))
 
     # scalartype checks
-    @check_eltype W t
-    @check_eltype P t
+    @check_scalar W t
+    @check_scalar P t
 
     # space checks
-    space(W) == space(t) ||
-        throw(SpaceMismatch("`left_polar!(t, (W, P))` requires `space(W) == (codomain(t) ← domain(t))`"))
-    space(P) == (domain(t) ← domain(t)) ||
-        throw(SpaceMismatch("`left_polar!(t, (W, P))` requires `space(P) == (domain(t) ← domain(t))`"))
+    @check_space(W, space(t))
+    @check_space(P, domain(t) ← domain(t))
 
     return nothing
 end
 
 # TODO: do we really not want to fuse the spaces?
 function MatrixAlgebraKit.initialize_output(::typeof(left_polar!), t::AbstractTensorMap,
-                                            ::MatrixAlgebraKit.AbstractAlgorithm)
+                                            ::BlockAlgorithm)
     W = similar(t, space(t))
     P = similar(t, domain(t) ← domain(t))
     return W, P
@@ -531,41 +508,46 @@ function MatrixAlgebraKit.left_polar!(t::AbstractTensorMap, WP, alg::BlockAlgori
     return WP
 end
 
-function MatrixAlgebraKit.default_polar_algorithm(t::AbstractTensorMap{<:BlasFloat};
-                                                  scheduler=default_blockscheduler(t),
-                                                  kwargs...)
-    return BlockAlgorithm(PolarViaSVD(LAPACK_DivideAndConquer(; kwargs...)),
-                          scheduler)
+# Trick to relax the checks of "square" if coming from left_orth
+function MatrixAlgebraKit.left_orth_polar!(t::AbstractTensorMap, VC, alg)
+    alg′ = MatrixAlgebraKit.select_algorithm(left_polar!, t, alg)
+    return MatrixAlgebraKit.left_orth_polar!(t, VC, alg′)
+end
+function MatrixAlgebraKit.left_orth_polar!(t::AbstractTensorMap, WP, alg::BlockAlgorithm)
+    foreachblock(t, WP...; alg.scheduler) do _, (b, w, p)
+        w′, p′ = left_polar!(b, (w, p), alg.alg)
+        # deal with the case where the output is not the same as the input
+        w === w′ || copyto!(w, w′)
+        p === p′ || copyto!(p, p′)
+        return nothing
+    end
+    return WP
 end
 
 # Orthogonalization
 # -----------------
 function MatrixAlgebraKit.check_input(::typeof(left_orth!), t::AbstractTensorMap, (V, C))
     # scalartype checks
-    @check_eltype V t
-    isnothing(C) || @check_eltype C t
+    @check_scalar V t
+    isnothing(C) || @check_scalar C t
 
     # space checks
     V_C = infimum(fuse(codomain(t)), fuse(domain(t)))
-    space(V) == (codomain(t) ← V_C) ||
-        throw(SpaceMismatch("`left_orth!(t, (V, C))` requires `space(V) == (codomain(t) ← infimum(fuse(codomain(t)), fuse(domain(t))))`"))
-    isnothing(C) || space(C) == (V_C ← domain(t)) ||
-        throw(SpaceMismatch("`left_orth!(t, (V, C))` requires `space(C) == (infimum(fuse(codomain(t)), fuse(domain(t))) ← domain(t))`"))
+    @check_space(V, codomain(t) ← V_C)
+    isnothing(C) || @check_space(CV_C ← domain(t))
 
     return nothing
 end
 
 function MatrixAlgebraKit.check_input(::typeof(right_orth!), t::AbstractTensorMap, (C, Vᴴ))
     # scalartype checks
-    isnothing(C) || @check_eltype C t
-    @check_eltype Vᴴ t
+    isnothing(C) || @check_scalar C t
+    @check_scalar Vᴴ t
 
     # space checks
     V_C = infimum(fuse(codomain(t)), fuse(domain(t)))
-    isnothing(C) || space(C) == (codomain(t) ← V_C) ||
-        throw(SpaceMismatch("`right_orth!(t, (C, Vᴴ))` requires `space(C) == (codomain(t) ← infimum(fuse(codomain(t)), fuse(domain(t)))`"))
-    space(Vᴴ) == (V_dom ← domain(t)) ||
-        throw(SpaceMismatch("`right_orth!(t, (C, Vᴴ))` requires `space(Vᴴ) == (infimum(fuse(codomain(t)), fuse(domain(t))) ← domain(t))`"))
+    isnothing(C) || @check_space(C, codomain(t) ← V_C)
+    @check_space(Vᴴ, V_dom ← domain(t))
 
     return nothing
 end
@@ -584,59 +566,16 @@ function MatrixAlgebraKit.initialize_output(::typeof(right_orth!), t::AbstractTe
     return C, Vᴴ
 end
 
-function MatrixAlgebraKit.left_orth!(t::AbstractTensorMap, VC;
-                                     trunc=nothing,
-                                     kind=isnothing(trunc) ?
-                                          :qr : :svd,
-                                     alg_qr=(; positive=true),
-                                     alg_polar=(;),
-                                     alg_svd=(;))
-    if !isnothing(trunc) && kind != :svd
-        throw(ArgumentError("truncation not supported for left_orth with kind=$kind"))
-    end
-
-    if kind == :qr
-        alg_qr′ = MatrixAlgebraKit._select_algorithm(qr_compact!, t, alg_qr)
-        return qr_compact!(t, VC, alg_qr′)
-    end
-
-    if kind == :polar
-        alg_polar′ = MatrixAlgebraKit._select_algorithm(left_polar!, t, alg_polar)
-        return left_polar!(t, VC, alg_polar′)
-    end
-
-    if kind == :svd && isnothing(trunc)
-        alg_svd′ = MatrixAlgebraKit._select_algorithm(svd_compact!, t, alg_svd)
-        V, C = VC
-        S = DiagonalTensorMap{real(scalartype(t))}(undef, domain(V) ← codomain(C))
-        U, S, Vᴴ = svd_compact!(t, (V, S, C), alg_svd′)
-        return U, lmul!(S, Vᴴ)
-    end
-
-    if kind == :svd
-        alg_svd′ = MatrixAlgebraKit._select_algorithm(svd_compact!, t, alg_svd)
-        alg_svd_trunc = MatrixAlgebraKit.select_algorithm(svd_trunc!, t; trunc,
-                                                          alg=alg_svd′)
-        V, C = VC
-        S = DiagonalTensorMap{real(scalartype(t))}(undef, domain(V) ← codomain(C))
-        U, S, Vᴴ = svd_trunc!(t, (V, S, C), alg_svd_trunc)
-        return U, lmul!(S, Vᴴ)
-    end
-
-    throw(ArgumentError("`left_orth!` received unknown value `kind = $kind`"))
-end
-
 # Nullspace
 # ---------
 function MatrixAlgebraKit.check_input(::typeof(left_null!), t::AbstractTensorMap, N)
     # scalartype checks
-    @check_eltype N t
+    @check_scalar N t
 
     # space checks
     V_Q = infimum(fuse(codomain(t)), fuse(domain(t)))
     V_N = ⊖(fuse(codomain(t)), V_Q)
-    space(N) == (codomain(t) ← V_N) ||
-        throw(SpaceMismatch("`left_null!(t, N)` requires `space(N) == (codomain(t) ← ⊖(fuse(codomain(t)), infimum(fuse(codomain(t)), fuse(domain(t))))`"))
+    @check_space(N, codomain(t) ← V_N)
 
     return nothing
 end
@@ -670,9 +609,11 @@ function MatrixAlgebraKit.left_null!(t::AbstractTensorMap, N;
     end
 
     if kind == :qr
+        @info "qr"
         alg_qr′ = MatrixAlgebraKit._select_algorithm(qr_null!, t, alg_qr)
         return qr_null!(t, N, alg_qr′)
     elseif kind == :svd && isnothing(trunc)
+        @info "svd"
         alg_svd′ = MatrixAlgebraKit._select_algorithm(svd_full!, t, alg_svd)
         # TODO: refactor into separate function
         U, _, _ = svd_full!(t, alg_svd′)
@@ -683,9 +624,10 @@ function MatrixAlgebraKit.left_null!(t::AbstractTensorMap, N;
         end
         return N
     elseif kind == :svd
+        @info "svd2"
         alg_svd′ = MatrixAlgebraKit._select_algorithm(svd_full!, t, alg_svd)
-        U, S, _ = svd_full!(t, alg_svd′)
-        trunc′ = _select_truncation(left_null!, t, trunc)
+        @show U, S, _ = svd_full!(t, alg_svd′)
+        @show trunc′ = _select_truncation(left_null!, t, @show trunc)
         return MatrixAlgebraKit.truncate!(left_null!, (U, S), trunc′)
     else
         throw(ArgumentError("`left_null!` received unknown value `kind = $kind`"))
