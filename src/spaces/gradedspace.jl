@@ -150,9 +150,10 @@ function ⊕(V₁::GradedSpace{I}, V₂::GradedSpace{I}) where {I<:Sector}
 end
 
 function ⊖(V::GradedSpace{I}, W::GradedSpace{I}) where {I<:Sector}
-    V ≿ W && isdual(V) == isdual(W) ||
+    dual = isdual(V)
+    V ≿ W && dual == isdual(W) ||
         throw(SpaceMismatch("$(W) is not a subspace of $(V)"))
-    return typeof(V)(c => dim(V, c) - dim(W, c) for c in sectors(V))
+    return typeof(V)(c => dim(V, c) - dim(W, c) for c in sectors(V); dual)
 end
 
 function flip(V::GradedSpace{I}) where {I<:Sector}
