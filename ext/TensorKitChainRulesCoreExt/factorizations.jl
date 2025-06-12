@@ -1,4 +1,4 @@
-using MatrixAlgebraKit: svd_compact_pullback!
+using MatrixAlgebraKit: svd_compact_pullback!, eig_full_pullback!, eigh_full_pullback!
 
 # Factorizations rules
 # --------------------
@@ -46,47 +46,41 @@ function ChainRulesCore.rrule(::typeof(LinearAlgebra.svdvals!), t::AbstractTenso
 end
 
 function ChainRulesCore.rrule(::typeof(TensorKit.eig!), t::AbstractTensorMap; kwargs...)
-    D, V = eig(t; kwargs...)
+    DV = eig(t; kwargs...)
 
-    function eig!_pullback((_ΔD, _ΔV))
-        ΔD, ΔV = unthunk(_ΔD), unthunk(_ΔV)
+    function eig!_pullback(ΔDV′)
+        ΔDV = unthunk.(ΔDV′)
         Δt = similar(t)
-        for (c, b) in blocks(Δt)
-            Dc, Vc = block(D, c), block(V, c)
-            ΔDc, ΔVc = block(ΔD, c), block(ΔV, c)
-            Ddc = view(Dc, diagind(Dc))
-            ΔDdc = (ΔDc isa AbstractZero) ? ΔDc : view(ΔDc, diagind(ΔDc))
-            eig_pullback!(b, Ddc, Vc, ΔDdc, ΔVc)
+        foreachblock(Δt) do (c, b)
+            DVc = block.(DV, Ref(c))
+            ΔDVc = block.(ΔDV, Ref(c))
+            eig_full_pullback!(b, DVc, ΔDVc)
+            return nothing
         end
         return NoTangent(), Δt
     end
-    function eig!_pullback(::Tuple{ZeroTangent,ZeroTangent})
-        return NoTangent(), ZeroTangent()
-    end
+    eig!_pullback(::NTuple{2,ZeroTangent}) = NoTangent(), ZeroTangent()
 
-    return (D, V), eig!_pullback
+    return DV, eig!_pullback
 end
 
 function ChainRulesCore.rrule(::typeof(TensorKit.eigh!), t::AbstractTensorMap; kwargs...)
-    D, V = eigh(t; kwargs...)
+    DV = eigh(t; kwargs...)
 
-    function eigh!_pullback((_ΔD, _ΔV))
-        ΔD, ΔV = unthunk(_ΔD), unthunk(_ΔV)
+    function eigh!_pullback(ΔDV′)
+        ΔDV = unthunk.(ΔDV′)
         Δt = similar(t)
-        for (c, b) in blocks(Δt)
-            Dc, Vc = block(D, c), block(V, c)
-            ΔDc, ΔVc = block(ΔD, c), block(ΔV, c)
-            Ddc = view(Dc, diagind(Dc))
-            ΔDdc = (ΔDc isa AbstractZero) ? ΔDc : view(ΔDc, diagind(ΔDc))
-            eigh_pullback!(b, Ddc, Vc, ΔDdc, ΔVc)
+        foreachblock(Δt) do (c, b)
+            DVc = block.(DV, Ref(c))
+            ΔDVc = block.(ΔDV, Ref(c))
+            eigh_full_pullback!(b, DVc, ΔDVc)
+            return nothing
         end
         return NoTangent(), Δt
     end
-    function eigh!_pullback(::Tuple{ZeroTangent,ZeroTangent})
-        return NoTangent(), ZeroTangent()
-    end
+    eigh!_pullback(::NTuple{2,ZeroTangent}) = NoTangent(), ZeroTangent()
 
-    return (D, V), eigh!_pullback
+    return DV, eigh!_pullback
 end
 
 function ChainRulesCore.rrule(::typeof(LinearAlgebra.eigvals!), t::AbstractTensorMap;
@@ -163,75 +157,6 @@ function uppertriangularind(A::AbstractMatrix)
         offset += length(r)
     end
     return I
-end
-
-function eig_pullback!(ΔA::AbstractMatrix, D::AbstractVector, V::AbstractMatrix, ΔD, ΔV;
-                       tol::Real=default_pullback_gaugetol(D))
-
-    # Basic size checks and determination
-    n = LinearAlgebra.checksquare(V)
-    n == length(D) || throw(DimensionMismatch())
-
-    if !(ΔV isa AbstractZero)
-        VdΔV = V' * ΔV
-
-        mask = abs.(transpose(D) .- D) .< tol
-        Δgauge = norm(view(VdΔV, mask), Inf)
-        Δgauge < tol ||
-            @warn "`eig` cotangents sensitive to gauge choice: (|Δgauge| = $Δgauge)"
-
-        VdΔV .*= conj.(safe_inv.(transpose(D) .- D, tol))
-
-        if !(ΔD isa AbstractZero)
-            view(VdΔV, diagind(VdΔV)) .+= ΔD
-        end
-        PΔV = V' \ VdΔV
-        if eltype(ΔA) <: Real
-            ΔAc = mul!(VdΔV, PΔV, V') # recycle VdΔV memory
-            ΔA .= real.(ΔAc)
-        else
-            mul!(ΔA, PΔV, V')
-        end
-    else
-        PΔV = V' \ Diagonal(ΔD)
-        if eltype(ΔA) <: Real
-            ΔAc = PΔV * V'
-            ΔA .= real.(ΔAc)
-        else
-            mul!(ΔA, PΔV, V')
-        end
-    end
-    return ΔA
-end
-
-function eigh_pullback!(ΔA::AbstractMatrix, D::AbstractVector, V::AbstractMatrix, ΔD, ΔV;
-                        tol::Real=default_pullback_gaugetol(D))
-
-    # Basic size checks and determination
-    n = LinearAlgebra.checksquare(V)
-    n == length(D) || throw(DimensionMismatch())
-
-    if !(ΔV isa AbstractZero)
-        VdΔV = V' * ΔV
-        aVdΔV = rmul!(VdΔV - VdΔV', 1 / 2)
-
-        mask = abs.(D' .- D) .< tol
-        Δgauge = norm(view(aVdΔV, mask))
-        Δgauge < tol ||
-            @warn "`eigh` cotangents sensitive to gauge choice: (|Δgauge| = $Δgauge)"
-
-        aVdΔV .*= safe_inv.(D' .- D, tol)
-
-        if !(ΔD isa AbstractZero)
-            view(aVdΔV, diagind(aVdΔV)) .+= real.(ΔD)
-            # in principle, ΔD is real, but maybe not if coming from an anyonic tensor
-        end
-        # recylce VdΔV space
-        mul!(ΔA, mul!(VdΔV, V, aVdΔV), V')
-    else
-        mul!(ΔA, V * Diagonal(ΔD), V')
-    end
-    return ΔA
 end
 
 function qr_pullback!(ΔA::AbstractMatrix, Q::AbstractMatrix, R::AbstractMatrix, ΔQ, ΔR;
