@@ -2,7 +2,7 @@
 # ------------------------
 function select_scheduler(scheduler=OhMyThreads.Implementation.NotGiven(); kwargs...)
     return if scheduler == OhMyThreads.Implementation.NotGiven() && isempty(kwargs)
-        Threads.nthreads() > 1 ? SerialScheduler() : DynamicScheduler()
+        Threads.nthreads() == 1 ? SerialScheduler() : DynamicScheduler()
     else
         OhMyThreads.Implementation._scheduler_from_userinput(scheduler; kwargs...)
     end
