@@ -15,27 +15,32 @@ Base.length(iter::BlockIterator) = length(iter.structure)
 Base.isdone(iter::BlockIterator, state...) = Base.isdone(iter.structure, state...)
 
 # TODO: fast-path when structures are the same?
-# TODO: do we want f(c, bs...) or f(c, bs)?
 # TODO: implement scheduler
-# TODO: do we prefer `blocks(t, ts...)` instead or as well?
 """
-    foreachblock(f, t::AbstractTensorMap, ts::AbstractTensorMap...; [scheduler])
+    foreachblock(f, ts::AbstractTensorMap...; [scheduler])
 
 Apply `f` to each block of `t` and the corresponding blocks of `ts`.
 Optionally, `scheduler` can be used to parallelize the computation.
 This function is equivalent to the following loop:
 
 ```julia
-for (c, b) in blocks(t)
-    bs = (b, block.(ts, c)...)
+for c in union(blocksectors.(ts)...)
+    bs = map(t -> block(t, c), ts)
     f(c, bs)
 end
 ```
 """
 function foreachblock(f, t::AbstractTensorMap, ts::AbstractTensorMap...; scheduler=nothing)
-    allsectors = union(blocksectors(t), blocksectors.(ts)...)
+    tensors = (t, ts...)
+    allsectors = union(blocksectors.(tensors)...)
     foreach(allsectors) do c
-        return f(c, map(Base.Fix2(block, c), (t, ts...)))
+        return f(c, block.(tensors, Ref(c)))
+    end
+    return nothing
+end
+function foreachblock(f, t::AbstractTensorMap; scheduler=nothing)
+    foreach(blocks(t)) do (c, b)
+        return f(c, (b,))
     end
     return nothing
 end
