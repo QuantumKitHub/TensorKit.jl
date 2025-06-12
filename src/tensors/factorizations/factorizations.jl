@@ -45,25 +45,6 @@ include("matrixalgebrakit.jl")
 include("truncation.jl")
 include("deprecations.jl")
 
-"""
-    isposdef(t::AbstractTensor, (leftind, rightind)::Index2Tuple) -> ::Bool
-
-Test whether a tensor `t` is positive definite as linear map from `rightind` to `leftind`.
-
-If `leftind` and `rightind` are not specified, the current partition of left and right
-indices of `t` is used. In that case, less memory is allocated if one allows the data in
-`t` to be destroyed/overwritten, by using `isposdef!(t)`. Note that the permuted tensor on
-which `isposdef!` is called should have equal domain and codomain, as otherwise it is
-meaningless.
-"""
-function LinearAlgebra.isposdef(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple)
-    tcopy = permutedcopy_oftype(t, factorisation_scalartype(isposdef, t), p)
-    return isposdef!(tcopy)
-end
-function LinearAlgebra.isposdef(t::AbstractTensorMap)
-    tcopy = copy_oftype(t, float(scalartype(t)))
-    return isposdef!(tcopy)
-end
 
 function isisometry(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple)
     t = permute(t, (p₁, p₂); copy=false)
