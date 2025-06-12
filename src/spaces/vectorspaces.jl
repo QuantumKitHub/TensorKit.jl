@@ -416,4 +416,3 @@ have the same value.
 function supremum(V₁::S, V₂::S, V₃::S...) where {S<:ElementarySpace}
     return supremum(supremum(V₁, V₂), V₃...)
 end
-

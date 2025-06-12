@@ -317,65 +317,6 @@ function LinearAlgebra.isposdef(d::DiagonalTensorMap)
     return all(isposdef, d.data)
 end
 
-function eig!(d::DiagonalTensorMap)
-    return d, one(d)
-end
-function eigh!(d::DiagonalTensorMap{<:Real})
-    return d, one(d)
-end
-function eigh!(d::DiagonalTensorMap{<:Complex})
-    # TODO: should this test for hermiticity? `eigh!(::TensorMap)` also does not do this.
-    return DiagonalTensorMap(real(d.data), d.domain), one(d)
-end
-
-function leftorth!(d::DiagonalTensorMap; alg=QR(), kwargs...)
-    @assert alg isa Union{QR,QL}
-    return one(d), d # TODO: this is only correct for `alg = QR()` or `alg = QL()`
-end
-function rightorth!(d::DiagonalTensorMap; alg=LQ(), kwargs...)
-    @assert alg isa Union{LQ,RQ}
-    return d, one(d) # TODO: this is only correct for `alg = LQ()` or `alg = RQ()`
-end
-# not much to do here:
-leftnull!(d::DiagonalTensorMap; kwargs...) = leftnull!(TensorMap(d); kwargs...)
-rightnull!(d::DiagonalTensorMap; kwargs...) = rightnull!(TensorMap(d); kwargs...)
-
-function tsvd!(d::DiagonalTensorMap; trunc=NoTruncation(), p::Real=2, alg=SDD())
-    return _tsvd!(d, alg, trunc, p)
-end
-# helper function
-function _compute_svddata!(d::DiagonalTensorMap, alg::Union{SVD,SDD})
-    InnerProductStyle(d) === EuclideanInnerProduct() || throw_invalid_innerproduct(:tsvd!)
-    I = sectortype(d)
-    dims = SectorDict{I,Int}()
-    generator = Base.Iterators.map(blocks(d)) do (c, b)
-        lb = length(b.diag)
-        U = zerovector!(similar(b.diag, lb, lb))
-        V = zerovector!(similar(b.diag, lb, lb))
-        p = sortperm(b.diag; by=abs, rev=true)
-        for (i, pi) in enumerate(p)
-            U[pi, i] = MatrixAlgebra.safesign(b.diag[pi])
-            V[i, pi] = 1
-        end
-        Σ = abs.(view(b.diag, p))
-        dims[c] = lb
-        return c => (U, Σ, V)
-    end
-    SVDdata = SectorDict(generator)
-    return SVDdata, dims
-end
-
-function LinearAlgebra.svdvals(d::DiagonalTensorMap)
-    return SectorDict(c => LinearAlgebra.svdvals(b) for (c, b) in blocks(d))
-end
-function LinearAlgebra.eigvals(d::DiagonalTensorMap)
-    return SectorDict(c => LinearAlgebra.eigvals(b) for (c, b) in blocks(d))
-end
-
-function LinearAlgebra.cond(d::DiagonalTensorMap, p::Real=2)
-    return LinearAlgebra.cond(Diagonal(d.data), p)
-end
-
 # matrix functions
 for f in
     (:exp, :cos, :sin, :tan, :cot, :cosh, :sinh, :tanh, :coth, :atan, :acot, :asinh, :sqrt,

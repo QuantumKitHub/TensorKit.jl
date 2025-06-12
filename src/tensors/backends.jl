@@ -30,15 +30,3 @@ end
 # TODO: disable for trivial symmetry or small tensors?
 default_blockscheduler(t::AbstractTensorMap) = default_blockscheduler(typeof(t))
 default_blockscheduler(::Type{T}) where {T<:AbstractTensorMap} = blockscheduler[]
-
-# MatrixAlgebraKit
-# ----------------
-"""
-    BlockAlgorithm{A,S}(alg, scheduler)
-
-Generic wrapper for implementing block-wise algorithms.
-"""
-struct BlockAlgorithm{A,S} <: MatrixAlgebraKit.AbstractAlgorithm
-    alg::A
-    scheduler::S
-end

@@ -454,10 +454,11 @@ for V in spacelist
                         QdQ = Q' * Q
                         @test QdQ ≈ one(QdQ)
                         @test Q * R ≈ permute(t, ((3, 4, 2), (1, 5)))
-                        if alg isa Polar
-                            @test isposdef(R)
-                            @test domain(R) == codomain(R) == space(t, 1)' ⊗ space(t, 5)'
-                        end
+                        # removed since leftorth now merges legs!
+                        # if alg isa Polar
+                        #     @test isposdef(R)
+                        #     @test domain(R) == codomain(R) == space(t, 1)' ⊗ space(t, 5)'
+                        # end
                     end
                     @testset "leftnull with $alg" for alg in
                                                       (TensorKit.QR(), TensorKit.SVD(),
@@ -477,10 +478,11 @@ for V in spacelist
                         QQd = Q * Q'
                         @test QQd ≈ one(QQd)
                         @test L * Q ≈ permute(t, ((3, 4), (2, 1, 5)))
-                        if alg isa Polar
-                            @test isposdef(L)
-                            @test domain(L) == codomain(L) == space(t, 3) ⊗ space(t, 4)
-                        end
+                        # removed since rightorth now merges legs!
+                        # if alg isa Polar
+                        #     @test isposdef(L)
+                        #     @test domain(L) == codomain(L) == space(t, 3) ⊗ space(t, 4)
+                        # end
                     end
                     @testset "rightnull with $alg" for alg in
                                                        (TensorKit.LQ(), TensorKit.SVD(),
@@ -615,23 +617,36 @@ for V in spacelist
                     for t in ts
                         U₀, S₀, V₀, = tsvd(t)
                         t = rmul!(t, 1 / norm(S₀, p))
-                        U, S, V, ϵ = @constinferred tsvd(t; trunc=truncerr(5e-1), p=p)
+                        U, S, V = @constinferred tsvd(t; trunc=truncerr(5e-1, p))
+                        ϵ = TensorKit._norm(LinearAlgebra.svdvals(U * S * V - t), p,
+                                            zero(scalartype(S)))
+                        p == 2 && @test ϵ < 5e-1
                         # @show p, ϵ
                         # @show domain(S)
                         # @test min(space(S,1), space(S₀,1)) != space(S₀,1)
-                        U′, S′, V′, ϵ′ = tsvd(t; trunc=truncerr(nextfloat(ϵ)), p=p)
+                        U′, S′, V′ = tsvd(t; trunc=truncerr(ϵ + 10eps(ϵ), p))
+                        ϵ′ = TensorKit._norm(LinearAlgebra.svdvals(U′ * S′ * V′ - t), p,
+                                             zero(scalartype(S)))
+
                         @test (U, S, V, ϵ) == (U′, S′, V′, ϵ′)
-                        U′, S′, V′, ϵ′ = tsvd(t; trunc=truncdim(ceil(Int, dim(domain(S)))),
-                                              p=p)
+                        U′, S′, V′ = tsvd(t; trunc=truncdim(ceil(Int, dim(domain(S)))))
+                        ϵ′ = TensorKit._norm(LinearAlgebra.svdvals(U′ * S′ * V′ - t), p,
+                                             zero(scalartype(S)))
                         @test (U, S, V, ϵ) == (U′, S′, V′, ϵ′)
-                        U′, S′, V′, ϵ′ = tsvd(t; trunc=truncspace(space(S, 1)), p=p)
+                        U′, S′, V′ = tsvd(t; trunc=truncspace(space(S, 1)))
+                        ϵ′ = TensorKit._norm(LinearAlgebra.svdvals(U′ * S′ * V′ - t), p,
+                                             zero(scalartype(S)))
                         @test (U, S, V, ϵ) == (U′, S′, V′, ϵ′)
                         # results with truncationcutoff cannot be compared because they don't take degeneracy into account, and thus truncate differently
-                        U, S, V, ϵ = tsvd(t; trunc=truncbelow(1 / dim(domain(S₀))), p=p)
+                        U, S, V = tsvd(t; trunc=truncbelow(1 / dim(domain(S₀))))
+                        ϵ = TensorKit._norm(LinearAlgebra.svdvals(U * S * V - t), p,
+                                            zero(scalartype(S)))
                         # @show p, ϵ
                         # @show domain(S)
                         # @test min(space(S,1), space(S₀,1)) != space(S₀,1)
-                        U′, S′, V′, ϵ′ = tsvd(t; trunc=truncspace(space(S, 1)), p=p)
+                        U′, S′, V′ = tsvd(t; trunc=truncspace(space(S, 1)))
+                        ϵ′ = TensorKit._norm(LinearAlgebra.svdvals(U′ * S′ * V′ - t), p,
+                                             zero(scalartype(S)))
                         @test (U, S, V, ϵ) == (U′, S′, V′, ϵ′)
                     end
                 end
@@ -691,8 +706,8 @@ for V in spacelist
             for T in (Float32, ComplexF64)
                 tA = rand(T, V1 ⊗ V3, V1 ⊗ V3)
                 tB = rand(T, V2 ⊗ V4, V2 ⊗ V4)
-                tA = 3 // 2 * leftorth(tA; alg=Polar())[1]
-                tB = 1 // 5 * leftorth(tB; alg=Polar())[1]
+                tA = 3 // 2 * leftpolar(tA)[1]
+                tB = 1 // 5 * leftpolar(tB)[1]
                 tC = rand(T, V1 ⊗ V3, V2 ⊗ V4)
                 t = @constinferred sylvester(tA, tB, tC)
                 @test codomain(t) == V1 ⊗ V3

@@ -31,7 +31,7 @@ export TruncationScheme
 export SpaceMismatch, SectorMismatch, IndexError # error types
 
 # general vector space methods
-export space, field, dual, dim, reduceddim, dims, fuse, flip, isdual, oplus,
+export space, field, dual, dim, reduceddim, dims, fuse, flip, isdual, oplus, ominus,
        insertleftunit, insertrightunit, removeunit
 
 # partial order for vector spaces
@@ -47,7 +47,7 @@ export ZNSpace, SU2Irrep, U1Irrep, CU1Irrep
 #        bendleft, bendright, foldleft, foldright, cycleclockwise, cycleanticlockwise
 
 # some unicode
-export ⊕, ⊗, ×, ⊠, ℂ, ℝ, ℤ, ←, →, ≾, ≿, ≅, ≺, ≻
+export ⊕, ⊗, ⊖, ×, ⊠, ℂ, ℝ, ℤ, ←, →, ≾, ≿, ≅, ≺, ≻
 export ℤ₂, ℤ₃, ℤ₄, U₁, SU, SU₂, CU₁
 export fℤ₂, fU₁, fSU₂
 export ℤ₂Space, ℤ₃Space, ℤ₄Space, U₁Space, CU₁Space, SU₂Space
@@ -70,8 +70,8 @@ export inner, dot, norm, normalize, normalize!, tr
 
 # factorizations
 export mul!, lmul!, rmul!, adjoint!, pinv, axpy!, axpby!
-export leftorth, rightorth, leftnull, rightnull,
-       leftorth!, rightorth!, leftnull!, rightnull!,
+export leftorth, rightorth, leftnull, rightnull, leftpolar, rightpolar,
+       leftorth!, rightorth!, leftnull!, rightnull!, leftpolar!, rightpolar!,
        tsvd!, tsvd, eigen, eigen!, eig, eig!, eigh, eigh!, exp, exp!,
        isposdef, isposdef!, ishermitian, isisometry, sylvester, rank, cond
 export braid, braid!, permute, permute!, transpose, transpose!, twist, twist!, repartition,
@@ -217,10 +217,12 @@ include("tensors/tensoroperations.jl")
 include("tensors/treetransformers.jl")
 include("tensors/indexmanipulations.jl")
 include("tensors/diagonal.jl")
-include("tensors/truncation.jl")
-include("tensors/matrixalgebrakit.jl")
-include("tensors/factorizations.jl")
 include("tensors/braidingtensor.jl")
+
+include("tensors/factorizations/factorizations.jl")
+using .Factorizations
+# include("tensors/factorizations/matrixalgebrakit.jl")
+# include("tensors/truncation.jl")
 
 # # Planar macros and related functionality
 # #-----------------------------------------
