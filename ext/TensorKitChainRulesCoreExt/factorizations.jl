@@ -1,5 +1,3 @@
-using MatrixAlgebraKit: svd_compact_pullback!, eig_full_pullback!, eigh_full_pullback!
-
 # Factorizations rules
 # --------------------
 function ChainRulesCore.rrule(::typeof(TensorKit.tsvd!), t::AbstractTensorMap;
