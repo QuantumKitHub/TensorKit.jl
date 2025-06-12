@@ -3,40 +3,32 @@ using MatrixAlgebraKit: svd_compact_pullback!
 # Factorizations rules
 # --------------------
 function ChainRulesCore.rrule(::typeof(TensorKit.tsvd!), t::AbstractTensorMap;
-                              trunc::TensorKit.TruncationScheme=TensorKit.notrunc(),
-                              alg::Union{TensorKit.SVD,TensorKit.SDD}=TensorKit.SDD())
-    U, Σ, V⁺, truncerr = tsvd(t; trunc=TensorKit.notrunc(), alg)
+                              trunc::TruncationStrategy=TensorKit.notrunc(),
+                              kwargs...)
+    # TODO: I think we can use tsvd! here without issues because we don't actually require
+    # the data of `t` anymore.
+    USVᴴ = tsvd(t; trunc=TensorKit.notrunc(), alg)
 
-    if !(trunc == TensorKit.notrunc()) && !isempty(blocksectors(t))
-        Σdata = TensorKit.SectorDict(c => diag(b) for (c, b) in blocks(Σ))
-
-        truncdim = TensorKit._compute_truncdim(Σdata, trunc; p=2)
-        truncerr = TensorKit._compute_truncerr(Σdata, truncdim; p=2)
-
-        SVDdata = TensorKit.SectorDict(c => (block(U, c), Σc, block(V⁺, c))
-                                       for (c, Σc) in Σdata)
-
-        Ũ, Σ̃, Ṽ⁺ = TensorKit._create_svdtensors(t, SVDdata, truncdim)
+    if trunc != TensorKit.notrunc() && !isempty(blocksectors(t))
+        USVᴴ′ = MatrixAlgebraKit.truncate!(svd_trunc!, USVᴴ, trunc)
     else
-        Ũ, Σ̃, Ṽ⁺ = U, Σ, V⁺
+        USVᴴ′ = USVᴴ
     end
 
-    function tsvd!_pullback(ΔUSVϵ)
-        ΔU, ΔΣ, ΔV⁺, = unthunk.(ΔUSVϵ)
+    function tsvd!_pullback(ΔUSVᴴ′)
+        ΔUSVᴴ = unthunk.(ΔUSVᴴ′)
         Δt = similar(t)
         foreachblock(Δt) do (c, b)
-            USVᴴc = (block(U, c), block(Σ, c), block(V⁺, c))
-            ΔUSVᴴc = (block(ΔU, c), block(ΔΣ, c), block(ΔV⁺, c))
+            USVᴴc = block.(USVᴴ, Ref(c))
+            ΔUSVᴴc = block.(ΔUSVᴴ, Ref(c))
             svd_compact_pullback!(b, USVᴴc, ΔUSVᴴc)
             return nothing
         end
         return NoTangent(), Δt
     end
-    function tsvd!_pullback(::Tuple{ZeroTangent,ZeroTangent,ZeroTangent})
-        return NoTangent(), ZeroTangent()
-    end
+    tsvd!_pullback(::NTuple{3,ZeroTangent}) = NoTangent(), ZeroTangent()
 
-    return (Ũ, Σ̃, Ṽ⁺, truncerr), tsvd!_pullback
+    return USVᴴ′, tsvd!_pullback
 end
 
 function ChainRulesCore.rrule(::typeof(LinearAlgebra.svdvals!), t::AbstractTensorMap)
@@ -172,137 +164,6 @@ function uppertriangularind(A::AbstractMatrix)
     end
     return I
 end
-
-# SVD_pullback: pullback implementation for general (possibly truncated) SVD
-#
-# Arguments are U, S and Vd of full (non-truncated, but still thin) SVD, as well as
-# cotangent ΔU, ΔS, ΔVd variables of truncated SVD
-# 
-# Checks whether the cotangent variables are such that they would couple to gauge-dependent
-# degrees of freedom (phases of singular vectors), and prints a warning if this is the case
-#
-# An implementation that only uses U, S, and Vd from truncated SVD is also possible, but
-# requires solving a Sylvester equation, which does not seem to be supported on GPUs.
-#
-# Other implementation considerations for GPU compatibility:
-# no scalar indexing, lots of broadcasting and views
-#
-# function svd_pullback!(ΔA::AbstractMatrix, U::AbstractMatrix, S::AbstractVector,
-#                        Vd::AbstractMatrix, ΔU, ΔS, ΔVd;
-#                        tol::Real=default_pullback_gaugetol(S))
-
-#     # Basic size checks and determination
-#     m, n = size(U, 1), size(Vd, 2)
-#     size(U, 2) == size(Vd, 1) == length(S) == min(m, n) || throw(DimensionMismatch())
-#     p = -1
-#     if !(ΔU isa AbstractZero)
-#         m == size(ΔU, 1) || throw(DimensionMismatch())
-#         p = size(ΔU, 2)
-#     end
-#     if !(ΔVd isa AbstractZero)
-#         n == size(ΔVd, 2) || throw(DimensionMismatch())
-#         if p == -1
-#             p = size(ΔVd, 1)
-#         else
-#             p == size(ΔVd, 1) || throw(DimensionMismatch())
-#         end
-#     end
-#     if !(ΔS isa AbstractZero)
-#         if p == -1
-#             p = length(ΔS)
-#         else
-#             p == length(ΔS) || throw(DimensionMismatch())
-#         end
-#     end
-#     Up = view(U, :, 1:p)
-#     Vp = view(Vd, 1:p, :)'
-#     Sp = view(S, 1:p)
-
-#     # rank
-#     r = searchsortedlast(S, tol; rev=true)
-
-#     # compute antihermitian part of projection of ΔU and ΔV onto U and V
-#     # also already subtract this projection from ΔU and ΔV
-#     if !(ΔU isa AbstractZero)
-#         UΔU = Up' * ΔU
-#         aUΔU = rmul!(UΔU - UΔU', 1 / 2)
-#         if m > p
-#             ΔU -= Up * UΔU
-#         end
-#     else
-#         aUΔU = fill!(similar(U, (p, p)), 0)
-#     end
-#     if !(ΔVd isa AbstractZero)
-#         VΔV = Vp' * ΔVd'
-#         aVΔV = rmul!(VΔV - VΔV', 1 / 2)
-#         if n > p
-#             ΔVd -= VΔV' * Vp'
-#         end
-#     else
-#         aVΔV = fill!(similar(Vd, (p, p)), 0)
-#     end
-
-#     # check whether cotangents arise from gauge-invariance objective function
-#     mask = abs.(Sp' .- Sp) .< tol
-#     Δgauge = norm(view(aUΔU, mask) + view(aVΔV, mask), Inf)
-#     if p > r
-#         rprange = (r + 1):p
-#         Δgauge = max(Δgauge, norm(view(aUΔU, rprange, rprange), Inf))
-#         Δgauge = max(Δgauge, norm(view(aVΔV, rprange, rprange), Inf))
-#     end
-#     Δgauge < tol ||
-#         @warn "`svd` cotangents sensitive to gauge choice: (|Δgauge| = $Δgauge)"
-
-#     UdΔAV = (aUΔU .+ aVΔV) .* safe_inv.(Sp' .- Sp, tol) .+
-#             (aUΔU .- aVΔV) .* safe_inv.(Sp' .+ Sp, tol)
-#     if !(ΔS isa ZeroTangent)
-#         UdΔAV[diagind(UdΔAV)] .+= real.(ΔS)
-#         # in principle, ΔS is real, but maybe not if coming from an anyonic tensor
-#     end
-#     mul!(ΔA, Up, UdΔAV * Vp')
-
-#     if r > p # contribution from truncation
-#         Ur = view(U, :, (p + 1):r)
-#         Vr = view(Vd, (p + 1):r, :)'
-#         Sr = view(S, (p + 1):r)
-
-#         if !(ΔU isa AbstractZero)
-#             UrΔU = Ur' * ΔU
-#             if m > r
-#                 ΔU -= Ur * UrΔU # subtract this part from ΔU
-#             end
-#         else
-#             UrΔU = fill!(similar(U, (r - p, p)), 0)
-#         end
-#         if !(ΔVd isa AbstractZero)
-#             VrΔV = Vr' * ΔVd'
-#             if n > r
-#                 ΔVd -= VrΔV' * Vr' # subtract this part from ΔV
-#             end
-#         else
-#             VrΔV = fill!(similar(Vd, (r - p, p)), 0)
-#         end
-
-#         X = (1 // 2) .* ((UrΔU .+ VrΔV) .* safe_inv.(Sp' .- Sr, tol) .+
-#                          (UrΔU .- VrΔV) .* safe_inv.(Sp' .+ Sr, tol))
-#         Y = (1 // 2) .* ((UrΔU .+ VrΔV) .* safe_inv.(Sp' .- Sr, tol) .-
-#                          (UrΔU .- VrΔV) .* safe_inv.(Sp' .+ Sr, tol))
-
-#         # ΔA += Ur * X * Vp' + Up * Y' * Vr'
-#         mul!(ΔA, Ur, X * Vp', 1, 1)
-#         mul!(ΔA, Up * Y', Vr', 1, 1)
-#     end
-
-#     if m > max(r, p) && !(ΔU isa AbstractZero) # remaining ΔU is already orthogonal to U[:,1:max(p,r)]
-#         # ΔA += (ΔU .* safe_inv.(Sp', tol)) * Vp'
-#         mul!(ΔA, ΔU .* safe_inv.(Sp', tol), Vp', 1, 1)
-#     end
-#     if n > max(r, p) && !(ΔVd isa AbstractZero) # remaining ΔV is already orthogonal to V[:,1:max(p,r)]
-#         # ΔA += U * (safe_inv.(Sp, tol) .* ΔVd)
-#         mul!(ΔA, Up, safe_inv.(Sp, tol) .* ΔVd, 1, 1)
-#     end
-#     return ΔA
-# end
 
 function eig_pullback!(ΔA::AbstractMatrix, D::AbstractVector, V::AbstractMatrix, ΔD, ΔV;
                        tol::Real=default_pullback_gaugetol(D))
