@@ -25,8 +25,8 @@ function ChainRulesCore.rrule(::typeof(TensorKit.tsvd!), t::AbstractTensorMap;
         ΔU, ΔΣ, ΔV⁺, = unthunk.(ΔUSVϵ)
         Δt = similar(t)
         foreachblock(Δt) do (c, b)
-            USVᴴc = block(U, c), block(Σ, c), block(V⁺, c)
-            ΔUSVᴴc = block(ΔU, c), block(ΔΣ, c), block(ΔV⁺, c)
+            USVᴴc = (block(U, c), block(Σ, c), block(V⁺, c))
+            ΔUSVᴴc = (block(ΔU, c), block(ΔΣ, c), block(ΔV⁺, c))
             svd_compact_pullback!(b, USVᴴc, ΔUSVᴴc)
             return nothing
         end
