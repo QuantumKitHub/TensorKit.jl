@@ -45,7 +45,6 @@ include("matrixalgebrakit.jl")
 include("truncation.jl")
 include("deprecations.jl")
 
-
 function isisometry(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple)
     t = permute(t, (p₁, p₂); copy=false)
     return isisometry(t)

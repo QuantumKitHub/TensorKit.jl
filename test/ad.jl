@@ -398,7 +398,7 @@ Vlist = ((ℂ^2, (ℂ^3)', ℂ^3, ℂ^2, (ℂ^2)'),
             test_rrule(eigh′, H; atol, output_tangent=(ΔD, ΔU))
         end
 
-        let (U, S, V, ϵ) = tsvd(A)
+        let (U, S, V) = tsvd(A)
             ΔU = randn(scalartype(U), space(U))
             ΔS = randn(scalartype(S), space(S))
             ΔV = randn(scalartype(V), space(V))
@@ -408,54 +408,54 @@ Vlist = ((ℂ^2, (ℂ^3)', ℂ^3, ℂ^2, (ℂ^2)'),
                     mul!(block(ΔU, c), block(U, c), Diagonal(imag(diag(b))), -im, 1)
                 end
             end
-            test_rrule(tsvd, A; atol, output_tangent=(ΔU, ΔS, ΔV, 0.0))
+            test_rrule(tsvd, A; atol, output_tangent=(ΔU, ΔS, ΔV))
 
             allS = mapreduce(x -> diag(x[2]), vcat, blocks(S))
             truncval = (maximum(allS) + minimum(allS)) / 2
-            U, S, V, ϵ = tsvd(A; trunc=truncerr(truncval))
+            U, S, V = tsvd(A; trunc=truncerr(truncval))
             ΔU = randn(scalartype(U), space(U))
             ΔS = randn(scalartype(S), space(S))
             ΔV = randn(scalartype(V), space(V))
             T <: Complex && remove_svdgauge_depence!(ΔU, ΔV, U, S, V)
-            test_rrule(tsvd, A; atol, output_tangent=(ΔU, ΔS, ΔV, 0.0),
+            test_rrule(tsvd, A; atol, output_tangent=(ΔU, ΔS, ΔV),
                        fkwargs=(; trunc=truncerr(truncval)))
         end
 
-        let (U, S, V, ϵ) = tsvd(B)
+        let (U, S, V) = tsvd(B)
             ΔU = randn(scalartype(U), space(U))
             ΔS = randn(scalartype(S), space(S))
             ΔV = randn(scalartype(V), space(V))
             T <: Complex && remove_svdgauge_depence!(ΔU, ΔV, U, S, V)
-            test_rrule(tsvd, B; atol, output_tangent=(ΔU, ΔS, ΔV, 0.0))
+            test_rrule(tsvd, B; atol, output_tangent=(ΔU, ΔS, ΔV))
 
             Vtrunc = spacetype(S)(TensorKit.SectorDict(c => ceil(Int, size(b, 1) / 2)
                                                        for (c, b) in blocks(S)))
 
-            U, S, V, ϵ = tsvd(B; trunc=truncspace(Vtrunc))
+            U, S, V = tsvd(B; trunc=truncspace(Vtrunc))
             ΔU = randn(scalartype(U), space(U))
             ΔS = randn(scalartype(S), space(S))
             ΔV = randn(scalartype(V), space(V))
             T <: Complex && remove_svdgauge_depence!(ΔU, ΔV, U, S, V)
-            test_rrule(tsvd, B; atol, output_tangent=(ΔU, ΔS, ΔV, 0.0),
+            test_rrule(tsvd, B; atol, output_tangent=(ΔU, ΔS, ΔV),
                        fkwargs=(; trunc=truncspace(Vtrunc)))
         end
 
-        let (U, S, V, ϵ) = tsvd(C)
+        let (U, S, V) = tsvd(C)
             ΔU = randn(scalartype(U), space(U))
             ΔS = randn(scalartype(S), space(S))
             ΔV = randn(scalartype(V), space(V))
             T <: Complex && remove_svdgauge_depence!(ΔU, ΔV, U, S, V)
-            test_rrule(tsvd, C; atol, output_tangent=(ΔU, ΔS, ΔV, 0.0))
+            test_rrule(tsvd, C; atol, output_tangent=(ΔU, ΔS, ΔV))
 
             c, = TensorKit.MatrixAlgebra._argmax(x -> sqrt(dim(x[1])) * maximum(diag(x[2])),
                                                  blocks(S))
             trunc = truncdim(round(Int, 2 * dim(c)))
-            U, S, V, ϵ = tsvd(C; trunc)
+            U, S, V = tsvd(C; trunc)
             ΔU = randn(scalartype(U), space(U))
             ΔS = randn(scalartype(S), space(S))
             ΔV = randn(scalartype(V), space(V))
             T <: Complex && remove_svdgauge_depence!(ΔU, ΔV, U, S, V)
-            test_rrule(tsvd, C; atol, output_tangent=(ΔU, ΔS, ΔV, 0.0), fkwargs=(; trunc))
+            test_rrule(tsvd, C; atol, output_tangent=(ΔU, ΔS, ΔV), fkwargs=(; trunc))
         end
 
         let D = LinearAlgebra.eigvals(C)

@@ -5,7 +5,7 @@ function ChainRulesCore.rrule(::typeof(TensorKit.tsvd!), t::AbstractTensorMap;
                               kwargs...)
     # TODO: I think we can use tsvd! here without issues because we don't actually require
     # the data of `t` anymore.
-    USVᴴ = tsvd(t; trunc=TensorKit.notrunc(), alg)
+    USVᴴ = tsvd(t; trunc=TensorKit.notrunc(), kwargs...)
 
     if trunc != TensorKit.notrunc() && !isempty(blocksectors(t))
         USVᴴ′ = MatrixAlgebraKit.truncate!(svd_trunc!, USVᴴ, trunc)
@@ -16,7 +16,7 @@ function ChainRulesCore.rrule(::typeof(TensorKit.tsvd!), t::AbstractTensorMap;
     function tsvd!_pullback(ΔUSVᴴ′)
         ΔUSVᴴ = unthunk.(ΔUSVᴴ′)
         Δt = similar(t)
-        foreachblock(Δt) do (c, b)
+        foreachblock(Δt) do c, (b,)
             USVᴴc = block.(USVᴴ, Ref(c))
             ΔUSVᴴc = block.(ΔUSVᴴ, Ref(c))
             svd_compact_pullback!(b, USVᴴc, ΔUSVᴴc)
@@ -49,7 +49,7 @@ function ChainRulesCore.rrule(::typeof(TensorKit.eig!), t::AbstractTensorMap; kw
     function eig!_pullback(ΔDV′)
         ΔDV = unthunk.(ΔDV′)
         Δt = similar(t)
-        foreachblock(Δt) do (c, b)
+        foreachblock(Δt) do c, (b,)
             DVc = block.(DV, Ref(c))
             ΔDVc = block.(ΔDV, Ref(c))
             eig_full_pullback!(b, DVc, ΔDVc)
@@ -68,7 +68,7 @@ function ChainRulesCore.rrule(::typeof(TensorKit.eigh!), t::AbstractTensorMap; k
     function eigh!_pullback(ΔDV′)
         ΔDV = unthunk.(ΔDV′)
         Δt = similar(t)
-        foreachblock(Δt) do (c, b)
+        foreachblock(Δt) do c, (b,)
             DVc = block.(DV, Ref(c))
             ΔDVc = block.(ΔDV, Ref(c))
             eigh_full_pullback!(b, DVc, ΔDVc)
