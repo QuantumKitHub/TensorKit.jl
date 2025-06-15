@@ -15,7 +15,7 @@ function ChainRulesCore.rrule(::typeof(TensorKit.tsvd!), t::AbstractTensorMap;
 
     function tsvd!_pullback(ΔUSVᴴ′)
         ΔUSVᴴ = unthunk.(ΔUSVᴴ′)
-        Δt = similar(t)
+        Δt = zerovector(t)
         foreachblock(Δt) do c, (b,)
             USVᴴc = block.(USVᴴ, Ref(c))
             ΔUSVᴴc = block.(ΔUSVᴴ, Ref(c))
@@ -48,7 +48,7 @@ function ChainRulesCore.rrule(::typeof(TensorKit.eig!), t::AbstractTensorMap; kw
 
     function eig!_pullback(ΔDV′)
         ΔDV = unthunk.(ΔDV′)
-        Δt = similar(t)
+        Δt = zerovector(t)
         foreachblock(Δt) do c, (b,)
             DVc = block.(DV, Ref(c))
             ΔDVc = block.(ΔDV, Ref(c))
@@ -67,7 +67,7 @@ function ChainRulesCore.rrule(::typeof(TensorKit.eigh!), t::AbstractTensorMap; k
 
     function eigh!_pullback(ΔDV′)
         ΔDV = unthunk.(ΔDV′)
-        Δt = similar(t)
+        Δt = zerovector(t)
         foreachblock(Δt) do c, (b,)
             DVc = block.(DV, Ref(c))
             ΔDVc = block.(ΔDV, Ref(c))
