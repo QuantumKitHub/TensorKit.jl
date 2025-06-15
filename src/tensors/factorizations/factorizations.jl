@@ -184,12 +184,15 @@ function LinearAlgebra.isposdef!(t::TensorMap)
 end
 
 # TODO: tolerances are per-block, not global or weighted - does that matter?
-function isisometry(t::AbstractTensorMap; kwargs...)
+function MatrixAlgebraKit.is_left_isometry(t::AbstractTensorMap; kwargs...)
     domain(t) ≾ codomain(t) || return false
-    for (_, b) in blocks(t)
-        MatrixAlgebra.isisometry(b; kwargs...) || return false
-    end
-    return true
+    f((c, b)) = MatrixAlgebraKit.is_left_isometry(b; kwargs...)
+    return all(f, blocks(t))
+end
+function MatrixAlgebraKit.is_right_isometry(t::AbstractTensorMap; kwargs...)
+    domain(t) ≿ codomain(t) || return false
+    f((c, b)) = MatrixAlgebraKit.is_right_isometry(b; kwargs...)
+    return all(f, blocks(t))
 end
 
 end

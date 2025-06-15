@@ -73,7 +73,7 @@ export mul!, lmul!, rmul!, adjoint!, pinv, axpy!, axpby!
 export leftorth, rightorth, leftnull, rightnull, leftpolar, rightpolar,
        leftorth!, rightorth!, leftnull!, rightnull!, leftpolar!, rightpolar!,
        tsvd!, tsvd, eigen, eigen!, eig, eig!, eigh, eigh!, exp, exp!,
-       isposdef, isposdef!, ishermitian, isisometry, sylvester, rank, cond
+       isposdef, isposdef!, ishermitian, isisometry, isunitary, sylvester, rank, cond
 export braid, braid!, permute, permute!, transpose, transpose!, twist, twist!, repartition,
        repartition!
 export catdomain, catcodomain, absorb, absorb!

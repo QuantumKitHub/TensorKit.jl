@@ -84,8 +84,6 @@ end
 safesign(s::Real) = ifelse(s < zero(s), -one(s), +one(s))
 safesign(s::Complex) = ifelse(iszero(s), one(s), s / abs(s))
 
-isisometry(A::StridedMatrix; kwargs...) = isapprox(A' * A, LinearAlgebra.I, kwargs...)
-
 function leftorth!(A::StridedMatrix{<:BlasFloat}, alg::Union{QR,QRpos}, atol::Real)
     iszero(atol) || throw(ArgumentError("nonzero atol not supported by $alg"))
     m, n = size(A)

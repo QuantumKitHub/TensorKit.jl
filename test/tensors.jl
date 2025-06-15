@@ -369,9 +369,8 @@ for V in spacelist
             for T in (Float64, ComplexF64)
                 t1 = randisometry(T, W1, W2)
                 t2 = randisometry(T, W2 ← W2)
-                @test t1' * t1 ≈ one(t2)
-                @test t2' * t2 ≈ one(t2)
-                @test t2 * t2' ≈ one(t2)
+                @test isisometry(t1)
+                @test isunitary(t2)
                 P = t1 * t1'
                 @test P * P ≈ P
             end
@@ -451,21 +450,14 @@ for V in spacelist
                                                        TensorKit.Polar(), TensorKit.SVD(),
                                                        TensorKit.SDD())
                         Q, R = @constinferred leftorth(t, ((3, 4, 2), (1, 5)); alg=alg)
-                        QdQ = Q' * Q
-                        @test QdQ ≈ one(QdQ)
+                        @test isisometry(Q)
                         @test Q * R ≈ permute(t, ((3, 4, 2), (1, 5)))
-                        # removed since leftorth now merges legs!
-                        # if alg isa Polar
-                        #     @test isposdef(R)
-                        #     @test domain(R) == codomain(R) == space(t, 1)' ⊗ space(t, 5)'
-                        # end
                     end
                     @testset "leftnull with $alg" for alg in
                                                       (TensorKit.QR(), TensorKit.SVD(),
                                                        TensorKit.SDD())
                         N = @constinferred leftnull(t, ((3, 4, 2), (1, 5)); alg=alg)
-                        NdN = N' * N
-                        @test NdN ≈ one(NdN)
+                        @test isisometry(N)
                         @test norm(N' * permute(t, ((3, 4, 2), (1, 5)))) <
                               100 * eps(norm(t))
                     end
@@ -475,30 +467,21 @@ for V in spacelist
                                                         TensorKit.Polar(), TensorKit.SVD(),
                                                         TensorKit.SDD())
                         L, Q = @constinferred rightorth(t, ((3, 4), (2, 1, 5)); alg=alg)
-                        QQd = Q * Q'
-                        @test QQd ≈ one(QQd)
+                        @test isisometry(Q; side=:right)
                         @test L * Q ≈ permute(t, ((3, 4), (2, 1, 5)))
-                        # removed since rightorth now merges legs!
-                        # if alg isa Polar
-                        #     @test isposdef(L)
-                        #     @test domain(L) == codomain(L) == space(t, 3) ⊗ space(t, 4)
-                        # end
                     end
                     @testset "rightnull with $alg" for alg in
                                                        (TensorKit.LQ(), TensorKit.SVD(),
                                                         TensorKit.SDD())
                         M = @constinferred rightnull(t, ((3, 4), (2, 1, 5)); alg=alg)
-                        MMd = M * M'
-                        @test MMd ≈ one(MMd)
+                        @test isisometry(M; side=:right)
                         @test norm(permute(t, ((3, 4), (2, 1, 5))) * M') <
                               100 * eps(norm(t))
                     end
                     @testset "tsvd with $alg" for alg in (TensorKit.SVD(), TensorKit.SDD())
                         U, S, V = @constinferred tsvd(t, ((3, 4, 2), (1, 5)); alg=alg)
-                        UdU = U' * U
-                        @test UdU ≈ one(UdU)
-                        VVd = V * V'
-                        @test VVd ≈ one(VVd)
+                        @test isisometry(U)
+                        @test isisometry(V; side=:right)
                         t2 = permute(t, ((3, 4, 2), (1, 5)))
                         @test U * S * V ≈ t2
 
@@ -541,8 +524,7 @@ for V in spacelist
                                                       (TensorKit.QR(), TensorKit.SVD(),
                                                        TensorKit.SDD())
                         N = @constinferred leftnull(t; alg=alg)
-                        @test N' * N ≈ id(domain(N))
-                        @test N * N' ≈ id(codomain(N))
+                        @test isunitary(N)
                     end
                     @testset "rightorth with $alg" for alg in
                                                        (TensorKit.RQ(), TensorKit.RQpos(),
@@ -557,8 +539,7 @@ for V in spacelist
                                                        (TensorKit.LQ(), TensorKit.SVD(),
                                                         TensorKit.SDD())
                         M = @constinferred rightnull(copy(t'); alg=alg)
-                        @test M * M' ≈ id(codomain(M))
-                        @test M' * M ≈ id(domain(M))
+                        @test isunitary(M)
                     end
                     @testset "tsvd with $alg" for alg in (TensorKit.SVD(), TensorKit.SDD())
                         U, S, V = @constinferred tsvd(t; alg=alg)
@@ -594,8 +575,7 @@ for V in spacelist
                     @test !isposdef(t2) # unlikely for non-hermitian map
                     t2 = (t2 + t2')
                     D, V = eigen(t2)
-                    VdV = V' * V
-                    @test VdV ≈ one(VdV)
+                    @test isisometry(V)
                     D̃, Ṽ = @constinferred eigh(t2)
                     @test D ≈ D̃
                     @test V ≈ Ṽ
