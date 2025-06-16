@@ -4,7 +4,7 @@
 module Factorizations
 
 export eig, eig!, eigh, eigh!
-export tsvd, tsvd!, svdvals
+export tsvd, tsvd!, svdvals, svdvals!
 export leftorth, leftorth!, rightorth, rightorth!
 export leftnull, leftnull!, rightnull, rightnull!
 export leftpolar, leftpolar!, rightpolar, rightpolar!
@@ -15,7 +15,7 @@ using ..TensorKit
 using ..TensorKit: AdjointTensorMap, SectorDict, OFA, blocktype, foreachblock
 using ..MatrixAlgebra: MatrixAlgebra
 
-using LinearAlgebra: LinearAlgebra, BlasFloat
+using LinearAlgebra: LinearAlgebra, BlasFloat, svdvals, svdvals!
 import LinearAlgebra: eigen, eigen!, isposdef, isposdef!, ishermitian
 
 using TensorOperations: Index2Tuple
