@@ -119,14 +119,23 @@ function _compute_truncerr(Σdata, truncdim, p=2)
                            p, zero(S))
 end
 
-function _findnexttruncvalue(S, truncdim::SectorDict{I,Int}) where {I<:Sector}
+function _findnexttruncvalue(S, truncdim::SectorDict{I,Int}; by=identity,
+                             rev::Bool=true) where {I<:Sector}
     # early return
     (isempty(S) || all(iszero, values(truncdim))) && return nothing
-    σmin, imin = findmin(keys(truncdim)) do c
-        d = truncdim[c]
-        return S[c][d]
+    if rev
+        σmin, imin = findmin(keys(truncdim)) do c
+            d = truncdim[c]
+            return by(S[c][d])
+        end
+        return σmin, keys(truncdim)[imin]
+    else
+        σmax, imax = findmax(keys(truncdim)) do c
+            d = truncdim[c]
+            return by(S[c][d])
+        end
+        return σmax, keys(truncdim)[imax]
     end
-    return σmin, keys(truncdim)[imin]
 end
 
 # implementations
@@ -173,12 +182,18 @@ function findtruncated_sorted(Sd::SectorDict, strategy::TruncationError)
 end
 
 function findtruncated_sorted(Sd::SectorDict, strategy::TruncationKeepSorted)
-    @assert strategy.by === abs && strategy.rev == true "Not implemented"
+    return findtruncated(Sd, strategy)
+end
+function findtruncated(Sd::SectorDict, strategy::TruncationKeepSorted)
+    permutations = SectorDict(c => (sortperm(d; strategy.by, strategy.rev))
+                              for (c, d) in Sd)
+    Sd = SectorDict(c => sort(d; strategy.by, strategy.rev) for (c, d) in Sd)
+
     I = keytype(Sd)
     truncdim = SectorDict{I,Int}(c => length(d) for (c, d) in Sd)
     totaldim = sum(dim(c) * d for (c, d) in truncdim; init=0)
     while true
-        next = _findnexttruncvalue(Sd, truncdim)
+        next = _findnexttruncvalue(Sd, truncdim; strategy.by, strategy.rev)
         isnothing(next) && break
         _, cmin = next
         truncdim[cmin] -= 1
@@ -191,7 +206,7 @@ function findtruncated_sorted(Sd::SectorDict, strategy::TruncationKeepSorted)
             delete!(truncdim, cmin)
         end
     end
-    return SectorDict{I,Base.OneTo{Int}}(c => Base.OneTo(d) for (c, d) in truncdim)
+    return SectorDict(c => permutations[c][Base.OneTo(d)] for (c, d) in truncdim)
 end
 
 function findtruncated_sorted(Sd::SectorDict, strategy::TruncationSpace)
