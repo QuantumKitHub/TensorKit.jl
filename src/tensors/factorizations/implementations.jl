@@ -149,9 +149,27 @@ rightpolar!(t::AbstractTensorMap; kwargs...) = right_polar!(t; kwargs...)
 
 # Eigenvalue decomposition
 # ------------------------
-eigh!(t::AbstractTensorMap) = eigh_full!(t)
-eig!(t::AbstractTensorMap) = eig_full!(t)
-eigen!(t::AbstractTensorMap) = ishermitian(t) ? eigh!(t) : eig!(t)
+function eigh!(t::AbstractTensorMap; trunc=notrunc(), kwargs...)
+    InnerProductStyle(t) === EuclideanInnerProduct() || throw_invalid_innerproduct(:eigh!)
+    if trunc == notrunc()
+        return eigh_full!(t; kwargs...)
+    else
+        return eigh_trunc!(t; trunc, kwargs...)
+    end
+end
+
+function eig!(t::AbstractTensorMap; trunc=notrunc(), kwargs...)
+    InnerProductStyle(t) === EuclideanInnerProduct() || throw_invalid_innerproduct(:eig!)
+    if trunc == notrunc()
+        return eig_full!(t; kwargs...)
+    else
+        return eig_trunc!(t; trunc, kwargs...)
+    end
+end
+
+function eigen!(t::AbstractTensorMap; kwargs...)
+    return ishermitian(t) ? eigh!(t; kwargs...) : eig!(t; kwargs...)
+end
 
 # Singular value decomposition
 # ----------------------------

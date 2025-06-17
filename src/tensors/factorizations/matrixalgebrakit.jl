@@ -193,6 +193,26 @@ function initialize_output(::typeof(eig_full!), t::AbstractTensorMap, ::Abstract
     return D, V
 end
 
+function initialize_output(::typeof(eigh_trunc!), t::AbstractTensorMap,
+                           alg::TruncatedAlgorithm)
+    return initialize_output(eigh_full!, t, alg.alg)
+end
+
+function initialize_output(::typeof(eig_trunc!), t::AbstractTensorMap,
+                           alg::TruncatedAlgorithm)
+    return initialize_output(eig_full!, t, alg.alg)
+end
+
+function eigh_trunc!(t::AbstractTensorMap, DV, alg::TruncatedAlgorithm)
+    DV′ = eigh_full!(t, DV, alg.alg)
+    return truncate!(eigh_trunc!, DV′, alg.trunc)
+end
+
+function eig_trunc!(t::AbstractTensorMap, DV, alg::TruncatedAlgorithm)
+    DV′ = eig_full!(t, DV, alg.alg)
+    return truncate!(eig_trunc!, DV′, alg.trunc)
+end
+
 # QR decomposition
 # ----------------
 const _T_QR = Tuple{<:AbstractTensorMap,<:AbstractTensorMap}

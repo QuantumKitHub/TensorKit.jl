@@ -65,6 +65,47 @@ function truncate!(::typeof(left_null!),
     return Ũ
 end
 
+function truncate!(::typeof(eigh_trunc!), (D, V)::_T_DV, strategy::TruncationStrategy)
+    ind = findtruncated(diagview(D), strategy)
+    V_truncated = spacetype(D)(c => length(I) for (c, I) in ind)
+
+    D̃ = DiagonalTensorMap{scalartype(D)}(undef, V_truncated)
+    for (c, b) in blocks(D̃)
+        I = get(ind, c, nothing)
+        @assert !isnothing(I)
+        copy!(b.diag, @view(block(D, c).diag[I]))
+    end
+
+    Ṽ = similar(V, V_truncated ← domain(V))
+    for (c, b) in blocks(Ṽ)
+        I = get(ind, c, nothing)
+        @assert !isnothing(I)
+        copy!(b, @view(block(V, c)[I, :]))
+    end
+
+    return D̃, Ṽ
+end
+function truncate!(::typeof(eig_trunc!), (D, V)::_T_DV, strategy::TruncationStrategy)
+    ind = findtruncated(diagview(D), strategy)
+    V_truncated = spacetype(D)(c => length(I) for (c, I) in ind)
+
+    D̃ = DiagonalTensorMap{scalartype(D)}(undef, V_truncated)
+    for (c, b) in blocks(D̃)
+        I = get(ind, c, nothing)
+        @assert !isnothing(I)
+        copy!(b.diag, @view(block(D, c).diag[I]))
+    end
+
+    Ṽ = similar(V, V_truncated ← domain(V))
+    for (c, b) in blocks(Ṽ)
+        I = get(ind, c, nothing)
+        @assert !isnothing(I)
+        copy!(b, @view(block(V, c)[I, :]))
+    end
+
+    return D̃, Ṽ
+end
+
 # Find truncation
 # ---------------
 # auxiliary functions
@@ -88,16 +129,26 @@ function _findnexttruncvalue(S, truncdim::SectorDict{I,Int}) where {I<:Sector}
     return σmin, keys(truncdim)[imin]
 end
 
-# sorted implementations
+# implementations
 function findtruncated_sorted(S::SectorDict, strategy::TruncationKeepAbove)
     atol = rtol_to_atol(S, strategy.p, strategy.atol, strategy.rtol)
     findtrunc = Base.Fix2(findtruncated_sorted, truncbelow(atol))
+    return SectorDict(c => findtrunc(d) for (c, d) in Sd)
+end
+function findtruncated(S::SectorDict, strategy::TruncationKeepAbove)
+    atol = rtol_to_atol(S, strategy.p, strategy.atol, strategy.rtol)
+    findtrunc = Base.Fix2(findtruncated, truncbelow(atol))
     return SectorDict(c => findtrunc(d) for (c, d) in Sd)
 end
 
 function findtruncated_sorted(S::SectorDict, strategy::TruncationKeepBelow)
     atol = rtol_to_atol(S, strategy.p, strategy.atol, strategy.rtol)
     findtrunc = Base.Fix2(findtruncated_sorted, truncabove(atol))
+    return SectorDict(c => findtrunc(d) for (c, d) in Sd)
+end
+function findtruncated(S::SectorDict, strategy::TruncationKeepBelow)
+    atol = rtol_to_atol(S, strategy.p, strategy.atol, strategy.rtol)
+    findtrunc = Base.Fix2(findtruncated, truncabove(atol))
     return SectorDict(c => findtrunc(d) for (c, d) in Sd)
 end
 
@@ -153,9 +204,17 @@ end
 function findtruncated_sorted(Sd::SectorDict, strategy::TruncationKeepFiltered)
     return SectorDict(c => findtruncated_sorted(d, strategy) for (c, d) in Sd)
 end
+function findtruncated(Sd::SectorDict, strategy::TruncationKeepFiltered)
+    return SectorDict(c => findtruncated(d, strategy) for (c, d) in Sd)
+end
 
 function findtruncated_sorted(Sd::SectorDict, strategy::TruncationIntersection)
     inds = map(Base.Fix1(findtruncated_sorted, Sd), strategy)
+    return SectorDict(c => intersect(map(Base.Fix2(getindex, c), inds)...)
+                      for c in intersect(map(keys, inds)...))
+end
+function findtruncated(Sd::SectorDict, strategy::TruncationIntersection)
+    inds = map(Base.Fix1(findtruncated, Sd), strategy)
     return SectorDict(c => intersect(map(Base.Fix2(getindex, c), inds)...)
                       for c in intersect(map(keys, inds)...))
 end

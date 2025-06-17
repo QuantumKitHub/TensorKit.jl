@@ -1,32 +1,38 @@
 # Factorizations rules
 # --------------------
-function ChainRulesCore.rrule(::typeof(TensorKit.tsvd!), t::AbstractTensorMap;
-                              trunc::TruncationStrategy=TensorKit.notrunc(),
-                              kwargs...)
-    # TODO: I think we can use tsvd! here without issues because we don't actually require
-    # the data of `t` anymore.
-    USVᴴ = tsvd(t; trunc=TensorKit.notrunc(), kwargs...)
+for f in (:tsvd, :eig, :eigh)
+    f! = Symbol(f, :!)
+    f_trunc! = f == :tsvd ? :svd_trunc! : Symbol(f, :_trunc!)
+    f_pullback = Symbol(f, :_pullback)
+    f_pullback! = f == :tsvd ? :svd_compact_pullback! : Symbol(f, :_full_pullback!)
+    @eval function ChainRulesCore.rrule(::typeof(TensorKit.$f!), t::AbstractTensorMap;
+                                        trunc::TruncationStrategy=TensorKit.notrunc(),
+                                        kwargs...)
+        # TODO: I think we can use f! here without issues because we don't actually require
+        # the data of `t` anymore.
+        F = $f(t; trunc=TensorKit.notrunc(), kwargs...)
 
-    if trunc != TensorKit.notrunc() && !isempty(blocksectors(t))
-        USVᴴ′ = MatrixAlgebraKit.truncate!(svd_trunc!, USVᴴ, trunc)
-    else
-        USVᴴ′ = USVᴴ
-    end
-
-    function tsvd!_pullback(ΔUSVᴴ′)
-        ΔUSVᴴ = unthunk.(ΔUSVᴴ′)
-        Δt = zerovector(t)
-        foreachblock(Δt) do c, (b,)
-            USVᴴc = block.(USVᴴ, Ref(c))
-            ΔUSVᴴc = block.(ΔUSVᴴ, Ref(c))
-            svd_compact_pullback!(b, USVᴴc, ΔUSVᴴc)
-            return nothing
+        if trunc != TensorKit.notrunc() && !isempty(blocksectors(t))
+            F′ = MatrixAlgebraKit.truncate!($f_trunc!, F, trunc)
+        else
+            F′ = F
         end
-        return NoTangent(), Δt
-    end
-    tsvd!_pullback(::NTuple{3,ZeroTangent}) = NoTangent(), ZeroTangent()
 
-    return USVᴴ′, tsvd!_pullback
+        function $f_pullback(ΔF′)
+            ΔF = unthunk.(ΔF′)
+            Δt = zerovector(t)
+            foreachblock(Δt) do c, (b,)
+                Fc = block.(F, Ref(c))
+                ΔFc = block.(ΔF, Ref(c))
+                $f_pullback!(b, Fc, ΔFc)
+                return nothing
+            end
+            return NoTangent(), Δt
+        end
+        $f_pullback(::Tuple{ZeroTangent,Vararg{ZeroTangent}}) = NoTangent(), ZeroTangent()
+
+        return F′, $f_pullback
+    end
 end
 
 function ChainRulesCore.rrule(::typeof(LinearAlgebra.svdvals!), t::AbstractTensorMap)
@@ -41,44 +47,6 @@ function ChainRulesCore.rrule(::typeof(LinearAlgebra.svdvals!), t::AbstractTenso
     end
 
     return s, svdvals_pullback
-end
-
-function ChainRulesCore.rrule(::typeof(TensorKit.eig!), t::AbstractTensorMap; kwargs...)
-    DV = eig(t; kwargs...)
-
-    function eig!_pullback(ΔDV′)
-        ΔDV = unthunk.(ΔDV′)
-        Δt = zerovector(t)
-        foreachblock(Δt) do c, (b,)
-            DVc = block.(DV, Ref(c))
-            ΔDVc = block.(ΔDV, Ref(c))
-            eig_full_pullback!(b, DVc, ΔDVc)
-            return nothing
-        end
-        return NoTangent(), Δt
-    end
-    eig!_pullback(::NTuple{2,ZeroTangent}) = NoTangent(), ZeroTangent()
-
-    return DV, eig!_pullback
-end
-
-function ChainRulesCore.rrule(::typeof(TensorKit.eigh!), t::AbstractTensorMap; kwargs...)
-    DV = eigh(t; kwargs...)
-
-    function eigh!_pullback(ΔDV′)
-        ΔDV = unthunk.(ΔDV′)
-        Δt = zerovector(t)
-        foreachblock(Δt) do c, (b,)
-            DVc = block.(DV, Ref(c))
-            ΔDVc = block.(ΔDV, Ref(c))
-            eigh_full_pullback!(b, DVc, ΔDVc)
-            return nothing
-        end
-        return NoTangent(), Δt
-    end
-    eigh!_pullback(::NTuple{2,ZeroTangent}) = NoTangent(), ZeroTangent()
-
-    return DV, eigh!_pullback
 end
 
 function ChainRulesCore.rrule(::typeof(LinearAlgebra.eigvals!), t::AbstractTensorMap;
