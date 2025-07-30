@@ -105,6 +105,8 @@ function FusionTree(
 end
 FusionTree(uncoupled::Tuple{I, Vararg{I}}) where {I <: Sector} = FusionTree(uncoupled, unit(I))
 
+const FusionTreePair{I, N₁, N₂} = Tuple{FusionTree{I, N₁}, FusionTree{I, N₂}}
+
 # Properties
 sectortype(::Type{<:FusionTree{I}}) where {I <: Sector} = I
 FusionStyle(::Type{<:FusionTree{I}}) where {I <: Sector} = FusionStyle(I)
@@ -215,9 +217,7 @@ function Base.convert(A::Type{<:AbstractArray}, f::FusionTree{I, N}) where {I, N
 end
 
 # TODO: is this piracy?
-function Base.convert(
-        A::Type{<:AbstractArray}, (f₁, f₂)::Tuple{FusionTree{I}, FusionTree{I}}
-    ) where {I}
+function Base.convert(A::Type{<:AbstractArray}, (f₁, f₂)::FusionTreePair{I}) where {I}
     F₁ = convert(A, f₁)
     F₂ = convert(A, f₂)
     sz1 = size(F₁)

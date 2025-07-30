@@ -242,7 +242,7 @@ end
 # -> A-move (foldleft, foldright) is complicated, needs to be reexpressed in standard form
 
 # flip a duality flag of a fusion tree
-function flip(f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}, i::Int; inv::Bool = false) where {I <: Sector, N₁, N₂}
+function flip((f₁, f₂)::FusionTreePair{I, N₁, N₂}, i::Int; inv::Bool = false) where {I, N₁, N₂}
     @assert 0 < i ≤ N₁ + N₂
     if i ≤ N₁
         a = f₁.uncoupled[i]
@@ -271,18 +271,18 @@ function flip(f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}, i::Int; inv:
         return SingletonDict((f₁, f₂′) => factor)
     end
 end
-function flip(f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}, ind; inv::Bool = false) where {I <: Sector, N₁, N₂}
+function flip((f₁, f₂)::FusionTreePair{I, N₁, N₂}, ind; inv::Bool = false) where {I, N₁, N₂}
     f₁′, f₂′ = f₁, f₂
     factor = one(sectorscalartype(I))
     for i in ind
-        (f₁′, f₂′), s = only(flip(f₁′, f₂′, i; inv))
+        (f₁′, f₂′), s = only(flip((f₁′, f₂′), i; inv))
         factor *= s
     end
     return SingletonDict((f₁′, f₂′) => factor)
 end
 
 # change to N₁ - 1, N₂ + 1
-function bendright(f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}) where {I <: Sector, N₁, N₂}
+function bendright((f₁, f₂)::FusionTreePair{I, N₁, N₂}) where {I, N₁, N₂}
     # map final splitting vertex (a, b)<-c to fusion vertex a<-(c, dual(b))
     @assert N₁ > 0
     c = f₁.coupled
@@ -328,15 +328,16 @@ function bendright(f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}) where {
     end
 end
 # change to N₁ + 1, N₂ - 1
-function bendleft(f₁::FusionTree{I}, f₂::FusionTree{I}) where {I}
+function bendleft((f₁, f₂)::FusionTreePair{I}) where {I}
     # map final fusion vertex c<-(a, b) to splitting vertex (c, dual(b))<-a
     return fusiontreedict(I)(
-        (f₁′, f₂′) => conj(coeff) for ((f₂′, f₁′), coeff) in bendright(f₂, f₁)
+        (f₁′, f₂′) => conj(coeff)
+            for ((f₂′, f₁′), coeff) in bendright((f₂, f₁))
     )
 end
 
 # change to N₁ - 1, N₂ + 1
-function foldright(f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}) where {I <: Sector, N₁, N₂}
+function foldright((f₁, f₂)::FusionTreePair{I, N₁, N₂}) where {I, N₁, N₂}
     # map first splitting vertex (a, b)<-c to fusion vertex b<-(dual(a), c)
     @assert N₁ > 0
     a = f₁.uncoupled[1]
@@ -392,10 +393,11 @@ function foldright(f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}) where {
     end
 end
 # change to N₁ + 1, N₂ - 1
-function foldleft(f₁::FusionTree{I}, f₂::FusionTree{I}) where {I}
+function foldleft((f₁, f₂)::FusionTreePair{I}) where {I}
     # map first fusion vertex c<-(a, b) to splitting vertex (dual(a), c)<-b
     return fusiontreedict(I)(
-        (f₁′, f₂′) => conj(coeff) for ((f₂′, f₁′), coeff) in foldright(f₂, f₁)
+        (f₁′, f₂′) => conj(coeff)
+            for ((f₂′, f₁′), coeff) in foldright((f₂, f₁))
     )
 end
 
@@ -419,11 +421,11 @@ function iscyclicpermutation(v1, v2)
 end
 
 # clockwise cyclic permutation while preserving (N₁, N₂): foldright & bendleft
-function cycleclockwise(f₁::FusionTree{I}, f₂::FusionTree{I}) where {I <: Sector}
+function cycleclockwise((f₁, f₂)::FusionTreePair{I}) where {I}
     local newtrees
     if length(f₁) > 0
-        for ((f1a, f2a), coeffa) in foldright(f₁, f₂)
-            for ((f1b, f2b), coeffb) in bendleft(f1a, f2a)
+        for ((f1a, f2a), coeffa) in foldright((f₁, f₂))
+            for ((f1b, f2b), coeffb) in bendleft((f1a, f2a))
                 coeff = coeffa * coeffb
                 if (@isdefined newtrees)
                     newtrees[(f1b, f2b)] = get(newtrees, (f1b, f2b), zero(coeff)) + coeff
@@ -433,8 +435,8 @@ function cycleclockwise(f₁::FusionTree{I}, f₂::FusionTree{I}) where {I <: Se
             end
         end
     else
-        for ((f1a, f2a), coeffa) in bendleft(f₁, f₂)
-            for ((f1b, f2b), coeffb) in foldright(f1a, f2a)
+        for ((f1a, f2a), coeffa) in bendleft((f₁, f₂))
+            for ((f1b, f2b), coeffb) in foldright((f1a, f2a))
                 coeff = coeffa * coeffb
                 if (@isdefined newtrees)
                     newtrees[(f1b, f2b)] = get(newtrees, (f1b, f2b), zero(coeff)) + coeff
@@ -448,11 +450,11 @@ function cycleclockwise(f₁::FusionTree{I}, f₂::FusionTree{I}) where {I <: Se
 end
 
 # anticlockwise cyclic permutation while preserving (N₁, N₂): foldleft & bendright
-function cycleanticlockwise(f₁::FusionTree{I}, f₂::FusionTree{I}) where {I <: Sector}
+function cycleanticlockwise((f₁, f₂)::FusionTreePair{I}) where {I}
     local newtrees
     if length(f₂) > 0
-        for ((f1a, f2a), coeffa) in foldleft(f₁, f₂)
-            for ((f1b, f2b), coeffb) in bendright(f1a, f2a)
+        for ((f1a, f2a), coeffa) in foldleft((f₁, f₂))
+            for ((f1b, f2b), coeffb) in bendright((f1a, f2a))
                 coeff = coeffa * coeffb
                 if (@isdefined newtrees)
                     newtrees[(f1b, f2b)] = get(newtrees, (f1b, f2b), zero(coeff)) + coeff
@@ -462,8 +464,8 @@ function cycleanticlockwise(f₁::FusionTree{I}, f₂::FusionTree{I}) where {I <
             end
         end
     else
-        for ((f1a, f2a), coeffa) in bendright(f₁, f₂)
-            for ((f1b, f2b), coeffb) in foldleft(f1a, f2a)
+        for ((f1a, f2a), coeffa) in bendright((f₁, f₂))
+            for ((f1b, f2b), coeffb) in foldleft((f1a, f2a))
                 coeff = coeffa * coeffb
                 if (@isdefined newtrees)
                     newtrees[(f1b, f2b)] = get(newtrees, (f1b, f2b), zero(coeff)) + coeff
@@ -478,8 +480,8 @@ end
 
 # repartition double fusion tree
 """
-    repartition(f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}, N::Int) where {I, N₁, N₂}
-    -> <:AbstractDict{Tuple{FusionTree{I, N}, FusionTree{I, N₁+N₂-N}}, <:Number}
+    repartition((f₁, f₂)::FusionTreePair{I, N₁, N₂}, N::Int) where {I, N₁, N₂}
+        -> <:AbstractDict{<:FusionTreePair{I, N, N₁+N₂-N}}, <:Number}
 
 Input is a double fusion tree that describes the fusion of a set of incoming uncoupled
 sectors to a set of outgoing uncoupled sectors, represented using the individual trees of
@@ -488,36 +490,31 @@ outgoing (`f₁`) and incoming sectors (`f₂`) respectively (with identical cou
 repartitioning the tree by bending incoming to outgoing sectors (or vice versa) in order to
 have `N` outgoing sectors.
 """
-@inline function repartition(
-        f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}, N::Int
-    ) where {I <: Sector, N₁, N₂}
+@inline function repartition((f₁, f₂)::FusionTreePair{I, N₁, N₂}, N::Int) where {I, N₁, N₂}
     f₁.coupled == f₂.coupled || throw(SectorMismatch())
     @assert 0 <= N <= N₁ + N₂
-    return _recursive_repartition(f₁, f₂, Val(N))
+    return _recursive_repartition((f₁, f₂), Val(N))
 end
 
-function _recursive_repartition(
-        f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}, ::Val{N}
-    ) where {I <: Sector, N₁, N₂, N}
+function _recursive_repartition((f₁, f₂)::FusionTreePair{I, N₁, N₂}, ::Val{N}) where {I, N₁, N₂, N}
     # recursive definition is only way to get correct number of loops for
     # GenericFusion, but is too complex for type inference to handle, so we
     # precompute the parameters of the return type
     F₁ = fusiontreetype(I, N)
     F₂ = fusiontreetype(I, N₁ + N₂ - N)
+    FF = Tuple{F₁, F₂}
     T = sectorscalartype(I)
     coeff = one(T)
     if N == N₁
         return fusiontreedict(I){Tuple{F₁, F₂}, T}((f₁, f₂) => coeff)
     else
         local newtrees::fusiontreedict(I){Tuple{F₁, F₂}, T}
-        for ((f₁′, f₂′), coeff1) in (N < N₁ ? bendright(f₁, f₂) : bendleft(f₁, f₂))
-            for ((f₁′′, f₂′′), coeff2) in _recursive_repartition(f₁′, f₂′, Val(N))
+        for ((f₁′, f₂′), coeff1) in (N < N₁ ? bendright((f₁, f₂)) : bendleft((f₁, f₂)))
+            for ((f₁′′, f₂′′), coeff2) in _recursive_repartition((f₁′, f₂′), Val(N))
                 if (@isdefined newtrees)
                     push!(newtrees, (f₁′′, f₂′′) => coeff1 * coeff2)
                 else
-                    newtrees = fusiontreedict(I){Tuple{F₁, F₂}, T}(
-                        (f₁′′, f₂′′) => coeff1 * coeff2
-                    )
+                    newtrees = fusiontreedict(I){FF, T}((f₁′′, f₂′′) => coeff1 * coeff2)
                 end
             end
         end
@@ -526,9 +523,8 @@ function _recursive_repartition(
 end
 
 """
-    transpose(f₁::FusionTree{I}, f₂::FusionTree{I},
-            p1::NTuple{N₁, Int}, p2::NTuple{N₂, Int}) where {I, N₁, N₂}
-    -> <:AbstractDict{Tuple{FusionTree{I, N₁}, FusionTree{I, N₂}}, <:Number}
+    transpose((f₁, f₂)::FusionTreePair{I}, p::(Index2Tuple{N₁, N₂}) where {I, N₁, N₂}
+        -> <:AbstractDict{<:FusionTreePair{I, N₁, N₂}}, <:Number}
 
 Input is a double fusion tree that describes the fusion of a set of incoming uncoupled
 sectors to a set of outgoing uncoupled sectors, represented using the individual trees of
@@ -537,20 +533,15 @@ outgoing (`t1`) and incoming sectors (`t2`) respectively (with identical coupled
 repartitioning and permuting the tree such that sectors `p1` become outgoing and sectors
 `p2` become incoming.
 """
-function Base.transpose(
-        f₁::FusionTree{I}, f₂::FusionTree{I}, p1::IndexTuple{N₁}, p2::IndexTuple{N₂}
-    ) where {I <: Sector, N₁, N₂}
+function Base.transpose((f₁, f₂)::FusionTreePair{I}, p::Index2Tuple{N₁, N₂}) where {I, N₁, N₂}
     N = N₁ + N₂
     @assert length(f₁) + length(f₂) == N
-    p = linearizepermutation(p1, p2, length(f₁), length(f₂))
-    @assert iscyclicpermutation(p)
-    return fstranspose((f₁, f₂, p1, p2))
+    p′ = linearizepermutation(p..., length(f₁), length(f₂))
+    @assert iscyclicpermutation(p′)
+    return fstranspose(((f₁, f₂), p))
 end
 
-const FSTransposeKey{I <: Sector, N₁, N₂} = Tuple{
-    <:FusionTree{I}, <:FusionTree{I},
-    IndexTuple{N₁}, IndexTuple{N₂},
-}
+const FSTransposeKey{I, N₁, N₂} = Tuple{<:FusionTreePair{I}, Index2Tuple{N₁, N₂}}
 
 function _fsdicttype(I, N₁, N₂)
     F₁ = fusiontreetype(I, N₁)
@@ -559,11 +550,11 @@ function _fsdicttype(I, N₁, N₂)
     return fusiontreedict(I){Tuple{F₁, F₂}, T}
 end
 
-@cached function fstranspose(key::FSTransposeKey{I, N₁, N₂})::_fsdicttype(I, N₁, N₂) where {I <: Sector, N₁, N₂}
-    f₁, f₂, p1, p2 = key
+@cached function fstranspose(key::FSTransposeKey{I, N₁, N₂})::_fsdicttype(I, N₁, N₂) where {I, N₁, N₂}
+    (f₁, f₂), (p1, p2) = key
     N = N₁ + N₂
     p = linearizepermutation(p1, p2, length(f₁), length(f₂))
-    newtrees = repartition(f₁, f₂, N₁)
+    newtrees = repartition((f₁, f₂), N₁)
     length(p) == 0 && return newtrees
     i1 = findfirst(==(1), p)
     @assert i1 !== nothing
@@ -572,7 +563,7 @@ end
     while 1 < i1 <= Nhalf
         local newtrees′
         for ((f1a, f2a), coeffa) in newtrees
-            for ((f1b, f2b), coeffb) in cycleanticlockwise(f1a, f2a)
+            for ((f1b, f2b), coeffb) in cycleanticlockwise((f1a, f2a))
                 coeff = coeffa * coeffb
                 if (@isdefined newtrees′)
                     newtrees′[(f1b, f2b)] = get(newtrees′, (f1b, f2b), zero(coeff)) + coeff
@@ -587,7 +578,7 @@ end
     while Nhalf < i1
         local newtrees′
         for ((f1a, f2a), coeffa) in newtrees
-            for ((f1b, f2b), coeffb) in cycleclockwise(f1a, f2a)
+            for ((f1b, f2b), coeffb) in cycleclockwise((f1a, f2a))
                 coeff = coeffa * coeffb
                 if (@isdefined newtrees′)
                     newtrees′[(f1b, f2b)] = get(newtrees′, (f1b, f2b), zero(coeff)) + coeff
@@ -602,7 +593,7 @@ end
     return newtrees
 end
 
-function CacheStyle(::typeof(fstranspose), k::FSTransposeKey{I}) where {I <: Sector}
+function CacheStyle(::typeof(fstranspose), k::FSTransposeKey{I}) where {I}
     if FusionStyle(I) isa UniqueFusion
         return NoCache()
     else
@@ -616,14 +607,12 @@ end
 # -> planar manipulations that do not require braiding, everything is in Fsymbol (A/Bsymbol)
 
 function planar_trace(
-        f₁::FusionTree{I}, f₂::FusionTree{I},
-        p1::IndexTuple{N₁}, p2::IndexTuple{N₂},
-        q1::IndexTuple{N₃}, q2::IndexTuple{N₃}
-    ) where {I <: Sector, N₁, N₂, N₃}
+        (f₁, f₂)::FusionTreePair{I}, (p1, p2)::Index2Tuple{N₁, N₂}, (q1, q2)::Index2Tuple{N₃, N₃}
+    ) where {I, N₁, N₂, N₃}
     N = N₁ + N₂ + 2N₃
     @assert length(f₁) + length(f₂) == N
     if N₃ == 0
-        return transpose(f₁, f₂, p1, p2)
+        return transpose((f₁, f₂), (p1, p2))
     end
 
     linearindex = (
@@ -644,9 +633,9 @@ function planar_trace(
     F₁ = fusiontreetype(I, N₁)
     F₂ = fusiontreetype(I, N₂)
     newtrees = FusionTreeDict{Tuple{F₁, F₂}, T}()
-    for ((f₁′, f₂′), coeff′) in repartition(f₁, f₂, N)
-        for (f₁′′, coeff′′) in planar_trace(f₁′, q1′, q2′)
-            for (f12′′′, coeff′′′) in transpose(f₁′′, f₂′, p1′, p2′)
+    for ((f₁′, f₂′), coeff′) in repartition((f₁, f₂), N)
+        for (f₁′′, coeff′′) in planar_trace(f₁′, (q1′, q2′))
+            for (f12′′′, coeff′′′) in transpose((f₁′′, f₂′), (p1′, p2′))
                 coeff = coeff′ * coeff′′ * coeff′′′
                 if !iszero(coeff)
                     newtrees[f12′′′] = get(newtrees, f12′′′, zero(coeff)) + coeff
@@ -658,16 +647,14 @@ function planar_trace(
 end
 
 """
-    planar_trace(f::FusionTree{I,N}, q1::IndexTuple{N₃}, q2::IndexTuple{N₃}) where {I<:Sector,N,N₃}
+    planar_trace(f::FusionTree{I,N}, (q1, q2)::Index2Tuple{N₃,N₃}) where {I,N,N₃}
         -> <:AbstractDict{FusionTree{I,N-2*N₃}, <:Number}
 
 Perform a planar trace of the uncoupled indices of the fusion tree `f` at `q1` with those at
 `q2`, where `q1[i]` is connected to `q2[i]` for all `i`. The result is returned as a dictionary
 of output trees and corresponding coefficients.
 """
-function planar_trace(
-        f::FusionTree{I, N}, q1::IndexTuple{N₃}, q2::IndexTuple{N₃}
-    ) where {I <: Sector, N, N₃}
+function planar_trace(f::FusionTree{I, N}, (q1, q2)::Index2Tuple{N₃, N₃}) where {I, N, N₃}
     T = sectorscalartype(I)
     F = fusiontreetype(I, N - 2 * N₃)
     newtrees = FusionTreeDict{F, T}()
@@ -701,7 +688,7 @@ function planar_trace(
         map(l -> (l - (l > i) - (l > j)), TupleTools.deleteat(q2, k))
     end
     for (f′, coeff′) in elementary_trace(f, i)
-        for (f′′, coeff′′) in planar_trace(f′, q1′, q2′)
+        for (f′′, coeff′′) in planar_trace(f′, (q1′, q2′))
             coeff = coeff′ * coeff′′
             if !iszero(coeff)
                 newtrees[f′′] = get(newtrees, f′′, zero(coeff)) + coeff
@@ -713,13 +700,13 @@ end
 
 # trace two neighbouring indices of a single fusion tree
 """
-    elementary_trace(f::FusionTree{I,N}, i) where {I<:Sector,N} -> <:AbstractDict{FusionTree{I,N-2}, <:Number}
+    elementary_trace(f::FusionTree{I,N}, i) where {I,N} -> <:AbstractDict{FusionTree{I,N-2}, <:Number}
 
 Perform an elementary trace of neighbouring uncoupled indices `i` and
 `i+1` on a fusion tree `f`, and returns the result as a dictionary of output trees and
 corresponding coefficients.
 """
-function elementary_trace(f::FusionTree{I, N}, i) where {I <: Sector, N}
+function elementary_trace(f::FusionTree{I, N}, i) where {I, N}
     (N > 1 && 1 <= i <= N) ||
         throw(ArgumentError("Cannot trace outputs i=$i and i+1 out of only $N outputs"))
     i < N || isunit(f.coupled) ||
@@ -823,7 +810,7 @@ applying `artin_braid(f′, i; inv = true)` to all the outputs `f′` of
 tree with non-zero coefficient, namely `f` with coefficient `1`. This keyword has no effect
 if `BraidingStyle(sectortype(f)) isa SymmetricBraiding`.
 """
-function artin_braid(f::FusionTree{I, N}, i; inv::Bool = false) where {I <: Sector, N}
+function artin_braid(f::FusionTree{I, N}, i; inv::Bool = false) where {I, N}
     1 <= i < N ||
         throw(ArgumentError("Cannot swap outputs i=$i and i+1 out of only $N outputs"))
     uncoupled = f.uncoupled
@@ -968,9 +955,7 @@ that if `i` and `j` cross, ``τ_{i,j}`` is applied if `levels[i] < levels[j]` an
 ``τ_{j,i}^{-1}`` if `levels[i] > levels[j]`. This does not allow to encode the most general
 braid, but a general braid can be obtained by combining such operations.
 """
-function braid(
-        f::FusionTree{I, N}, levels::NTuple{N, Int}, p::NTuple{N, Int}
-    ) where {I <: Sector, N}
+function braid(f::FusionTree{I, N}, levels::NTuple{N, Int}, p::NTuple{N, Int}) where {I, N}
     TupleTools.isperm(p) || throw(ArgumentError("not a valid permutation: $p"))
     if FusionStyle(I) isa UniqueFusion && BraidingStyle(I) isa SymmetricBraiding
         coeff = one(sectorscalartype(I))
@@ -1017,17 +1002,16 @@ Perform a permutation of the uncoupled indices of the fusion tree `f` and return
 as a `<:AbstractDict` of output trees and corresponding coefficients; this requires that
 `BraidingStyle(sectortype(f)) isa SymmetricBraiding`.
 """
-function permute(f::FusionTree{I, N}, p::NTuple{N, Int}) where {I <: Sector, N}
+function permute(f::FusionTree{I, N}, p::NTuple{N, Int}) where {I, N}
     @assert BraidingStyle(I) isa SymmetricBraiding
     return braid(f, ntuple(identity, Val(N)), p)
 end
 
 # braid double fusion tree
 """
-    braid(f₁::FusionTree{I}, f₂::FusionTree{I},
-            levels1::IndexTuple, levels2::IndexTuple,
-            p1::IndexTuple{N₁}, p2::IndexTuple{N₂}) where {I<:Sector, N₁, N₂}
-    -> <:AbstractDict{Tuple{FusionTree{I, N₁}, FusionTree{I, N₂}}, <:Number}
+    braid((f₁, f₂)::FusionTreePair{I}, (levels1, levels2)::Index2Tuple,
+          (p1, p2)::Index2Tuple{N₁, N₂}) where {I, N₁, N₂}
+        -> <:AbstractDict{<:FusionTreePair{I, N₁, N₂}}, <:Number}
 
 Input is a fusion-splitting tree pair that describes the fusion of a set of incoming
 uncoupled sectors to a set of outgoing uncoupled sectors, represented using the splitting
@@ -1042,29 +1026,24 @@ levels[j]`. This does not allow to encode the most general braid, but a general 
 be obtained by combining such operations.
 """
 function braid(
-        f₁::FusionTree{I}, f₂::FusionTree{I},
-        levels1::IndexTuple, levels2::IndexTuple,
-        p1::IndexTuple{N₁}, p2::IndexTuple{N₂}
-    ) where {I <: Sector, N₁, N₂}
+        (f₁, f₂)::FusionTreePair{I}, (levels1, levels2)::Index2Tuple,
+        (p1, p2)::Index2Tuple{N₁, N₂}
+    ) where {I, N₁, N₂}
     @assert length(f₁) + length(f₂) == N₁ + N₂
     @assert length(f₁) == length(levels1) && length(f₂) == length(levels2)
     @assert TupleTools.isperm((p1..., p2...))
-    return fsbraid((f₁, f₂, levels1, levels2, p1, p2))
+    return fsbraid(((f₁, f₂), (levels1, levels2), (p1, p2)))
 end
-const FSBraidKey{I <: Sector, N₁, N₂} = Tuple{
-    <:FusionTree{I}, <:FusionTree{I},
-    IndexTuple, IndexTuple,
-    IndexTuple{N₁}, IndexTuple{N₂},
-}
+const FSBraidKey{I, N₁, N₂} = Tuple{<:FusionTreePair{I}, Index2Tuple, Index2Tuple{N₁, N₂}}
 
-@cached function fsbraid(key::FSBraidKey{I, N₁, N₂})::_fsdicttype(I, N₁, N₂) where {I <: Sector, N₁, N₂}
-    (f₁, f₂, l1, l2, p1, p2) = key
+@cached function fsbraid(key::FSBraidKey{I, N₁, N₂})::_fsdicttype(I, N₁, N₂) where {I, N₁, N₂}
+    ((f₁, f₂), (l1, l2), (p1, p2)) = key
     p = linearizepermutation(p1, p2, length(f₁), length(f₂))
     levels = (l1..., reverse(l2)...)
     local newtrees
-    for ((f, f0), coeff1) in repartition(f₁, f₂, N₁ + N₂)
+    for ((f, f0), coeff1) in repartition((f₁, f₂), N₁ + N₂)
         for (f′, coeff2) in braid(f, levels, p)
-            for ((f₁′, f₂′), coeff3) in repartition(f′, f0, N₁)
+            for ((f₁′, f₂′), coeff3) in repartition((f′, f0), N₁)
                 if @isdefined newtrees
                     newtrees[(f₁′, f₂′)] = get(newtrees, (f₁′, f₂′), zero(coeff3)) +
                         coeff1 * coeff2 * coeff3
@@ -1086,9 +1065,8 @@ function CacheStyle(::typeof(fsbraid), k::FSBraidKey{I}) where {I <: Sector}
 end
 
 """
-    permute(f₁::FusionTree{I}, f₂::FusionTree{I},
-            p1::NTuple{N₁, Int}, p2::NTuple{N₂, Int}) where {I, N₁, N₂}
-    -> <:AbstractDict{Tuple{FusionTree{I, N₁}, FusionTree{I, N₂}}, <:Number}
+    permute((f₁, f₂)::FusionTreePair{I}, (p1, p2)::Index2Tuple{N₁, N₂}) where {I, N₁, N₂}
+        -> <:AbstractDict{<:FusionTreePair{I, N₁, N₂}}, <:Number}
 
 Input is a double fusion tree that describes the fusion of a set of incoming uncoupled
 sectors to a set of outgoing uncoupled sectors, represented using the individual trees of
@@ -1097,12 +1075,9 @@ outgoing (`t1`) and incoming sectors (`t2`) respectively (with identical coupled
 repartitioning and permuting the tree such that sectors `p1` become outgoing and sectors
 `p2` become incoming.
 """
-function permute(
-        f₁::FusionTree{I}, f₂::FusionTree{I},
-        p1::IndexTuple{N₁}, p2::IndexTuple{N₂}
-    ) where {I <: Sector, N₁, N₂}
+function permute((f₁, f₂)::FusionTreePair{I}, (p1, p2)::Index2Tuple{N₁, N₂}) where {I, N₁, N₂}
     @assert BraidingStyle(I) isa SymmetricBraiding
     levels1 = ntuple(identity, length(f₁))
     levels2 = length(f₁) .+ ntuple(identity, length(f₂))
-    return braid(f₁, f₂, levels1, levels2, p1, p2)
+    return braid((f₁, f₂), (levels1, levels2), (p1, p2))
 end

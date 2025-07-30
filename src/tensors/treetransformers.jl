@@ -26,7 +26,7 @@ function AbelianTreeTransformer(transform, p, Vdst, Vsrc)
 
     for i in 1:L
         f₁, f₂ = structure_src.fusiontreelist[i]
-        (f₃, f₄), coeff = only(transform(f₁, f₂))
+        (f₃, f₄), coeff = only(transform((f₁, f₂)))
         j = structure_dst.fusiontreeindices[(f₃, f₄)]
         stridestructure_dst = structure_dst.fusiontreestructure[j]
         stridestructure_src = structure_src.fusiontreestructure[i]
@@ -171,7 +171,7 @@ end
 
 # braid is special because it has levels
 function treebraider(::AbstractTensorMap, ::AbstractTensorMap, p::Index2Tuple, levels)
-    return fusiontreetransform(f1, f2) = braid(f1, f2, levels..., p...)
+    return fusiontreetransform((f1, f2)) = braid((f1, f2), levels, p)
 end
 function treebraider(tdst::TensorMap, tsrc::TensorMap, p::Index2Tuple, levels)
     return treebraider(space(tdst), space(tsrc), p, levels)
@@ -179,7 +179,7 @@ end
 @cached function treebraider(
         Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, levels
     )::treetransformertype(Vdst, Vsrc)
-    fusiontreebraider(f1, f2) = braid(f1, f2, levels..., p...)
+    fusiontreebraider((f1, f2)) = braid((f1, f2), levels, p)
     return TreeTransformer(fusiontreebraider, p, Vdst, Vsrc)
 end
 
@@ -187,7 +187,7 @@ for (transform, treetransformer) in
     ((:permute, :treepermuter), (:transpose, :treetransposer))
     @eval begin
         function $treetransformer(::AbstractTensorMap, ::AbstractTensorMap, p::Index2Tuple)
-            return fusiontreetransform(f1, f2) = $transform(f1, f2, p...)
+            return fusiontreetransform(f1, f2) = $transform((f1, f2), p)
         end
         function $treetransformer(tdst::TensorMap, tsrc::TensorMap, p::Index2Tuple)
             return $treetransformer(space(tdst), space(tsrc), p)
@@ -195,7 +195,7 @@ for (transform, treetransformer) in
         @cached function $treetransformer(
                 Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple
             )::treetransformertype(Vdst, Vsrc)
-            fusiontreetransform(f1, f2) = $transform(f1, f2, p...)
+            fusiontreetransform((f1, f2)) = $transform((f1, f2), p)
             return TreeTransformer(fusiontreetransform, p, Vdst, Vsrc)
         end
     end

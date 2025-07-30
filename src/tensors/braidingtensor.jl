@@ -239,7 +239,7 @@ function planarcontract!(
     inv_braid = τ_levels[cindA[1]] > τ_levels[cindA[2]]
     for (f₁, f₂) in fusiontrees(B)
         local newtrees
-        for ((f₁′, f₂′), coeff′) in transpose(f₁, f₂, cindB, oindB)
+        for ((f₁′, f₂′), coeff′) in transpose((f₁, f₂), (cindB, oindB))
             for (f₁′′, coeff′′) in artin_braid(f₁′, 1; inv = inv_braid)
                 f12 = (f₁′′, f₂′)
                 coeff = coeff′ * coeff′′
@@ -294,7 +294,7 @@ function planarcontract!(
 
     for (f₁, f₂) in fusiontrees(A)
         local newtrees
-        for ((f₁′, f₂′), coeff′) in transpose(f₁, f₂, oindA, cindA)
+        for ((f₁′, f₂′), coeff′) in transpose((f₁, f₂), (oindA, cindA))
             for (f₂′′, coeff′′) in artin_braid(f₂′, 1; inv = inv_braid)
                 f12 = (f₁′, f₂′′)
                 coeff = coeff′ * conj(coeff′′)

@@ -215,7 +215,7 @@ function trace_permute!(
         r₁ = (p₁..., q₁...)
         r₂ = (p₂..., q₂...)
         for (f₁, f₂) in fusiontrees(tsrc)
-            for ((f₁′, f₂′), coeff) in permute(f₁, f₂, r₁, r₂)
+            for ((f₁′, f₂′), coeff) in permute((f₁, f₂), (r₁, r₂))
                 f₁′′, g₁ = split(f₁′, N₁)
                 f₂′′, g₂ = split(f₂′, N₂)
                 g₁ == g₂ || continue
