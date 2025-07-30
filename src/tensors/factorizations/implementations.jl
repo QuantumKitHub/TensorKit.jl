@@ -5,7 +5,7 @@ _kindof(::Polar) = :polar
 
 for f! in (:svd_compact!, :svd_full!, :left_null_svd!, :right_null_svd!)
     @eval function select_algorithm(::typeof($f!), t::T, alg::SVD;
-                                    kwargs...) where {T}
+                                    kwargs...) where {T<:AbstractTensorMap}
         isempty(kwargs) ||
             throw(ArgumentError("Additional keyword arguments are not allowed"))
         return LAPACK_QRIteration()
