@@ -383,7 +383,7 @@ function initialize_output(::typeof(left_polar!), t::AbstractTensorMap, ::Abstra
 end
 
 function check_input(::typeof(right_polar!), t::AbstractTensorMap, (P, Wᴴ)::_T_PWᴴ)
-    domain(t) ≿ codomain(t) ||
+    codomain(t) ≾ domain(t) ||
         throw(ArgumentError("Polar decomposition requires `domain(t) ≿ codomain(t)`"))
 
     # scalartype checks
@@ -398,7 +398,7 @@ function check_input(::typeof(right_polar!), t::AbstractTensorMap, (P, Wᴴ)::_T
 end
 
 function check_input(::typeof(right_orth_polar!), t::AbstractTensorMap, (P, Wᴴ)::_T_PWᴴ)
-    domain(t) ≿ codomain(t) ||
+    codomain(t) ≾ domain(t) ||
         throw(ArgumentError("Polar decomposition requires `domain(t) ≿ codomain(t)`"))
 
     # scalartype checks
