@@ -15,7 +15,7 @@ using ..TensorKit
 using ..TensorKit: AdjointTensorMap, SectorDict, OFA, blocktype, foreachblock
 using ..MatrixAlgebra: MatrixAlgebra
 
-using LinearAlgebra: LinearAlgebra, BlasFloat, svdvals, svdvals!
+using LinearAlgebra: LinearAlgebra, BlasFloat, Diagonal, svdvals, svdvals!
 import LinearAlgebra: eigen, eigen!, isposdef, isposdef!, ishermitian
 
 using TensorOperations: Index2Tuple
