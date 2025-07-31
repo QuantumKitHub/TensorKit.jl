@@ -72,7 +72,7 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
     for cod_uncoupled_src in sectors(codomain(Vsrc)),
             dom_uncoupled_src in sectors(domain(Vsrc))
 
-        fs_src = OuterTreeIterator((cod_uncoupled_src, dom_uncoupled_src), isdual_src)
+        fs_src = FusionTreeBlock((cod_uncoupled_src, dom_uncoupled_src), isdual_src)
         trees_src = fusiontrees(fs_src)
         isempty(trees_src) && continue
 
