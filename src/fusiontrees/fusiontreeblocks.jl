@@ -148,29 +148,45 @@ end
 
 @inline function repartition(src::FusionTreeBlock, N::Int)
     @assert 0 <= N <= numind(src)
-    return _recursive_repartition(src, Val(N))
+    return repartition(src, Val(N))
 end
 
-function _repartition_type(I, N, N₁, N₂)
-    return Tuple{FusionTreeBlock{I, N, N₁ + N₂ - N}, Matrix{sectorscalartype(I)}}
+#=
+Using a generated function here to ensure type stability by unrolling the loops:
+```julia
+dst, U = bendleft/right(src)
+
+# repeat the following 2 lines N - 1 times
+dst, Utmp = bendleft/right(dst)
+U = Utmp * U
+
+return dst, U
+```
+=#
+@generated function repartition(src::FusionTreeBlock, ::Val{N}) where {N}
+    return _repartition_body(numout(src) - N)
 end
-function _recursive_repartition(
-        src::FusionTreeBlock{I, N₁, N₂},
-        ::Val{N}
-    )::_repartition_type(I, N, N₁, N₂) where {I, N₁, N₂, N}
-    if N == N₁
-        dst = src
-        U = zeros(sectorscalartype(I), length(dst), length(src))
-        copyto!(U, LinearAlgebra.I)
-        return dst, U
+function _repartition_body(N)
+    if N == 0
+        ex = quote
+            T = sectorscalartype(sectortype(src))
+            U = copyto!(zeros(T, length(src), length(src)), LinearAlgebra.I)
+            return src, U
+        end
+    else
+        f = N < 0 ? bendleft : bendright
+        ex_rep = Expr(:block)
+        for _ in 1:(abs(N) - 1)
+            push!(ex_rep.args, :((dst, Utmp) = $f(dst)))
+            push!(ex_rep.args, :(U = Utmp * U))
+        end
+        ex = quote
+            dst, U = $f(src)
+            $ex_rep
+            return dst, U
+        end
     end
-
-    N == N₁ - 1 && return bendright(src)
-    N == N₁ + 1 && return bendleft(src)
-
-    tmp, U₁ = N < N₁ ? bendright(src) : bendleft(src)
-    dst, U₂ = _recursive_repartition(tmp, Val(N))
-    return dst, U₂ * U₁
+    return ex
 end
 
 function Base.transpose(src::FusionTreeBlock, p::Index2Tuple{N₁, N₂}) where {N₁, N₂}
