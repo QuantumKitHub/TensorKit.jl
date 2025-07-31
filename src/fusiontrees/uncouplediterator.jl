@@ -1,24 +1,24 @@
-struct OuterTreeIterator{I<:Sector,N₁,N₂}
-    uncoupled::Tuple{NTuple{N₁,I},NTuple{N₂,I}}
-    isdual::Tuple{NTuple{N₁,Bool},NTuple{N₂,Bool}}
+struct OuterTreeIterator{I <: Sector, N₁, N₂}
+    uncoupled::Tuple{NTuple{N₁, I}, NTuple{N₂, I}}
+    isdual::Tuple{NTuple{N₁, Bool}, NTuple{N₂, Bool}}
 end
 
 sectortype(::Type{<:OuterTreeIterator{I}}) where {I} = I
 numout(fs::OuterTreeIterator) = numout(typeof(fs))
-numout(::Type{<:OuterTreeIterator{I,N₁}}) where {I,N₁} = N₁
+numout(::Type{<:OuterTreeIterator{I, N₁}}) where {I, N₁} = N₁
 numin(fs::OuterTreeIterator) = numin(typeof(fs))
-numin(::Type{<:OuterTreeIterator{I,N₁,N₂}}) where {I,N₁,N₂} = N₂
+numin(::Type{<:OuterTreeIterator{I, N₁, N₂}}) where {I, N₁, N₂} = N₂
 numind(fs::OuterTreeIterator) = numind(typeof(fs))
-numind(::Type{T}) where {T<:OuterTreeIterator} = numin(T) + numout(T)
+numind(::Type{T}) where {T <: OuterTreeIterator} = numin(T) + numout(T)
 
 # TODO: should we make this an actual iterator?
-function fusiontrees(iter::OuterTreeIterator{I,N₁,N₂}) where {I,N₁,N₂}
+function fusiontrees(iter::OuterTreeIterator{I, N₁, N₂}) where {I, N₁, N₂}
     F₁ = fusiontreetype(I, N₁)
     F₂ = fusiontreetype(I, N₂)
 
-    trees = Vector{Tuple{F₁,F₂}}(undef, 0)
+    trees = Vector{Tuple{F₁, F₂}}(undef, 0)
     for c in blocksectors(iter), f₁ in fusiontrees(iter.uncoupled[1], c, iter.isdual[1]),
-        f₂ in fusiontrees(iter.uncoupled[2], c, iter.isdual[2])
+            f₂ in fusiontrees(iter.uncoupled[2], c, iter.isdual[2])
 
         push!(trees, (f₁, f₂))
     end
@@ -28,7 +28,7 @@ end
 # TODO: better implementation
 Base.length(iter::OuterTreeIterator) = length(fusiontrees(iter))
 
-function blocksectors(iter::OuterTreeIterator{I,N₁,N₂}) where {I,N₁,N₂}
+function blocksectors(iter::OuterTreeIterator{I, N₁, N₂}) where {I, N₁, N₂}
     I == Trivial && return (Trivial(),)
 
     bs_codomain = Vector{I}()
@@ -63,11 +63,15 @@ end
 # Manipulations
 # -------------
 
-function bendright(fs_src::OuterTreeIterator{I,N₁,N₂}) where {I,N₁,N₂}
-    uncoupled_dst = (TupleTools.front(fs_src.uncoupled[1]),
-                     (fs_src.uncoupled[2]..., dual(fs_src.uncoupled[1][end])))
-    isdual_dst = (TupleTools.front(fs_src.isdual[1]),
-                  (fs_src.isdual[2]..., !(fs_src.isdual[1][end])))
+function bendright(fs_src::OuterTreeIterator{I, N₁, N₂}) where {I, N₁, N₂}
+    uncoupled_dst = (
+        TupleTools.front(fs_src.uncoupled[1]),
+        (fs_src.uncoupled[2]..., dual(fs_src.uncoupled[1][end])),
+    )
+    isdual_dst = (
+        TupleTools.front(fs_src.isdual[1]),
+        (fs_src.isdual[2]..., !(fs_src.isdual[1][end])),
+    )
     fs_dst = OuterTreeIterator(uncoupled_dst, isdual_dst)
 
     trees_src = fusiontrees(fs_src)
@@ -86,11 +90,15 @@ function bendright(fs_src::OuterTreeIterator{I,N₁,N₂}) where {I,N₁,N₂}
 end
 
 # TODO: verify if this can be computed through an adjoint
-function bendleft(fs_src::OuterTreeIterator{I,N₁,N₂}) where {I,N₁,N₂}
-    uncoupled_dst = ((fs_src.uncoupled[1]..., dual(fs_src.uncoupled[2][end])),
-                     TupleTools.front(fs_src.uncoupled[2]))
-    isdual_dst = ((fs_src.isdual[1]..., !(fs_src.isdual[2][end])),
-                  TupleTools.front(fs_src.isdual[2]))
+function bendleft(fs_src::OuterTreeIterator{I, N₁, N₂}) where {I, N₁, N₂}
+    uncoupled_dst = (
+        (fs_src.uncoupled[1]..., dual(fs_src.uncoupled[2][end])),
+        TupleTools.front(fs_src.uncoupled[2]),
+    )
+    isdual_dst = (
+        (fs_src.isdual[1]..., !(fs_src.isdual[2][end])),
+        TupleTools.front(fs_src.isdual[2]),
+    )
     fs_dst = OuterTreeIterator(uncoupled_dst, isdual_dst)
 
     trees_src = fusiontrees(fs_src)
@@ -108,11 +116,15 @@ function bendleft(fs_src::OuterTreeIterator{I,N₁,N₂}) where {I,N₁,N₂}
     return fs_dst, U
 end
 
-function foldright(fs_src::OuterTreeIterator{I,N₁,N₂}) where {I,N₁,N₂}
-    uncoupled_dst = (Base.tail(fs_src.uncoupled[1]),
-                     (dual(first(fs_src.uncoupled[1])), fs_src.uncoupled[2]...))
-    isdual_dst = (Base.tail(fs_src.isdual[1]),
-                  (!first(fs_src.isdual[1]), fs_src.isdual[2]...))
+function foldright(fs_src::OuterTreeIterator{I, N₁, N₂}) where {I, N₁, N₂}
+    uncoupled_dst = (
+        Base.tail(fs_src.uncoupled[1]),
+        (dual(first(fs_src.uncoupled[1])), fs_src.uncoupled[2]...),
+    )
+    isdual_dst = (
+        Base.tail(fs_src.isdual[1]),
+        (!first(fs_src.isdual[1]), fs_src.isdual[2]...),
+    )
     fs_dst = OuterTreeIterator(uncoupled_dst, isdual_dst)
 
     trees_src = fusiontrees(fs_src)
@@ -131,11 +143,15 @@ function foldright(fs_src::OuterTreeIterator{I,N₁,N₂}) where {I,N₁,N₂}
 end
 
 # TODO: verify if this can be computed through an adjoint
-function foldleft(fs_src::OuterTreeIterator{I,N₁,N₂}) where {I,N₁,N₂}
-    uncoupled_dst = ((dual(first(fs_src.uncoupled[2])), fs_src.uncoupled[1]...),
-                     Base.tail(fs_src.uncoupled[2]))
-    isdual_dst = ((!first(fs_src.isdual[2]), fs_src.isdual[1]...),
-                  Base.tail(fs_src.isdual[2]))
+function foldleft(fs_src::OuterTreeIterator{I, N₁, N₂}) where {I, N₁, N₂}
+    uncoupled_dst = (
+        (dual(first(fs_src.uncoupled[2])), fs_src.uncoupled[1]...),
+        Base.tail(fs_src.uncoupled[2]),
+    )
+    isdual_dst = (
+        (!first(fs_src.isdual[2]), fs_src.isdual[1]...),
+        Base.tail(fs_src.isdual[2]),
+    )
     fs_dst = OuterTreeIterator(uncoupled_dst, isdual_dst)
 
     trees_src = fusiontrees(fs_src)
@@ -153,7 +169,7 @@ function foldleft(fs_src::OuterTreeIterator{I,N₁,N₂}) where {I,N₁,N₂}
     return fs_dst, U
 end
 
-function cycleclockwise(fs_src::OuterTreeIterator{I,N₁,N₂}) where {I,N₁,N₂}
+function cycleclockwise(fs_src::OuterTreeIterator{I, N₁, N₂}) where {I, N₁, N₂}
     if N₁ > 0
         fs_tmp, U₁ = foldright(fs_src)
         fs_dst, U₂ = bendleft(fs_tmp)
@@ -164,7 +180,7 @@ function cycleclockwise(fs_src::OuterTreeIterator{I,N₁,N₂}) where {I,N₁,N�
     return fs_dst, U₂ * U₁
 end
 
-function cycleanticlockwise(fs_src::OuterTreeIterator{I,N₁,N₂}) where {I,N₁,N₂}
+function cycleanticlockwise(fs_src::OuterTreeIterator{I, N₁, N₂}) where {I, N₁, N₂}
     if N₂ > 0
         fs_tmp, U₁ = foldleft(fs_src)
         fs_dst, U₂ = bendright(fs_tmp)
@@ -175,16 +191,17 @@ function cycleanticlockwise(fs_src::OuterTreeIterator{I,N₁,N₂}) where {I,N�
     return fs_dst, U₂ * U₁
 end
 
-@inline function repartition(fs_src::OuterTreeIterator{I,N₁,N₂}, N::Int) where {I,N₁,N₂}
+@inline function repartition(fs_src::OuterTreeIterator{I, N₁, N₂}, N::Int) where {I, N₁, N₂}
     @assert 0 <= N <= N₁ + N₂
     return _recursive_repartition(fs_src, Val(N))
 end
 
 function _repartition_type(I, N, N₁, N₂)
-    return Tuple{OuterTreeIterator{I,N,N₁ + N₂ - N},Matrix{sectorscalartype(I)}}
+    return Tuple{OuterTreeIterator{I, N, N₁ + N₂ - N}, Matrix{sectorscalartype(I)}}
 end
-function _recursive_repartition(fs_src::OuterTreeIterator{I,N₁,N₂},
-                                ::Val{N})::_repartition_type(I, N, N₁, N₂) where {I,N₁,N₂,N}
+function _recursive_repartition(
+        fs_src::OuterTreeIterator{I, N₁, N₂}, ::Val{N}
+    )::_repartition_type(I, N, N₁, N₂) where {I, N₁, N₂, N}
     if N == N₁
         fs_dst = fs_src
         U = zeros(sectorscalartype(I), length(fs_dst), length(fs_src))
@@ -200,7 +217,7 @@ function _recursive_repartition(fs_src::OuterTreeIterator{I,N₁,N₂},
     return fs_dst, U₂ * U₁
 end
 
-function Base.transpose(fs_src::OuterTreeIterator{I}, p::Index2Tuple{N₁,N₂}) where {I,N₁,N₂}
+function Base.transpose(fs_src::OuterTreeIterator{I}, p::Index2Tuple{N₁, N₂}) where {I, N₁, N₂}
     N = N₁ + N₂
     @assert numind(fs_src) == N
     p′ = linearizepermutation(p..., numout(fs_src), numin(fs_src))
@@ -208,13 +225,11 @@ function Base.transpose(fs_src::OuterTreeIterator{I}, p::Index2Tuple{N₁,N₂})
     return _fstranspose((fs_src, p))
 end
 
-const _FSTransposeKey{I,N₁,N₂} = Tuple{<:OuterTreeIterator{I},Index2Tuple{N₁,N₂}}
+const _FSTransposeKey{I, N₁, N₂} = Tuple{<:OuterTreeIterator{I}, Index2Tuple{N₁, N₂}}
 
-@cached function _fstranspose(key::_FSTransposeKey{I,N₁,N₂})::Tuple{OuterTreeIterator{I,N₁,
-                                                                                     N₂},
-                                                                   Matrix{sectorscalartype(I)}} where {I,
-                                                                                                       N₁,
-                                                                                                       N₂}
+@cached function _fstranspose(
+        key::_FSTransposeKey{I, N₁, N₂}
+    )::Tuple{OuterTreeIterator{I, N₁, N₂}, Matrix{sectorscalartype(I)}} where {I, N₁, N₂}
     fs_src, (p1, p2) = key
 
     N = N₁ + N₂
@@ -248,7 +263,7 @@ function CacheStyle(::typeof(_fstranspose), k::_FSTransposeKey{I}) where {I}
     end
 end
 
-function artin_braid(fs_src::OuterTreeIterator{I,N,0}, i; inv::Bool=false) where {I,N}
+function artin_braid(fs_src::OuterTreeIterator{I, N, 0}, i; inv::Bool = false) where {I, N}
     1 <= i < N ||
         throw(ArgumentError("Cannot swap outputs i=$i and i+1 out of only $N outputs"))
 
@@ -277,8 +292,9 @@ function artin_braid(fs_src::OuterTreeIterator{I,N,0}, i; inv::Bool=false) where
     return fs_dst, U
 end
 
-function braid(fs_src::OuterTreeIterator{I,N,0}, levels::NTuple{N,Int},
-               p::NTuple{N,Int}) where {I,N}
+function braid(
+        fs_src::OuterTreeIterator{I, N, 0}, levels::NTuple{N, Int}, p::NTuple{N, Int}
+    ) where {I, N}
     TupleTools.isperm(p) || throw(ArgumentError("not a valid permutation: $p"))
 
     if FusionStyle(I) isa UniqueFusion && BraidingStyle(I) isa SymmetricBraiding
@@ -310,20 +326,20 @@ function braid(fs_src::OuterTreeIterator{I,N,0}, levels::NTuple{N,Int},
     return fs_dst, U
 end
 
-function braid(fs_src::OuterTreeIterator{I}, levels::Index2Tuple,
-               p::Index2Tuple{N₁,N₂}) where {I,N₁,N₂}
+function braid(
+        fs_src::OuterTreeIterator{I}, levels::Index2Tuple, p::Index2Tuple{N₁, N₂}
+    ) where {I, N₁, N₂}
     @assert numind(fs_src) == N₁ + N₂
     @assert numout(fs_src) == length(levels[1]) && numin(fs_src) == length(levels[2])
     @assert TupleTools.isperm((p[1]..., p[2]...))
     return _fsbraid((fs_src, levels, p))
 end
 
-const _FSBraidKey{I,N₁,N₂} = Tuple{<:OuterTreeIterator{I},Index2Tuple,Index2Tuple{N₁,N₂}}
+const _FSBraidKey{I, N₁, N₂} = Tuple{<:OuterTreeIterator{I}, Index2Tuple, Index2Tuple{N₁, N₂}}
 
-@cached function _fsbraid(key::_FSBraidKey{I,N₁,N₂})::Tuple{OuterTreeIterator{I,N₁,N₂},
-                                                           Matrix{sectorscalartype(I)}} where {I,
-                                                                                               N₁,
-                                                                                               N₂}
+@cached function _fsbraid(
+        key::_FSBraidKey{I, N₁, N₂}
+    )::Tuple{OuterTreeIterator{I, N₁, N₂}, Matrix{sectorscalartype(I)}} where {I, N₁, N₂}
     fs_src, (l1, l2), (p1, p2) = key
 
     p = linearizepermutation(p1, p2, numout(fs_src), numin(fs_src))
