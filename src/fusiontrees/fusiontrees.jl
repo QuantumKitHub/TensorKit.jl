@@ -247,11 +247,12 @@ function Base.show(io::IO, t::FusionTree{I}) where {I <: Sector}
     end
 end
 
-# Manipulate fusion trees
-include("manipulations.jl")
-
 # Fusion tree iterators
 include("iterator.jl")
+include("uncouplediterator.jl")
+
+# Manipulate fusion trees
+include("manipulations.jl")
 
 # auxiliary routines
 # _abelianinner: generate the inner indices for given outer indices in the abelian case
