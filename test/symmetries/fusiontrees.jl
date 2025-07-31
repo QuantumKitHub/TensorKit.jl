@@ -99,13 +99,13 @@ using .TestSetup
                 @test c′ == one(c′)
                 return t′
             end
-            braid_i_to_1 = braid(f1, levels, (i, (1:(i - 1))..., ((i + 1):N)...))
+            braid_i_to_1 = braid(f1, (i, (1:(i - 1))..., ((i + 1):N)...), levels)
             trees2 = Dict(_reinsert_partial_tree(t, f2) => c for (t, c) in braid_i_to_1)
             trees3 = empty(trees2)
             p = (((N + 1):(N + i - 1))..., (1:N)..., ((N + i):(2N - 1))...)
             levels = ((i:(N + i - 1))..., (1:(i - 1))..., ((i + N):(2N - 1))...)
             for (t, coeff) in trees2
-                for (t′, coeff′) in braid(t, levels, p)
+                for (t′, coeff′) in braid(t, p, levels)
                     trees3[t′] = get(trees3, t′, zero(coeff′)) + coeff * coeff′
                 end
             end
@@ -285,11 +285,11 @@ using .TestSetup
         ip = invperm(p)
 
         levels = ntuple(identity, N)
-        d = @constinferred braid(f, levels, p)
+        d = @constinferred braid(f, p, levels)
         d2 = Dict{typeof(f), valtype(d)}()
         levels2 = p
         for (f2, coeff) in d
-            for (f1, coeff2) in braid(f2, levels2, ip)
+            for (f1, coeff2) in braid(f2, ip, levels2)
                 d2[f1] = get(d2, f1, zero(coeff)) + coeff2 * coeff
             end
         end
@@ -348,7 +348,7 @@ using .TestSetup
                 perm = ((N .+ (1:N))..., (1:N)...)
                 levels = ntuple(identity, 2 * N)
                 for (t, coeff) in trees1
-                    for (t′, coeff′) in braid(t, levels, perm)
+                    for (t′, coeff′) in braid(t, perm, levels)
                         trees3[t′] = get(trees3, t′, zero(valtype(trees3))) + coeff * coeff′
                     end
                 end

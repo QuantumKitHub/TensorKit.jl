@@ -158,7 +158,7 @@ end
 
 # braid is special because it has levels
 function treebraider(::AbstractTensorMap, ::AbstractTensorMap, p::Index2Tuple, levels)
-    return fusiontreetransform(f) = braid(f, levels, p)
+    return fusiontreetransform(f) = braid(f, p, levels)
 end
 function treebraider(tdst::TensorMap, tsrc::TensorMap, p::Index2Tuple, levels)
     return treebraider(space(tdst), space(tsrc), p, levels)
@@ -166,7 +166,7 @@ end
 @cached function treebraider(
         Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, levels
     )::treetransformertype(Vdst, Vsrc)
-    fusiontreebraider(f) = braid(f, levels, p)
+    fusiontreebraider(f) = braid(f, p, levels)
     return TreeTransformer(fusiontreebraider, p, Vdst, Vsrc)
 end
 
