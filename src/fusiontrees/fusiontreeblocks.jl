@@ -2,7 +2,7 @@ struct FusionTreeBlock{I, N₁, N₂, F <: FusionTreePair{I, N₁, N₂}}
     trees::Vector{F}
 end
 
-function FusionTreeBlock(
+function FusionTreeBlock{I}(
         uncoupled::Tuple{NTuple{N₁, I}, NTuple{N₂, I}},
         isdual::Tuple{NTuple{N₁, Bool}, NTuple{N₂, Bool}}
     ) where {I <: Sector, N₁, N₂}
@@ -71,7 +71,7 @@ function bendright(src::FusionTreeBlock)
         TupleTools.front(src.isdual[1]),
         (src.isdual[2]..., !(src.isdual[1][end])),
     )
-    dst = FusionTreeBlock(uncoupled_dst, isdual_dst)
+    dst = FusionTreeBlock{sectortype(src)}(uncoupled_dst, isdual_dst)
 
     U = transformation_matrix(bendright, dst, src)
     return dst, U
@@ -87,7 +87,7 @@ function bendleft(src::FusionTreeBlock)
         (src.isdual[1]..., !(src.isdual[2][end])),
         TupleTools.front(src.isdual[2]),
     )
-    dst = FusionTreeBlock(uncoupled_dst, isdual_dst)
+    dst = FusionTreeBlock{sectortype(src)}(uncoupled_dst, isdual_dst)
 
     U = transformation_matrix(bendleft, dst, src)
     return dst, U
@@ -102,7 +102,7 @@ function foldright(src::FusionTreeBlock)
         Base.tail(src.isdual[1]),
         (!first(src.isdual[1]), src.isdual[2]...),
     )
-    dst = FusionTreeBlock(uncoupled_dst, isdual_dst)
+    dst = FusionTreeBlock{sectortype(src)}(uncoupled_dst, isdual_dst)
 
     U = transformation_matrix(foldright, dst, src)
     return dst, U
@@ -118,7 +118,7 @@ function foldleft(src::FusionTreeBlock)
         (!first(src.isdual[2]), src.isdual[1]...),
         Base.tail(src.isdual[2]),
     )
-    dst = FusionTreeBlock(uncoupled_dst, isdual_dst)
+    dst = FusionTreeBlock{sectortype(src)}(uncoupled_dst, isdual_dst)
 
     U = transformation_matrix(foldleft, dst, src)
     return dst, U
@@ -229,7 +229,7 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
     isdual = src.isdual[1]
     isdual′ = TupleTools.setindex(isdual, isdual[i], i + 1)
     isdual′ = TupleTools.setindex(isdual′, isdual[i + 1], i)
-    dst = FusionTreeBlock((uncoupled′, ()), (isdual′, ()))
+    dst = FusionTreeBlock{I}((uncoupled′, ()), (isdual′, ()))
 
     # TODO: do we want to rewrite `artin_braid` to take double trees instead?
     U = transformation_matrix(dst, src) do (f₁, f₂)
@@ -244,7 +244,7 @@ function braid(src::FusionTreeBlock{I, N, 0}, p::NTuple{N, Int}, levels::NTuple{
     if FusionStyle(I) isa UniqueFusion && BraidingStyle(I) isa SymmetricBraiding
         uncoupled′ = TupleTools._permute(src.uncoupled[1], p)
         isdual′ = TupleTools._permute(src.isdual[1], p)
-        dst = FusionTreeBlock(uncoupled′, isdual′)
+        dst = FusionTreeBlock{I}(uncoupled′, isdual′)
         U = transformation_matrix(dst, src) do (f₁, f₂)
             return ((f₁′, f₂) => c for (f₁, c) in braid(f₁, p, levels))
         end
@@ -282,7 +282,7 @@ const _FSBraidKey{I, N₁, N₂} = Tuple{<:FusionTreeBlock{I}, Index2Tuple{N₁,
         uncoupled′ = TupleTools._permute(dst.uncoupled[1], p)
         isdual′ = TupleTools._permute(dst.isdual[1], p)
 
-        dst′ = FusionTreeBlock(uncoupled′, isdual′)
+        dst′ = FusionTreeBlock{I}(uncoupled′, isdual′)
         U_tmp = transformation_matrix(dst′, dst) do (f₁, f₂)
             return ((f₁′, f₂) => c for (f₁, c) in braid(f₁, p, levels))
         end
