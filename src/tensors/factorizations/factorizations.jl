@@ -27,13 +27,14 @@ using MatrixAlgebraKit: AbstractAlgorithm, TruncatedAlgorithm, TruncationStrateg
 import MatrixAlgebraKit: default_algorithm,
                          copy_input, check_input, initialize_output,
                          qr_compact!, qr_full!, qr_null!, lq_compact!, lq_full!, lq_null!,
-                         svd_compact!, svd_full!, svd_trunc!,
-                         eig_full!, eig_trunc!, eigh_full!, eigh_trunc!,
+                         svd_compact!, svd_full!, svd_trunc!, svd_vals!,
+                         eigh_full!, eigh_trunc!, eigh_vals!,
+                         eig_full!, eig_trunc!, eig_vals!,
                          left_polar!, left_orth_polar!, right_polar!, right_orth_polar!,
                          left_null_svd!, right_null_svd!,
                          left_orth!, right_orth!, left_null!, right_null!,
                          truncate!, findtruncated, findtruncated_sorted,
-                         diagview
+                         diagview, isisometry
 
 include("utility.jl")
 include("interface.jl")

@@ -42,8 +42,8 @@ for f! in (:qr_compact!, :qr_full!,
     end
 end
 
-# Handle these separately because single N instead of tuple
-for f! in (:qr_null!, :lq_null!)
+# Handle these separately because single output instead of tuple
+for f! in (:qr_null!, :lq_null!, :svd_vals!, :eig_vals!, :eigh_vals!)
     @eval function $f!(t::AbstractTensorMap, N, alg::AbstractAlgorithm)
         check_input($f!, t, N)
 
@@ -94,7 +94,12 @@ function check_input(::typeof(svd_compact!), t::AbstractTensorMap, (U, S, Vᴴ):
     return nothing
 end
 
-# TODO: svd_vals
+function check_input(::typeof(svd_vals!), t::AbstractTensorMap, S::SectorDict)
+    @check_scalar S t real
+    V_cod = infimum(fuse(codomain(t)), fuse(domain(t)))
+    @check_space(S, V_cod ← V_dom)
+    return nothing
+end
 
 function initialize_output(::typeof(svd_full!), t::AbstractTensorMap, ::AbstractAlgorithm)
     V_cod = fuse(codomain(t))
@@ -114,12 +119,14 @@ function initialize_output(::typeof(svd_compact!), t::AbstractTensorMap,
     return U, S, Vᴴ
 end
 
-function initialize_output(::typeof(svd_trunc!), t::AbstractTensorMap,
-                           alg::TruncatedAlgorithm)
+function initialize_output(::typeof(svd_trunc!), t::AbstractTensorMap, alg::TruncatedAlgorithm)
     return initialize_output(svd_compact!, t, alg.alg)
 end
 
-# TODO: svd_vals
+function initialize_output(::typeof(svd_vals!), t::AbstractTensorMap, alg::AbstractAlgorithm)
+    V_cod = infimum(fuse(codomain(t)), fuse(domain(t)))
+    return DiagonalTensorMap{real(scalartype(t))}(undef, V_cod)
+end
 
 function svd_trunc!(t::AbstractTensorMap, USVᴴ, alg::TruncatedAlgorithm)
     USVᴴ′ = svd_compact!(t, USVᴴ, alg.alg)
@@ -162,6 +169,20 @@ function check_input(::typeof(eig_full!), t::AbstractTensorMap, (D, V)::_T_DV)
     return nothing
 end
 
+function check_input(::typeof(eigh_vals!), t::AbstractTensorMap, D::DiagonalTensorMap)
+    @check_scalar D t real
+    V_D = fuse(domain(t))
+    @check_space(D, V_D ← V_D)
+    return nothing
+end
+
+function check_input(::typeof(eig_vals!), t::AbstractTensorMap, D::DiagonalTensorMap)
+    @check_scalar D t complex
+    V_D = fuse(domain(t))
+    @check_space(D, V_D ← V_D)
+    return nothing
+end
+
 function initialize_output(::typeof(eigh_full!), t::AbstractTensorMap, ::AbstractAlgorithm)
     V_D = fuse(domain(t))
     T = real(scalartype(t))
@@ -176,6 +197,18 @@ function initialize_output(::typeof(eig_full!), t::AbstractTensorMap, ::Abstract
     D = DiagonalTensorMap{Tc}(undef, V_D)
     V = similar(t, Tc, codomain(t) ← V_D)
     return D, V
+end
+
+function initialize_output(::typeof(eigh_vals!), t::AbstractTensorMap, alg::AbstractAlgorithm)
+    V_D = fuse(domain(t))
+    T = real(scalartype(t))
+    D = DiagonalTensorMap{Tc}(undef, V_D)
+end
+
+function initialize_output(::typeof(eig_vals!), t::AbstractTensorMap, alg::AbstractAlgorithm)
+    V_D = fuse(domain(t))
+    Tc = complex(scalartype(t))
+    D = DiagonalTensorMap{Tc}(undef, V_D)
 end
 
 function initialize_output(::typeof(eigh_trunc!), t::AbstractTensorMap,
