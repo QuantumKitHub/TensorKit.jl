@@ -154,8 +154,8 @@ const oplus = ⊕
     ⊖(V::ElementarySpace, W::ElementarySpace) -> X::ElementarySpace
     ominus(V::ElementarySpace, W::ElementarySpace) -> X::ElementarySpace
 
-Return the set difference of two elementary spaces, i.e. an instance `X::ElementarySpace`
-such that `V = W ⊕ X`.
+Return a space that is equivalent to the orthogonal complement of `W` in `V`,
+i.e. an instance `X::ElementarySpace` such that `V = W ⊕ X`.
 """
 ⊖(V₁::S, V₂::S) where {S<:ElementarySpace}
 ⊖(V₁::VectorSpace, V₂::VectorSpace) = ⊖(promote(V₁, V₂)...)
