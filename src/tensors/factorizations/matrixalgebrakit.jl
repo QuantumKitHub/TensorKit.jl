@@ -440,11 +440,11 @@ end
 
 # Needed to get algorithm selection to behave
 function left_orth_polar!(t::AbstractTensorMap, VC, alg)
-    alg′ = select_algorithm(left_polar!, t, alg)
+    alg′ = MatrixAlgebraKit.select_algorithm(left_polar!, t, alg)
     return left_orth_polar!(t, VC, alg′)
 end
 function right_orth_polar!(t::AbstractTensorMap, CVᴴ, alg)
-    alg′ = select_algorithm(right_polar!, t, alg)
+    alg′ = MatrixAlgebraKit.select_algorithm(right_polar!, t, alg)
     return right_orth_polar!(t, CVᴴ, alg′)
 end
 
