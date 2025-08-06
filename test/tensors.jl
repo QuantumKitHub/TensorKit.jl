@@ -686,8 +686,8 @@ for V in spacelist
             for T in (Float32, ComplexF64)
                 tA = rand(T, V1 ⊗ V3, V1 ⊗ V3)
                 tB = rand(T, V2 ⊗ V4, V2 ⊗ V4)
-                tA = 3 // 2 * leftpolar(tA)[1]
-                tB = 1 // 5 * leftpolar(tB)[1]
+                tA = 3 // 2 * left_polar(tA)[1]
+                tB = 1 // 5 * left_polar(tB)[1]
                 tC = rand(T, V1 ⊗ V3, V2 ⊗ V4)
                 t = @constinferred sylvester(tA, tB, tC)
                 @test codomain(t) == V1 ⊗ V3

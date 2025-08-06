@@ -7,7 +7,6 @@ export eig, eig!, eigh, eigh!
 export tsvd, tsvd!, svdvals, svdvals!
 export leftorth, leftorth!, rightorth, rightorth!
 export leftnull, leftnull!, rightnull, rightnull!
-export leftpolar, leftpolar!, rightpolar, rightpolar!
 export copy_oftype, permutedcopy_oftype
 export TruncationScheme, notrunc, truncbelow, truncerr, truncdim, truncspace
 

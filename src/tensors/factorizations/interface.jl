@@ -183,20 +183,6 @@ Orthogonality requires `InnerProductStyle(t) <: HasInnerProduct`, and
 """ rightnull, rightnull!
 
 @doc """
-    leftpolar(t::AbstractTensorMap, [(leftind, rightind)::Index2Tuple]; kwargs...) -> W, P
-    leftpolar!(t::AbstractTensorMap; kwargs...) -> W, P
-
-Compute the polar decomposition of tensor `t` as linear map from `rightind` to `leftind`.
-
-If `leftind` and `rightind` are not specified, the current partition of left and right
-indices of `t` is used. In that case, less memory is allocated if one allows the data in
-`t` to be destroyed/overwritten, by using `eigh!(t)`.
-
-See also [`rightpolar(!)`](@ref rightpolar).
-
-""" leftpolar, leftpolar!
-
-@doc """
     eigen(t::AbstractTensorMap, [(leftind, rightind)::Index2Tuple]; kwargs...) -> D, V
     eigen!(t::AbstractTensorMap; kwargs...) -> D, V
 
@@ -230,7 +216,7 @@ meaningless.
 """ isposdef(::AbstractTensorMap), isposdef!(::AbstractTensorMap)
 
 for f in
-    (:tsvd, :eig, :eigh, :eigen, :leftorth, :rightorth, :leftpolar, :rightpolar, :leftnull,
+    (:tsvd, :eig, :eigh, :eigen, :leftorth, :rightorth, :left_polar, :right_polar, :leftnull,
      :rightnull, :isposdef)
     f! = Symbol(f, :!)
     @eval function $f(t::AbstractTensorMap, p::Index2Tuple; kwargs...)

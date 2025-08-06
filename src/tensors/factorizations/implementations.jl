@@ -64,8 +64,6 @@ function leftnull!(t::AbstractTensorMap;
     end
 end
 
-leftpolar!(t::AbstractTensorMap; kwargs...) = left_polar!(t; kwargs...)
-
 function rightorth!(t::AbstractTensorMap;
                     alg::Union{LQ,LQpos,RQ,RQpos,SVD,SDD,Polar,Nothing}=nothing, kwargs...)
     InnerProductStyle(t) === EuclideanInnerProduct() ||
@@ -119,8 +117,6 @@ function rightnull!(t::AbstractTensorMap;
         throw(ArgumentError(lazy"Invalid `rightnull!` algorithm: $alg"))
     end
 end
-
-rightpolar!(t::AbstractTensorMap; kwargs...) = right_polar!(t; kwargs...)
 
 # Eigenvalue decomposition
 # ------------------------
