@@ -1,27 +1,12 @@
 # Algorithm selection
 # -------------------
-for f in (:eig_full, :eig_vals, :eig_trunc, :eigh_full, :eigh_vals, :eigh_trunc, :svd_full,
-          :svd_compact, :svd_vals, :svd_trunc)
-    @eval function copy_input(::typeof($f), t::AbstractTensorMap{<:BlasFloat})
-        T = factorisation_scalartype($f, t)
-        return copy_oftype(t, T)
-    end
-    f! = Symbol(f, :!)
-    # TODO: can we move this to MAK?
-    @eval function select_algorithm(::typeof($f!), t::AbstractTensorMap, alg::Alg=nothing;
-                                    kwargs...) where {Alg}
-        return select_algorithm($f!, typeof(t), alg; kwargs...)
-    end
-    @eval function select_algorithm(::typeof($f!), ::Type{T}, alg::Alg=nothing;
-                                    kwargs...) where {T<:AbstractTensorMap,Alg}
-        return select_algorithm($f!, blocktype(T), alg; kwargs...)
-    end
-end
-
-for f in (:qr, :lq, :svd, :eig, :eigh, :polar)
-    default_f_algorithm = Symbol(:default_, f, :_algorithm)
-    @eval function $default_f_algorithm(::Type{T}; kwargs...) where {T<:AbstractTensorMap}
-        return $default_f_algorithm(blocktype(T); kwargs...)
+for f! in
+    [:svd_compact!, :svd_full!, :svd_trunc!, :svd_vals!, :qr_compact!, :qr_full!, :qr_null!,
+     :lq_compact!, :lq_full!, :lq_null!, :eig_full!, :eig_trunc!, :eig_vals!, :eigh_full!,
+     :eigh_trunc!, :eigh_vals!, :left_polar!, :right_polar!]
+    @eval function default_algorithm(::typeof($f!), ::Type{T};
+                                     kwargs...) where {T<:AbstractTensorMap}
+        return default_algorithm($f!, blocktype(T); kwargs...)
     end
 end
 

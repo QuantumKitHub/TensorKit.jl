@@ -3,45 +3,6 @@ _kindof(::Union{QR,QRpos}) = :qr
 _kindof(::Union{LQ,LQpos}) = :lq
 _kindof(::Polar) = :polar
 
-for f! in (:svd_compact!, :svd_full!, :left_null_svd!, :right_null_svd!)
-    @eval function select_algorithm(::typeof($f!), t::T, alg::SVD;
-                                    kwargs...) where {T<:AbstractTensorMap}
-        isempty(kwargs) ||
-            throw(ArgumentError("Additional keyword arguments are not allowed"))
-        return LAPACK_QRIteration()
-    end
-    @eval function select_algorithm(::typeof($f!), t::AbstractTensorMap, alg::SVD;
-                                    kwargs...)
-        isempty(kwargs) ||
-            throw(ArgumentError("Additional keyword arguments are not allowed"))
-        return LAPACK_QRIteration()
-    end
-    @eval function select_algorithm(::typeof($f!), ::Type{T}, alg::SVD;
-                                    kwargs...) where {T<:AbstractTensorMap}
-        isempty(kwargs) ||
-            throw(ArgumentError("Additional keyword arguments are not allowed"))
-        return LAPACK_QRIteration()
-    end
-    @eval function select_algorithm(::typeof($f!), t::T, alg::SDD;
-                                    kwargs...) where {T}
-        isempty(kwargs) ||
-            throw(ArgumentError("Additional keyword arguments are not allowed"))
-        return LAPACK_DivideAndConquer()
-    end
-    @eval function select_algorithm(::typeof($f!), t::AbstractTensorMap, alg::SDD;
-                                    kwargs...)
-        isempty(kwargs) ||
-            throw(ArgumentError("Additional keyword arguments are not allowed"))
-        return LAPACK_DivideAndConquer()
-    end
-    @eval function select_algorithm(::typeof($f!), ::Type{T}, alg::SDD;
-                                    kwargs...) where {T<:AbstractTensorMap}
-        isempty(kwargs) ||
-            throw(ArgumentError("Additional keyword arguments are not allowed"))
-        return LAPACK_DivideAndConquer()
-    end
-end
-
 leftorth!(t::AbstractTensorMap; alg=nothing, kwargs...) = _leftorth!(t, alg; kwargs...)
 
 function _leftorth!(t::AbstractTensorMap, ::Nothing; kwargs...)

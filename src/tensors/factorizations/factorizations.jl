@@ -24,10 +24,7 @@ using MatrixAlgebraKit
 using MatrixAlgebraKit: AbstractAlgorithm, TruncatedAlgorithm, TruncationStrategy,
                         NoTruncation, TruncationKeepAbove, TruncationKeepBelow,
                         TruncationIntersection, TruncationKeepFiltered
-import MatrixAlgebraKit: select_algorithm,
-                         default_qr_algorithm, default_lq_algorithm,
-                         default_eig_algorithm, default_eigh_algorithm,
-                         default_svd_algorithm, default_polar_algorithm,
+import MatrixAlgebraKit: default_algorithm,
                          copy_input, check_input, initialize_output,
                          qr_compact!, qr_full!, qr_null!, lq_compact!, lq_full!, lq_null!,
                          svd_compact!, svd_full!, svd_trunc!,
