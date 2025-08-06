@@ -119,11 +119,13 @@ function initialize_output(::typeof(svd_compact!), t::AbstractTensorMap,
     return U, S, Vᴴ
 end
 
-function initialize_output(::typeof(svd_trunc!), t::AbstractTensorMap, alg::TruncatedAlgorithm)
+function initialize_output(::typeof(svd_trunc!), t::AbstractTensorMap,
+                           alg::TruncatedAlgorithm)
     return initialize_output(svd_compact!, t, alg.alg)
 end
 
-function initialize_output(::typeof(svd_vals!), t::AbstractTensorMap, alg::AbstractAlgorithm)
+function initialize_output(::typeof(svd_vals!), t::AbstractTensorMap,
+                           alg::AbstractAlgorithm)
     V_cod = infimum(fuse(codomain(t)), fuse(domain(t)))
     return DiagonalTensorMap{real(scalartype(t))}(undef, V_cod)
 end
@@ -199,16 +201,18 @@ function initialize_output(::typeof(eig_full!), t::AbstractTensorMap, ::Abstract
     return D, V
 end
 
-function initialize_output(::typeof(eigh_vals!), t::AbstractTensorMap, alg::AbstractAlgorithm)
+function initialize_output(::typeof(eigh_vals!), t::AbstractTensorMap,
+                           alg::AbstractAlgorithm)
     V_D = fuse(domain(t))
     T = real(scalartype(t))
-    D = DiagonalTensorMap{Tc}(undef, V_D)
+    return D = DiagonalTensorMap{Tc}(undef, V_D)
 end
 
-function initialize_output(::typeof(eig_vals!), t::AbstractTensorMap, alg::AbstractAlgorithm)
+function initialize_output(::typeof(eig_vals!), t::AbstractTensorMap,
+                           alg::AbstractAlgorithm)
     V_D = fuse(domain(t))
     Tc = complex(scalartype(t))
-    D = DiagonalTensorMap{Tc}(undef, V_D)
+    return D = DiagonalTensorMap{Tc}(undef, V_D)
 end
 
 function initialize_output(::typeof(eigh_trunc!), t::AbstractTensorMap,

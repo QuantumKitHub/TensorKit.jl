@@ -216,7 +216,8 @@ meaningless.
 """ isposdef(::AbstractTensorMap), isposdef!(::AbstractTensorMap)
 
 for f in
-    (:tsvd, :eig, :eigh, :eigen, :leftorth, :rightorth, :left_polar, :right_polar, :leftnull,
+    (:tsvd, :eig, :eigh, :eigen, :leftorth, :rightorth, :left_polar, :right_polar,
+     :leftnull,
      :rightnull, :isposdef)
     f! = Symbol(f, :!)
     @eval function $f(t::AbstractTensorMap, p::Index2Tuple; kwargs...)

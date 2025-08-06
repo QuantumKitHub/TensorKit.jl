@@ -5,7 +5,7 @@ _kindof(::Polar) = :polar
 
 leftorth!(t::AbstractTensorMap; alg=nothing, kwargs...) = _leftorth!(t, alg; kwargs...)
 
-function _leftorth!(t::AbstractTensorMap, alg::Nothing,; kwargs...)
+function _leftorth!(t::AbstractTensorMap, alg::Nothing, ; kwargs...)
     return isempty(kwargs) ? left_orth!(t) : left_orth!(t; trunc=(; kwargs...))
 end
 function _leftorth!(t::AbstractTensorMap, alg::Union{QL,QLpos}; kwargs...)
