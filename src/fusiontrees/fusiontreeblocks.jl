@@ -123,7 +123,8 @@ function bendright(src::FusionTreeBlock)
     return dst, U
 end
 
-# TODO: verify if this can be computed through an adjoint
+# !! note that this is more or less a copy of bendright through
+# (f1, f2) => conj(coeff) for ((f2, f1), coeff) in bendleft(src)
 function bendleft(src::FusionTreeBlock)
     uncoupled_dst = (
         (src.uncoupled[1]..., dual(src.uncoupled[2][end])),
@@ -133,9 +134,55 @@ function bendleft(src::FusionTreeBlock)
         (src.isdual[1]..., !(src.isdual[2][end])),
         TupleTools.front(src.isdual[2]),
     )
-    dst = FusionTreeBlock{sectortype(src)}(uncoupled_dst, isdual_dst)
+    I = sectortype(src)
+    N₁ = numin(src)
+    N₂ = numout(src)
+    @assert N₁ > 0
 
-    U = transformation_matrix(bendleft, dst, src)
+    dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst)
+    indexmap = fusiontreedict(I)(f => ind for (ind, f) in enumerate(fusiontrees(dst)))
+    U = zeros(sectorscalartype(I), length(dst), length(src))
+
+    for (col, (f₂, f₁)) in enumerate(fusiontrees(src))
+        c = f₁.coupled
+        a = N₁ == 1 ? leftone(f₁.uncoupled[1]) :
+            (N₁ == 2 ? f₁.uncoupled[1] : f₁.innerlines[end])
+        b = f₁.uncoupled[N₁]
+
+        uncoupled1 = TupleTools.front(f₁.uncoupled)
+        isdual1 = TupleTools.front(f₁.isdual)
+        inner1 = N₁ > 2 ? TupleTools.front(f₁.innerlines) : ()
+        vertices1 = N₁ > 1 ? TupleTools.front(f₁.vertices) : ()
+        f₁′ = FusionTree(uncoupled1, a, isdual1, inner1, vertices1)
+
+        uncoupled2 = (f₂.uncoupled..., dual(b))
+        isdual2 = (f₂.isdual..., !(f₁.isdual[N₁]))
+        inner2 = N₂ > 1 ? (f₂.innerlines..., c) : ()
+
+        coeff₀ = sqrtdim(c) * invsqrtdim(a)
+        if f₁.isdual[N₁]
+            coeff₀ *= conj(frobeniusschur(dual(b)))
+        end
+        if FusionStyle(I) isa MultiplicityFreeFusion
+            coeff = coeff₀ * Bsymbol(a, b, c)
+            vertices2 = N₂ > 0 ? (f₂.vertices..., 1) : ()
+            f₂′ = FusionTree(uncoupled2, a, isdual2, inner2, vertices2)
+            row = indexmap[(f₂′, f₁′)]
+            @inbounds U[row, col] = conj(coeff)
+        else
+            Bmat = Bsymbol(a, b, c)
+            μ = N₁ > 1 ? f₁.vertices[end] : 1
+            for ν in axes(Bmat, 2)
+                coeff = coeff₀ * Bmat[μ, ν]
+                iszero(coeff) && continue
+                vertices2 = N₂ > 0 ? (f₂.vertices..., ν) : ()
+                f₂′ = FusionTree(uncoupled2, a, isdual2, inner2, vertices2)
+                row = indexmap[(f₂′, f₁′)]
+                @inbounds U[row, col] = conj(coeff)
+            end
+        end
+    end
+
     return dst, U
 end
 
