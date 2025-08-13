@@ -191,13 +191,66 @@ function foldright(src::FusionTreeBlock)
         Base.tail(src.uncoupled[1]),
         (dual(first(src.uncoupled[1])), src.uncoupled[2]...),
     )
-    isdual_dst = (
-        Base.tail(src.isdual[1]),
-        (!first(src.isdual[1]), src.isdual[2]...),
-    )
+    isdual_dst = (Base.tail(src.isdual[1]), (!first(src.isdual[1]), src.isdual[2]...))
+    I = sectortype(src)
+    N₁ = numout(src)
+    N₂ = numin(src)
+    @assert N₁ > 0
     dst = FusionTreeBlock{sectortype(src)}(uncoupled_dst, isdual_dst)
 
-    U = transformation_matrix(foldright, dst, src)
+    dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst)
+    indexmap = fusiontreedict(I)(f => ind for (ind, f) in enumerate(fusiontrees(dst)))
+    U = zeros(sectorscalartype(I), length(dst), length(src))
+
+    for (col, (f₁, f₂)) in enumerate(fusiontrees(src))
+        # map first splitting vertex (a, b)<-c to fusion vertex b<-(dual(a), c)
+        a = f₁.uncoupled[1]
+        isduala = f₁.isdual[1]
+        factor = sqrtdim(a)
+        if !isduala
+            factor *= conj(frobeniusschur(a))
+        end
+        c1 = dual(a)
+        c2 = f₁.coupled
+        uncoupled = Base.tail(f₁.uncoupled)
+        isdual = Base.tail(f₁.isdual)
+        if FusionStyle(I) isa UniqueFusion
+            c = first(c1 ⊗ c2)
+            fl = FusionTree{I}(Base.tail(f₁.uncoupled), c, Base.tail(f₁.isdual))
+            fr = FusionTree{I}((c1, f₂.uncoupled...), c, (!isduala, f₂.isdual...))
+            row = indexmap[(fl, fr)]
+            @inbounds U[row, col] = factor
+        else
+            if N₁ == 1
+                cset = (leftone(c1),) # or rightone(a)
+            elseif N₁ == 2
+                cset = (f₁.uncoupled[2],)
+            else
+                cset = ⊗(Base.tail(f₁.uncoupled)...)
+            end
+            for c in c1 ⊗ c2
+                c ∈ cset || continue
+                for μ in 1:Nsymbol(c1, c2, c)
+                    fc = FusionTree((c1, c2), c, (!isduala, false), (), (μ,))
+                    for (fl′, coeff1) in insertat(fc, 2, f₁)
+                        N₁ > 1 && !isone(fl′.innerlines[1]) && continue
+                        coupled = fl′.coupled
+                        uncoupled = Base.tail(Base.tail(fl′.uncoupled))
+                        isdual = Base.tail(Base.tail(fl′.isdual))
+                        inner = N₁ <= 3 ? () : Base.tail(Base.tail(fl′.innerlines))
+                        vertices = N₁ <= 2 ? () : Base.tail(Base.tail(fl′.vertices))
+                        fl = FusionTree{I}(uncoupled, coupled, isdual, inner, vertices)
+                        for (fr, coeff2) in insertat(fc, 2, f₂)
+                            coeff = factor * coeff1 * conj(coeff2)
+                            row = indexmap[(fl, fr)]
+                            @inbounds U[row, col] = coeff
+                        end
+                    end
+                end
+            end
+        end
+    end
+
     return dst, U
 end
 
