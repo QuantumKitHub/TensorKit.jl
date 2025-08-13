@@ -262,7 +262,7 @@ function braid(src::FusionTreeBlock{I, N, 0}, p::NTuple{N, Int}, levels::NTuple{
         isdual′ = TupleTools._permute(src.isdual[1], p)
         dst = FusionTreeBlock{I}(uncoupled′, isdual′)
         U = transformation_matrix(dst, src) do (f₁, f₂)
-            return ((f₁′, f₂) => c for (f₁, c) in braid(f₁, p, levels))
+            return ((f₁′, f₂) => c for (f₁′, c) in braid(f₁, p, levels))
         end
     else
         dst, U = repartition(src, N) # TODO: can we avoid this?
