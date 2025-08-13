@@ -356,7 +356,6 @@ function foldright((f₁, f₂)::FusionTreePair{I, N₁, N₂}) where {I, N₁, 
         fr = FusionTree{I}((c1, f₂.uncoupled...), c, (!isduala, f₂.isdual...))
         return fusiontreedict(I)((fl, fr) => factor)
     else
-        hasmultiplicities = FusionStyle(a) isa GenericFusion
         local newtrees
         if N₁ == 1
             cset = (leftunit(c1),) # or rightunit(a)
