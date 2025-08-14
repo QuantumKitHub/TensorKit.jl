@@ -1023,7 +1023,8 @@ respectively, which determines how indices braid. In particular, if `i` and `j` 
 levels[j]`. This does not allow to encode the most general braid, but a general braid can
 be obtained by combining such operations.
 """
-function braid((f₁, f₂)::FusionTreePair, (p1, p2)::Index2Tuple, (levels1, levels2)::Index2Tuple)
+function braid((f₁, f₂)::FusionTreePair, (p1, p2)::Index2Tuple,
+               (levels1, levels2)::Index2Tuple)
     @assert length(f₁) + length(f₂) == length(p1) + length(p2)
     @assert length(f₁) == length(levels1) && length(f₂) == length(levels2)
     @assert TupleTools.isperm((p1..., p2...))
