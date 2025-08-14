@@ -489,9 +489,9 @@ outgoing (`f₁`) and incoming sectors (`f₂`) respectively (with identical cou
 repartitioning the tree by bending incoming to outgoing sectors (or vice versa) in order to
 have `N` outgoing sectors.
 """
-@inline function repartition((f₁, f₂)::FusionTreePair{I, N₁, N₂}, N::Int) where {I, N₁, N₂}
+@inline function repartition((f₁, f₂)::FusionTreePair, N::Int)
     f₁.coupled == f₂.coupled || throw(SectorMismatch())
-    @assert 0 <= N <= N₁ + N₂
+    @assert 0 <= N <= length(f₁) + length(f₂)
     return _recursive_repartition((f₁, f₂), Val(N))
 end
 
@@ -1008,8 +1008,7 @@ end
 
 # braid double fusion tree
 """
-    braid((f₁, f₂)::FusionTreePair{I}, (p1, p2)::Index2Tuple{N₁,N₂},
-          (levels1, levels2)::Index2Tuple) where {I,N₁,N₂}
+    braid((f₁, f₂)::FusionTreePair, (p1, p2)::Index2Tuple, (levels1, levels2)::Index2Tuple)
         -> <:AbstractDict{<:FusionTreePair{I, N₁, N₂}}, <:Number}
 
 Input is a fusion-splitting tree pair that describes the fusion of a set of incoming
@@ -1024,11 +1023,8 @@ respectively, which determines how indices braid. In particular, if `i` and `j` 
 levels[j]`. This does not allow to encode the most general braid, but a general braid can
 be obtained by combining such operations.
 """
-function braid(
-        (f₁, f₂)::FusionTreePair{I}, (p1, p2)::Index2Tuple{N₁, N₂},
-        (levels1, levels2)::Index2Tuple
-    ) where {I, N₁, N₂}
-    @assert length(f₁) + length(f₂) == N₁ + N₂
+function braid((f₁, f₂)::FusionTreePair, (p1, p2)::Index2Tuple, (levels1, levels2)::Index2Tuple)
+    @assert length(f₁) + length(f₂) == length(p1) + length(p2)
     @assert length(f₁) == length(levels1) && length(f₂) == length(levels2)
     @assert TupleTools.isperm((p1..., p2...))
     return fsbraid(((f₁, f₂), (p1, p2), (levels1, levels2)))
@@ -1064,7 +1060,7 @@ function CacheStyle(::typeof(fsbraid), k::FSBraidKey{I}) where {I <: Sector}
 end
 
 """
-    permute((f₁, f₂)::FusionTreePair{I}, (p1, p2)::Index2Tuple{N₁, N₂}) where {I, N₁, N₂}
+    permute((f₁, f₂)::FusionTreePair, (p1, p2)::Index2Tuple)
         -> <:AbstractDict{<:FusionTreePair{I, N₁, N₂}}, <:Number}
 
 Input is a double fusion tree that describes the fusion of a set of incoming uncoupled
@@ -1074,8 +1070,8 @@ outgoing (`t1`) and incoming sectors (`t2`) respectively (with identical coupled
 repartitioning and permuting the tree such that sectors `p1` become outgoing and sectors
 `p2` become incoming.
 """
-function permute((f₁, f₂)::FusionTreePair{I}, (p1, p2)::Index2Tuple{N₁, N₂}) where {I, N₁, N₂}
-    @assert BraidingStyle(I) isa SymmetricBraiding
+function permute((f₁, f₂)::FusionTreePair, (p1, p2)::Index2Tuple)
+    @assert BraidingStyle(sectortype(f₁)) isa SymmetricBraiding
     levels1 = ntuple(identity, length(f₁))
     levels2 = length(f₁) .+ ntuple(identity, length(f₂))
     return braid((f₁, f₂), (p1, p2), (levels1, levels2))
