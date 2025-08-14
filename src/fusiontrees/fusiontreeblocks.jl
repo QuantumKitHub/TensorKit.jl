@@ -10,9 +10,16 @@ function FusionTreeBlock{I}(
     F₂ = fusiontreetype(I, N₂)
     trees = Vector{Tuple{F₁, F₂}}(undef, 0)
 
-    cleft = N₁ == 0 ? (one(I),) : ⊗(uncoupled[1]...)
-    cright = N₂ == 0 ? (one(I),) : ⊗(uncoupled[2]...)
-    cs = sort!(collect(intersect(cleft, cright)))
+    if N₁ == N₂ == 0
+        return FusionTreeBlock(trees)
+    elseif N₁ == 0
+        cs = sort!(collect(filter(isone, ⊗(uncoupled[2]...))))
+    elseif N₂ == 0
+        cs = sort!(collect(filter(isone, ⊗(uncoupled[1]...))))
+    else
+        cs = sort!(collect(intersect(⊗(uncoupled[1]...), ⊗(uncoupled[2]...))))
+    end
+
     for c in cs
         for f₁ in fusiontrees(uncoupled[1], c, isdual[1]),
                 f₂ in fusiontrees(uncoupled[2], c, isdual[2])
