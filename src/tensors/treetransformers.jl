@@ -66,34 +66,96 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
     I = sectortype(Vsrc)
     T = sectorscalartype(I)
     N = numind(Vdst)
-    data = Vector{_GenericTransformerData{T, N}}()
 
     isdual_src = (map(isdual, codomain(Vsrc).spaces), map(isdual, domain(Vsrc).spaces))
-    for cod_uncoupled_src in sectors(codomain(Vsrc)),
-            dom_uncoupled_src in sectors(domain(Vsrc))
 
-        fs_src = FusionTreeBlock{I}((cod_uncoupled_src, dom_uncoupled_src), isdual_src)
-        trees_src = fusiontrees(fs_src)
-        isempty(trees_src) && continue
+    nthreads = get_num_transformer_threads()
+    if nthreads > 1
+        fusiontreeblocks = Vector{FusionTreeBlock{I, N₁, N₂, fusiontreetype(I, N₁, N₂)}}()
+        for cod_uncoupled_src in sectors(codomain(Vsrc)),
+                dom_uncoupled_src in sectors(domain(Vsrc))
 
-        fs_dst, U = transform(fs_src)
-        matrix = copy(transpose(U)) # TODO: should we avoid this
+            fs_src = FusionTreeBlock{I}((cod_uncoupled_src, dom_uncoupled_src), isdual_src)
+            trees_src = fusiontrees(fs_src)
+            if !isempty(trees_src)
+                push!(fusiontreeblocks, fs_src)
+            end
+        end
 
-        inds_src = map(Base.Fix1(getindex, structure_src.fusiontreeindices), trees_src)
-        trees_dst = fusiontrees(fs_dst)
-        inds_dst = map(Base.Fix1(getindex, structure_dst.fusiontreeindices), trees_dst)
+        data = Vector{_GenericTransformerData{T, N}}(undef, length(fusiontreeblocks))
+        counter = Threads.Atomic{Int}(1)
+        Threads.@sync for _ in 1:min(nthreads, length(fusiontreeblocks))
+            Threads.@spawn begin
+                while true
+                    local_counter = Threads.atomic_add!(counter, 1)
+                    local_counter > nblocks && break
+                    fs_src = fusiontreeblocks[local_counter]
+                    fs_dst, U = transform(fs_src)
+                    matrix = copy(transpose(U)) # TODO: should we avoid this
 
-        # size is shared between blocks, so repack:
-        # from [(sz, strides, offset), ...] to (sz, [(strides, offset), ...])
-        sz_src, newstructs_src = repack_transformer_structure(fusionstructure_src, inds_src)
-        sz_dst, newstructs_dst = repack_transformer_structure(fusionstructure_dst, inds_dst)
+                    inds_src = map(
+                        Base.Fix1(getindex, structure_src.fusiontreeindices), trees_src
+                    )
+                    trees_dst = fusiontrees(fs_dst)
+                    inds_dst = map(
+                        Base.Fix1(getindex, structure_dst.fusiontreeindices), trees_dst
+                    )
 
-        @debug(
-            "Created recoupling block for uncoupled: $uncoupled",
-            sz = size(matrix), sparsity = count(!iszero, matrix) / length(matrix)
-        )
+                    # size is shared between blocks, so repack:
+                    # from [(sz, strides, offset), ...] to (sz, [(strides, offset), ...])
+                    sz_src, newstructs_src = repack_transformer_structure(
+                        fusionstructure_src, inds_src
+                    )
+                    sz_dst, newstructs_dst = repack_transformer_structure(
+                        fusionstructure_dst, inds_dst
+                    )
 
-        push!(data, (matrix, (sz_dst, newstructs_dst), (sz_src, newstructs_src)))
+                    @debug(
+                        "Created recoupling block for uncoupled: $uncoupled",
+                        sz = size(matrix),
+                        sparsity = count(!iszero, matrix) / length(matrix)
+                    )
+
+                    data[local_counter] = (
+                        matrix, (sz_dst, newstructs_dst), (sz_src, newstructs_src),
+                    )
+                end
+            end
+        end
+    else
+        data = Vector{_GenericTransformerData{T, N}}()
+
+        isdual_src = (map(isdual, codomain(Vsrc).spaces), map(isdual, domain(Vsrc).spaces))
+        for cod_uncoupled_src in sectors(codomain(Vsrc)),
+                dom_uncoupled_src in sectors(domain(Vsrc))
+
+            fs_src = FusionTreeBlock{I}((cod_uncoupled_src, dom_uncoupled_src), isdual_src)
+            trees_src = fusiontrees(fs_src)
+            isempty(trees_src) && continue
+
+            fs_dst, U = transform(fs_src)
+            matrix = copy(transpose(U)) # TODO: should we avoid this
+
+            inds_src = map(Base.Fix1(getindex, structure_src.fusiontreeindices), trees_src)
+            trees_dst = fusiontrees(fs_dst)
+            inds_dst = map(Base.Fix1(getindex, structure_dst.fusiontreeindices), trees_dst)
+
+            # size is shared between blocks, so repack:
+            # from [(sz, strides, offset), ...] to (sz, [(strides, offset), ...])
+            sz_src, newstructs_src = repack_transformer_structure(
+                fusionstructure_src, inds_src
+            )
+            sz_dst, newstructs_dst = repack_transformer_structure(
+                fusionstructure_dst, inds_dst
+            )
+
+            @debug(
+                "Created recoupling block for uncoupled: $uncoupled",
+                sz = size(matrix), sparsity = count(!iszero, matrix) / length(matrix)
+            )
+
+            push!(data, (matrix, (sz_dst, newstructs_dst), (sz_src, newstructs_src)))
+        end
     end
 
     transformer = GenericTreeTransformer{T, N}(data)
