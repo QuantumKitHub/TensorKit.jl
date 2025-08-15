@@ -158,6 +158,9 @@ function fusiontreetype(::Type{I}, N::Int) where {I <: Sector}
         FusionTree{I, N, N - 2, N - 1}
     end
 end
+function fusiontreetype(::Type{I}, N₁::Int, N₂::Int) where {I<:Sector}
+    return Tuple{fusiontreetype(I, N₁),fusiontreetype(I, N₂)}
+end
 
 # converting to actual array
 function Base.convert(A::Type{<:AbstractArray}, f::FusionTree{I, 0}) where {I}
