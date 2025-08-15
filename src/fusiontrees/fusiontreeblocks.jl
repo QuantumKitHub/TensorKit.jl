@@ -239,6 +239,7 @@ function foldright(src::FusionTreeBlock)
                 c ∈ cset || continue
                 for μ in 1:Nsymbol(c1, c2, c)
                     fc = FusionTree((c1, c2), c, (!isduala, false), (), (μ,))
+                    frs_coeffs = insertat(fc, 2, f₂)
                     for (fl′, coeff1) in insertat(fc, 2, f₁)
                         N₁ > 1 && !isone(fl′.innerlines[1]) && continue
                         coupled = fl′.coupled
@@ -247,7 +248,7 @@ function foldright(src::FusionTreeBlock)
                         inner = N₁ <= 3 ? () : Base.tail(Base.tail(fl′.innerlines))
                         vertices = N₁ <= 2 ? () : Base.tail(Base.tail(fl′.vertices))
                         fl = FusionTree{I}(uncoupled, coupled, isdual, inner, vertices)
-                        for (fr, coeff2) in insertat(fc, 2, f₂)
+                        for (fr, coeff2) in frs_coeffs
                             coeff = factor * coeff1 * conj(coeff2)
                             row = indexmap[(fl, fr)]
                             @inbounds U[row, col] = coeff
@@ -311,6 +312,7 @@ function foldleft(src::FusionTreeBlock)
                 c ∈ cset || continue
                 for μ in 1:Nsymbol(c1, c2, c)
                     fc = FusionTree((c1, c2), c, (!isduala, false), (), (μ,))
+                    fr_coeffs = insertat(fc, 2, f₂)
                     for (fl′, coeff1) in insertat(fc, 2, f₁)
                         N₁ > 1 && !isone(fl′.innerlines[1]) && continue
                         coupled = fl′.coupled
@@ -319,7 +321,7 @@ function foldleft(src::FusionTreeBlock)
                         inner = N₁ <= 3 ? () : Base.tail(Base.tail(fl′.innerlines))
                         vertices = N₁ <= 2 ? () : Base.tail(Base.tail(fl′.vertices))
                         fl = FusionTree{I}(uncoupled, coupled, isdual, inner, vertices)
-                        for (fr, coeff2) in insertat(fc, 2, f₂)
+                        for (fr, coeff2) in fr_coeffs
                             coeff = factor * coeff1 * conj(coeff2)
                             row = indexmap[(fr, fl)]
                             @inbounds U[row, col] = conj(coeff)

@@ -368,6 +368,7 @@ function foldright((f₁, f₂)::FusionTreePair{I, N₁, N₂}) where {I, N₁, 
             c ∈ cset || continue
             for μ in 1:Nsymbol(c1, c2, c)
                 fc = FusionTree((c1, c2), c, (!isduala, false), (), (μ,))
+                fr_coeffs = insertat(fc, 2, f₂)
                 for (fl′, coeff1) in insertat(fc, 2, f₁)
                     N₁ > 1 && !isunit(fl′.innerlines[1]) && continue
                     coupled = fl′.coupled
@@ -376,7 +377,7 @@ function foldright((f₁, f₂)::FusionTreePair{I, N₁, N₂}) where {I, N₁, 
                     inner = N₁ <= 3 ? () : Base.tail(Base.tail(fl′.innerlines))
                     vertices = N₁ <= 2 ? () : Base.tail(Base.tail(fl′.vertices))
                     fl = FusionTree{I}(uncoupled, coupled, isdual, inner, vertices)
-                    for (fr, coeff2) in insertat(fc, 2, f₂)
+                    for (fr, coeff2) in fr_coeffs
                         coeff = factor * coeff1 * conj(coeff2)
                         if (@isdefined newtrees)
                             newtrees[(fl, fr)] = get(newtrees, (fl, fr), zero(coeff)) +
