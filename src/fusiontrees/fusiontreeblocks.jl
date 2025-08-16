@@ -482,9 +482,9 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
             inner′ = inner
             vertices′ = vertices
             if i > 1 # we also need to alter innerlines and vertices
-                inner′ = TupleTools.setindex(inner,
-                                             inner_extended[isone(a) ? (i + 1) : (i - 1)],
-                                             i - 1)
+                inner′ = TupleTools.setindex(
+                    inner, inner_extended[isone(a) ? (i + 1) : (i - 1)], i - 1
+                )
                 vertices′ = TupleTools.setindex(vertices′, vertices[i], i - 1)
                 vertices′ = TupleTools.setindex(vertices′, vertices[i - 1], i)
             end
@@ -527,14 +527,14 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
         e = inner_extended[i + 1]
         if FusionStyle(I) isa UniqueFusion
             c′ = first(a ⊗ d)
-            coeff = oftype(oneT,
-                           if inv
-                               conj(Rsymbol(d, c, e) * Fsymbol(d, a, b, e, c′, c)) *
-                               Rsymbol(d, a, c′)
-                           else
-                               Rsymbol(c, d, e) *
-                               conj(Fsymbol(d, a, b, e, c′, c) * Rsymbol(a, d, c′))
-                           end)
+            coeff = oftype(
+                oneT,
+                if inv
+                    conj(Rsymbol(d, c, e) * Fsymbol(d, a, b, e, c′, c)) * Rsymbol(d, a, c′)
+                else
+                    Rsymbol(c, d, e) * conj(Fsymbol(d, a, b, e, c′, c) * Rsymbol(a, d, c′))
+                end
+            )
             inner′ = TupleTools.setindex(inner, c′, i - 1)
             f′ = FusionTree{I}(uncoupled′, coupled′, isdual′, inner′)
             row = indexmap[(f′, f₂)]
@@ -542,14 +542,14 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
         elseif FusionStyle(I) isa SimpleFusion
             cs = collect(I, intersect(a ⊗ d, e ⊗ conj(b)))
             for c′ in cs
-                coeff = oftype(oneT,
-                               if inv
-                                   conj(Rsymbol(d, c, e) * Fsymbol(d, a, b, e, c′, c)) *
-                                   Rsymbol(d, a, c′)
-                               else
-                                   Rsymbol(c, d, e) *
-                                   conj(Fsymbol(d, a, b, e, c′, c) * Rsymbol(a, d, c′))
-                               end)
+                coeff = oftype(
+                    oneT,
+                    if inv
+                        conj(Rsymbol(d, c, e) * Fsymbol(d, a, b, e, c′, c)) * Rsymbol(d, a, c′)
+                    else
+                        Rsymbol(c, d, e) * conj(Fsymbol(d, a, b, e, c′, c) * Rsymbol(a, d, c′))
+                    end
+                )
                 iszero(coeff) && continue
                 inner′ = TupleTools.setindex(inner, c′, i - 1)
                 f′ = FusionTree{I}(uncoupled′, coupled′, isdual′, inner′)
@@ -569,7 +569,7 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
                         coeff = zero(oneT)
                         for ρ in 1:Nsymbol(d, c, e), κ in 1:Nsymbol(d, a, c′)
                             coeff += Rmat1[ν, ρ] * conj(Fmat[κ, λ, μ, ρ]) *
-                                     conj(Rmat2[σ, κ])
+                                conj(Rmat2[σ, κ])
                         end
                         iszero(coeff) && continue
                         vertices′ = TupleTools.setindex(vertices, σ, i - 1)
@@ -619,7 +619,7 @@ const _FSBraidKey{I, N₁, N₂} = Tuple{<:FusionTreeBlock{I}, Index2Tuple{N₁,
 
 @cached function _fsbraid(
         key::_FSBraidKey{I, N₁, N₂}
-    )::Tuple{FusionTreeBlock{I, N₁, N₂}, Matrix{sectorscalartype(I)}} where {I, N₁, N₂}
+    )::Tuple{FusionTreeBlock{I, N₁, N₂, fusiontreetype(I, N₁, N₂)}, Matrix{sectorscalartype(I)}} where {I, N₁, N₂}
     src, (p1, p2), (l1, l2) = key
 
     p = linearizepermutation(p1, p2, numout(src), numin(src))

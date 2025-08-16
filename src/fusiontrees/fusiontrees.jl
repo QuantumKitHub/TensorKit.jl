@@ -149,7 +149,7 @@ end
 Base.:(==)(f₁::FusionTree, f₂::FusionTree) = false
 
 # Facilitate getting correct fusion tree types
-function fusiontreetype(::Type{I}, N::Int) where {I <: Sector}
+Base.@assume_effects :foldable function fusiontreetype(::Type{I}, N::Int) where {I <: Sector}
     return if N === 0
         FusionTree{I, 0, 0, 0}
     elseif N === 1
@@ -158,7 +158,7 @@ function fusiontreetype(::Type{I}, N::Int) where {I <: Sector}
         FusionTree{I, N, N - 2, N - 1}
     end
 end
-function fusiontreetype(::Type{I}, N₁::Int, N₂::Int) where {I <: Sector}
+Base.@assume_effects :foldable function fusiontreetype(::Type{I}, N₁::Int, N₂::Int) where {I <: Sector}
     return Tuple{fusiontreetype(I, N₁), fusiontreetype(I, N₂)}
 end
 

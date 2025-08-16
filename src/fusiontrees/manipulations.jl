@@ -890,7 +890,8 @@ function artin_braid(f::FusionTree{I, N}, i; inv::Bool = false) where {I, N}
         return fusiontreedict(I)(f′ => coeff)
     elseif FusionStyle(I) isa SimpleFusion
         local newtrees
-        for c′ in intersect(a ⊗ d, e ⊗ dual(b))
+        cs = collect(I, intersect(a ⊗ d, e ⊗ conj(b)))
+        for c′ in cs
             coeff = oftype(
                 oneT,
                 if inv
@@ -911,7 +912,8 @@ function artin_braid(f::FusionTree{I, N}, i; inv::Bool = false) where {I, N}
         return newtrees
     else # GenericFusion
         local newtrees
-        for c′ in intersect(a ⊗ d, e ⊗ dual(b))
+        cs = collect(I, intersect(a ⊗ d, e ⊗ conj(b)))
+        for c′ in cs
             Rmat1 = inv ? Rsymbol(d, c, e)' : Rsymbol(c, d, e)
             Rmat2 = inv ? Rsymbol(d, a, c′)' : Rsymbol(a, d, c′)
             Fmat = Fsymbol(d, a, b, e, c′, c)

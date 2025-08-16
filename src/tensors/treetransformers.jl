@@ -66,8 +66,12 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
     I = sectortype(Vsrc)
     T = sectorscalartype(I)
     N = numind(Vdst)
+    N₁ = numout(Vsrc)
+    N₂ = numin(Vsrc)
 
     isdual_src = (map(isdual, codomain(Vsrc).spaces), map(isdual, domain(Vsrc).spaces))
+
+    data = Vector{_GenericTransformerData{T, N}}()
 
     nthreads = get_num_transformer_threads()
     if nthreads > 1
@@ -82,7 +86,7 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
             end
         end
 
-        data = Vector{_GenericTransformerData{T, N}}(undef, length(fusiontreeblocks))
+        resize!(data, length(fusiontreeblocks))
         counter = Threads.Atomic{Int}(1)
         Threads.@sync for _ in 1:min(nthreads, length(fusiontreeblocks))
             Threads.@spawn begin
@@ -110,21 +114,15 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
                         fusionstructure_dst, inds_dst
                     )
 
-                    @debug(
-                        "Created recoupling block for uncoupled: $uncoupled",
-                        sz = size(matrix),
-                        sparsity = count(!iszero, matrix) / length(matrix)
-                    )
-
-                    data[local_counter] = (
-                        matrix, (sz_dst, newstructs_dst), (sz_src, newstructs_src),
+                    data1[local_counter] = (
+                        matrix, (sz_dst, newstructs_dst),
+                        (sz_src, newstructs_src),
                     )
                 end
             end
         end
+        transformer = GenericTreeTransformer{T, N}(data)
     else
-        data = Vector{_GenericTransformerData{T, N}}()
-
         isdual_src = (map(isdual, codomain(Vsrc).spaces), map(isdual, domain(Vsrc).spaces))
         for cod_uncoupled_src in sectors(codomain(Vsrc)),
                 dom_uncoupled_src in sectors(domain(Vsrc))
@@ -149,16 +147,10 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
                 fusionstructure_dst, inds_dst
             )
 
-            @debug(
-                "Created recoupling block for uncoupled: $uncoupled",
-                sz = size(matrix), sparsity = count(!iszero, matrix) / length(matrix)
-            )
-
             push!(data, (matrix, (sz_dst, newstructs_dst), (sz_src, newstructs_src)))
         end
+        transformer = GenericTreeTransformer{T, N}(data)
     end
-
-    transformer = GenericTreeTransformer{T, N}(data)
 
     # sort by (approximate) weight to facilitate multi-threading strategies
     sort!(transformer)
@@ -167,9 +159,9 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
 
     @debug(
         "TreeTransformer for $Vsrc to $Vdst via $p",
-        nblocks = length(data),
-        sz_median = size(data[cld(end, 2)][1], 1),
-        sz_max = size(data[1][1], 1),
+        nblocks = length(transformer.data),
+        sz_median = size(transformer.data[cld(end, 2)][1], 1),
+        sz_max = size(transformer.data[1][1], 1),
         Δt
     )
 
