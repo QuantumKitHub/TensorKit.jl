@@ -60,7 +60,6 @@ function treeindex_map(fs::FusionTreeBlock)
     return fusiontreedict(I)(f => ind for (ind, f) in enumerate(fusiontrees(fs)))
 end
 
-
 # Manipulations
 # -------------
 function transformation_matrix(transform, dst::FusionTreeBlock{I}, src::FusionTreeBlock{I}) where {I}
@@ -463,10 +462,128 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
     isdual′ = TupleTools.setindex(isdual′, isdual[i + 1], i)
     dst = FusionTreeBlock{I}((uncoupled′, ()), (isdual′, ()))
 
-    # TODO: do we want to rewrite `artin_braid` to take double trees instead?
-    U = transformation_matrix(dst, src) do (f₁, f₂)
-        return ((f₁′, f₂) => c for (f₁′, c) in artin_braid(f₁, i; inv))
+    indexmap = treeindex_map(dst)
+    U = zeros(sectorscalartype(I), length(dst), length(src))
+
+    for (col, (f, f₂)) in enumerate(fusiontrees(src))
+        a, b = uncoupled[i], uncoupled[i + 1]
+        uncoupled′ = TupleTools.setindex(uncoupled, b, i)
+        uncoupled′ = TupleTools.setindex(uncoupled′, a, i + 1)
+        coupled′ = f.coupled
+        isdual′ = TupleTools.setindex(f.isdual, f.isdual[i], i + 1)
+        isdual′ = TupleTools.setindex(isdual′, f.isdual[i + 1], i)
+        inner = f.innerlines
+        inner_extended = (uncoupled[1], inner..., coupled′)
+        vertices = f.vertices
+        oneT = one(sectorscalartype(I))
+
+        if isone(uncoupled[i]) || isone(uncoupled[i + 1])
+            # braiding with trivial sector: simple and always possible
+            inner′ = inner
+            vertices′ = vertices
+            if i > 1 # we also need to alter innerlines and vertices
+                inner′ = TupleTools.setindex(inner,
+                                             inner_extended[isone(a) ? (i + 1) : (i - 1)],
+                                             i - 1)
+                vertices′ = TupleTools.setindex(vertices′, vertices[i], i - 1)
+                vertices′ = TupleTools.setindex(vertices′, vertices[i - 1], i)
+            end
+            f′ = FusionTree{I}(uncoupled′, coupled′, isdual′, inner′, vertices′)
+            row = indexmap[(f′, f₂)]
+            @inbounds U[row, col] = oneT
+            continue
+        end
+
+        BraidingStyle(I) isa NoBraiding &&
+            throw(SectorMismatch("Cannot braid sectors $(uncoupled[i]) and $(uncoupled[i + 1])"))
+
+        if i == 1
+            c = N > 2 ? inner[1] : coupled′
+            if FusionStyle(I) isa MultiplicityFreeFusion
+                R = oftype(oneT, (inv ? conj(Rsymbol(b, a, c)) : Rsymbol(a, b, c)))
+                f′ = FusionTree{I}(uncoupled′, coupled′, isdual′, inner, vertices)
+                row = indexmap[(f′, f₂)]
+                @inbounds U[row, col] = R
+            else # GenericFusion
+                μ = vertices[1]
+                Rmat = inv ? Rsymbol(b, a, c)' : Rsymbol(a, b, c)
+                local newtrees
+                for ν in axes(Rmat, 2)
+                    R = oftype(oneT, Rmat[μ, ν])
+                    iszero(R) && continue
+                    vertices′ = TupleTools.setindex(vertices, ν, 1)
+                    f′ = FusionTree{I}(uncoupled′, coupled′, isdual′, inner, vertices′)
+                    row = indexmap[(f′, f₂)]
+                    @inbounds U[row, col] = R
+                end
+            end
+            continue
+        end
+        # case i > 1: other naming convention
+        b = uncoupled[i]
+        d = uncoupled[i + 1]
+        a = inner_extended[i - 1]
+        c = inner_extended[i]
+        e = inner_extended[i + 1]
+        if FusionStyle(I) isa UniqueFusion
+            c′ = first(a ⊗ d)
+            coeff = oftype(oneT,
+                           if inv
+                               conj(Rsymbol(d, c, e) * Fsymbol(d, a, b, e, c′, c)) *
+                               Rsymbol(d, a, c′)
+                           else
+                               Rsymbol(c, d, e) *
+                               conj(Fsymbol(d, a, b, e, c′, c) * Rsymbol(a, d, c′))
+                           end)
+            inner′ = TupleTools.setindex(inner, c′, i - 1)
+            f′ = FusionTree{I}(uncoupled′, coupled′, isdual′, inner′)
+            row = indexmap[(f′, f₂)]
+            @inbounds U[row, col] = coeff
+        elseif FusionStyle(I) isa SimpleFusion
+            cs = collect(I, intersect(a ⊗ d, e ⊗ conj(b)))
+            for c′ in cs
+                coeff = oftype(oneT,
+                               if inv
+                                   conj(Rsymbol(d, c, e) * Fsymbol(d, a, b, e, c′, c)) *
+                                   Rsymbol(d, a, c′)
+                               else
+                                   Rsymbol(c, d, e) *
+                                   conj(Fsymbol(d, a, b, e, c′, c) * Rsymbol(a, d, c′))
+                               end)
+                iszero(coeff) && continue
+                inner′ = TupleTools.setindex(inner, c′, i - 1)
+                f′ = FusionTree{I}(uncoupled′, coupled′, isdual′, inner′)
+                row = indexmap[(f′, f₂)]
+                @inbounds U[row, col] = coeff
+            end
+        else # GenericFusion
+            cs = collect(I, intersect(a ⊗ d, e ⊗ conj(b)))
+            for c′ in cs
+                Rmat1 = inv ? Rsymbol(d, c, e)' : Rsymbol(c, d, e)
+                Rmat2 = inv ? Rsymbol(d, a, c′)' : Rsymbol(a, d, c′)
+                Fmat = Fsymbol(d, a, b, e, c′, c)
+                μ = vertices[i - 1]
+                ν = vertices[i]
+                for σ in 1:Nsymbol(a, d, c′)
+                    for λ in 1:Nsymbol(c′, b, e)
+                        coeff = zero(oneT)
+                        for ρ in 1:Nsymbol(d, c, e), κ in 1:Nsymbol(d, a, c′)
+                            coeff += Rmat1[ν, ρ] * conj(Fmat[κ, λ, μ, ρ]) *
+                                     conj(Rmat2[σ, κ])
+                        end
+                        iszero(coeff) && continue
+                        vertices′ = TupleTools.setindex(vertices, σ, i - 1)
+                        vertices′ = TupleTools.setindex(vertices′, λ, i)
+                        inner′ = TupleTools.setindex(inner, c′, i - 1)
+                        f′ = FusionTree{I}(uncoupled′, coupled′, isdual′, inner′, vertices′)
+                        row = indexmap[(f′, f₂)]
+                        @inbounds U[row, col] = coeff
+                    end
+                end
+            end
+        end
     end
+
     return dst, U
 end
 
