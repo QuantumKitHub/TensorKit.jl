@@ -210,6 +210,19 @@ function set_num_transformer_threads(n::Int)
     return TRANSFORMER_THREADS[] = n
 end
 
+const TREEMANIPULATION_THREADS = Ref(1)
+
+get_num_manipulation_threads() = TREEMANIPULATION_THREADS[]
+
+function set_num_manipulation_threads(n::Int)
+    N = Base.Threads.nthreads()
+    if n > N
+        n = N
+        Strided._set_num_threads_warn(n)
+    end
+    return TREEMANIPULATION_THREADS[] = n
+end
+
 # Definitions and methods for tensors
 #-------------------------------------
 # general definitions

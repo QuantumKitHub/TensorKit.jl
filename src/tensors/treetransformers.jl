@@ -73,7 +73,7 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
 
     data = Vector{_GenericTransformerData{T, N}}()
 
-    nthreads = get_num_transformer_threads()
+    nthreads = get_num_manipulation_threads()
     if nthreads > 1
         fusiontreeblocks = Vector{FusionTreeBlock{I, N₁, N₂, fusiontreetype(I, N₁, N₂)}}()
         for cod_uncoupled_src in sectors(codomain(Vsrc)),
