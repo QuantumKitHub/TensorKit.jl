@@ -468,30 +468,26 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
         throw(ArgumentError("Cannot swap outputs i=$i and i+1 out of only $N outputs"))
 
     uncoupled = src.uncoupled[1]
-    uncoupled′ = TupleTools.setindex(uncoupled, uncoupled[i + 1], i)
-    uncoupled′ = TupleTools.setindex(uncoupled′, uncoupled[i], i + 1)
+    a, b = uncoupled[i], uncoupled[i + 1]
+    uncoupled′ = TupleTools.setindex(uncoupled, b, i)
+    uncoupled′ = TupleTools.setindex(uncoupled′, a, i + 1)
+    coupled′ = rightone(src.uncoupled[1][N])
+
     isdual = src.isdual[1]
     isdual′ = TupleTools.setindex(isdual, isdual[i], i + 1)
     isdual′ = TupleTools.setindex(isdual′, isdual[i + 1], i)
     dst = FusionTreeBlock{I}((uncoupled′, ()), (isdual′, ()))
 
+    oneT = one(sectorscalartype(I))
+
     indexmap = treeindex_map(dst)
     U = zeros(sectorscalartype(I), length(dst), length(src))
 
-    for (col, (f, f₂)) in enumerate(fusiontrees(src))
-        a, b = uncoupled[i], uncoupled[i + 1]
-        uncoupled′ = TupleTools.setindex(uncoupled, b, i)
-        uncoupled′ = TupleTools.setindex(uncoupled′, a, i + 1)
-        coupled′ = f.coupled
-        isdual′ = TupleTools.setindex(f.isdual, f.isdual[i], i + 1)
-        isdual′ = TupleTools.setindex(isdual′, f.isdual[i + 1], i)
-        inner = f.innerlines
-        inner_extended = (uncoupled[1], inner..., coupled′)
-        vertices = f.vertices
-        oneT = one(sectorscalartype(I))
-
-        if isone(uncoupled[i]) || isone(uncoupled[i + 1])
-            # braiding with trivial sector: simple and always possible
+    if isone(a) || isone(b) # braiding with trivial sector: simple and always possible
+        for (col, (f, f₂)) in enumerate(fusiontrees(src))
+            inner = f.innerlines
+            inner_extended = (uncoupled[1], inner..., coupled′)
+            vertices = f.vertices
             inner′ = inner
             vertices′ = vertices
             if i > 1 # we also need to alter innerlines and vertices
@@ -504,11 +500,17 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
             f′ = FusionTree{I}(uncoupled′, coupled′, isdual′, inner′, vertices′)
             row = indexmap[treeindex_data((f′, f₂))]
             @inbounds U[row, col] = oneT
-            continue
         end
+        return dst, U
+    end
 
-        BraidingStyle(I) isa NoBraiding &&
-            throw(SectorMismatch("Cannot braid sectors $(uncoupled[i]) and $(uncoupled[i + 1])"))
+    BraidingStyle(I) isa NoBraiding &&
+        throw(SectorMismatch(lazy"Cannot braid sectors $a and $b"))
+
+    for (col, (f, f₂)) in enumerate(fusiontrees(src))
+        inner = f.innerlines
+        inner_extended = (uncoupled[1], inner..., coupled′)
+        vertices = f.vertices
 
         if i == 1
             c = N > 2 ? inner[1] : coupled′
