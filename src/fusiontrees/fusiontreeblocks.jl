@@ -4,11 +4,12 @@ end
 
 function FusionTreeBlock{I}(
         uncoupled::Tuple{NTuple{N₁, I}, NTuple{N₂, I}},
-        isdual::Tuple{NTuple{N₁, Bool}, NTuple{N₂, Bool}}
+        isdual::Tuple{NTuple{N₁, Bool}, NTuple{N₂, Bool}};
+        sizehint::Int = 0
     ) where {I <: Sector, N₁, N₂}
-    F₁ = fusiontreetype(I, N₁)
-    F₂ = fusiontreetype(I, N₂)
-    trees = Vector{Tuple{F₁, F₂}}(undef, 0)
+    F = fusiontreetype(I, N₁, N₂)
+    trees = Vector{F}(undef, 0)
+    sizehint > 0 && sizehint!(trees, sizehint)
 
     if N₁ == N₂ == 0
         return FusionTreeBlock(trees)
@@ -60,7 +61,7 @@ function treeindex_data((f₁, f₂))
     I = sectortype(f₁)
     if FusionStyle(I) isa GenericFusion
         return (f₁.coupled, f₁.innerlines..., f₂.innerlines...),
-               (f₁.vertices..., f₂.vertices...)
+            (f₁.vertices..., f₂.vertices...)
     elseif FusionStyle(I) isa MultipleFusion
         return (f₁.coupled, f₁.innerlines..., f₂.innerlines...)
     else # there should be only a single element anyways
@@ -69,8 +70,7 @@ function treeindex_data((f₁, f₂))
 end
 function treeindex_map(fs::FusionTreeBlock)
     I = sectortype(fs)
-    return fusiontreedict(I)(treeindex_data(f) => ind
-                             for (ind, f) in enumerate(fusiontrees(fs)))
+    return fusiontreedict(I)(treeindex_data(f) => ind for (ind, f) in enumerate(fusiontrees(fs)))
 end
 
 # Manipulations
@@ -101,7 +101,7 @@ function bendright(src::FusionTreeBlock)
     N₂ = numin(src)
     @assert N₁ > 0
 
-    dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst)
+    dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst; sizehint = length(src))
     indexmap = treeindex_map(dst)
     U = zeros(sectorscalartype(I), length(dst), length(src))
 
@@ -164,7 +164,7 @@ function bendleft(src::FusionTreeBlock)
     N₂ = numout(src)
     @assert N₁ > 0
 
-    dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst)
+    dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst; sizehint = length(src))
     indexmap = treeindex_map(dst)
     U = zeros(sectorscalartype(I), length(dst), length(src))
 
@@ -221,9 +221,8 @@ function foldright(src::FusionTreeBlock)
     N₁ = numout(src)
     N₂ = numin(src)
     @assert N₁ > 0
-    dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst)
 
-    dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst)
+    dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst; sizehint = length(src))
     indexmap = treeindex_map(dst)
     U = zeros(sectorscalartype(I), length(dst), length(src))
 
@@ -296,7 +295,7 @@ function foldleft(src::FusionTreeBlock)
     N₂ = numout(src)
     @assert N₁ > 0
 
-    dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst)
+    dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst; sizehint = length(src))
     indexmap = treeindex_map(dst)
     U = zeros(sectorscalartype(I), length(dst), length(src))
 
@@ -476,7 +475,7 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
     isdual = src.isdual[1]
     isdual′ = TupleTools.setindex(isdual, isdual[i], i + 1)
     isdual′ = TupleTools.setindex(isdual′, isdual[i + 1], i)
-    dst = FusionTreeBlock{I}((uncoupled′, ()), (isdual′, ()))
+    dst = FusionTreeBlock{I}((uncoupled′, ()), (isdual′, ()); sizehint = length(src))
 
     oneT = one(sectorscalartype(I))
 
@@ -607,7 +606,7 @@ function braid(src::FusionTreeBlock{I, N, 0}, p::NTuple{N, Int}, levels::NTuple{
     if FusionStyle(I) isa UniqueFusion && BraidingStyle(I) isa SymmetricBraiding
         uncoupled′ = TupleTools._permute(src.uncoupled[1], p)
         isdual′ = TupleTools._permute(src.isdual[1], p)
-        dst = FusionTreeBlock{I}(uncoupled′, isdual′)
+        dst = FusionTreeBlock{I}(uncoupled′, isdual′; sizehint = length(src))
         U = transformation_matrix(dst, src) do (f₁, f₂)
             return ((f₁′, f₂) => c for (f₁′, c) in braid(f₁, p, levels))
         end
