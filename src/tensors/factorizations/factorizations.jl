@@ -7,11 +7,11 @@ export eig, eig!, eigh, eigh!
 export tsvd, tsvd!, svdvals, svdvals!
 export leftorth, leftorth!, rightorth, rightorth!
 export leftnull, leftnull!, rightnull, rightnull!
-export copy_oftype, permutedcopy_oftype
+export copy_oftype, permutedcopy_oftype, one!
 export TruncationScheme, notrunc, truncbelow, truncerr, truncdim, truncspace
 
 using ..TensorKit
-using ..TensorKit: AdjointTensorMap, SectorDict, OFA, blocktype, foreachblock
+using ..TensorKit: AdjointTensorMap, SectorDict, OFA, blocktype, foreachblock, one!
 
 using LinearAlgebra: LinearAlgebra, BlasFloat, Diagonal, svdvals, svdvals!
 import LinearAlgebra: eigen, eigen!, isposdef, isposdef!, ishermitian
@@ -40,6 +40,8 @@ include("implementations.jl")
 include("matrixalgebrakit.jl")
 include("truncation.jl")
 include("deprecations.jl")
+
+TensorKit.one!(A::AbstractMatrix) = MatrixAlgebraKit.one!(A)
 
 function isisometry(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple)
     t = permute(t, (p₁, p₂); copy=false)

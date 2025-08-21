@@ -46,13 +46,5 @@ Base.adjoint(alg::Union{SVD,SDD,Polar}) = alg
 const OFA = OrthogonalFactorizationAlgorithm
 const SVDAlg = Union{SVD,SDD}
 
-function one!(A::StridedMatrix)
-    length(A) > 0 || return A
-    copyto!(A, LinearAlgebra.I)
-    return A
-end
-
 safesign(s::Real) = ifelse(s < zero(s), -one(s), +one(s))
 safesign(s::Complex) = ifelse(iszero(s), one(s), s / abs(s))
-
-_argmax(f, domain) = argmax(f, domain)
