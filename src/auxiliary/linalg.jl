@@ -54,3 +54,5 @@ end
 
 safesign(s::Real) = ifelse(s < zero(s), -one(s), +one(s))
 safesign(s::Complex) = ifelse(iszero(s), one(s), s / abs(s))
+
+_argmax(f, domain) = argmax(f, domain)
