@@ -59,7 +59,7 @@ function one!(t::AbstractTensorMap)
     domain(t) == codomain(t) ||
         throw(SectorMismatch("no identity if domain and codomain are different"))
     for (c, b) in blocks(t)
-        MatrixAlgebra.one!(b)
+        one!(b)
     end
     return t
 end
@@ -106,7 +106,7 @@ function isomorphism!(t::AbstractTensorMap)
     domain(t) ≅ codomain(t) ||
         throw(SpaceMismatch(lazy"domain and codomain are not isomorphic: $(space(t))"))
     for (_, b) in blocks(t)
-        MatrixAlgebra.one!(b)
+        one!(b)
     end
     return t
 end
@@ -155,7 +155,7 @@ function isometry!(t::AbstractTensorMap)
     domain(t) ≾ codomain(t) ||
         throw(SpaceMismatch(lazy"domain and codomain are not isometrically embeddable: $(space(t))"))
     for (_, b) in blocks(t)
-        MatrixAlgebra.one!(b)
+        one!(b)
     end
     return t
 end
@@ -377,7 +377,7 @@ function Base.inv(t::AbstractTensorMap)
     T = float(scalartype(t))
     tinv = similar(t, T, dom ← cod)
     for (c, b) in blocks(t)
-        binv = MatrixAlgebra.one!(block(tinv, c))
+        binv = one!(block(tinv, c))
         ldiv!(lu(b), binv)
     end
     return tinv
@@ -449,11 +449,11 @@ for f in (:cos, :sin, :tan, :cot, :cosh, :sinh, :tanh, :coth, :atan, :acot, :asi
         tf = similar(t, T)
         if T <: Real
             for (c, b) in blocks(t)
-                copy!(block(tf, c), real(MatrixAlgebra.$f(b)))
+                copy!(block(tf, c), real(MatrixAlgebraKit.$f(b)))
             end
         else
             for (c, b) in blocks(t)
-                copy!(block(tf, c), MatrixAlgebra.$f(b))
+                copy!(block(tf, c), MatrixAlgebraKit.$f(b))
             end
         end
         return tf

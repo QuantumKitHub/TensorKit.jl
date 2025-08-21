@@ -12,7 +12,6 @@ export TruncationScheme, notrunc, truncbelow, truncerr, truncdim, truncspace
 
 using ..TensorKit
 using ..TensorKit: AdjointTensorMap, SectorDict, OFA, blocktype, foreachblock
-using ..MatrixAlgebra: MatrixAlgebra
 
 using LinearAlgebra: LinearAlgebra, BlasFloat, Diagonal, svdvals, svdvals!
 import LinearAlgebra: eigen, eigen!, isposdef, isposdef!, ishermitian
@@ -112,7 +111,7 @@ function _compute_svddata!(d::DiagonalTensorMap, alg::Union{SVD,SDD})
         V = zerovector!(similar(b.diag, lb, lb))
         p = sortperm(b.diag; by=abs, rev=true)
         for (i, pi) in enumerate(p)
-            U[pi, i] = MatrixAlgebra.safesign(b.diag[pi])
+            U[pi, i] = safesign(b.diag[pi])
             V[i, pi] = 1
         end
         Σ = abs.(view(b.diag, p))

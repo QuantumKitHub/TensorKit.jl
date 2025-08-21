@@ -3,7 +3,7 @@ _kindof(::Union{QR,QRpos}) = :qr
 _kindof(::Union{LQ,LQpos}) = :lq
 _kindof(::Polar) = :polar
 
-leftorth!(t::AbstractTensorMap; alg=nothing, kwargs...) = _leftorth!(t, alg; kwargs...)
+leftorth!(t; alg=nothing, kwargs...) = _leftorth!(t, alg; kwargs...)
 
 function _leftorth!(t::AbstractTensorMap, alg::Nothing, ; kwargs...)
     return isempty(kwargs) ? left_orth!(t) : left_orth!(t; trunc=(; kwargs...))
