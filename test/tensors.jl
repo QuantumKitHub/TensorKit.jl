@@ -490,6 +490,11 @@ for V in spacelist
                         for (c, b) in s
                             @test b ≈ s′[c]
                         end
+                        s = LinearAlgebra.svdvals(t2')
+                        s′ = LinearAlgebra.diag(S')
+                        for (c, b) in s
+                            @test b ≈ s′[c]
+                        end
                     end
                     @testset "cond and rank" begin
                         t2 = permute(t, ((3, 4, 2), (1, 5)))
@@ -507,6 +512,10 @@ for V in spacelist
                         λmax = maximum(s -> maximum(abs, s), values(vals))
                         λmin = minimum(s -> minimum(abs, s), values(vals))
                         @test cond(t4) ≈ λmax / λmin
+                        vals = LinearAlgebra.eigvals(t4')
+                        λmax = maximum(s -> maximum(abs, s), values(vals))
+                        λmin = minimum(s -> minimum(abs, s), values(vals))
+                        @test cond(t4') ≈ λmax / λmin
                     end
                 end
                 @testset "empty tensor" begin
