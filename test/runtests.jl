@@ -112,24 +112,39 @@ VSU₂U₁ = (Vect[SU2Irrep ⊠ U1Irrep]((0, 0) => 1, (1 // 2, -1) => 1),
 #     ℂ[SU3Irrep]((1, 0, 0) => 1, (2, 0, 0) => 1),
 #     ℂ[SU3Irrep]((0, 0, 0) => 1, (1, 0, 0) => 1, (1, 1, 0) => 1)')
 
+is_buildkite = get(ENV, "BUILDKITE", "false") == "true"
+
 Ti = time()
-include("fusiontrees.jl")
-include("spaces.jl")
-include("tensors.jl")
-include("diagonal.jl")
-include("planar.jl")
-# TODO: remove once we know AD is slow on macOS CI
-if !(Sys.isapple() && get(ENV, "CI", "false") == "true") && isempty(VERSION.prerelease)
-    include("ad.jl")
+if !is_buildkite
+    include("fusiontrees.jl")
+    include("spaces.jl")
+    include("tensors.jl")
+    include("diagonal.jl")
+    include("planar.jl")
+    # TODO: remove once we know AD is slow on macOS CI
+    if !(Sys.isapple() && get(ENV, "CI", "false") == "true") && isempty(VERSION.prerelease)
+        include("ad.jl")
+    end
+    include("bugfixes.jl")
+    Tf = time()
+    @testset "Aqua" verbose = true begin
+        using Aqua
+        Aqua.test_all(TensorKit)
+    end
+else
+    using CUDA, cuTENSOR
+    if CUDA.functional()
+        include("cuda.jl")
+    end
+
+    using AMDGPU 
+    if AMDGPU.functional()
+        include("amdgpu.jl")
+    end
+    Tf = time()
 end
-include("bugfixes.jl")
-Tf = time()
+
 printstyled("Finished all tests in ",
             string(round((Tf - Ti) / 60; sigdigits=3)),
             " minutes."; bold=true, color=Base.info_color())
 println()
-
-@testset "Aqua" verbose = true begin
-    using Aqua
-    Aqua.test_all(TensorKit)
-end

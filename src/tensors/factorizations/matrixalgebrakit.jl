@@ -23,13 +23,13 @@ end
 for f! in (:qr_compact!, :qr_full!,
            :lq_compact!, :lq_full!,
            :eig_full!, :eigh_full!,
+           :eig_vals!, :eigh_vals!,
            :svd_compact!, :svd_full!,
            :left_polar!, :left_orth_polar!,
            :right_polar!, :right_orth_polar!,
            :left_orth!, :right_orth!)
     @eval function $f!(t::AbstractTensorMap, F, alg::AbstractAlgorithm)
         check_input($f!, t, F, alg)
-
         foreachblock(t, F...) do _, bs
             factors = Base.tail(bs)
             factors′ = $f!(first(bs), factors, alg)

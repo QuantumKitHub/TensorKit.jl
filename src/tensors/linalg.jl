@@ -268,7 +268,7 @@ function _norm(blockiter, p::Real, init::Real)
         end
     elseif p == 2
         n² = mapreduce(+, blockiter; init=init) do (c, b)
-            return isempty(b) ? init : oftype(init, dim(c) * LinearAlgebra.norm2(b)^2)
+            return isempty(b) ? init : oftype(init, dim(c) * norm(b, 2)^2)
         end
         return sqrt(n²)
     elseif p == 1
@@ -544,8 +544,8 @@ function ⊗(t1::AbstractTensorMap, t2::AbstractTensorMap)
                             d4 = dim(dom2, f2r.uncoupled)
                             m1 = sreshape(t1[f1l, f1r], (d1, 1, d3, 1))
                             m2 = sreshape(t2[f2l, f2r], (1, d2, 1, d4))
-                            m = sreshape(t[fl, fr], (d1, d2, d3, d4))
-                            m .+= coeff1 .* conj(coeff2) .* m1 .* m2
+                            m  = sreshape(t[fl, fr], (d1, d2, d3, d4))
+                            @. m += coeff1 * conj(coeff2) * m1 * m2
                         end
                     end
                 end

@@ -3,6 +3,11 @@ _kindof(::Union{QR,QRpos}) = :qr
 _kindof(::Union{LQ,LQpos}) = :lq
 _kindof(::Polar) = :polar
 
+select_svd_algorithm(t, ::SVD) = LAPACK_QRIteration()
+select_svd_algorithm(t, ::SDD) = LAPACK_DivideAndConquer()
+select_svd_algorithm(t, alg::OFA) = throw(ArgumentError(lazy"Unknown algorithm $alg"))
+select_svd_algorithm(t::Base.ReshapedArray, alg) = select_svd_algorithm(parent(parent(t)), alg) 
+
 leftorth!(t; alg=nothing, kwargs...) = _leftorth!(t, alg; kwargs...)
 
 function _leftorth!(t::AbstractTensorMap, alg::Nothing, ; kwargs...)
@@ -26,9 +31,7 @@ function _leftorth!(t, alg::OFA; kwargs...)
 
     kind = _kindof(alg)
     if kind == :svd
-        alg_svd = alg === SVD() ? LAPACK_QRIteration() :
-                  alg === SDD() ? LAPACK_DivideAndConquer() :
-                  throw(ArgumentError(lazy"Unknown algorithm $alg"))
+        alg_svd = select_svd_algorithm(t, alg) 
         return left_orth!(t; kind, alg_svd, trunc)
     elseif kind == :qr
         alg_qr = (; positive=(alg == QRpos()))
@@ -52,9 +55,7 @@ function leftnull!(t::AbstractTensorMap;
 
     kind = _kindof(alg)
     if kind == :svd
-        alg_svd = alg === SVD() ? LAPACK_QRIteration() :
-                  alg === SDD() ? LAPACK_DivideAndConquer() :
-                  throw(ArgumentError(lazy"Unknown algorithm $alg"))
+        alg_svd = select_svd_algorithm(t, alg) 
         return left_null!(t; kind, alg_svd, trunc)
     elseif kind == :qr
         alg_qr = (; positive=(alg == QRpos()))
@@ -82,9 +83,7 @@ function rightorth!(t::AbstractTensorMap;
 
     kind = _kindof(alg)
     if kind == :svd
-        alg_svd = alg === SVD() ? LAPACK_QRIteration() :
-                  alg === SDD() ? LAPACK_DivideAndConquer() :
-                  throw(ArgumentError(lazy"Unknown algorithm $alg"))
+        alg_svd = select_svd_algorithm(t, alg) 
         return right_orth!(t; kind, alg_svd, trunc)
     elseif kind == :lq
         alg_lq = (; positive=(alg == LQpos()))
@@ -106,9 +105,7 @@ function rightnull!(t::AbstractTensorMap;
 
     kind = _kindof(alg)
     if kind == :svd
-        alg_svd = alg === SVD() ? LAPACK_QRIteration() :
-                  alg === SDD() ? LAPACK_DivideAndConquer() :
-                  throw(ArgumentError(lazy"Unknown algorithm $alg"))
+        alg_svd = select_svd_algorithm(t, alg) 
         return right_null!(t; kind, alg_svd, trunc)
     elseif kind == :lq
         alg_lq = (; positive=(alg == LQpos()))
@@ -149,16 +146,16 @@ function tsvd!(t::AbstractTensorMap; trunc=notrunc(), p=nothing, alg=nothing, kw
     InnerProductStyle(t) === EuclideanInnerProduct() || throw_invalid_innerproduct(:tsvd!)
     isnothing(p) || Base.depwarn("p is no longer supported", :tsvd!)
 
-    if alg isa OFA
+    if alg isa Union{OFA, SVD}
         Base.depwarn(lazy"$alg is deprecated", :tsvd!)
-        alg = alg === SVD() ? LAPACK_QRIteration() :
-              alg === SDD() ? LAPACK_DivideAndConquer() :
-              throw(ArgumentError(lazy"Unknown algorithm $alg"))
+        alg_svd = select_svd_algorithm(t, alg)
+    else
+        alg_svd = alg
     end
 
     if trunc == notrunc()
-        return svd_compact!(t; alg, kwargs...)
+        return svd_compact!(t; alg_svd, kwargs...)
     else
-        return svd_trunc!(t; trunc, alg, kwargs...)
+        return svd_trunc!(t; trunc, alg_svd, kwargs...)
     end
 end

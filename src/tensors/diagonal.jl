@@ -1,12 +1,12 @@
 # DiagonalTensorMap
 #==========================================================#
-struct DiagonalTensorMap{T,S<:IndexSpace,A<:DenseVector{T}} <: AbstractTensorMap{T,S,1,1}
+struct DiagonalTensorMap{T,S<:IndexSpace,A<:AbstractVector{T}} <: AbstractTensorMap{T,S,1,1}
     data::A
     domain::S # equals codomain
 
     # uninitialized constructors
     function DiagonalTensorMap{T,S,A}(::UndefInitializer,
-                                      dom::S) where {T,S<:IndexSpace,A<:DenseVector{T}}
+                                      dom::S) where {T,S<:IndexSpace,A<:AbstractVector{T}}
         data = A(undef, reduceddim(dom))
         if !isbitstype(T)
             zerovector!(data)
@@ -15,7 +15,7 @@ struct DiagonalTensorMap{T,S<:IndexSpace,A<:DenseVector{T}} <: AbstractTensorMap
     end
     # constructors from data
     function DiagonalTensorMap{T,S,A}(data::A,
-                                      dom::S) where {T,S<:IndexSpace,A<:DenseVector{T}}
+                                      dom::S) where {T,S<:IndexSpace,A<:AbstractVector{T}}
         T ⊆ field(S) || @warn("scalartype(data) = $T ⊈ $(field(S)))", maxlog = 1)
         return new{T,S,A}(data, dom)
     end
@@ -25,7 +25,7 @@ end
 #--------------------------------------------
 space(d::DiagonalTensorMap) = d.domain ← d.domain
 
-storagetype(::Type{<:DiagonalTensorMap{T,S,A}}) where {T,S,A<:DenseVector{T}} = A
+storagetype(::Type{<:DiagonalTensorMap{T,S,A}}) where {T,S,A<:AbstractVector{T}} = A
 
 # DiagonalTensorMap constructors
 #--------------------------------
@@ -52,13 +52,13 @@ function DiagonalTensorMap{T}(::UndefInitializer, V::S) where {T,S<:IndexSpace}
 end
 DiagonalTensorMap(::UndefInitializer, V::IndexSpace) = DiagonalTensorMap{Float64}(undef, V)
 
-function DiagonalTensorMap{T}(data::A, V::S) where {T,S<:IndexSpace,A<:DenseVector{T}}
+function DiagonalTensorMap{T}(data::A, V::S) where {T,S<:IndexSpace,A<:AbstractVector{T}}
     length(data) == reduceddim(V) ||
         throw(DimensionMismatch("length(data) = $(length(data)) is not compatible with the space $V"))
     return DiagonalTensorMap{T,S,A}(data, V)
 end
 
-function DiagonalTensorMap(data::DenseVector{T}, V::IndexSpace) where {T}
+function DiagonalTensorMap(data::AbstractVector{T}, V::IndexSpace) where {T}
     return DiagonalTensorMap{T}(data, V)
 end
 
