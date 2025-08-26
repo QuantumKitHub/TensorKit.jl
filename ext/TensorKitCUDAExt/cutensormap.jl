@@ -3,7 +3,7 @@ const CuTensor{T, S, N, A<:CuVector{T}} = CuTensorMap{T, S, N, 0, A}
 
 function TensorKit.tensormaptype(S::Type{<:IndexSpace}, N₁, N₂, TorA::Type{<:StridedCuArray})
     if TorA <: CuArray
-        return TensorMap{eltype(TorA),S,N₁,N₂,TorA}
+        return TensorMap{eltype(TorA),S,N₁,N₂,CuVector{eltype(TorA)}}
     else
         throw(ArgumentError("argument $TorA should specify a scalar type (`<:Number`) or a storage type `<:CuVector{<:Number}`"))
     end

@@ -1,5 +1,7 @@
 module TensorKitCUDAExt
 
+using LinearAlgebra
+
 using CUDA
 using CUDA: @allowscalar
 using CUDA.CUBLAS # for LinearAlgebra tie-ins
@@ -13,7 +15,6 @@ using TensorKit: SectorDict, tensormaptype, scalar, similarstoragetype
 using TensorKit.MatrixAlgebraKit
 
 using Random
-using LinearAlgebra
 
 include("cutensormap.jl")
 

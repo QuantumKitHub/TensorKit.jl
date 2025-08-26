@@ -277,7 +277,7 @@ function _norm(blockiter, p::Real, init::Real)
         end
     elseif p > 0
         nᵖ = mapreduce(+, blockiter; init=init) do (c, b)
-            return isempty(b) ? init : oftype(init, dim(c) * LinearAlgebra.normp(b, p)^p)
+            return isempty(b) ? init : oftype(init, dim(c) * norm(b, p)^p)
         end
         return (nᵖ)^inv(oftype(nᵖ, p))
     else
