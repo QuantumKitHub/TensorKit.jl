@@ -2,8 +2,8 @@ const CuTensorMap{T,S,N₁,N₂,A<:CuVector{T}} = TensorMap{T,S,N₁,N₂,A}
 const CuTensor{T, S, N, A<:CuVector{T}} = CuTensorMap{T, S, N, 0, A}
 
 function TensorKit.tensormaptype(S::Type{<:IndexSpace}, N₁, N₂, TorA::Type{<:StridedCuArray})
-    if TorA <: CuVector
-        return TensorMap{scalartype(TorA),S,N₁,N₂,TorA}
+    if TorA <: CuArray
+        return TensorMap{eltype(TorA),S,N₁,N₂,TorA}
     else
         throw(ArgumentError("argument $TorA should specify a scalar type (`<:Number`) or a storage type `<:CuVector{<:Number}`"))
     end
@@ -56,6 +56,14 @@ function CuTensorMap(data::AbstractDict{<:Sector,<:CuArray},
             throw(SectorMismatch("data for block sector $c not expected"))
     end
     return t
+end
+function CuTensorMap{T}(data::DenseVector{T}, codomain::TensorSpace{S},
+                        domain::TensorSpace{S}) where {T,S}
+    return CuTensorMap(data, codomain ← domain)
+end
+function CuTensorMap(data::AbstractDict{<:Sector,<:CuMatrix}, codom::TensorSpace{S},
+                   dom::TensorSpace{S}) where {S}
+    return CuTensorMap(data, codom ← dom)
 end
 
 for (fname, felt) in ((:zeros, :zero), (:ones, :one))
@@ -133,13 +141,25 @@ function Base.convert(::Type{CuTensorMap}, d::Dict{Symbol,Any})
         codomain = eval(Meta.parse(d[:codomain]))
         domain = eval(Meta.parse(d[:domain]))
         data = SectorDict(eval(Meta.parse(c)) => CuArray(b) for (c, b) in d[:data])
-        return TensorMap(data, codomain, domain)
+        return CuTensorMap(data, codomain, domain)
     catch e # sector unknown in TensorKit.jl; user-defined, hopefully accessible in Main
         codomain = Base.eval(Main, Meta.parse(d[:codomain]))
         domain = Base.eval(Main, Meta.parse(d[:domain]))
         data = SectorDict(Base.eval(Main, Meta.parse(c)) => CuArray(b)
                           for (c, b) in d[:data])
-        return TensorMap(data, codomain, domain)
+        return CuTensorMap(data, codomain, domain)
     end
 end
 
+# Scalar implementation
+#-----------------------
+function TensorKit.scalar(t::CuTensorMap)
+    
+    # TODO: should scalar only work if N₁ == N₂ == 0?
+    return @allowscalar dim(codomain(t)) == dim(domain(t)) == 1 ?
+           first(blocks(t))[2][1, 1] : throw(DimensionMismatch())
+end
+
+function TensorKit.similarstoragetype(TT::Type{<:CuTensorMap}, ::Type{T}) where {T}
+    return CuVector{T}
+end

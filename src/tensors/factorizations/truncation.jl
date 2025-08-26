@@ -31,7 +31,7 @@ function truncate!(::typeof(svd_trunc!), (U, S, Vᴴ)::_T_USVᴴ, strategy::Trun
         copyto!(b, @view(block(U, c)[:, I]))
     end
 
-    S̃ = DiagonalTensorMap{scalartype(S)}(undef, V_truncated)
+    S̃ = DiagonalTensorMap{scalartype(S), spacetype(S), storagetype(S)}(undef, V_truncated)
     for (c, b) in blocks(S̃)
         I = get(ind, c, nothing)
         @assert !isnothing(I)
@@ -67,8 +67,8 @@ end
 function truncate!(::typeof(eigh_trunc!), (D, V)::_T_DV, strategy::TruncationStrategy)
     ind = findtruncated(diagview(D), strategy)
     V_truncated = spacetype(D)(c => length(I) for (c, I) in ind)
-
-    D̃ = DiagonalTensorMap{scalartype(D)}(undef, V_truncated)
+    
+    D̃ = DiagonalTensorMap{scalartype(D), spacetype(D), storagetype(D)}(undef, V_truncated)
     for (c, b) in blocks(D̃)
         I = get(ind, c, nothing)
         @assert !isnothing(I)
@@ -88,7 +88,7 @@ function truncate!(::typeof(eig_trunc!), (D, V)::_T_DV, strategy::TruncationStra
     ind = findtruncated(diagview(D), strategy)
     V_truncated = spacetype(D)(c => length(I) for (c, I) in ind)
 
-    D̃ = DiagonalTensorMap{scalartype(D)}(undef, V_truncated)
+    D̃ = DiagonalTensorMap{scalartype(D), spacetype(D), storagetype(D)}(undef, V_truncated)
     for (c, b) in blocks(D̃)
         I = get(ind, c, nothing)
         @assert !isnothing(I)

@@ -1,13 +1,14 @@
 module TensorKitCUDAExt
 
 using CUDA
+using CUDA: @allowscalar
 using CUDA.CUBLAS # for LinearAlgebra tie-ins
 using cuTENSOR: cuTENSOR
 
 using TensorKit
 using TensorKit.Factorizations
 using TensorKit.Factorizations: select_svd_algorithm, OFA, initialize_output, AbstractAlgorithm
-using TensorKit: SectorDict, tensormaptype
+using TensorKit: SectorDict, tensormaptype, scalar, similarstoragetype
 
 using TensorKit.MatrixAlgebraKit
 
@@ -16,7 +17,7 @@ using LinearAlgebra
 
 include("cutensormap.jl")
 
-TensorKit.Factorizations.select_svd_algorithm(::CuTensorMap, ::TensorKit.Factorizations.SVD) = CUSOLVER_QRIteration()
+TensorKit.Factorizations.select_svd_algorithm(::CuTensorMap, ::TensorKit.Factorizations.SVD) = CUSOLVER_Jacobi()
 TensorKit.Factorizations.select_svd_algorithm(::CuTensorMap, ::TensorKit.Factorizations.SDD) = throw(ArgumentError("DivideAndConquer unavailable on CUDA")) 
 TensorKit.Factorizations.select_svd_algorithm(::CuTensorMap, alg::OFA) = throw(ArgumentError(lazy"Unknown algorithm $alg"))
 
