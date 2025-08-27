@@ -445,7 +445,7 @@ for V in spacelist
                     d = LinearAlgebra.eigvals(t; sortby=nothing)
                     d′ = LinearAlgebra.diag(D)
                     for (c, b) in d
-                         @test b ≈ d′[c]
+                        @test b ≈ d′[c]
                     end
 
                     # Somehow moving these test before the previous one gives rise to errors

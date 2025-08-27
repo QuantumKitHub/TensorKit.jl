@@ -1,10 +1,7 @@
 module TensorKitCUDAExt
 
-using LinearAlgebra
-
-using CUDA
+using CUDA, CUDA.CUBLAS, LinearAlgebra
 using CUDA: @allowscalar
-using CUDA.CUBLAS # for LinearAlgebra tie-ins
 using cuTENSOR: cuTENSOR
 
 using TensorKit
@@ -81,4 +78,8 @@ function TensorKit.Factorizations.initialize_output(::typeof(eig_vals!), t::CuTe
     Tc = complex(scalartype(t))
     return D = CuDiagonalTensorMap{Tc}(undef, V_D)
 end
+
+
+# TODO
+# add VectorInterface extensions for proper CUDA promotion
 end

@@ -160,6 +160,8 @@ function TensorKit.scalar(t::CuTensorMap)
            first(blocks(t))[2][1, 1] : throw(DimensionMismatch())
 end
 
+TensorKit.scalartype(A::CuArray{T}) where {T} = T
+
 function TensorKit.similarstoragetype(TT::Type{<:CuTensorMap}, ::Type{T}) where {T}
     return CuVector{T}
 end
