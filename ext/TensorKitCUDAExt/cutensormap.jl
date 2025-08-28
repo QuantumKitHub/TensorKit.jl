@@ -151,6 +151,10 @@ function Base.convert(::Type{CuTensorMap}, d::Dict{Symbol,Any})
     end
 end
 
+function Base.convert(::Type{CuTensorMap}, t::AbstractTensorMap)
+    return copy!(CuTensorMap{scalartype(t)}(undef, space(t)), t)
+end
+
 # Scalar implementation
 #-----------------------
 function TensorKit.scalar(t::CuTensorMap)
@@ -166,10 +170,6 @@ function TensorKit.similarstoragetype(TT::Type{<:CuTensorMap}, ::Type{T}) where 
     return CuVector{T}
 end
 
-function Base.convert(::Type{CuTensorMap}, t::AbstractTensorMap)
-    return copy!(CuTensorMap{scalartype(t)}(undef, space(t)), t)
-end
-
 function Base.convert(TT::Type{CuTensorMap{T,S,N₁,N₂,A}},
                       t::AbstractTensorMap{<:Any,S,N₁,N₂}) where {T,S,N₁,N₂,A<:CuVector{T}}
     if typeof(t) === TT
@@ -181,6 +181,14 @@ function Base.convert(TT::Type{CuTensorMap{T,S,N₁,N₂,A}},
 end
 
 function Base.copy!(tdst::CuTensorMap{T, S, N₁, N₂, A}, tsrc::CuTensorMap{T, S, N₁, N₂, A}) where {T, S, N₁, N₂, A}
+    space(tdst) == space(tsrc) || throw(SpaceMismatch("$(space(tdst)) ≠ $(space(tsrc))"))
+    for ((c, bdst), (_, bsrc)) in zip(blocks(tdst), blocks(tsrc))
+        copy!(bdst, bsrc)
+    end
+    return tdst
+end
+
+function Base.copy!(tdst::CuTensorMap, tsrc::TensorKit.AdjointTensorMap)
     space(tdst) == space(tsrc) || throw(SpaceMismatch("$(space(tdst)) ≠ $(space(tsrc))"))
     for ((c, bdst), (_, bsrc)) in zip(blocks(tdst), blocks(tsrc))
         copy!(bdst, bsrc)

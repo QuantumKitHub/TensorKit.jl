@@ -7,7 +7,7 @@ using cuTENSOR: cuTENSOR
 using TensorKit
 using TensorKit.Factorizations
 using TensorKit.Factorizations: select_svd_algorithm, OFA, initialize_output, AbstractAlgorithm
-using TensorKit: SectorDict, tensormaptype, scalar, similarstoragetype
+using TensorKit: SectorDict, tensormaptype, scalar, similarstoragetype, AdjointTensorMap
 
 using TensorKit.MatrixAlgebraKit
 
