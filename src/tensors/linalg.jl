@@ -545,7 +545,7 @@ function ⊗(t1::AbstractTensorMap, t2::AbstractTensorMap)
                             m1 = sreshape(t1[f1l, f1r], (d1, 1, d3, 1))
                             m2 = sreshape(t2[f2l, f2r], (1, d2, 1, d4))
                             m  = sreshape(t[fl, fr], (d1, d2, d3, d4))
-                            @. m += coeff1 * conj(coeff2) * m1 * m2
+                            m .+= coeff1 .* conj.(coeff2) .* m1 .* m2
                         end
                     end
                 end

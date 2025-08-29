@@ -5,6 +5,7 @@ using CUDA: @allowscalar
 using cuTENSOR: cuTENSOR
 
 using TensorKit
+import TensorKit.VectorInterface: scalartype as vi_scalartype
 using TensorKit.Factorizations
 using TensorKit.Factorizations: select_svd_algorithm, OFA, initialize_output, AbstractAlgorithm
 using TensorKit: SectorDict, tensormaptype, scalar, similarstoragetype, AdjointTensorMap
@@ -19,7 +20,7 @@ TensorKit.Factorizations.select_svd_algorithm(::CuTensorMap, ::TensorKit.Factori
 TensorKit.Factorizations.select_svd_algorithm(::CuTensorMap, ::TensorKit.Factorizations.SDD) = throw(ArgumentError("DivideAndConquer unavailable on CUDA")) 
 TensorKit.Factorizations.select_svd_algorithm(::CuTensorMap, alg::OFA) = throw(ArgumentError(lazy"Unknown algorithm $alg"))
 
-const CuDiagonalTensorMap{T, S} = DiagonalTensorMap{T, S, CuVector{T}}
+const CuDiagonalTensorMap{T, S} = DiagonalTensorMap{T, S, CuVector{T, CUDA.DeviceMemory}}
 
 """
     CuDiagonalTensorMap{T}(undef, domain::S) where {T,S<:IndexSpace}
@@ -82,4 +83,8 @@ end
 
 # TODO
 # add VectorInterface extensions for proper CUDA promotion
+function TensorKit.VectorInterface.promote_add(TA::Type{<:CUDA.StridedCuMatrix{Tx}}, TB::Type{<:CUDA.StridedCuMatrix{Ty}}, α::Tα = TensorKit.VectorInterface.One(), β::Tβ = TensorKit.VectorInterface.One()) where {Tx, Ty, Tα, Tβ}
+    return Base.promote_op(add, Tx, Ty, Tα, Tβ)
+end
+
 end

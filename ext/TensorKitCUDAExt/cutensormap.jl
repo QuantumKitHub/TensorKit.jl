@@ -1,16 +1,16 @@
-const CuTensorMap{T,S,N₁,N₂,A<:CuVector{T}} = TensorMap{T,S,N₁,N₂,A}
-const CuTensor{T, S, N, A<:CuVector{T}} = CuTensorMap{T, S, N, 0, A}
+const CuTensorMap{T,S,N₁,N₂} = TensorMap{T,S,N₁,N₂, CuVector{T,CUDA.DeviceMemory}}
+const CuTensor{T, S, N} = CuTensorMap{T, S, N, 0}
 
 function TensorKit.tensormaptype(S::Type{<:IndexSpace}, N₁, N₂, TorA::Type{<:StridedCuArray})
     if TorA <: CuArray
-        return TensorMap{eltype(TorA),S,N₁,N₂,CuVector{eltype(TorA)}}
+        return TensorMap{eltype(TorA),S,N₁,N₂,CuVector{eltype(TorA), CUDA.DeviceMemory}}
     else
         throw(ArgumentError("argument $TorA should specify a scalar type (`<:Number`) or a storage type `<:CuVector{<:Number}`"))
     end
 end
 
 function CuTensorMap{T}(::UndefInitializer, V::TensorMapSpace{S, N₁, N₂}) where {T, S, N₁, N₂}
-    return CuTensorMap{T,S,N₁,N₂,CuVector{T}}(undef, V)
+    return CuTensorMap{T,S,N₁,N₂}(undef, V)
 end
 
 function CuTensorMap{T}(::UndefInitializer, codomain::TensorSpace{S},
@@ -164,14 +164,16 @@ function TensorKit.scalar(t::CuTensorMap)
            first(blocks(t))[2][1, 1] : throw(DimensionMismatch())
 end
 
-TensorKit.scalartype(A::CuArray{T}) where {T} = T
+TensorKit.scalartype(A::StridedCuArray{T}) where {T} = T
+vi_scalartype(::Type{<:CuTensorMap{T}}) where {T} = T
+vi_scalartype(::Type{<:CuArray{T}}) where {T} = T
 
-function TensorKit.similarstoragetype(TT::Type{<:CuTensorMap}, ::Type{T}) where {T}
-    return CuVector{T}
+function TensorKit.similarstoragetype(TT::Type{<:CuTensorMap{TTT,S,N₁,N₂}}, ::Type{T}) where {TTT,T,S,N₁,N₂}
+    return CuVector{T, CUDA.DeviceMemory}
 end
 
-function Base.convert(TT::Type{CuTensorMap{T,S,N₁,N₂,A}},
-                      t::AbstractTensorMap{<:Any,S,N₁,N₂}) where {T,S,N₁,N₂,A<:CuVector{T}}
+function Base.convert(TT::Type{CuTensorMap{T,S,N₁,N₂}},
+                      t::AbstractTensorMap{<:Any,S,N₁,N₂}) where {T,S,N₁,N₂}
     if typeof(t) === TT
         return t
     else
@@ -180,7 +182,7 @@ function Base.convert(TT::Type{CuTensorMap{T,S,N₁,N₂,A}},
     end
 end
 
-function Base.copy!(tdst::CuTensorMap{T, S, N₁, N₂, A}, tsrc::CuTensorMap{T, S, N₁, N₂, A}) where {T, S, N₁, N₂, A}
+function Base.copy!(tdst::CuTensorMap{T, S, N₁, N₂}, tsrc::CuTensorMap{T, S, N₁, N₂}) where {T, S, N₁, N₂}
     space(tdst) == space(tsrc) || throw(SpaceMismatch("$(space(tdst)) ≠ $(space(tsrc))"))
     for ((c, bdst), (_, bsrc)) in zip(blocks(tdst), blocks(tsrc))
         copy!(bdst, bsrc)
@@ -194,4 +196,12 @@ function Base.copy!(tdst::CuTensorMap, tsrc::TensorKit.AdjointTensorMap)
         copy!(bdst, bsrc)
     end
     return tdst
+end
+
+function Base.promote_rule(::Type{<:TT₁},
+                           ::Type{<:TT₂}) where {S,N₁,N₂, TTT₁, TTT₂,
+                                                 TT₁<:CuTensorMap{TTT₁,S,N₁,N₂},
+                                                 TT₂<:CuTensorMap{TTT₂,S,N₁,N₂}}
+    T = TensorKit.VectorInterface.promote_add(TTT₁, TTT₂)
+    return CuTensorMap{T,S,N₁,N₂}
 end
