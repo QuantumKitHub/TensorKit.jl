@@ -556,15 +556,8 @@ function initialize_output(::typeof(right_null!), t::AbstractTensorMap)
     return N
 end
 
-for f! in (:left_null_svd!, :right_null_svd!)
-    @eval function $f!(t::AbstractTensorMap, N, alg, ::Nothing=nothing)
-        foreachblock(t, N) do _, (b, n)
-            n′ = $f!(b, n, alg)
-            # deal with the case where the output is not the same as the input
-            n === n′ || copyto!(n, n′)
-            return nothing
-        end
-
-        return N
+for (f!, f_svd!) in zip((:left_null!, :right_null!), (:left_null_svd!, :right_null_svd!))
+    @eval function $f_svd!(t::AbstractTensorMap, N, alg, ::Nothing=nothing)
+        return $f!(t, N, alg)
     end
 end
