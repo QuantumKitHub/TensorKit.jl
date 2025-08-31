@@ -19,6 +19,13 @@ function right_null!(t::AdjointTensorMap, N::AdjointTensorMap, alg::AbstractAlgo
     return N
 end
 
+function MatrixAlgebraKit.is_left_isometry(t::AdjointTensorMap; kwargs...)
+    return is_right_isometry(adjoint(t); kwargs...)
+end
+function MatrixAlgebraKit.is_right_isometry(t::AdjointTensorMap; kwargs...)
+    return is_left_isometry(adjoint(t); kwargs...)
+end
+
 # 2-arg functions
 for (left_f!, right_f!) in zip((:qr_full!, :qr_compact!, :left_polar!, :left_orth!),
                                (:lq_full!, :lq_compact!, :right_polar!, :right_orth!))
