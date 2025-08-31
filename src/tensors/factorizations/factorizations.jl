@@ -40,6 +40,7 @@ include("implementations.jl")
 include("matrixalgebrakit.jl")
 include("truncation.jl")
 include("deprecations.jl")
+include("adjoint.jl")
 
 TensorKit.one!(A::AbstractMatrix) = MatrixAlgebraKit.one!(A)
 
@@ -53,37 +54,6 @@ end
 # only correct if Euclidean inner product
 #------------------------------------------------------------------------------------------
 const RealOrComplexFloat = Union{AbstractFloat,Complex{<:AbstractFloat}}
-
-# AdjointTensorMap
-# ----------------
-function leftorth!(t::AdjointTensorMap; alg::OFA=QRpos())
-    InnerProductStyle(t) === EuclideanInnerProduct() ||
-        throw_invalid_innerproduct(:leftorth!)
-    return map(adjoint, reverse(rightorth!(adjoint(t); alg=alg')))
-end
-
-function rightorth!(t::AdjointTensorMap; alg::OFA=LQpos())
-    InnerProductStyle(t) === EuclideanInnerProduct() ||
-        throw_invalid_innerproduct(:rightorth!)
-    return map(adjoint, reverse(leftorth!(adjoint(t); alg=alg')))
-end
-
-function leftnull!(t::AdjointTensorMap; alg::OFA=QR(), kwargs...)
-    InnerProductStyle(t) === EuclideanInnerProduct() ||
-        throw_invalid_innerproduct(:leftnull!)
-    return adjoint(rightnull!(adjoint(t); alg=alg', kwargs...))
-end
-
-function rightnull!(t::AdjointTensorMap; alg::OFA=LQ(), kwargs...)
-    InnerProductStyle(t) === EuclideanInnerProduct() ||
-        throw_invalid_innerproduct(:rightnull!)
-    return adjoint(leftnull!(adjoint(t); alg=alg', kwargs...))
-end
-
-function tsvd!(t::AdjointTensorMap; trunc=NoTruncation(), p::Real=2, alg=SDD())
-    u, s, vt, err = tsvd!(adjoint(t); trunc=trunc, p=p, alg=alg)
-    return adjoint(vt), adjoint(s), adjoint(u), err
-end
 
 # DiagonalTensorMap
 # -----------------
