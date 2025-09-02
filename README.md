@@ -1,6 +1,6 @@
 <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/Jutho/TensorKit.jl/blob/master/docs/src/assets/logo-dark.svg">
-    <img alt="TensorKit.jl logo" src="https://github.com/Jutho/TensorKit.jl/blob/master/docs/src/assets/logo.svg" width="150">
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/QuantumKitHub/TensorKit.jl/blob/main/docs/src/assets/logo-dark.svg">
+    <img alt="TensorKit.jl logo" src="https://github.com/QuantumKitHub/TensorKit.jl/blob/main/docs/src/assets/logo.svg" width="150">
 </picture>
 
 # TensorKit.jl
@@ -18,10 +18,10 @@ A Julia package for large-scale tensor computations, with a hint of category the
 
 
 [docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
-[docs-stable-url]: https://jutho.github.io/TensorKit.jl/stable
+[docs-stable-url]: https://QuantumKitHub.github.io/TensorKit.jl/stable
 
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
-[docs-dev-url]: https://jutho.github.io/TensorKit.jl/latest
+[docs-dev-url]: https://QuantumKitHub.github.io/TensorKit.jl/latest
 
 [doi-img]: https://zenodo.org/badge/DOI/10.5281/zenodo.8421339.svg
 [doi-url]: https://doi.org/10.5281/zenodo.8421339
@@ -29,11 +29,11 @@ A Julia package for large-scale tensor computations, with a hint of category the
 [downloads-img]: https://img.shields.io/badge/dynamic/json?url=http%3A%2F%2Fjuliapkgstats.com%2Fapi%2Fv1%2Ftotal_downloads%2FTensorKit&query=total_requests&label=Downloads
 [downloads-url]: http://juliapkgstats.com/pkg/TensorKit
 
-[ci-img]: https://github.com/Jutho/TensorKit.jl/actions/workflows/CI.yml/badge.svg
-[ci-url]: https://github.com/Jutho/TensorKit.jl/actions/workflows/CI.yml
+[ci-img]: https://github.com/QuantumKitHub/TensorKit.jl/actions/workflows/CI.yml/badge.svg
+[ci-url]: https://github.com/QuantumKitHub/TensorKit.jl/actions/workflows/CI.yml
 
-[codecov-img]: https://codecov.io/gh/Jutho/TensorKit.jl/branch/master/graph/badge.svg
-[codecov-url]: https://codecov.io/gh/Jutho/TensorKit.jl
+[codecov-img]: https://codecov.io/gh/QuantumKitHub/TensorKit.jl/branch/master/graph/badge.svg
+[codecov-url]: https://codecov.io/gh/QuantumKitHub/TensorKit.jl
 
 [aqua-img]: https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg
 [aqua-url]: https://github.com/JuliaTesting/Aqua.jl
