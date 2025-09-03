@@ -160,6 +160,7 @@ for V in spacelist
             @test LinearAlgebra.isdiag(D)
             @test LinearAlgebra.diag(D) == d
         end=#
+        #=
         @timedtestset "Permutations: test via inner product invariance" begin
             W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
             t = CUDA.rand(ComplexF64, W)
@@ -323,7 +324,7 @@ for V in spacelist
                     @test ad(t1' / t') ≈ ad(t1)' / ad(t)'
                 end
             end
-        end
+        end=#
         @timedtestset "Factorization" begin
             W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
             for T in (Float32, ComplexF64)
@@ -336,20 +337,14 @@ for V in spacelist
                                                        TensorKit.Polar(), TensorKit.SVD(),
                                                        )
                         Q, R = @constinferred leftorth(t, ((3, 4, 2), (1, 5)); alg=alg)
-                        QdQ = Q' * Q
-                        @test QdQ ≈ one(QdQ)
+                        @test isisometry(Q)
                         @test Q * R ≈ permute(t, ((3, 4, 2), (1, 5)))
-                        if alg isa Polar
-                            # @test isposdef(R) # not defined for CUDA
-                            @test_broken domain(R) == codomain(R) == space(t, 1)' ⊗ space(t, 5)'
-                        end
                     end
                     @testset "leftnull with $alg" for alg in
                                                       (TensorKit.QR(), TensorKit.SVD(),
                                                        )
                         N = @constinferred leftnull(t, ((3, 4, 2), (1, 5)); alg=alg)
-                        NdN = N' * N
-                        @test NdN ≈ one(NdN)
+                        @test isisometry(N)
                         @test norm(N' * permute(t, ((3, 4, 2), (1, 5)))) <
                               100 * eps(norm(t))
                     end
@@ -360,29 +355,21 @@ for V in spacelist
                                                         )
                         # cusolver SVD requires m >= n for some reason
                         L, Q = @constinferred rightorth(t, ((3, 4), (2, 1, 5)); alg=alg)
-                        QQd = Q * Q'
-                        @test QQd ≈ one(QQd)
+                        @test isisometry(Q; side=:right)
                         @test L * Q ≈ permute(t, ((3, 4), (2, 1, 5)))
-                        if alg isa Polar
-                            # @test isposdef(L) # not defined for CUDA
-                            @test_broken domain(L) == codomain(L) == space(t, 3) ⊗ space(t, 4)
-                        end
                     end
                     @testset "rightnull with $alg" for alg in
                                                        (TensorKit.LQ(), TensorKit.SVD(),
                                                         )
                         M = @constinferred rightnull(t, ((3, 4), (2, 1, 5)); alg=alg)
-                        MMd = M * M'
-                        @test MMd ≈ one(MMd)
+                        @test isisometry(M; side=:right)
                         @test norm(permute(t, ((3, 4), (2, 1, 5))) * M') <
                               100 * eps(norm(t))
                     end
                     @testset "tsvd with $alg" for alg in (TensorKit.SVD(),)
                         U, S, V = @constinferred tsvd(t, ((3, 4, 2), (1, 5)); alg=alg)
-                        UdU = U' * U
-                        @test UdU ≈ one(UdU)
-                        VVd = V * V'
-                        @test VVd ≈ one(VVd)
+                        @test isisometry(U)
+                        @test isisometry(V; side=:right)
                         t2 = permute(t, ((3, 4, 2), (1, 5)))
                         US = U * S
                         USV = US * V

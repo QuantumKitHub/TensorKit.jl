@@ -16,7 +16,7 @@ using Random
 
 include("cutensormap.jl")
 
-TensorKit.Factorizations.select_svd_algorithm(::CuTensorMap, ::TensorKit.Factorizations.SVD) = CUSOLVER_Jacobi()
+TensorKit.Factorizations.select_svd_algorithm(::CuTensorMap, ::TensorKit.Factorizations.SVD) = CUSOLVER_QRIteration()
 TensorKit.Factorizations.select_svd_algorithm(::CuTensorMap, ::TensorKit.Factorizations.SDD) = throw(ArgumentError("DivideAndConquer unavailable on CUDA")) 
 TensorKit.Factorizations.select_svd_algorithm(::CuTensorMap, alg::OFA) = throw(ArgumentError(lazy"Unknown algorithm $alg"))
 
