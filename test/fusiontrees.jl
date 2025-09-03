@@ -89,13 +89,13 @@ ti = time()
                 @test c′ == one(c′)
                 return t′
             end
-            braid_i_to_1 = braid(f1, levels, (i, (1:(i - 1))..., ((i + 1):N)...))
+            braid_i_to_1 = braid(f1, (i, (1:(i - 1))..., ((i + 1):N)...), levels)
             trees2 = Dict(_reinsert_partial_tree(t, f2) => c for (t, c) in braid_i_to_1)
             trees3 = empty(trees2)
             p = (((N + 1):(N + i - 1))..., (1:N)..., ((N + i):(2N - 1))...)
             levels = ((i:(N + i - 1))..., (1:(i - 1))..., ((i + N):(2N - 1))...)
             for (t, coeff) in trees2
-                for (t′, coeff′) in braid(t, levels, p)
+                for (t′, coeff′) in braid(t, p, levels)
                     trees3[t′] = get(trees3, t′, zero(coeff′)) + coeff * coeff′
                 end
             end
@@ -142,7 +142,7 @@ ti = time()
                         @test bf ≈ bf′ atol = 1e-12
                     end
 
-                    d2 = @constinferred TK.planar_trace(f, (1, 3), (2, 4))
+                    d2 = @constinferred TK.planar_trace(f, ((1, 3), (2, 4)))
                     oind2 = (5, 6, 7)
                     bf2 = tensortrace(af, (:a, :a, :b, :b, :c, :d, :e))
                     bf2′ = zero(bf2)
@@ -151,7 +151,7 @@ ti = time()
                     end
                     @test bf2 ≈ bf2′ atol = 1e-12
 
-                    d2 = @constinferred TK.planar_trace(f, (5, 6), (2, 1))
+                    d2 = @constinferred TK.planar_trace(f, ((5, 6), (2, 1)))
                     oind2 = (3, 4, 7)
                     bf2 = tensortrace(af, (:a, :b, :c, :d, :b, :a, :e))
                     bf2′ = zero(bf2)
@@ -160,7 +160,7 @@ ti = time()
                     end
                     @test bf2 ≈ bf2′ atol = 1e-12
 
-                    d2 = @constinferred TK.planar_trace(f, (1, 4), (6, 3))
+                    d2 = @constinferred TK.planar_trace(f, ((1, 4), (6, 3)))
                     bf2 = tensortrace(af, (:a, :b, :c, :c, :d, :a, :e))
                     bf2′ = zero(bf2)
                     for (f2′, coeff) in d2
@@ -170,7 +170,7 @@ ti = time()
 
                     q1 = (1, 3, 5)
                     q2 = (2, 4, 6)
-                    d3 = @constinferred TK.planar_trace(f, q1, q2)
+                    d3 = @constinferred TK.planar_trace(f, (q1, q2))
                     bf3 = tensortrace(af, (:a, :a, :b, :b, :c, :c, :d))
                     bf3′ = zero(bf3)
                     for (f3′, coeff) in d3
@@ -180,7 +180,7 @@ ti = time()
 
                     q1 = (1, 3, 5)
                     q2 = (6, 2, 4)
-                    d3 = @constinferred TK.planar_trace(f, q1, q2)
+                    d3 = @constinferred TK.planar_trace(f, (q1, q2))
                     bf3 = tensortrace(af, (:a, :b, :b, :c, :c, :a, :d))
                     bf3′ = zero(bf3)
                     for (f3′, coeff) in d3
@@ -190,7 +190,7 @@ ti = time()
 
                     q1 = (1, 2, 3)
                     q2 = (6, 5, 4)
-                    d3 = @constinferred TK.planar_trace(f, q1, q2)
+                    d3 = @constinferred TK.planar_trace(f, (q1, q2))
                     bf3 = tensortrace(af, (:a, :b, :c, :c, :b, :a, :d))
                     bf3′ = zero(bf3)
                     for (f3′, coeff) in d3
@@ -200,7 +200,7 @@ ti = time()
 
                     q1 = (1, 2, 4)
                     q2 = (6, 3, 5)
-                    d3 = @constinferred TK.planar_trace(f, q1, q2)
+                    d3 = @constinferred TK.planar_trace(f, (q1, q2))
                     bf3 = tensortrace(af, (:a, :b, :b, :c, :c, :a, :d))
                     bf3′ = zero(bf3)
                     for (f3′, coeff) in d3
@@ -273,11 +273,11 @@ ti = time()
         ip = invperm(p)
 
         levels = ntuple(identity, N)
-        d = @constinferred braid(f, levels, p)
+        d = @constinferred braid(f, p, levels)
         d2 = Dict{typeof(f),valtype(d)}()
         levels2 = p
         for (f2, coeff) in d
-            for (f1, coeff2) in braid(f2, levels2, ip)
+            for (f1, coeff2) in braid(f2, ip, levels2)
                 d2[f1] = get(d2, f1, zero(coeff)) + coeff2 * coeff
             end
         end
@@ -334,7 +334,7 @@ ti = time()
                 perm = ((N .+ (1:N))..., (1:N)...)
                 levels = ntuple(identity, 2 * N)
                 for (t, coeff) in trees1
-                    for (t′, coeff′) in braid(t, levels, perm)
+                    for (t′, coeff′) in braid(t, perm, levels)
                         trees3[t′] = get(trees3, t′, zero(valtype(trees3))) + coeff * coeff′
                     end
                 end
@@ -381,12 +381,12 @@ ti = time()
 
     @testset "Double fusion tree $Istr: repartioning" begin
         for n in 0:(2 * N)
-            d = @constinferred TK.repartition(f1, f2, $n)
+            d = @constinferred TK.repartition((f1, f2), $n)
             @test dim(incoming) ≈
                   sum(abs2(coef) * dim(f1.coupled) for ((f1, f2), coef) in d)
             d2 = Dict{typeof((f1, f2)),valtype(d)}()
             for ((f1′, f2′), coeff) in d
-                for ((f1′′, f2′′), coeff2) in TK.repartition(f1′, f2′, N)
+                for ((f1′′, f2′′), coeff2) in TK.repartition((f1′, f2′), N)
                     d2[(f1′′, f2′′)] = get(d2, (f1′′, f2′′), zero(coeff)) + coeff2 * coeff
                 end
             end
@@ -432,12 +432,12 @@ ti = time()
                 ip = invperm(p)
                 ip1, ip2 = ip[1:N], ip[(N + 1):(2N)]
 
-                d = @constinferred TensorKit.permute(f1, f2, p1, p2)
+                d = @constinferred TensorKit.permute((f1, f2), (p1, p2))
                 @test dim(incoming) ≈
                       sum(abs2(coef) * dim(f1.coupled) for ((f1, f2), coef) in d)
                 d2 = Dict{typeof((f1, f2)),valtype(d)}()
                 for ((f1′, f2′), coeff) in d
-                    d′ = TensorKit.permute(f1′, f2′, ip1, ip2)
+                    d′ = TensorKit.permute((f1′, f2′), (ip1, ip2))
                     for ((f1′′, f2′′), coeff2) in d′
                         d2[(f1′′, f2′′)] = get(d2, (f1′′, f2′′), zero(coeff)) +
                                            coeff2 * coeff
@@ -490,12 +490,12 @@ ti = time()
             ip′ = tuple(getindex.(Ref(vcat(1:n, (2N):-1:(n + 1))), ip)...)
             ip1, ip2 = ip′[1:N], ip′[(2N):-1:(N + 1)]
 
-            d = @constinferred transpose(f1, f2, p1, p2)
+            d = @constinferred transpose((f1, f2), (p1, p2))
             @test dim(incoming) ≈
                   sum(abs2(coef) * dim(f1.coupled) for ((f1, f2), coef) in d)
             d2 = Dict{typeof((f1, f2)),valtype(d)}()
             for ((f1′, f2′), coeff) in d
-                d′ = transpose(f1′, f2′, ip1, ip2)
+                d′ = transpose((f1′, f2′), (ip1, ip2))
                 for ((f1′′, f2′′), coeff2) in d′
                     d2[(f1′′, f2′′)] = get(d2, (f1′′, f2′′), zero(coeff)) + coeff2 * coeff
                 end
@@ -509,7 +509,7 @@ ti = time()
             end
 
             if BraidingStyle(I) isa Bosonic
-                d3 = permute(f1, f2, p1, p2)
+                d3 = permute((f1, f2), (p1, p2))
                 for (f1′, f2′) in union(keys(d), keys(d3))
                     coeff1 = get(d, (f1′, f2′), zero(valtype(d)))
                     coeff3 = get(d3, (f1′, f2′), zero(valtype(d3)))
@@ -546,14 +546,15 @@ ti = time()
         end
     end
     @testset "Double fusion tree $Istr: planar trace" begin
-        d1 = transpose(f1, f1, (N + 1, 1:N..., ((2N):-1:(N + 3))...), (N + 2,))
+        d1 = transpose((f1, f1), ((N + 1, 1:N..., ((2N):-1:(N + 3))...), (N + 2,)))
         f1front, = TK.split(f1, N - 1)
         T = typeof(Fsymbol(one(I), one(I), one(I), one(I), one(I), one(I))[1, 1, 1, 1])
         d2 = Dict{typeof((f1front, f1front)),T}()
         for ((f1′, f2′), coeff′) in d1
             for ((f1′′, f2′′), coeff′′) in
-                TK.planar_trace(f1′, f2′, (2:N...,), (1, ((2N):-1:(N + 3))...), (N + 1,),
-                                (N + 2,))
+                TK.planar_trace((f1′, f2′), ((2:N...,), (1, ((2N):-1:(N + 3))...)),
+                                ((N + 1,),
+                                 (N + 2,)))
                 coeff = coeff′ * coeff′′
                 d2[(f1′′, f2′′)] = get(d2, (f1′′, f2′′), zero(coeff)) + coeff
             end

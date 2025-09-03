@@ -95,7 +95,7 @@ function planartrace!(C::AbstractTensorMap,
     end
     β′ = One()
     for (f₁, f₂) in fusiontrees(A)
-        for ((f₁′, f₂′), coeff) in planar_trace(f₁, f₂, p₁, p₂, q₁, q₂)
+        for ((f₁′, f₂′), coeff) in planar_trace((f₁, f₂), (p₁, p₂), (q₁, q₂))
             TO.tensortrace!(C[f₁′, f₂′], A[f₁, f₂], (p₁, p₂), (q₁, q₂), false, α * coeff,
                             β′,
                             backend, allocator)

@@ -26,7 +26,7 @@ function AbelianTreeTransformer(transform, p, Vdst, Vsrc)
 
     for i in 1:L
         f₁, f₂ = structure_src.fusiontreelist[i]
-        (f₃, f₄), coeff = only(transform(f₁, f₂))
+        (f₃, f₄), coeff = only(transform((f₁, f₂)))
         j = structure_dst.fusiontreeindices[(f₃, f₄)]
         stridestructure_dst = structure_dst.fusiontreestructure[j]
         stridestructure_src = structure_src.fusiontreestructure[i]
@@ -62,52 +62,89 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
     fusionstructure_dst = structure_dst.fusiontreestructure
     structure_src = fusionblockstructure(Vsrc)
     fusionstructure_src = structure_src.fusiontreestructure
+
     I = sectortype(Vsrc)
-
-    uncoupleds_src = map(structure_src.fusiontreelist) do (f₁, f₂)
-        return TupleTools.vcat(f₁.uncoupled, dual.(f₂.uncoupled))
-    end
-    uncoupleds_src_unique = unique(uncoupleds_src)
-
-    uncoupleds_dst = map(structure_dst.fusiontreelist) do (f₁, f₂)
-        return TupleTools.vcat(f₁.uncoupled, dual.(f₂.uncoupled))
-    end
-
     T = sectorscalartype(I)
     N = numind(Vdst)
-    L = length(uncoupleds_src_unique)
-    data = Vector{_GenericTransformerData{T,N}}(undef, L)
+    N₁ = numout(Vsrc)
+    N₂ = numin(Vsrc)
 
-    # TODO: this can be multithreaded
-    for (i, uncoupled) in enumerate(uncoupleds_src_unique)
-        inds_src = findall(==(uncoupled), uncoupleds_src)
-        fusiontrees_outer_src = structure_src.fusiontreelist[inds_src]
+    isdual_src = (map(isdual, codomain(Vsrc).spaces), map(isdual, domain(Vsrc).spaces))
 
-        uncoupled_dst = TupleTools.getindices(uncoupled, (p[1]..., p[2]...))
-        inds_dst = findall(==(uncoupled_dst), uncoupleds_dst)
+    data = Vector{_GenericTransformerData{T,N}}()
 
-        fusiontrees_outer_dst = structure_dst.fusiontreelist[inds_dst]
+    nthreads = get_num_manipulation_threads()
+    if nthreads > 1
+        fusiontreeblocks = Vector{FusionTreeBlock{I,N₁,N₂,fusiontreetype(I, N₁, N₂)}}()
+        for cod_uncoupled_src in sectors(codomain(Vsrc)),
+            dom_uncoupled_src in sectors(domain(Vsrc))
 
-        matrix = zeros(sectorscalartype(I), length(inds_dst), length(inds_src))
-        for (row, (f₁, f₂)) in enumerate(fusiontrees_outer_src)
-            for ((f₃, f₄), coeff) in transform(f₁, f₂)
-                col = findfirst(==((f₃, f₄)), fusiontrees_outer_dst)::Int
-                matrix[row, col] = coeff
+            fs_src = FusionTreeBlock{I}((cod_uncoupled_src, dom_uncoupled_src), isdual_src)
+            trees_src = fusiontrees(fs_src)
+            if !isempty(trees_src)
+                push!(fusiontreeblocks, fs_src)
             end
         end
+        nblocks = length(fusiontreeblocks)
 
-        # size is shared between blocks, so repack:
-        # from [(sz, strides, offset), ...] to (sz, [(strides, offset), ...])
-        sz_src, newstructs_src = repack_transformer_structure(fusionstructure_src, inds_src)
-        sz_dst, newstructs_dst = repack_transformer_structure(fusionstructure_dst, inds_dst)
+        resize!(data, nblocks)
+        counter = Threads.Atomic{Int}(1)
+        Threads.@sync for _ in 1:min(nthreads, nblocks)
+            Threads.@spawn begin
+                while true
+                    local_counter = Threads.atomic_add!(counter, 1)
+                    local_counter > nblocks && break
+                    fs_src = fusiontreeblocks[local_counter]
+                    fs_dst, U = transform(fs_src)
+                    matrix = copy(transpose(U)) # TODO: should we avoid this
 
-        @debug("Created recoupling block for uncoupled: $uncoupled",
-               sz = size(matrix), sparsity = count(!iszero, matrix) / length(matrix))
+                    trees_src = fusiontrees(fs_src)
+                    inds_src = map(Base.Fix1(getindex, structure_src.fusiontreeindices),
+                                   trees_src)
+                    trees_dst = fusiontrees(fs_dst)
+                    inds_dst = map(Base.Fix1(getindex, structure_dst.fusiontreeindices),
+                                   trees_dst)
 
-        data[i] = (matrix, (sz_dst, newstructs_dst), (sz_src, newstructs_src))
+                    # size is shared between blocks, so repack:
+                    # from [(sz, strides, offset), ...] to (sz, [(strides, offset), ...])
+                    sz_src, newstructs_src = repack_transformer_structure(fusionstructure_src,
+                                                                          inds_src)
+                    sz_dst, newstructs_dst = repack_transformer_structure(fusionstructure_dst,
+                                                                          inds_dst)
+
+                    data[local_counter] = (matrix, (sz_dst, newstructs_dst),
+                                           (sz_src, newstructs_src))
+                end
+            end
+        end
+        transformer = GenericTreeTransformer{T,N}(data)
+    else
+        isdual_src = (map(isdual, codomain(Vsrc).spaces), map(isdual, domain(Vsrc).spaces))
+        for cod_uncoupled_src in sectors(codomain(Vsrc)),
+            dom_uncoupled_src in sectors(domain(Vsrc))
+
+            fs_src = FusionTreeBlock{I}((cod_uncoupled_src, dom_uncoupled_src), isdual_src)
+            trees_src = fusiontrees(fs_src)
+            isempty(trees_src) && continue
+
+            fs_dst, U = transform(fs_src)
+            matrix = copy(transpose(U)) # TODO: should we avoid this
+
+            inds_src = map(Base.Fix1(getindex, structure_src.fusiontreeindices), trees_src)
+            trees_dst = fusiontrees(fs_dst)
+            inds_dst = map(Base.Fix1(getindex, structure_dst.fusiontreeindices), trees_dst)
+
+            # size is shared between blocks, so repack:
+            # from [(sz, strides, offset), ...] to (sz, [(strides, offset), ...])
+            sz_src, newstructs_src = repack_transformer_structure(fusionstructure_src,
+                                                                  inds_src)
+            sz_dst, newstructs_dst = repack_transformer_structure(fusionstructure_dst,
+                                                                  inds_dst)
+
+            push!(data, (matrix, (sz_dst, newstructs_dst), (sz_src, newstructs_src)))
+        end
+        transformer = GenericTreeTransformer{T,N}(data)
     end
-
-    transformer = GenericTreeTransformer{T,N}(data)
 
     # sort by (approximate) weight to facilitate multi-threading strategies
     sort!(transformer)
@@ -115,9 +152,9 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
     Δt = Base.time() - t₀
 
     @debug("TreeTransformer for $Vsrc to $Vdst via $p",
-           nblocks = length(data),
-           sz_median = size(data[cld(end, 2)][1], 1),
-           sz_max = size(data[1][1], 1),
+           nblocks = length(transformer.data),
+           sz_median = size(transformer.data[cld(end, 2)][1], 1),
+           sz_max = size(transformer.data[1][1], 1),
            Δt)
 
     return transformer
@@ -166,14 +203,14 @@ end
 
 # braid is special because it has levels
 function treebraider(::AbstractTensorMap, ::AbstractTensorMap, p::Index2Tuple, levels)
-    return fusiontreetransform(f1, f2) = braid(f1, f2, levels..., p...)
+    return fusiontreetransform(f) = braid(f, p, levels)
 end
 function treebraider(tdst::TensorMap, tsrc::TensorMap, p::Index2Tuple, levels)
     return treebraider(space(tdst), space(tsrc), p, levels)
 end
 @cached function treebraider(Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
                              levels)::treetransformertype(Vdst, Vsrc)
-    fusiontreebraider(f1, f2) = braid(f1, f2, levels..., p...)
+    fusiontreebraider(f) = braid(f, p, levels)
     return TreeTransformer(fusiontreebraider, p, Vdst, Vsrc)
 end
 
@@ -181,14 +218,14 @@ for (transform, treetransformer) in
     ((:permute, :treepermuter), (:transpose, :treetransposer))
     @eval begin
         function $treetransformer(::AbstractTensorMap, ::AbstractTensorMap, p::Index2Tuple)
-            return fusiontreetransform(f1, f2) = $transform(f1, f2, p...)
+            return fusiontreetransform(f) = $transform(f, p)
         end
         function $treetransformer(tdst::TensorMap, tsrc::TensorMap, p::Index2Tuple)
             return $treetransformer(space(tdst), space(tsrc), p)
         end
         @cached function $treetransformer(Vdst::TensorMapSpace, Vsrc::TensorMapSpace,
                                           p::Index2Tuple)::treetransformertype(Vdst, Vsrc)
-            fusiontreetransform(f1, f2) = $transform(f1, f2, p...)
+            fusiontreetransform(f) = $transform(f, p)
             return TreeTransformer(fusiontreetransform, p, Vdst, Vsrc)
         end
     end
