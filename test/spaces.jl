@@ -209,6 +209,10 @@ println("------------------------------------")
         W = @constinferred GradedSpace(one(I) => 1)
         @test W == GradedSpace(one(I) => 1, randsector(I) => 0)
         @test @constinferred(oneunit(V)) == W == oneunit(typeof(V))
+        @test @constinferred(leftoneunit(V)) == oneunit(V) ==
+              @constinferred(rightoneunit(V))
+        Vempty = @constinferred zero(V)
+        @test oneunit(Vempty) == leftoneunit(Vempty) == rightoneunit(Vempty) == W
         @test @constinferred(zero(V)) == GradedSpace(one(I) => 0)
         # randsector never returns trivial sector, so this cannot error
         @test_throws ArgumentError GradedSpace(one(I) => 1, randsector(I) => 0, one(I) => 3)

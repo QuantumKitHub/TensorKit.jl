@@ -3,7 +3,7 @@ using TestExtras
 using Random
 using TensorKit
 using Combinatorics
-using TensorKit: ProductSector, fusiontensor, pentagon_equation, hexagon_equation
+using TensorKit: ProductSector, fusiontensor
 using TensorOperations
 using Base.Iterators: take, product
 # using SUNRepresentations: SUNIrrep
@@ -29,7 +29,7 @@ end
 function randsector(::Type{I}) where {I<:Sector}
     s = collect(smallset(I))
     a = rand(s)
-    while a == one(a) # don't use trivial label
+    while isone(a) # don't use trivial label
         a = rand(s)
     end
     return a
@@ -118,6 +118,7 @@ include("spaces.jl")
 include("tensors.jl")
 include("diagonal.jl")
 include("planar.jl")
+include("multifusion.jl")
 # TODO: remove once we know AD is slow on macOS CI
 if !(Sys.isapple() && get(ENV, "CI", "false") == "true") && isempty(VERSION.prerelease)
     include("ad.jl")
