@@ -99,10 +99,10 @@ eigh!(d::DiagonalTensorMap{<:Real}) = d, one(d)
 eigh!(d::DiagonalTensorMap{<:Complex}) = DiagonalTensorMap(real(d.data), d.domain), one(d)
 
 function LinearAlgebra.svdvals(d::DiagonalTensorMap)
-    return SectorDict(c => LinearAlgebra.svdvals(b) for (c, b) in blocks(d))
+    return SectorDict(c => svd_vals(b) for (c, b) in blocks(d))
 end
 function LinearAlgebra.eigvals(d::DiagonalTensorMap)
-    return SectorDict(c => LinearAlgebra.eigvals(b) for (c, b) in blocks(d))
+    return SectorDict(c => eig_vals(b) for (c, b) in blocks(d))
 end
 
 function LinearAlgebra.cond(d::DiagonalTensorMap, p::Real=2)
@@ -121,11 +121,11 @@ LinearAlgebra.svdvals!(t::AdjointTensorMap) = svdvals!(adjoint(t))
 #--------------------------#
 
 function LinearAlgebra.eigvals!(t::TensorMap{<:RealOrComplexFloat}; kwargs...)
-    return SectorDict(c => complex(LinearAlgebra.eigvals!(b; kwargs...))
+    return SectorDict(c => complex(eig_vals!(b; kwargs...))
                       for (c, b) in blocks(t))
 end
 function LinearAlgebra.eigvals!(t::AdjointTensorMap{<:RealOrComplexFloat}; kwargs...)
-    return SectorDict(c => conj!(complex(LinearAlgebra.eigvals!(b; kwargs...)))
+    return SectorDict(c => conj!(complex(eig_vals!(b; kwargs...)))
                       for (c, b) in blocks(t))
 end
 

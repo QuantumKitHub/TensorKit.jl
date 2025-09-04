@@ -29,7 +29,6 @@ for f! in (:qr_compact!, :qr_full!,
            :left_orth!, :right_orth!)
     @eval function $f!(t::AbstractTensorMap, F, alg::AbstractAlgorithm)
         check_input($f!, t, F, alg)
-
         foreachblock(t, F...) do _, bs
             factors = Base.tail(bs)
             factors′ = $f!(first(bs), factors, alg)

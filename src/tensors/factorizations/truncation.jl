@@ -24,26 +24,25 @@ truncspace(space::ElementarySpace) = TruncationSpace(space)
 function truncate!(::typeof(svd_trunc!), (U, S, Vᴴ)::_T_USVᴴ, strategy::TruncationStrategy)
     ind = findtruncated_sorted(diagview(S), strategy)
     V_truncated = spacetype(S)(c => length(I) for (c, I) in ind)
-
     Ũ = similar(U, codomain(U) ← V_truncated)
     for (c, b) in blocks(Ũ)
         I = get(ind, c, nothing)
         @assert !isnothing(I)
-        copy!(b, @view(block(U, c)[:, I]))
+        copyto!(b, @view(block(U, c)[:, I]))
     end
 
-    S̃ = DiagonalTensorMap{scalartype(S)}(undef, V_truncated)
+    S̃ = DiagonalTensorMap{scalartype(S), spacetype(S), storagetype(S)}(undef, V_truncated)
     for (c, b) in blocks(S̃)
         I = get(ind, c, nothing)
         @assert !isnothing(I)
-        copy!(b.diag, @view(block(S, c).diag[I]))
+        copyto!(b.diag, @view(block(S, c).diag[I]))
     end
 
     Ṽᴴ = similar(Vᴴ, V_truncated ← domain(Vᴴ))
     for (c, b) in blocks(Ṽᴴ)
         I = get(ind, c, nothing)
         @assert !isnothing(I)
-        copy!(b, @view(block(Vᴴ, c)[I, :]))
+        copyto!(b, @view(block(Vᴴ, c)[I, :]))
     end
 
     return Ũ, S̃, Ṽᴴ
@@ -68,8 +67,8 @@ end
 function truncate!(::typeof(eigh_trunc!), (D, V)::_T_DV, strategy::TruncationStrategy)
     ind = findtruncated(diagview(D), strategy)
     V_truncated = spacetype(D)(c => length(I) for (c, I) in ind)
-
-    D̃ = DiagonalTensorMap{scalartype(D)}(undef, V_truncated)
+    
+    D̃ = DiagonalTensorMap{scalartype(D), spacetype(D), storagetype(D)}(undef, V_truncated)
     for (c, b) in blocks(D̃)
         I = get(ind, c, nothing)
         @assert !isnothing(I)
@@ -89,7 +88,7 @@ function truncate!(::typeof(eig_trunc!), (D, V)::_T_DV, strategy::TruncationStra
     ind = findtruncated(diagview(D), strategy)
     V_truncated = spacetype(D)(c => length(I) for (c, I) in ind)
 
-    D̃ = DiagonalTensorMap{scalartype(D)}(undef, V_truncated)
+    D̃ = DiagonalTensorMap{scalartype(D), spacetype(D), storagetype(D)}(undef, V_truncated)
     for (c, b) in blocks(D̃)
         I = get(ind, c, nothing)
         @assert !isnothing(I)
