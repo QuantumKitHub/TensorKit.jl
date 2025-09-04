@@ -3,6 +3,11 @@ _kindof(::Union{QR,QRpos}) = :qr
 _kindof(::Union{LQ,LQpos}) = :lq
 _kindof(::Polar) = :polar
 
+_kindof(::LAPACK_HouseholderQR) = :qr
+_kindof(::LAPACK_HouseholderLQ) = :lq
+_kindof(::LAPACK_SVDAlgorithm) = :svd
+_kindof(::PolarViaSVD) = :polar
+
 leftorth!(t; alg=nothing, kwargs...) = _leftorth!(t, alg; kwargs...)
 
 function _leftorth!(t::AbstractTensorMap, alg::Nothing, ; kwargs...)
@@ -19,14 +24,16 @@ function _leftorth!(t::AbstractTensorMap, alg::Union{QL,QLpos}; kwargs...)
         return Q, R
     end
 end
-function _leftorth!(t, alg::OFA; kwargs...)
+function _leftorth!(t, alg::Union{OFA,AbstractAlgorithm}; kwargs...)
     trunc = isempty(kwargs) ? nothing : (; kwargs...)
 
-    Base.depwarn(lazy"$alg is deprecated", :leftorth!)
+    alg isa OFA && Base.depwarn(lazy"$alg is deprecated", :leftorth!)
 
     kind = _kindof(alg)
     if kind == :svd
-        alg_svd = alg === SVD() ? LAPACK_QRIteration() :
+        alg_svd = alg === LAPACK_QRIteration() ? alg : 
+                  alg === LAPACK_DivideAndConquer() ? alg : 
+                  alg === SVD() ? LAPACK_QRIteration() :
                   alg === SDD() ? LAPACK_DivideAndConquer() :
                   throw(ArgumentError(lazy"Unknown algorithm $alg"))
         return left_orth!(t; kind, alg_svd, trunc)
@@ -40,19 +47,22 @@ function _leftorth!(t, alg::OFA; kwargs...)
     end
 end
 # fallback to MatrixAlgebraKit version
-_leftorth!(t, alg; kwargs...) = left_orth!(t; alg, kwargs...)
+_leftorth!(t, alg; kwargs...) = left_orth!(t, alg; kwargs...)
 
 function leftnull!(t::AbstractTensorMap;
-                   alg::Union{QR,QRpos,SVD,SDD,Nothing}=nothing, kwargs...)
+                   alg::Union{LAPACK_HouseholderQR,LAPACK_QRIteration, LAPACK_DivideAndConquer,PolarViaSVD,QR,QRpos,SVD,SDD,Nothing}=nothing, kwargs...)
     InnerProductStyle(t) === EuclideanInnerProduct() ||
         throw_invalid_innerproduct(:leftnull!)
     trunc = isempty(kwargs) ? nothing : (; kwargs...)
+    alg isa OFA && Base.depwarn(lazy"$alg is deprecated", :leftnull!)
 
     isnothing(alg) && return left_null!(t; trunc)
 
     kind = _kindof(alg)
     if kind == :svd
-        alg_svd = alg === SVD() ? LAPACK_QRIteration() :
+        alg_svd = alg === LAPACK_QRIteration() ? alg : 
+                  alg === LAPACK_DivideAndConquer() ? alg : 
+                  alg === SVD() ? LAPACK_QRIteration() :
                   alg === SDD() ? LAPACK_DivideAndConquer() :
                   throw(ArgumentError(lazy"Unknown algorithm $alg"))
         return left_null!(t; kind, alg_svd, trunc)
@@ -65,10 +75,12 @@ function leftnull!(t::AbstractTensorMap;
 end
 
 function rightorth!(t::AbstractTensorMap;
-                    alg::Union{LQ,LQpos,RQ,RQpos,SVD,SDD,Polar,Nothing}=nothing, kwargs...)
+                    alg::Union{LAPACK_HouseholderLQ,LAPACK_QRIteration, LAPACK_DivideAndConquer,PolarViaSVD,LQ,LQpos,RQ,RQpos,SVD,SDD,Polar,Nothing}=nothing, kwargs...)
     InnerProductStyle(t) === EuclideanInnerProduct() ||
         throw_invalid_innerproduct(:rightorth!)
     trunc = isempty(kwargs) ? nothing : (; kwargs...)
+    
+    alg isa OFA && Base.depwarn(lazy"$alg is deprecated", :rightorth!)
 
     isnothing(alg) && return right_orth!(t; trunc)
 
@@ -82,7 +94,9 @@ function rightorth!(t::AbstractTensorMap;
 
     kind = _kindof(alg)
     if kind == :svd
-        alg_svd = alg === SVD() ? LAPACK_QRIteration() :
+        alg_svd = alg === LAPACK_QRIteration() ? alg : 
+                  alg === LAPACK_DivideAndConquer() ? alg : 
+                  alg === SVD() ? LAPACK_QRIteration() :
                   alg === SDD() ? LAPACK_DivideAndConquer() :
                   throw(ArgumentError(lazy"Unknown algorithm $alg"))
         return right_orth!(t; kind, alg_svd, trunc)
@@ -97,16 +111,20 @@ function rightorth!(t::AbstractTensorMap;
 end
 
 function rightnull!(t::AbstractTensorMap;
-                    alg::Union{LQ,LQpos,SVD,SDD,Nothing}=nothing, kwargs...)
+                    alg::Union{LAPACK_HouseholderLQ, LAPACK_QRIteration, LAPACK_DivideAndConquer,PolarViaSVD,LQ,LQpos,SVD,SDD,Nothing}=nothing, kwargs...)
     InnerProductStyle(t) === EuclideanInnerProduct() ||
         throw_invalid_innerproduct(:rightnull!)
     trunc = isempty(kwargs) ? nothing : (; kwargs...)
+
+    alg isa OFA && Base.depwarn(lazy"$alg is deprecated", :rightnull!)
 
     isnothing(alg) && return right_null!(t; trunc)
 
     kind = _kindof(alg)
     if kind == :svd
-        alg_svd = alg === SVD() ? LAPACK_QRIteration() :
+        alg_svd = alg === LAPACK_QRIteration() ? alg : 
+                  alg === LAPACK_DivideAndConquer() ? alg : 
+                  alg === SVD() ? LAPACK_QRIteration() :
                   alg === SDD() ? LAPACK_DivideAndConquer() :
                   throw(ArgumentError(lazy"Unknown algorithm $alg"))
         return right_null!(t; kind, alg_svd, trunc)

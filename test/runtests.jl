@@ -121,6 +121,7 @@ if !is_buildkite
     include("fusiontrees.jl")
     include("spaces.jl")
     include("tensors.jl")
+    include("factorizations.jl")
     include("diagonal.jl")
     include("planar.jl")
     # TODO: remove once we know AD is slow on macOS CI

@@ -30,7 +30,7 @@ equivalent total dimension of the internal vector space is no larger than `χ`.
 The method `tsvd` also returns the truncation error `ϵ`, computed as the `p` norm of the
 singular values that were truncated.
 
-THe keyword `alg` can be equal to `SVD()` or `SDD()`, corresponding to the underlying LAPACK
+The keyword `alg` can be equal to `SVD()` or `SDD()`, corresponding to the underlying LAPACK
 algorithm that computes the decomposition (`_gesvd` or `_gesdd`).
 
 Orthogonality requires `InnerProductStyle(t) <: HasInnerProduct`, and `tsvd(!)`

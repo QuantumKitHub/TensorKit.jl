@@ -8,7 +8,8 @@ export tsvd, tsvd!, svdvals, svdvals!
 export leftorth, leftorth!, rightorth, rightorth!
 export leftnull, leftnull!, rightnull, rightnull!
 export copy_oftype, permutedcopy_oftype, one!
-export TruncationScheme, notrunc, truncbelow, truncerr, truncdim, truncspace
+export TruncationScheme, notrunc, truncbelow, truncerr, truncdim, truncspace, PolarViaSVD
+#export LAPACK_HouseholderQR, LAPACK_HouseholderLQ
 
 using ..TensorKit
 using ..TensorKit: AdjointTensorMap, SectorDict, OFA, blocktype, foreachblock, one!
@@ -21,7 +22,9 @@ using TensorOperations: Index2Tuple
 using MatrixAlgebraKit
 using MatrixAlgebraKit: AbstractAlgorithm, TruncatedAlgorithm, TruncationStrategy,
                         NoTruncation, TruncationKeepAbove, TruncationKeepBelow,
-                        TruncationIntersection, TruncationKeepFiltered, DiagonalAlgorithm
+                        TruncationIntersection, TruncationKeepFiltered, PolarViaSVD,
+                        LAPACK_SVDAlgorithm, LAPACK_QRIteration, LAPACK_HouseholderQR,
+                        LAPACK_HouseholderLQ, DiagonalAlgorithm
 import MatrixAlgebraKit: default_algorithm,
                          copy_input, check_input, initialize_output,
                          qr_compact!, qr_full!, qr_null!, lq_compact!, lq_full!, lq_null!,

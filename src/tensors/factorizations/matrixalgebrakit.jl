@@ -367,7 +367,6 @@ end
 # -------------------
 const _T_WP = Tuple{<:AbstractTensorMap,<:AbstractTensorMap}
 const _T_PWᴴ = Tuple{<:AbstractTensorMap,<:AbstractTensorMap}
-using MatrixAlgebraKit: PolarViaSVD
 
 function check_input(::typeof(left_polar!), t::AbstractTensorMap, (W, P)::_T_WP, ::AbstractAlgorithm)
     codomain(t) ≿ domain(t) ||
@@ -540,6 +539,6 @@ end
 
 for (f!, f_svd!) in zip((:left_null!, :right_null!), (:left_null_svd!, :right_null_svd!))
     @eval function $f_svd!(t::AbstractTensorMap, N, alg, ::Nothing=nothing)
-        return $f!(t, N, alg)
+        return $f!(t, N; alg_svd=alg)
     end
 end
