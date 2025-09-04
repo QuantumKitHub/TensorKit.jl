@@ -1,0 +1,44 @@
+env:
+  SECRET_CODECOV_TOKEN: "IAcIDwEfSDEfjfVOQ5VI9apT8mLPcJDIRoZa+D0GvUB6HyEjemG+mZD8uzLbQ0OD7cokQyIO+XpuGCh6wzGCb1Ma2xnqXgTXAKLkMceVm/RVlA80vlo0kjeBjx1h2j2oQeXTsTIt+EWAeKgw3bgZ69vdATgG52JY/z9ia/OhJ7LFMMkEQvXXiKMp0AU5JC+nl/HHgLARb70qqCuPEdCPZa2LZzRfr4D02Rf3/UqAcPXj7KYzw0sxD8R+g6onvqmE2E3OkmpGPQgFXrGrYw9p+PUJqjeXSkZrC1pe1wDh8ge4YXJhHm44M+9XaPlK4IYGA0PJbfaFGMpIhN+5GJlauQ==;U2FsdGVkX1+F3w+O36dLAUvzVtMF7G+WAdqcL4pcsE/vtyTsjXZvpAv/iT1H32gNRNE9f7OjS9pke092rCDZpw=="
+
+steps:
+  - label: "Julia {{matrix.julia}} -- CUDA"
+    plugins:
+      - JuliaCI/julia#v1:
+          version: "{{matrix.julia}}"
+      - JuliaCI/julia-test#v1: ~
+      - JuliaCI/julia-coverage#v1:
+          dirs:
+            - src
+            - ext
+    agents:
+      queue: "juliagpu"
+      cuda: "*"
+    if: build.message !~ /\[skip tests\]/
+    timeout_in_minutes: 30
+    matrix:
+      setup:
+        julia:
+          - "1.10"
+          - "1.11"
+
+  - label: "Julia {{matrix.julia}} -- AMDGPU"
+    plugins:
+      - JuliaCI/julia#v1:
+          version: "{{matrix.julia}}"
+      - JuliaCI/julia-test#v1: ~
+      - JuliaCI/julia-coverage#v1:
+          dirs:
+            - src
+            - ext
+    agents:
+      queue: "juliagpu"
+      rocm: "*"
+      rocmgpu: "*"
+    if: build.message !~ /\[skip tests\]/
+    timeout_in_minutes: 30
+    matrix:
+      setup:
+        julia:
+          - "1.10"
+          - "1.11"
