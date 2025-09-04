@@ -97,7 +97,7 @@ for V in spacelist
                 @test norm(t + t, p) ≈ 2 * norm(t, p)
                 @test norm(t) ≈ norm(t')
 
-                t2 = @constinferred rand!(similar(t))
+                t2 = @constinferred CUDA.rand!(similar(t))
                 β = rand(T)
                 @test @constinferred(dot(β * t2, α * t)) ≈ conj(β) * α * conj(dot(t, t2))
                 @test dot(t2, t) ≈ conj(dot(t, t2))
@@ -123,7 +123,7 @@ for V in spacelist
                 W = V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5
                 for T in (Float32, ComplexF64)
                     t = CUDA.rand(T, W)
-                    t2 = @constinferred rand!(similar(t))
+                    t2 = @constinferred CUDA.rand!(similar(t))
                     @test norm(t, 2) ≈ norm(ad(t), 2)
                     @test dot(t2, t) ≈ dot(ad(t2), ad(t))
                     α = rand(T)
@@ -160,27 +160,23 @@ for V in spacelist
             @test LinearAlgebra.isdiag(D)
             @test LinearAlgebra.diag(D) == d
         end=#
-        #=
         @timedtestset "Permutations: test via inner product invariance" begin
             W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
             t = CUDA.rand(ComplexF64, W)
-            t′ = randn!(similar(t))
+            t′ = CUDA.randn!(similar(t))
             for k in 0:5
                 for p in permutations(1:5)
                     p1 = ntuple(n -> p[n], k)
                     p2 = ntuple(n -> p[k + n], 5 - k)
-                    # TODO fix me
-                    # t2 = @constinferred permute(t, (p1, p2))
+                    t2 = @constinferred permute(t, (p1, p2))
                     t2 = permute(t, (p1, p2))
                     @test norm(t2) ≈ norm(t)
                     t2′ = permute(t′, (p1, p2))
                     @test dot(t2′, t2) ≈ dot(t′, t) ≈ dot(transpose(t2′), transpose(t2))
                 end
 
-                # TODO fix me
-                #t3 = VERSION < v"1.7" ? repartition(t, k) :
-                #     @constinferred repartition(t, $k)
-                t3  = repartition(t, k)
+                t3 = @constinferred repartition(t, $k)
+                t3 = repartition(t, k)
                 @test norm(t3) ≈ norm(t)
                 t3′ = @constinferred repartition!(similar(t3), t′)
                 @test norm(t3′) ≈ norm(t′)
@@ -275,7 +271,7 @@ for V in spacelist
             for T in (Float64, ComplexF64)
                 t1 = CUDA.rand(T, W1, W1)
                 t2 = CUDA.rand(T, W2, W2)
-                t = CUDA.rand(T, W1, W2)
+                t  = CUDA.rand(T, W1, W2)
                 @test t1 * (t1 \ t) ≈ t
                 @test (t / t2) * t2 ≈ t
                 @test t1 \ one(t1) ≈ inv(t1)
@@ -295,12 +291,12 @@ for V in spacelist
                 for T in (Float32, Float64, ComplexF32, ComplexF64)
                     t1 = CUDA.rand(T, W1, W1)
                     t2 = CUDA.rand(T, W2, W2)
-                    t = CUDA.rand(T, W1, W2)
+                    t  = CUDA.rand(T, W1, W2)
                     d1 = dim(W1)
                     d2 = dim(W2)
                     At1 = reshape(convert(Array, t1), d1, d1)
                     At2 = reshape(convert(Array, t2), d2, d2)
-                    At = reshape(convert(Array, t), d1, d2)
+                    At  = reshape(convert(Array, t), d1, d2)
                     @test ad(t1 * t) ≈ ad(t1) * ad(t)
                     @test ad(t1' * t) ≈ ad(t1)' * ad(t)
                     @test ad(t2 * t') ≈ ad(t2) * ad(t)'
@@ -324,7 +320,7 @@ for V in spacelist
                     @test ad(t1' / t') ≈ ad(t1)' / ad(t)'
                 end
             end
-        end=#
+        end
         @timedtestset "Factorization" begin
             W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
             for T in (Float32, ComplexF64)
@@ -539,7 +535,7 @@ for V in spacelist
         # end
         #
         # TODO
-        #=@timedtestset "Tensor product: test via norm preservation" begin
+        @timedtestset "Tensor product: test via norm preservation" begin
             for T in (Float32, ComplexF64)
                 t1 = CUDA.rand(T, V2 ⊗ V3 ⊗ V1, V1 ⊗ V2)
                 t2 = CUDA.rand(T, V2 ⊗ V1 ⊗ V3, V1 ⊗ V1)
@@ -570,7 +566,7 @@ for V in spacelist
                 @tensor t′[1, 2, 3, 4, 5, 6] := t1[1, 2, 3] * t2[4, 5, 6]
                 @test t ≈ t′
             end
-        end=#
+        end
     end
 end
 
