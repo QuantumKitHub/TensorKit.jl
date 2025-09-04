@@ -15,6 +15,10 @@ const TK = TensorKit
 
 Random.seed!(1234)
 
+# don't run all tests on GPU, only the GPU
+# specific ones
+is_buildkite = get(ENV, "BUILDKITE", "false") == "true"
+
 smallset(::Type{I}) where {I<:Sector} = take(values(I), 5)
 function smallset(::Type{ProductSector{Tuple{I1,I2}}}) where {I1,I2}
     iter = product(smallset(I1), smallset(I2))
@@ -112,24 +116,38 @@ VSU₂U₁ = (Vect[SU2Irrep ⊠ U1Irrep]((0, 0) => 1, (1 // 2, -1) => 1),
 #     ℂ[SU3Irrep]((1, 0, 0) => 1, (2, 0, 0) => 1),
 #     ℂ[SU3Irrep]((0, 0, 0) => 1, (1, 0, 0) => 1, (1, 1, 0) => 1)')
 
-Ti = time()
-include("fusiontrees.jl")
-include("spaces.jl")
-include("tensors.jl")
-include("diagonal.jl")
-include("planar.jl")
-# TODO: remove once we know AD is slow on macOS CI
-if !(Sys.isapple() && get(ENV, "CI", "false") == "true") && isempty(VERSION.prerelease)
-    include("ad.jl")
-end
-include("bugfixes.jl")
-Tf = time()
-printstyled("Finished all tests in ",
-            string(round((Tf - Ti) / 60; sigdigits=3)),
-            " minutes."; bold=true, color=Base.info_color())
-println()
-
-@testset "Aqua" verbose = true begin
-    using Aqua
-    Aqua.test_all(TensorKit)
+if !is_buildkite
+    Ti = time()
+    include("fusiontrees.jl")
+    include("spaces.jl")
+    include("tensors.jl")
+    include("diagonal.jl")
+    include("planar.jl")
+    # TODO: remove once we know AD is slow on macOS CI
+    if !(Sys.isapple() && get(ENV, "CI", "false") == "true") && isempty(VERSION.prerelease)
+        include("ad.jl")
+    end
+    include("bugfixes.jl")
+    Tf = time()
+    printstyled("Finished all tests in ",
+                string(round((Tf - Ti) / 60; sigdigits=3)),
+                " minutes."; bold=true, color=Base.info_color())
+    println()
+    @testset "Aqua" verbose = true begin
+        using Aqua
+        Aqua.test_all(TensorKit)
+    end
+else
+    Ti = time()
+    #=using CUDA
+    if CUDA.functional()
+    end
+    using AMDGPU
+    if AMDGPU.functional()
+    end=#
+    Tf = time()
+    printstyled("Finished all GPU tests in ",
+                string(round((Tf - Ti) / 60; sigdigits=3)),
+                " minutes."; bold=true, color=Base.info_color())
+    println()
 end
