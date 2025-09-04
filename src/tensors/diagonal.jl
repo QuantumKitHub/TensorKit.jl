@@ -76,6 +76,11 @@ function DiagonalTensorMap(t::AbstractTensorMap{T,S,1,1}) where {T,S}
     return d
 end
 
+Base.similar(d::DiagonalTensorMap) = DiagonalTensorMap(similar(d.data), d.domain)
+function Base.similar(d::DiagonalTensorMap, ::Type{T}) where {T<:Number}
+    return DiagonalTensorMap(similar(d.data, T), d.domain)
+end
+
 # TODO: more constructors needed?
 
 # Special case adjoint:
