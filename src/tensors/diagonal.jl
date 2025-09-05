@@ -282,16 +282,16 @@ end
 
 function LinearAlgebra.lmul!(D::DiagonalTensorMap, t::AbstractTensorMap)
     domain(D) == codomain(t) || throw(SpaceMismatch())
-    for (c, b) in blocks(t)
-        lmul!(block(D, c), b)
+    foreachblock(D, t) do c, bs
+        lmul!(bs...)
     end
     return t
 end
 
 function LinearAlgebra.rmul!(t::AbstractTensorMap, D::DiagonalTensorMap)
     codomain(D) == domain(t) || throw(SpaceMismatch())
-    for (c, b) in blocks(t)
-        rmul!(b, block(D, c))
+    foreachblock(t, D) do c, bs
+        rmul!(bs...)
     end
     return t
 end
