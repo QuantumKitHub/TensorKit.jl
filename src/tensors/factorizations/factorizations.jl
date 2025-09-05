@@ -9,7 +9,6 @@ export leftorth, leftorth!, rightorth, rightorth!
 export leftnull, leftnull!, rightnull, rightnull!
 export copy_oftype, permutedcopy_oftype, one!
 export TruncationScheme, notrunc, truncbelow, truncerr, truncdim, truncspace, PolarViaSVD
-#export LAPACK_HouseholderQR, LAPACK_HouseholderLQ
 
 using ..TensorKit
 using ..TensorKit: AdjointTensorMap, SectorDict, OFA, blocktype, foreachblock, one!
@@ -114,30 +113,17 @@ function LinearAlgebra.cond(d::DiagonalTensorMap, p::Real=2)
 end
 
 #------------------------------#
-# Singular value decomposition #
+# LinearAlgebra overloads
 #------------------------------#
-function LinearAlgebra.svdvals!(t::TensorMap{<:RealOrComplexFloat})
-    return SectorDict(c => LinearAlgebra.svdvals!(b) for (c, b) in blocks(t))
-end
-LinearAlgebra.svdvals!(t::AdjointTensorMap) = svdvals!(adjoint(t))
-
-#--------------------------#
-# Eigenvalue decomposition #
-#--------------------------#
-
-function LinearAlgebra.eigvals!(t::TensorMap{<:RealOrComplexFloat}; kwargs...)
-    return SectorDict(c => complex(LinearAlgebra.eigvals!(b; kwargs...))
-                      for (c, b) in blocks(t))
-end
-function LinearAlgebra.eigvals!(t::AdjointTensorMap{<:RealOrComplexFloat}; kwargs...)
-    return SectorDict(c => conj!(complex(LinearAlgebra.eigvals!(b; kwargs...)))
-                      for (c, b) in blocks(t))
-end
+LinearAlgebra.svdvals(t::AbstractTensorMap) = diagview(svd_vals(t))
+LinearAlgebra.svdvals!(t::AbstractTensorMap) = diagview(svd_vals!(t))
+LinearAlgebra.eigvals(t::AbstractTensorMap) = diagview(eigvals(t))
+LinearAlgebra.eigvals!(t::AbstractTensorMap) = diagview(eigvals!(t))
 
 #--------------------------------------------------#
 # Checks for hermiticity and positive definiteness #
 #--------------------------------------------------#
-function LinearAlgebra.ishermitian(t::TensorMap)
+function LinearAlgebra.ishermitian(t::AbstractTensorMap)
     domain(t) == codomain(t) || return false
     InnerProductStyle(t) === EuclideanInnerProduct() || return false # hermiticity only defined for euclidean
     for (c, b) in blocks(t)
@@ -146,7 +132,7 @@ function LinearAlgebra.ishermitian(t::TensorMap)
     return true
 end
 
-function LinearAlgebra.isposdef!(t::TensorMap)
+function LinearAlgebra.isposdef!(t::AbstractTensorMap)
     domain(t) == codomain(t) ||
         throw(SpaceMismatch("`isposdef` requires domain and codomain to be the same"))
     InnerProductStyle(spacetype(t)) === EuclideanInnerProduct() || return false

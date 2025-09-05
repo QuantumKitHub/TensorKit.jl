@@ -179,7 +179,6 @@ end
 
 # Diagonal tensors
 # ----------------
-# TODO: consider adding a specialised DiagonalTensorMap type
 function LinearAlgebra.diag(t::AbstractTensorMap)
     return SectorDict(c => LinearAlgebra.diag(b) for (c, b) in blocks(t))
 end
