@@ -32,7 +32,8 @@ for V in spacelist
                     # test squares and rectangles here
                     @testset "leftorth with $alg" for alg in
                                                       (TensorKit.LAPACK_HouseholderQR(),
-                                                       TensorKit.LAPACK_HouseholderQR(positive=true),
+                                                       TensorKit.LAPACK_HouseholderQR(;
+                                                                                      positive=true),
                                                        #TensorKit.QL(),
                                                        #TensorKit.QLpos(),
                                                        TensorKit.PolarViaSVD(TensorKit.LAPACK_QRIteration()),
@@ -53,9 +54,9 @@ for V in spacelist
                         @test norm(N' * t) < 100 * eps(norm(t))
                     end
                     @testset "rightorth with $alg" for alg in
-                                                       (#TensorKit.RQ(), TensorKit.RQpos(),
-                                                        TensorKit.LAPACK_HouseholderLQ(),
-                                                        TensorKit.LAPACK_HouseholderLQ(positive=true),
+                                                       (TensorKit.LAPACK_HouseholderLQ(),
+                                                        TensorKit.LAPACK_HouseholderLQ(;
+                                                                                       positive=true),
                                                         TensorKit.PolarViaSVD(TensorKit.LAPACK_QRIteration()),
                                                         TensorKit.PolarViaSVD(TensorKit.LAPACK_DivideAndConquer()),
                                                         TensorKit.LAPACK_QRIteration(),
@@ -115,7 +116,8 @@ for V in spacelist
                     t = randn(T, V1 ⊗ V2, zero(V1))
                     @testset "leftorth with $alg" for alg in
                                                       (TensorKit.LAPACK_HouseholderQR(),
-                                                       TensorKit.LAPACK_HouseholderQR(positive=true),
+                                                       TensorKit.LAPACK_HouseholderQR(;
+                                                                                      positive=true),
                                                        #TensorKit.QL(), TensorKit.QLpos(),
                                                        TensorKit.PolarViaSVD(TensorKit.LAPACK_QRIteration()),
                                                        TensorKit.PolarViaSVD(TensorKit.LAPACK_DivideAndConquer()),
@@ -133,9 +135,9 @@ for V in spacelist
                         @test isunitary(N)
                     end
                     @testset "rightorth with $alg" for alg in
-                                                       (#TensorKit.RQ(), TensorKit.RQpos(),
-                                                        TensorKit.LAPACK_HouseholderLQ(),
-                                                        TensorKit.LAPACK_HouseholderLQ(positive=true),
+                                                       (TensorKit.LAPACK_HouseholderLQ(),
+                                                        TensorKit.LAPACK_HouseholderLQ(;
+                                                                                       positive=true),
                                                         TensorKit.PolarViaSVD(TensorKit.LAPACK_QRIteration()),
                                                         TensorKit.PolarViaSVD(TensorKit.LAPACK_DivideAndConquer()),
                                                         TensorKit.LAPACK_QRIteration(),

@@ -45,4 +45,3 @@ Base.adjoint(alg::Union{SVD,SDD,Polar}) = alg
 
 const OFA = OrthogonalFactorizationAlgorithm
 const SVDAlg = Union{SVD,SDD}
-
