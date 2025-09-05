@@ -31,7 +31,7 @@ export TruncationScheme
 export SpaceMismatch, SectorMismatch, IndexError # error types
 
 # general vector space methods
-export space, field, dual, dim, reduceddim, dims, fuse, flip, isdual, oplus,
+export space, field, dual, dim, reduceddim, dims, fuse, flip, isdual, oplus, ominus,
        insertleftunit, insertrightunit, removeunit
 
 # partial order for vector spaces
@@ -47,7 +47,7 @@ export ZNSpace, SU2Irrep, U1Irrep, CU1Irrep
 #        bendleft, bendright, foldleft, foldright, cycleclockwise, cycleanticlockwise
 
 # some unicode
-export ⊕, ⊗, ×, ⊠, ℂ, ℝ, ℤ, ←, →, ≾, ≿, ≅, ≺, ≻
+export ⊕, ⊗, ⊖, ×, ⊠, ℂ, ℝ, ℤ, ←, →, ≾, ≿, ≅, ≺, ≻
 export ℤ₂, ℤ₃, ℤ₄, U₁, SU, SU₂, CU₁
 export fℤ₂, fU₁, fSU₂
 export ℤ₂Space, ℤ₃Space, ℤ₄Space, U₁Space, CU₁Space, SU₂Space
@@ -72,8 +72,9 @@ export inner, dot, norm, normalize, normalize!, tr
 export mul!, lmul!, rmul!, adjoint!, pinv, axpy!, axpby!
 export leftorth, rightorth, leftnull, rightnull,
        leftorth!, rightorth!, leftnull!, rightnull!,
+       left_polar, left_polar!, right_polar, right_polar!,
        tsvd!, tsvd, eigen, eigen!, eig, eig!, eigh, eigh!, exp, exp!,
-       isposdef, isposdef!, ishermitian, sylvester, rank, cond
+       isposdef, isposdef!, ishermitian, isisometry, isunitary, sylvester, rank, cond
 export braid, braid!, permute, permute!, transpose, transpose!, twist, twist!, repartition,
        repartition!
 export catdomain, catcodomain
@@ -104,7 +105,11 @@ using TensorOperations: TensorOperations, @tensor, @tensoropt, @ncon, ncon
 using TensorOperations: IndexTuple, Index2Tuple, linearize, AbstractBackend
 const TO = TensorOperations
 
+using MatrixAlgebraKit: MatrixAlgebraKit as MAK
+
 using LRUCache
+using OhMyThreads
+using ScopedValues
 
 using TensorKitSectors
 import TensorKitSectors: dim, BraidingStyle, FusionStyle, ⊠, ⊗
@@ -117,7 +122,7 @@ using Base: @boundscheck, @propagate_inbounds, @constprop,
             SizeUnknown, HasLength, HasShape, IsInfinite, EltypeUnknown, HasEltype
 using Base.Iterators: product, filter
 
-using LinearAlgebra: LinearAlgebra
+using LinearAlgebra: LinearAlgebra, BlasFloat
 using LinearAlgebra: norm, dot, normalize, normalize!, tr,
                      axpy!, axpby!, lmul!, rmul!, mul!, ldiv!, rdiv!,
                      adjoint, adjoint!, transpose, transpose!,
@@ -125,6 +130,7 @@ using LinearAlgebra: norm, dot, normalize, normalize!, tr,
                      eigen, eigen!, svd, svd!,
                      isposdef, isposdef!, ishermitian, rank, cond,
                      Diagonal, Hermitian
+using MatrixAlgebraKit
 
 import Base.Meta
 
@@ -202,6 +208,7 @@ end
 #-------------------------------------
 # general definitions
 include("tensors/abstracttensor.jl")
+include("tensors/backends.jl")
 include("tensors/blockiterator.jl")
 include("tensors/tensor.jl")
 include("tensors/adjoint.jl")
@@ -211,9 +218,10 @@ include("tensors/tensoroperations.jl")
 include("tensors/treetransformers.jl")
 include("tensors/indexmanipulations.jl")
 include("tensors/diagonal.jl")
-include("tensors/truncation.jl")
-include("tensors/factorizations.jl")
 include("tensors/braidingtensor.jl")
+
+include("tensors/factorizations/factorizations.jl")
+using .Factorizations
 
 # # Planar macros and related functionality
 # #-----------------------------------------

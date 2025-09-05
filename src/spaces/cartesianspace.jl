@@ -49,7 +49,13 @@ sectortype(::Type{CartesianSpace}) = Trivial
 
 Base.oneunit(::Type{CartesianSpace}) = CartesianSpace(1)
 Base.zero(::Type{CartesianSpace}) = CartesianSpace(0)
+
 ⊕(V₁::CartesianSpace, V₂::CartesianSpace) = CartesianSpace(V₁.d + V₂.d)
+function ⊖(V::CartesianSpace, W::CartesianSpace)
+    V ≿ W || throw(ArgumentError("$(W) is not a subspace of $(V)"))
+    return CartesianSpace(dim(V) - dim(W))
+end
+
 fuse(V₁::CartesianSpace, V₂::CartesianSpace) = CartesianSpace(V₁.d * V₂.d)
 flip(V::CartesianSpace) = V
 

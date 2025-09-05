@@ -200,6 +200,16 @@ diagspacelist = ((ℂ^4)', ℂ[Z2Irrep](0 => 2, 1 => 3),
                 @test all(((s, t),) -> isapprox(s, t),
                           zip(values(LinearAlgebra.eigvals(D)),
                               values(LinearAlgebra.eigvals(t))))
+                D, W = @constinferred eig!(t)
+                @test D === t
+                @test W == one(t)
+                @test t * W ≈ W * D
+                D2, V2 = @constinferred eigh!(t2)
+                if T <: Real
+                    @test D2 === t2
+                end
+                @test V2 == one(t)
+                @test t2 * V2 ≈ V2 * D2
             end
             @testset "leftorth with $alg" for alg in (TensorKit.QR(), TensorKit.QL())
                 Q, R = @constinferred leftorth(t; alg=alg)
