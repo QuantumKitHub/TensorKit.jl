@@ -1169,7 +1169,7 @@ and specifies which indices are connected by the evaluation map using Einstein's
 conventation. Indeed, for `BraidingStyle(I) == Bosonic()`, such a tensor contraction can
 take the same format as if all tensors were just multi-dimensional arrays. For this, we
 rely on the interface provided by the package
-[TensorOperations.jl](https://github.com/Jutho/TensorOperations.jl).
+[TensorOperations.jl](https://github.com/QuantumKitHub/TensorOperations.jl).
 
 The above picture would be encoded as
 ```julia
@@ -1242,7 +1242,7 @@ contraction in a more efficient manner. In particular, the NCON-style of specify
 contraction gives the user control over the order, and there are other macros, such as
 `@tensoropt`, that try to automate this process. There is also an `@ncon` macro and `ncon`
 function, an we recommend reading the
-[manual of TensorOperations.jl](https://jutho.github.io/TensorOperations.jl/stable/) to
+[manual of TensorOperations.jl](https://quantumkithub.github.io/TensorOperations.jl/stable/) to
 learn more about the possibilities and how they work.
 
 A final remark involves the use of adjoints of tensors. The current framework is such that

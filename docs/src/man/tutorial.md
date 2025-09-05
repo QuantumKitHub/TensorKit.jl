@@ -88,7 +88,7 @@ space(permute(B′,(3,2,1))) == space(A)
 ```
 
 We can contract two tensors using Einstein summation convention, which takes the interface
-from [TensorOperations.jl](https://github.com/Jutho/TensorOperations.jl). TensorKit.jl
+from [TensorOperations.jl](https://github.com/quantumkithub/TensorOperations.jl). TensorKit.jl
 reexports the `@tensor` macro
 
 ```@repl tutorial

@@ -14,7 +14,7 @@ actually a specific case of the type [`TensorMap`](@ref)) and defines for these 
 number of vector space operations (scalar multiplication, addition, norms and inner
 products), index operations (permutations) and linear algebra operations (multiplication,
 factorizations). Finally, tensor contractions can be performed using the `@tensor` macro
-from [TensorOperations.jl](https://github.com/Jutho/TensorOperations.jl).
+from [TensorOperations.jl](https://github.com/QuantumKitHub/TensorOperations.jl).
 
 Currently, most effort is oriented towards tensors as they appear in the context of quantum
 many body physics and in particular the field of tensor networks. Such tensors often have

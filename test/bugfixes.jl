@@ -23,14 +23,14 @@
         @test scalartype(w) == Float64
     end
 
-    # https://github.com/Jutho/TensorKit.jl/issues/178
+    # https://github.com/quantumkithub/TensorKit.jl/issues/178
     @testset "Issue #178" begin
         t = rand(U1Space(1 => 1) ← U1Space(1 => 1)')
         a = convert(Array, t)
         @test a == zeros(size(a))
     end
 
-    # https://github.com/Jutho/TensorKit.jl/issues/194
+    # https://github.com/quantumkithub/TensorKit.jl/issues/194
     @testset "Issue #194" begin
         t1 = rand(ℂ^4 ← ℂ^4)
         t2 = tensoralloc(typeof(t1), space(t1), Val(true),
@@ -44,7 +44,7 @@
         tensorfree!(t2)
     end
 
-    # https://github.com/Jutho/TensorKit.jl/issues/201
+    # https://github.com/quantumkithub/TensorKit.jl/issues/201
     @testset "Issue #201" begin
         function f(A::AbstractTensorMap)
             U, S, V, = tsvd(A)
@@ -73,7 +73,7 @@
         @test convert(Array, grad3) ≈ grad4
     end
 
-    # https://github.com/Jutho/TensorKit.jl/issues/209
+    # https://github.com/quantumkithub/TensorKit.jl/issues/209
     @testset "Issue #209" begin
         function f(T, D)
             @tensor T[1, 4, 1, 3] * D[3, 4]
