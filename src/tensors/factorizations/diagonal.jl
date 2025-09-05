@@ -2,11 +2,11 @@
 # -----------------
 _repack_diagonal(d::DiagonalTensorMap) = Diagonal(d.data)
 
-for f in [
+for f in (
         :svd_compact, :svd_full, :svd_trunc, :svd_vals, :qr_compact, :qr_full, :qr_null,
         :lq_compact, :lq_full, :lq_null, :eig_full, :eig_trunc, :eig_vals, :eigh_full,
         :eigh_trunc, :eigh_vals, :left_polar, :right_polar,
-    ]
+    )
     @eval copy_input(::typeof($f), d::DiagonalTensorMap) = copy(d)
 end
 
