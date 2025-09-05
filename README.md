@@ -1,6 +1,6 @@
 <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/Jutho/TensorKit.jl/blob/master/docs/src/assets/logo-dark.svg">
-    <img alt="TensorKit.jl logo" src="https://github.com/Jutho/TensorKit.jl/blob/master/docs/src/assets/logo.svg" width="150">
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/QuantumKitHub/TensorKit.jl/blob/main/docs/src/assets/logo-dark.svg">
+    <img alt="TensorKit.jl logo" src="https://github.com/QuantumKitHub/TensorKit.jl/blob/main/docs/src/assets/logo.svg" width="150">
 </picture>
 
 # TensorKit.jl
@@ -18,10 +18,10 @@ A Julia package for large-scale tensor computations, with a hint of category the
 
 
 [docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
-[docs-stable-url]: https://jutho.github.io/TensorKit.jl/stable
+[docs-stable-url]: https://QuantumKitHub.github.io/TensorKit.jl/stable
 
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
-[docs-dev-url]: https://jutho.github.io/TensorKit.jl/latest
+[docs-dev-url]: https://QuantumKitHub.github.io/TensorKit.jl/latest
 
 [doi-img]: https://zenodo.org/badge/DOI/10.5281/zenodo.8421339.svg
 [doi-url]: https://doi.org/10.5281/zenodo.8421339
@@ -29,11 +29,11 @@ A Julia package for large-scale tensor computations, with a hint of category the
 [downloads-img]: https://img.shields.io/badge/dynamic/json?url=http%3A%2F%2Fjuliapkgstats.com%2Fapi%2Fv1%2Ftotal_downloads%2FTensorKit&query=total_requests&label=Downloads
 [downloads-url]: http://juliapkgstats.com/pkg/TensorKit
 
-[ci-img]: https://github.com/Jutho/TensorKit.jl/actions/workflows/CI.yml/badge.svg
-[ci-url]: https://github.com/Jutho/TensorKit.jl/actions/workflows/CI.yml
+[ci-img]: https://github.com/QuantumKitHub/TensorKit.jl/actions/workflows/CI.yml/badge.svg
+[ci-url]: https://github.com/QuantumKitHub/TensorKit.jl/actions/workflows/CI.yml
 
-[codecov-img]: https://codecov.io/gh/Jutho/TensorKit.jl/branch/master/graph/badge.svg
-[codecov-url]: https://codecov.io/gh/Jutho/TensorKit.jl
+[codecov-img]: https://codecov.io/gh/QuantumKitHub/TensorKit.jl/branch/master/graph/badge.svg
+[codecov-url]: https://codecov.io/gh/QuantumKitHub/TensorKit.jl
 
 [aqua-img]: https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg
 [aqua-url]: https://github.com/JuliaTesting/Aqua.jl
@@ -63,12 +63,12 @@ breaking changes:
    resides in a single array of type `<:DenseVector`. While this does not lead to breaking
    changes in the interface, it does mean that `TensorMap` objects from TensorKit.jl
    v0.12.7 or earlier that were saved to disk using e.g. JLD2.jl, cannot simply be read back
-   in using the new version of TensorKit.jl. We provide a script [below](https://github.com/Jutho/TensorKit.jl?tab=readme-ov-file#transferring-tensormap-data-from-older-versions-to-v013)
+   in using the new version of TensorKit.jl. We provide a script [below](https://github.com/QuantumKitHub/TensorKit.jl?tab=readme-ov-file#transferring-tensormap-data-from-older-versions-to-v013)
    to export data in a format that can be read back in by TensorKit.jl v0.13.
 
 Major non-breaking changes include:
 
-* Support for [TensorOperations.jl v5](https://github.com/Jutho/TensorOperations.jl), and
+* Support for [TensorOperations.jl v5](https://github.com/QuantumKitHub/TensorOperations.jl), and
   with this the new backend and allocator support within the `@tensor` macro.
 * The part of TensorKit.jl that defines the `Sector` type hierarchy and its corresponding
   interface, as well as the implementation of all of the standard symmetries, has been
@@ -149,8 +149,8 @@ Additionally, for libraries that implement tensor network algorithms on top of
 TensorKit.jl, check out [MPSKit.jl](https://github.com/QuantumKitHub/MPSKit.jl),
 [MERAKit.jl](https://github.com/mhauru/MERAKit.jl) and [PEPSKit.jl](https://github.com/QuantumKitHub/PEPSKit.jl).
 
-Check out the [tutorial](https://jutho.github.io/TensorKit.jl/stable/man/tutorial/) and the
-full [documentation](https://jutho.github.io/TensorKit.jl/stable).
+Check out the [tutorial](https://QuantumKitHub.github.io/TensorKit.jl/stable/man/tutorial/) and the
+full [documentation](https://QuantumKitHub.github.io/TensorKit.jl/stable).
 
 ## Installation
 
@@ -180,7 +180,7 @@ platforms with a 64-bit architecture.
 
 Contributions are very welcome, as are feature requests and suggestions. Please open an [issue][issues-url] if you encounter any problems.
 
-[issues-url]: https://github.com/Jutho/TensorKit.jl/issues
+[issues-url]: https://github.com/QuantumKitHub/TensorKit.jl/issues
 
 ## Acknowledgements
 
