@@ -211,7 +211,7 @@ function _construct_braidingtensors!(ex, preargs, indexmap) # ex is guaranteed t
         newargs = Vector{Any}(undef, length(args))
         newargs[1] = args[1]
         success = true
-        indices = TO.getindices(ex)
+        indices = [TO.getindices(arg) for arg in args]
         for i in 2:length(ex.args)
             indexmapa = copy(indexmap)
             newargs[i], successa = _construct_braidingtensors!(args[i], preargs, indexmapa)

@@ -284,4 +284,13 @@ end
 
         @test tr1 ≈ tr2 ≈ tr3 ≈ tr4 ≈ tr5 ≈ tr6 ≈ tr7
     end
+    @testset "Issue 262" begin
+        V = ℂ^2
+        A = rand(T, V ← V)
+        B = rand(T, V ← V')
+        C = rand(T, V' ← V)
+        @planar D1[i; j] := A[i; j] + B[i; k] * C[k; j]
+        @planar D2[i; j] := B[i; k] * C[k; j] + A[i; j]
+        @test D1 ≈ D2
+    end
 end
