@@ -28,12 +28,12 @@ there is a canonical order of the sectors, so that the vector space ``V`` is
 completely specified by the values of ``n_a``.
 
 The gain in efficiency (both in memory occupation and computation time) obtained from using
-(technically: equivariant) tensor maps is that, by Schur's lemma, they are block diagonal in
-the basis of coupled sectors. To exploit this block diagonal form, it is however essential
-that we know the basis transform from the individual (uncoupled) sectors appearing in the
-tensor product form of the domain and codomain, to the totally coupled sectors that label
-the different blocks. We refer to the latter as block sectors. The transformation from the
-uncoupled sectors in the domain (or codomain) of the tensor map to the block sector is
+(technically: equivariant) tensor maps is that, by Schur's lemma, they are block-diagonal in
+the basis of coupled sectors. To exploit this block-diagonal form, it is however essential
+that we know the basis transformation from the individual (uncoupled) sectors appearing in
+the tensor product form of the domain and codomain, to the totally coupled sectors that
+label the different blocks. We refer to the latter as block sectors. The transformation from
+the uncoupled sectors in the domain (or codomain) of the tensor map to the block sector is
 encoded in a fusion tree (or splitting tree). Essentially, it is a sequential application of
 pairwise fusion as described by the group's
 [Clebsch–Gordan (CG) coefficients](https://en.wikipedia.org/wiki/Clebsch–Gordan_coefficients).
@@ -143,7 +143,7 @@ both instances and in the type domain, and its use will be illustrated further o
 
 The minimal data to completely specify a type of sector are
 *   the fusion rules, i.e. `` a ⊗ b = ⨁ N^{ab}_{c} c ``; this is implemented by a function
-    [`Nsymbol(a,b,c)`](@ref)
+    [`Nsymbol(a, b, c)`](@ref)
 *   the list of fusion outputs from ``a ⊗ b``; while this information is contained in
     ``N^{ab}_c``, it might be costly or impossible to iterate over all possible values of
     `c` and test `Nsymbol(a,b,c)`; instead we implement for `a ⊗ b` to return an iterable
@@ -155,8 +155,8 @@ The minimal data to completely specify a type of sector are
     ``N^{a\bar{a}}_{u} = 1``; this is implemented by `conj(a)` from Julia Base;
     `dual(a)` also works as alias, but `conj(a)` is the method that should be defined
 *   the F-symbol or recoupling coefficients ``[F^{abc}_{d}]^f_e``, implemented as the
-    function [`Fsymbol(a,b,c,d,e,f)`](@ref)
-*   the R-symbol ``R^{ab}_c``, implemented as the function [`Rsymbol(a,b,c)`](@ref)
+    function [`Fsymbol(a, b, c, d, e, f)`](@ref)
+*   the R-symbol ``R^{ab}_c``, implemented as the function [`Rsymbol(a, b, c)`](@ref)
 
 For practical reasons, we also require some additional methods to be defined:
 *   `isreal(::Type{<:Sector})` returns whether the topological data of this type of sector
@@ -166,14 +166,14 @@ For practical reasons, we also require some additional methods to be defined:
     R-symbol evaluated with all sectors equal to the identity sector have real `eltype`.
 *   `hash(a, h)` creates a hash of sectors, because sectors and objects created from them
     are used as keys in lookup tables (i.e. dictionaries)
-*   `isless(a,b)` associates a canonical order to sectors (of the same type), in order to
+*   `isless(a, b)` associates a canonical order to sectors (of the same type), in order to
     unambiguously represent representation spaces ``V = ⨁_a ℂ^{n_a} ⊗ R_{a}``.
 
 Further information, such as the quantum dimensions ``d_a`` and Frobenius-Schur indicator
 ``χ_a`` (only if ``a == \overline{a}``) are encoded in the F-symbol. They are obtained as
 [`dim(a)`](@ref) and [`frobeniusschur(a)`](@ref). These functions have default definitions
-which extract the requested data from `Fsymbol(a,conj(a),a,a,one(a),one(a))`, but they can
-be overloaded in case the value can be computed more efficiently.
+which extract the requested data from `Fsymbol(a, conj(a), a, a, one(a), one(a))`, but they
+can be overloaded in case the value can be computed more efficiently.
 
 We also define a parametric type to represent an indexable iterator over the different
 values of a sector as
@@ -187,7 +187,7 @@ Note that an instance of the singleton type `SectorValues{I}` is obtained as `va
 A new sector `I<:Sector` should define
 ```julia
 Base.iterate(::SectorValues{I}[, state]) = ...
-Base.IteratorSize(::Type{SectorValues{I}}) = # HasLenght() or IsInfinite()
+Base.IteratorSize(::Type{SectorValues{I}}) = # HasLength() or IsInfinite()
 # if previous function returns HasLength():
 Base.length(::SectorValues{I}) = ...
 Base.getindex(::SectorValues{I}, i::Int) = ...
@@ -256,6 +256,7 @@ the cases which have already been implemented. Currently, they all correspond to
 of groups.
 
 ### [Existing group representations](@id sss_groups)
+
 The first sector type is called `Trivial`, and corresponds to the case where there is
 actually no symmetry, or thus, the symmetry is the trivial group with only an identity
 operation and a trivial representation. Its representation theory is particularly simple:
@@ -314,7 +315,7 @@ Base.isreal(::Type{<:AbelianIrrep}) = true
 
 Nsymbol(a::I, b::I, c::I) where {I<:AbelianIrrep} = c == first(a ⊗ b)
 Fsymbol(a::I, b::I, c::I, d::I, e::I, f::I) where {I<:AbelianIrrep} =
-    Int(Nsymbol(a, b, e)*Nsymbol(e, c, d)*Nsymbol(b, c, f)*Nsymbol(a, f, d))
+    Int(Nsymbol(a, b, e) * Nsymbol(e, c, d) * Nsymbol(b, c, f) * Nsymbol(a, f, d))
 frobeniusschur(a::AbelianIrrep) = 1
 Bsymbol(a::I, b::I, c::I) where {I<:AbelianIrrep} = Int(Nsymbol(a, b, c))
 Rsymbol(a::I, b::I, c::I) where {I<:AbelianIrrep} = Int(Nsymbol(a, b, c))
@@ -508,13 +509,15 @@ FusionStyle(::Type{CU1Irrep}) = SimpleFusion()
 The rest of the implementation can be read in the source code, but is rather long due to all
 the different cases for the arguments of `Fsymbol`.
 
-So far, no sectors have been implemented with `FusionStyle(G) == GenericFusion()`,
-though an example would be the representation theory of ``\mathsf{SU}_N``, i.e. represented
-by the group `SU{N}`, for `N>2`. Such sectors are not yet fully supported; certain
-operations remain to be implemented. Furthermore, the topological data of the
-representation theory of such groups is not readily available and needs to be computed.
+By default, no sectors are included with `FusionStyle(G) == GenericFusion()`, though an
+example would be the representation theory of ``\mathsf{SU}_N``, i.e. represented by the
+group `SU{N}`, for `N>2`. Such sectors are supported through
+[SUNRepresentations.jl](https://github.com/QuantumKitHub/SUNRepresentations.jl), which
+provides numerical routines to compute the topological data of the representation theory of
+these groups, as no general analytic formula is available.
 
 ### [Combining different sectors](@id sss_productsectors)
+
 It is also possible to define two or more different types of symmetries, e.g. when the total
 symmetry group is a direct product of individual simple groups. Such sectors are obtained
 using the binary operator `⊠`, which can be entered as `\boxtimes`+TAB. First some examples
@@ -546,7 +549,7 @@ We refer to the source file of [`ProductSector`](@ref) for implementation detail
 The symbol `⊠` refers to the
 [Deligne tensor product](https://ncatlab.org/nlab/show/Deligne+tensor+product+of+abelian+categories)
 within the literature on category theory. Indeed, the category of representation of a
-product group `G₁ × G₂` corresponds the Deligne tensor product of the categories of
+product group `G₁ × G₂` corresponds to the Deligne tensor product of the categories of
 representations of the two groups separately. But this definition also extends to 𝕜-linear
 categories which are not the representation category of a group. Note that `⊠` also works
 in the type domain, i.e. `Irrep[ℤ₃] ⊠ Irrep[CU₁]` can be used to create
@@ -561,7 +564,7 @@ Some more examples:
 a = Z3Irrep(1) ⊠ Irrep[CU₁](1.5)
 a isa Irrep[ℤ₃] ⊠ CU1Irrep
 a isa Irrep[ℤ₃ × CU₁]
-a isa Irrep{ℤ₃ × CU₁}
+a isa AbstractIrrep{ℤ₃ × CU₁}
 a == Irrep[ℤ₃ × CU₁](1, 1.5)
 ```
 
@@ -605,18 +608,7 @@ for each of these three functions that just relies on `Fsymbol`, and alternative
 definitions need to be given only if a more efficient version is available.
 
 If `FusionStyle(I) == GenericFusion()`, then the multiple outputs `c` in the tensor
-product of `a` and `b` will be labeled as `i=1`, `2`, …, `Nsymbol(a,b,c)`. Optionally, a
-different label can be provided by defining
-```julia
-TensorKit.vertex_ind2label(i::Int, a::I, b::I, c::I) = ...
-# some label, e.g. a `Char` or `Symbol`
-```
-The following function will then automatically determine the corresponding label type (which
-should not vary, i.e. `vertex_ind2label` should be type stable)
-```julia
-vertex_labeltype(I::Type{<:Sector}) =
-    typeof(vertex_ind2label(1, one(I), one(I), one(I)))
-```
+product of `a` and `b` will be labeled as `i=1`, `2`, …, `Nsymbol(a, b, c)`.
 
 The following type, which already appeared in the implementation of `SU2Irrep` above, can be
 useful for providing the return type of `a ⊗ b`
@@ -638,26 +630,26 @@ the elements of `set`; if `f` is not provided it is just taken as the function `
 
 ### [Generalizations](@id sss_generalsectors)
 
-As mentioned before, the framework for sectors outlined above depends is in one-to-one
+As mentioned before, the framework for sectors outlined above is in one-to-one
 correspondence to the topological data for specifying a unitary (spherical and braided, and
 hence ribbon) [fusion category](https://en.wikipedia.org/wiki/Fusion_category), which was
 reviewed at the end of the introduction to [category theory](@ref s_categories). For such
 categories, the objects are not necessarily vector spaces and the fusion and splitting
 tensors ``X^{ab}_{c,μ}`` do not necessarily exist as actual tensors. However, the morphism
 spaces ``c → a ⊗ b`` still behave as vector spaces, and the ``X^{ab}_{c,μ}`` act as generic
-basis for that space. As TensorKit.jl does not rely on the ``X^{ab}_{c,μ}`` themselves
-(even when they do exist) it can also deal with such general fusion categories. Note,
-though, that when ``X^{ab}_{c,μ}`` does exist, it is available as `fusiontensor(a,b,c[,μ])`
-(even though it is actually the splitting tensor) and can be useful for checking purposes,
-as illustrated below.
+basis for that space. As TensorKit.jl does not rely on the ``X^{ab}_{c,μ}`` themselves (even
+when they do exist) it can also deal with such general fusion categories. Note, though, that
+when ``X^{ab}_{c,μ}`` does exist, it is available as `fusiontensor(a, b, c, [μ])` (even
+though it is actually the splitting tensor) and can be useful for checking purposes, as
+illustrated below.
 
 ## [Graded spaces](@id ss_rep)
+
 We have introduced `Sector` subtypes as a way to label the irreps or sectors in the
 decomposition ``V = ⨁_a ℂ^{n_a} ⊗ R_{a}``. To actually represent such spaces, we now also
-introduce a corresponding type `GradedSpace`, which is a subtype of
-`ElementarySpace{ℂ}`, i.e.
+introduce a corresponding type `GradedSpace`, which is a subtype of `ElementarySpace`, i.e.
 ```julia
-struct GradedSpace{I<:Sector, D} <: ElementarySpace{ℂ}
+struct GradedSpace{I<:Sector, D} <: ElementarySpace
     dims::D
     dual::Bool
 end
@@ -676,6 +668,7 @@ fusion category (or strictly speaking, a pre-fusion category, as we allow for an
 infinite number of simple objects, e.g. the irreps of a continuous group).
 
 ### Implementation details
+
 As mentioned, the way in which the degeneracy dimensions ``n_a`` are stored depends on the
 specific sector type `I`, more specifically on the `IteratorSize` of `values(I)`. If
 `IteratorSize(values(I)) isa Union{IsInfinite, SizeUnknown}`, the different sectors ``a``
@@ -695,9 +688,12 @@ If `IteratorSize(values(I)) isa Union{HasLength, HasShape}`, the degeneracy dime
 specifically a `NTuple{N, Int}` with `N = length(values(I))`. The methods
 `getindex(values(I), i)` and `findindex(values(I), a)` are used to map between a sector
 `a ∈ values(I)` and a corresponding index `i ∈ 1:N`. As `N` is a compile time constant,
-these types can be created in a type stable manner.
+these types can be created in a type stable manner. Note however that this implies that for
+large values of `N`, it can be beneficial to define
+`IteratorSize(values(a)) = SizeUnknown()` to not overly burden the compiler.
 
 ### Constructing instances
+
 As mentioned, the convenience method `Vect[I]` will return the concrete type
 `GradedSpace{I,D}` with the matching value of `D`, so that should never be a user's
 concern. In fact, for consistency, `Vect[Trivial]` will just return `ComplexSpace`,
@@ -713,7 +709,7 @@ Rep[ℤ₂ × SU₂]
 Vect[Irrep[ℤ₂ × SU₂]]
 ```
 Note that we also have the specific alias `U₁Space`. In fact, for all the common groups we
-have a number of alias, both in ASCII and using Unicode:
+have a number of aliases, both in ASCII and using Unicode:
 ```julia
 # ASCII type aliases
 const ZNSpace{N} = GradedSpace{ZNIrrep{N}, NTuple{N,Int}}
@@ -753,6 +749,7 @@ Rep[ℤ₂ × SU₂]((0,0) => 3, (1,1/2) => 2, (0,1) => 1) ==
 ```
 
 ### Methods
+
 There are a number of methods to work with instances `V` of `GradedSpace`. The
 function [`sectortype`](@ref) returns the type of the sector labels. It also works on other
 vector spaces, in which case it returns [`Trivial`](@ref). The function [`sectors`](@ref)
@@ -760,19 +757,19 @@ returns an iterator over the different sectors `a` with non-zero `n_a`, for othe
 `ElementarySpace` types it returns `(Trivial,)`. The degeneracy dimensions `n_a` can be
 extracted as `dim(V, a)`, it properly returns `0` if sector `a` is not present in the
 decomposition of `V`. With [`hassector(V, a)`](@ref) one can check if `V` contains a sector
-`a` with `dim(V,a)>0`. Finally, `dim(V)` returns the total dimension of the space `V`, i.e.
-``∑_a n_a d_a`` or thus `dim(V) = sum(dim(V,a) * dim(a) for a in sectors(V))`. Note that a
+`a` with `dim(V, a) > 0`. Finally, `dim(V)` returns the total dimension of the space `V`, i.e.
+``∑_a n_a d_a`` or thus `dim(V) = sum(dim(V, a) * dim(a) for a in sectors(V))`. Note that a
 representation space `V` has certain sectors `a` with dimensions `n_a`, then its dual `V'`
 will report to have sectors `dual(a)`, and `dim(V', dual(a)) == n_a`. There is a subtelty
 regarding the difference between the dual of a representation space ``R_a^*``, on which the
-conjugate representation acts, and the representation space of the irrep `dual(a)==conj(a)`
-that is isomorphic to the conjugate representation, i.e. ``R_{\overline{a}} ≂ R_a^*`` but
-they are not equal. We return to this in the section on [fusion trees](@ref ss_fusiontrees).
-This is true also in more general fusion categories beyond the representation categories of
-groups.
+conjugate representation acts, and the representation space of the irrep
+`dual(a) == conj(a)` that is isomorphic to the conjugate representation, i.e.
+``R_{\overline{a}} ≂ R_a^*`` but they are not equal. We return to this in the section on
+[fusion trees](@ref ss_fusiontrees).  This is true also in more general fusion categories
+beyond the representation categories of groups.
 
 Other methods for `ElementarySpace`, such as [`dual`](@ref), [`fuse`](@ref) and
-[`flip`](@ref) also work. In fact, `GradedSpace` is the reason `flip` exists, cause
+[`flip`](@ref) also work. In fact, `GradedSpace` is the reason `flip` exists, because
 in this case it is different than `dual`. The existence of flip originates from the
 non-trivial isomorphism between ``R_{\overline{a}}`` and ``R_{a}^*``, i.e. the
 representation space of the dual ``\overline{a}`` of sector ``a`` and the dual of the
@@ -782,16 +779,16 @@ such that, if `V = GradedSpace(a=>n_a,...)` then
 
 Furthermore, for two spaces `V1 = GradedSpace(a=>n1_a, ...)` and
 `V2 = GradedSpace(a=>n2_a, ...)`, we have
-`infimum(V1,V2) = GradedSpace(a=>min(n1_a,n2_a), ....)` and similarly for
+`infimum(V1, V2) = GradedSpace(a=>min(n1_a, n2_a), ....)` and similarly for
 `supremum`, i.e. they act on the degeneracy dimensions of every sector separately.
-Therefore, it can be that the return value of `infimum(V1,V2)` or `supremum(V1,V2)` is
+Therefore, it can be that the return value of `infimum(V1, V2)` or `supremum(V1, V2)` is
 neither equal to `V1` or `V2`.
 
 For `W` a `ProductSpace{Vect[I], N}`, [`sectors(W)`](@ref) returns an
 iterator that generates all possible combinations of sectors `as` represented as
 `NTuple{I,N}`. The function [`dims(W, as)`](@ref) returns the corresponding tuple with
 degeneracy dimensions, while [`dim(W, as)`](@ref) returns the product of these dimensions.
-[`hassector(W, as)`](@ref) is equivalent to `dim(W, as)>0`. Finally, there is the function
+[`hassector(W, as)`](@ref) is equivalent to `dim(W, as) > 0`. Finally, there is the function
 [`blocksectors(W)`](@ref) which returns a list (of type `Vector`) with all possible "block
 sectors" or total/coupled sectors that can result from fusing the individual uncoupled
 sectors in `W`. Correspondingly, [`blockdim(W, a)`](@ref) counts the total degeneracy
@@ -800,6 +797,7 @@ of the next section on [Fusion trees](@ref ss_fusiontrees), but first, it's time
 examples.
 
 ### Examples
+
 Let's start with an example involving ``\mathsf{U}_1``:
 ```@repl sectors
 V1 = Rep[U₁](0=>3, 1=>2, -1=>1)
@@ -855,16 +853,17 @@ blockdim(W, SU2Irrep(0))
 ```
 
 ## [Fusion trees](@id ss_fusiontrees)
+
 The gain in efficiency (both in memory occupation and computation time) obtained from using
 symmetric (equivariant) tensor maps is that, by Schur's lemma, they are block diagonal in
 the basis of coupled sectors, i.e. they exhibit block sparsity. To exploit this block
-diagonal form, it is however essential that we know the basis transform from the individual
-(uncoupled) sectors appearing in the tensor product form of the domain and codomain, to the
-totally coupled sectors that label the different blocks. We refer to the latter as block
-sectors, as we already encountered in the previous section [`blocksectors`](@ref) and
-[`blockdim`](@ref) defined on the type [`ProductSpace`](@ref).
+diagonal form, it is however essential that we know the basis transformation from the
+individual (uncoupled) sectors appearing in the tensor product form of the domain and
+codomain, to the totally coupled sectors that label the different blocks. We refer to the
+latter as block sectors, as we already encountered in the previous section
+[`blocksectors`](@ref) and [`blockdim`](@ref) defined on the type [`ProductSpace`](@ref).
 
-This basis transform consists of a basis of inclusion and projection maps, denoted as
+This basis transformation consists of a basis of inclusion and projection maps, denoted as
 ``X^{a_1a_2…a_N}_{c,α}: R_c → R_{a_1} ⊗ R_{a_2} ⊗ … ⊗ R_{a_N}`` and their adjoints
 ``(X^{a_1a_2…a_N}_{c,α})^†``, such that
 
@@ -887,27 +886,28 @@ To couple or fuse the different sectors together into a single block sector, we 
 sequentially fuse together two sectors into a single coupled sector, which is then fused
 with the next uncoupled sector, using the splitting tensors ``X_{a,b}^{c,μ} : R_c → R_a ⊗
 R_b`` and their adjoints. This amounts to the canonical choice of our tensor product, and
-for a given tensor mapping from ``(((W_1 ⊗ W_2) ⊗ W_3) ⊗ … )⊗ W_{N_2})`` to ``(((V_1 ⊗ V_2)
-⊗ V_3) ⊗ … )⊗ V_{N_1})``, the corresponding fusion and splitting trees take the form
+for a given tensor mapping from ``(((W_1 ⊗ W_2) ⊗ W_3) ⊗ … )⊗ W_{N_2})`` to
+``(((V_1 ⊗ V_2) ⊗ V_3) ⊗ … )⊗ V_{N_1})``, the corresponding fusion and splitting trees take
+the form
 
 ```@raw html
 <img src="../img/tree-simple.svg" alt="double fusion tree" class="color-invertible"/>
 ```
 
-for the specific case ``N_1=4`` and ``N_2=3``. We can separate this tree into the fusing
-part ``(b_1⊗b_2)⊗b_3 → c`` and the splitting part ``c→(((a_1⊗a_2)⊗a_3)⊗a_4)``. Given that
-the fusion tree can be considered to be the adjoint of a corresponding splitting tree
-``c→(b_1⊗b_2)⊗b_3``, we now first consider splitting trees in isolation. A splitting tree
-which goes from one coupled sector ``c`` to ``N`` uncoupled sectors ``a_1``, ``a_2``, …,
-``a_N`` needs ``N-2`` additional internal sector labels ``e_1``, …, ``e_{N-2}``, and, if
-`FusionStyle(I) isa GenericFusion`, ``N-1`` additional multiplicity labels ``μ_1``,
+for the specific case ``N_1 = 4`` and ``N_2 = 3``. We can separate this tree into the fusing
+part ``(b_1 ⊗ b_2) ⊗ b_3 → c`` and the splitting part ``c→(((a_1 ⊗ a_2) ⊗ a_3) ⊗ a_4)``.
+Given that the fusion tree can be considered to be the adjoint of a corresponding splitting
+tree ``c → (b_1 ⊗ b_2) ⊗ b_3``, we now first consider splitting trees in isolation. A
+splitting tree which goes from one coupled sector ``c`` to ``N`` uncoupled sectors ``a_1``,
+``a_2``, …, ``a_N`` needs ``N-2`` additional internal sector labels ``e_1``, …, ``e_{N-2}``,
+and, if `FusionStyle(I) isa GenericFusion`, ``N-1`` additional multiplicity labels ``μ_1``,
 …, ``μ_{N-1}``. We henceforth refer to them as vertex labels, as they are associated with
 the vertices of the splitting tree. In the case of `FusionStyle(I) isa UniqueFusion`, the
 internal sectors ``e_1``, …, ``e_{N-2}`` are completely fixed, for
 `FusionStyle(I) isa MultipleFusion` they can also take different values. In our abstract
-notation of the splitting basis ``X^{a_1a_2…a_N}_{c,α}`` used above, ``α`` can be consided
-a collective label, i.e. ``α = (e_1, …, e_{N-2}; μ₁, … ,μ_{N-1})``. Indeed, we can check
-the orthogonality condition
+notation of the splitting basis ``X^{a_1a_2…a_N}_{c,α}`` used above, ``α`` can be consided a
+collective label, i.e. ``α = (e_1, …, e_{N-2}; μ₁, … ,μ_{N-1})``. Indeed, we can check the
+orthogonality condition
 ``(X^{a_1a_2…a_N}_{c,α})^† ∘ X^{a_1a_2…a_N}_{c′,α′} = δ_{c,c′} δ_{α,α′} \mathrm{id}_c``,
 which now forces all internal lines ``e_k`` and vertex labels ``μ_l`` to be the same.
 
@@ -918,12 +918,12 @@ and graphically depicted as an upgoing arrow ``a``) and ``R_{\bar{a}}`` (simply 
 which the conjugated irrep acts, or the irrep ``\bar{a}`` to which the complex conjugate of
 irrep ``a`` is isomorphic. This distinction is however important, when certain uncoupled
 sectors in the fusion tree actually originate from a dual space. We use the isomorphisms
-``Z_a:R_a^* → R_{\bar{a}}`` and its adjoint ``Z_a^†:R_{\bar{a}}→R_a^*``, as introduced in
-the section on [topological data of a fusion category](@ref ss_topologicalfusion), to build
-fusion and splitting trees that take the distinction between irreps and their conjugates
-into account. Hence, in the previous example, if e.g. the first and third space in the
-codomain and the second space in the domain of the tensor were dual spaces, the actual pair
-of splitting and fusion tree would look as
+``Z_a : R_a^* → R_{\bar{a}}`` and its adjoint ``Z_a^† : R_{\bar{a}} → R_a^*``, as introduced
+in the section on [topological data of a fusion category](@ref ss_topologicalfusion), to
+build fusion and splitting trees that take the distinction between irreps and their
+conjugates into account. Hence, in the previous example, if e.g. the first and third space
+in the codomain and the second space in the domain of the tensor were dual spaces, the
+actual pair of splitting and fusion tree would look as
 
 ```@raw html
 <img src="../img/tree-extended.svg" alt="extended double fusion tree" class="color-invertible"/>
@@ -940,12 +940,12 @@ We represent splitting trees and their adjoints using a specific immutable type 
 `FusionTree` (which actually represents a splitting tree, but fusion tree is a more common
 term), defined as
 ```julia
-struct FusionTree{I<:Sector,N,M,L,T}
+struct FusionTree{I<:Sector,N,M,L}
     uncoupled::NTuple{N,I}
     coupled::I
     isdual::NTuple{N,Bool}
     innerlines::NTuple{M,I} # fixed to M = N-2
-    vertices::NTuple{L,T} # fixed to L = N-1
+    vertices::NTuple{L,Int} # fixed to L = N-1
 end
 ```
 Here, the fields are probably self-explanotary. The `isdual` field indicates whether an
@@ -956,8 +956,7 @@ isomorphism is present (if the corresponding value is `true`) or not. Note that 
 capabilities, such as checking for equality with `==` and support for
 `hash(f::FusionTree, h::UInt)`, as splitting and fusion trees are used as keys in look-up
 tables (i.e. `AbstractDictionary` instances) to look up certain parts of the data of a
-tensor. The type of `L` of the vertex labels can be `Nothing` when they are not needed
-(i.e. if `FusionStyle(I) isa MultiplicityFreeFusion`).
+tensor.
 
 `FusionTree` instances are not checked for consistency (i.e. valid fusion rules etc) upon
 creation, hence, they are assumed to be created correctly. The most natural way to create
@@ -972,15 +971,15 @@ illustrated with some examples
 
 ```@repl sectors
 s = Irrep[SU₂](1/2)
-collect(fusiontrees((s,s,s,s)))
-collect(fusiontrees((s,s,s,s,s), s, (true, false, false, true, false)))
-iter = fusiontrees(ntuple(n->s, 16))
-sum(n->1, iter)
+collect(fusiontrees((s, s, s, s)))
+collect(fusiontrees((s, s, s, s, s), s, (true, false, false, true, false)))
+iter = fusiontrees(ntuple(n -> s, 16))
+sum(n -> 1, iter)
 length(iter)
-@elapsed sum(n->1, iter)
+@elapsed sum(n -> 1, iter)
 @elapsed length(iter)
 s2 = s ⊠ s
-collect(fusiontrees((s2,s2,s2,s2)))
+collect(fusiontrees((s2, s2, s2, s2)))
 ```
 Note that `FusionTree` instances are shown (printed) in a way that is valid code to
 reproduce them, a property which also holds for both instances of `Sector` and instances of
@@ -1046,7 +1045,8 @@ sector is braided over or under its right neighbor. This interface does not allo
 specify the most general braid, and in particular will never wind one line around another,
 but can be used as a more general building block for arbitrary braids than the elementary
 Artin generators. A graphical example makes this probably more clear, i.e for
-`levels=(1,2,3,4,5)` and `permutation=(5,3,1,4,2)`, the corresponding braid is given by
+`levels = (1, 2, 3, 4, 5)` and `permutation = (5, 3, 1, 4, 2)`, the corresponding braid is
+given by
 
 ```@raw html
 <img src="../img/tree-braidinterface.svg" alt="braid interface" class="color-invertible"/>
@@ -1066,39 +1066,40 @@ the interface
 
 Other manipulations which are sometimes needed are
 
-*   [insertat(f1::FusionTree{I,N₁}, i::Int, f2::FusionTree{I,N₂})](@ref TensorKit.insertat) :
+*   [`insertat(f1::FusionTree{I,N₁}, i::Int, f2::FusionTree{I,N₂})`](@ref TensorKit.insertat) :
     inserts a fusion tree `f2` at the `i`th uncoupled sector of fusion tree `f1` (this
     requires that the coupled sector `f2` matches with the `i`th uncoupled sector of `f1`,
     and that `!f1.isdual[i]`, i.e. that there is no ``Z``-isomorphism on the `i`th line of
     `f1`), and recouple this into a linear combination of trees in canonical order, with
-    `N₁+N₂-1` uncoupled sectors, i.e. diagrammatically for `i=3`
+    `N₁ + N₂ - 1` uncoupled sectors, i.e. diagrammatically for `i = 3`
 
-    ```@raw html
-    <img src="img/tree-insertat.svg" alt="insertat" class="color-invertible"/>
-    ```
+```@raw html
+<img src="../img/tree-insertat.svg" alt="insertat" class="color-invertible"/>
+```
 
-*   [split(f::FusionTree{I,N}, M::Int)](@ref TensorKit.split) :
+*   [`split(f::FusionTree{I,N}, M::Int)`](@ref TensorKit.split) :
     splits a fusion tree `f` into two trees `f1` and `f2`, such that `f1` has the first `M`
-    uncoupled sectors of `f`, and `f2` the remaining `N-M`. This function is type stable if `M` is a compile time constant.
+    uncoupled sectors of `f`, and `f2` the remaining `N - M`. This function is type stable
+    if `M` is a compile time constant.
 
     `split(f, M)` is the inverse of `insertat` in the sence that `insertat(f2, 1, f1)`
     should return a dictionary with a single key-value pair `f=>1`. Diagrammatically, for
-    `M=4`, the function `split` returns
+    `M = 4`, the function `split` returns
 
-    ```@raw html
-    <img src="img/tree-split.svg" alt="split" class="color-invertible"/>
-    ```
+```@raw html
+<img src="../img/tree-split.svg" alt="split" class="color-invertible"/>
+```
 
-*   [merge(f1::FusionTree{I,N₁}, f2::FusionTree{I,N₂}, c::I, μ=nothing)](@ref TensorKit.merge) :
+*   [`merge(f1::FusionTree{I,N₁}, f2::FusionTree{I,N₂}, c::I, [μ=1])`](@ref TensorKit.merge) :
     merges two fusion trees `f1` and `f2` by fusing the coupled sectors of `f1` and `f2`
     into a sector `c` (with vertex label `μ` if `FusionStyle(I) == GenericFusion()`),
-    and reexpressing the result as a linear combination of fusion trees with `N₁+N₂`
+    and reexpressing the result as a linear combination of fusion trees with `N₁ + N₂`
     uncoupled sectors in canonical order. This is a simple application of `insertat`.
     Diagrammatically, this operation is represented as:
 
-    ```@raw html
-    <img src="img/tree-merge.svg" alt="merge" class="color-invertible"/>
-    ```
+```@raw html
+<img src="../img/tree-merge.svg" alt="merge" class="color-invertible"/>
+```
 
 ### Manipulations on a splitting - fusion tree pair
 
@@ -1160,8 +1161,8 @@ The `FusionTree` interface to duality and line bending is given by
 which takes a splitting tree `f1` with `N₁` outgoing sectors, a fusion tree `f2` with `N₂`
 incoming sectors, and applies line bending such that the resulting splitting and fusion
 trees have `N` outgoing sectors, corresponding to the first `N` sectors out of the list
-``(a_1, a_2, …, a_{N_1}, b_{N_2}^*, …, b_{1}^*)`` and `N₁+N₂-N` incoming sectors,
-corresponding to the dual of the last `N₁+N₂-N` sectors from the previous list, in reverse.
+``(a_1, a_2, …, a_{N_1}, b_{N_2}^*, …, b_{1}^*)`` and `N₁ + N₂ - N` incoming sectors,
+corresponding to the dual of the last `N₁ + N₂ - N` sectors from the previous list, in reverse.
 This return values are correctly inferred if `N` is a compile time constant.
 
 Graphically, for `N₁ = 4`, `N₂ = 3`, `N = 2` and some particular choice of `isdual` in both
@@ -1185,21 +1186,22 @@ interface provided for this is given by
 where we now have splitting tree `f1` with `N₁` outgoing sectors, a fusion tree `f2` with
 `N₂` incoming sectors, `levels1` and `levels2` assign a level or depth to the corresponding
 uncoupled sectors in `f1` and `f2`, and we represent the new configuration as a pair `p1`
-and `p2`. Together, `(p1..., p2...)` represents a permutation of length `N₁+N₂ = N₁′+N₂′`,
-where `p1` indicates which of the original sectors should appear as outgoing sectors in the
-new splitting tree and `p2` indicates which appear as incoming sectors in the new fusion
-tree. Hereto, we label the uncoupled sectors of `f1` from `1` to `N₁`, followed by the
-uncoupled sectors of `f2` from `N₁+1` to `N₁+N₂`. Note that simply repartitioning the
-splitting and fusion tree such that e.g. all sectors appear in the new splitting tree (i.e.
-are outgoing), amounts to chosing `p1 = (1,..., N₁, N₁+N₂, N₁+N₂-1, ... , N₁+1)` and
-`p2=()`, because the duality isomorphism reverses the order of the tensor product.
+and `p2`. Together, `(p1..., p2...)` represents a permutation of length
+`N₁ + N₂ = N₁′ + N₂′`, where `p1` indicates which of the original sectors should appear as
+outgoing sectors in the new splitting tree and `p2` indicates which appear as incoming
+sectors in the new fusion tree. Hereto, we label the uncoupled sectors of `f1` from `1` to
+`N₁`, followed by the uncoupled sectors of `f2` from `N₁ + 1` to `N₁ + N₂`. Note that simply
+repartitioning the splitting and fusion tree such that e.g. all sectors appear in the new
+splitting tree (i.e.  are outgoing), amounts to chosing
+`p1 = (1,..., N₁, N₁ + N₂, N₁ + N₂ - 1, ... , N₁ + 1)` and `p2 = ()`, because the duality
+isomorphism reverses the order of the tensor product.
 
 This routine is implemented by indeed first making all sectors outgoing using the
 `repartition` function discussed above, such that only splitting trees remain, then
 braiding those using the routine from the previous subsection such that the new outgoing
 sectors appear first, followed by the new incoming sectors (in reverse order), and then
 again invoking the `repartition` routine to bring everything in final form. The result is
-again returned as a dictionary where the keys are `(f1′,f2′)` and the values the
+again returned as a dictionary where the keys are `(f1′, f2′)` and the values the
 corresponding coefficients.
 
 As before, there is a simplified interface for the case where
@@ -1231,6 +1233,7 @@ tree manipulations (which we nonetheless try to avoid) will not seriously affect
 performance of tensor manipulations.
 
 ### Inspecting fusion trees as tensors
+
 For those cases where the fusion and splitting tensors have an explicit representation as
 a tensor, i.e. a morphism in the category `Vect` (this essentially coincides with the case
 of group representations), this explicit representation can be created, which can be useful
@@ -1250,11 +1253,11 @@ iter = fusiontrees((s, s, s, s), SU2Irrep(1))
 f = first(iter)
 convert(Array, f)
 
-I ≈ convert(Array, FusionTree((SU₂(1/2),), SU₂(1/2), (false,), ()))
+LinearAlgebra.I ≈ convert(Array, FusionTree((SU2Irrep(1/2),), SU2Irrep(1/2), (false,), ()))
 Z = adjoint(convert(Array, FusionTree((SU2Irrep(1/2),), SU2Irrep(1/2), (true,), ())))
 transpose(Z) ≈ frobeniusschur(SU2Irrep(1/2)) * Z
 
-I ≈ convert(Array, FusionTree((Irrep[SU₂](1),), Irrep[SU₂](1), (false,), ()))
+LinearAlgebra.I ≈ convert(Array, FusionTree((Irrep[SU₂](1),), Irrep[SU₂](1), (false,), ()))
 Z = adjoint(convert(Array, FusionTree((Irrep[SU₂](1),), Irrep[SU₂](1), (true,), ())))
 transpose(Z) ≈ frobeniusschur(Irrep[SU₂](1)) * Z
 
