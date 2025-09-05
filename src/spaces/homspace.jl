@@ -12,6 +12,18 @@ struct HomSpace{S<:ElementarySpace,P1<:CompositeSpace{S},P2<:CompositeSpace{S}}
     codomain::P1
     domain::P2
 end
+
+function HomSpace(codomain::S, domain::CompositeSpace{S}) where {S<:ElementarySpace}
+    return HomSpace(⊗(codomain), domain)
+end
+function HomSpace(codomain::CompositeSpace{S}, domain::S) where {S<:ElementarySpace}
+    return HomSpace(codomain, ⊗(domain))
+end
+function HomSpace(codomain::S, domain::S) where {S<:ElementarySpace}
+    return HomSpace(⊗(codomain), ⊗(domain))
+end
+HomSpace(codomain::VectorSpace) = HomSpace(codomain, zero(codomain))
+
 codomain(W::HomSpace) = W.codomain
 domain(W::HomSpace) = W.domain
 
