@@ -222,8 +222,6 @@ include("tensors/braidingtensor.jl")
 
 include("tensors/factorizations/factorizations.jl")
 using .Factorizations
-# include("tensors/factorizations/matrixalgebrakit.jl")
-# include("tensors/truncation.jl")
 
 # # Planar macros and related functionality
 # #-----------------------------------------
