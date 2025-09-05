@@ -46,5 +46,3 @@ Base.adjoint(alg::Union{SVD,SDD,Polar}) = alg
 const OFA = OrthogonalFactorizationAlgorithm
 const SVDAlg = Union{SVD,SDD}
 
-safesign(s::Real) = ifelse(s < zero(s), -one(s), +one(s))
-safesign(s::Complex) = ifelse(iszero(s), one(s), s / abs(s))
