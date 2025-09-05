@@ -17,4 +17,4 @@ makedocs(; modules=[TensorKit, TensorKitSectors],
          pages=pages,
          pagesonly=true)
 
-deploydocs(; repo="github.com/Jutho/TensorKit.jl.git", push_preview=true)
+deploydocs(; repo="github.com/QuantumKitHub/TensorKit.jl.git", push_preview=true)

@@ -12,11 +12,11 @@ To do this, you can use the `--modules` flag to specify which modules to run.
 Alternatively, you can use the `TensorKitBenchmarks` module directly, which is designed after `BaseBenchmarks` to allow for conditional loading of the benchmarks.
 
 For a more streamlined CLI experience, you can use [`AirspeedVelocity.jl`](https://github.com/MilesCranmer/AirspeedVelocity.jl) to run the benchmarks.
-The following command will run the benchmarks and compare with the current master branch:
+The following command will run the benchmarks and compare with the current main branch:
 
 ```bash
 benchpkg TensorKit \
-    --rev=dirty,master \
+    --rev=dirty,main \
     -o benchmark/results/ \
     -exeflags="--threads=4"
 ```
@@ -25,7 +25,7 @@ To compare with previous results, the following command can be used:
 
 ```bash
 benchpkgtable TensorKit \
-    --rev=dirty,master \
+    --rev=dirty,main \
     -i benchmark/results/ \
     -o benchmark/results/ \
 ```

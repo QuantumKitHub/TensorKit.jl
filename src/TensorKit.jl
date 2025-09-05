@@ -156,24 +156,24 @@ struct SectorMismatch{S<:Union{Nothing,AbstractString}} <: TensorException
     message::S
 end
 SectorMismatch() = SectorMismatch{Nothing}(nothing)
-Base.show(io::IO, ::SectorMismatch{Nothing}) = print(io, "SectorMismatch()")
-Base.show(io::IO, e::SectorMismatch) = print(io, "SectorMismatch(\"", e.message, "\")")
+Base.showerror(io::IO, ::SectorMismatch{Nothing}) = print(io, "SectorMismatch()")
+Base.showerror(io::IO, e::SectorMismatch) = print(io, "SectorMismatch(\"", e.message, "\")")
 
 # Exception type for all errors related to vector space mismatch
 struct SpaceMismatch{S<:Union{Nothing,AbstractString}} <: TensorException
     message::S
 end
 SpaceMismatch() = SpaceMismatch{Nothing}(nothing)
-Base.show(io::IO, ::SpaceMismatch{Nothing}) = print(io, "SpaceMismatch()")
-Base.show(io::IO, e::SpaceMismatch) = print(io, "SpaceMismatch(\"", e.message, "\")")
+Base.showerror(io::IO, ::SpaceMismatch{Nothing}) = print(io, "SpaceMismatch()")
+Base.showerror(io::IO, e::SpaceMismatch) = print(io, "SpaceMismatch(\"", e.message, "\")")
 
 # Exception type for all errors related to invalid tensor index specification.
 struct IndexError{S<:Union{Nothing,AbstractString}} <: TensorException
     message::S
 end
 IndexError() = IndexError{Nothing}(nothing)
-Base.show(io::IO, ::IndexError{Nothing}) = print(io, "IndexError()")
-Base.show(io::IO, e::IndexError) = print(io, "IndexError(", e.message, ")")
+Base.showerror(io::IO, ::IndexError{Nothing}) = print(io, "IndexError()")
+Base.showerror(io::IO, e::IndexError) = print(io, "IndexError(", e.message, ")")
 
 # Constructing and manipulating fusion trees and iterators thereof
 #------------------------------------------------------------------
