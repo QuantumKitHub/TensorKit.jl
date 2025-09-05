@@ -75,7 +75,7 @@ allowed
 ```@repl tutorial
 B′ = randn(ℝ^4 * ℝ^2 * ℝ^3);
 space(B′) == space(A)
-C′ = 0.5*A + 2.5*B′
+C′ = 0.5 * A + 2.5 * B′
 scalarBA′ = dot(B′,A)
 ```
 
@@ -84,7 +84,7 @@ using the routine `permute` (we deliberately choose not to overload `permutedims
 Julia Base, for reasons that become clear below):
 
 ```@repl tutorial
-space(permute(B′,(3,2,1))) == space(A)
+space(permute(B′, (3, 2, 1))) == space(A)
 ```
 
 We can contract two tensors using Einstein summation convention, which takes the interface
@@ -92,8 +92,8 @@ from [TensorOperations.jl](https://github.com/quantumkithub/TensorOperations.jl)
 reexports the `@tensor` macro
 
 ```@repl tutorial
-@tensor D[a,b,c,d] := A[a,b,e]*B[d,c,e]
-@tensor d = A[a,b,c]*A[a,b,c]
+@tensor D[a,b,c,d] := A[a,b,e] * B[d,c,e]
+@tensor d = A[a,b,c] * A[a,b,c]
 d ≈ scalarAA ≈ normA²
 ```
 
@@ -108,8 +108,8 @@ cast the array into a matrix before applying e.g. the singular value decompositi
 TensorKit.jl, one just specifies which indices go to the left (rows) and right (columns)
 
 ```@repl tutorial
-U, S, Vd = tsvd(A, (1,3), (2,));
-@tensor A′[a,b,c] := U[a,c,d]*S[d,e]*Vd[e,b];
+U, S, Vd = tsvd(A, ((1,3), (2,)));
+@tensor A′[a,b,c] := U[a,c,d] * S[d,e] * Vd[e,b];
 A ≈ A′
 U
 ```
@@ -148,8 +148,8 @@ represent a vector `v` and matrix `m` as
 v = randn(ℝ^3)
 M₁ = randn(ℝ^4, ℝ^3)
 M₂ = randn(ℝ^4 → ℝ^2) # alternative syntax for randn(ℝ^2, ℝ^4)
-w = M₁ * v # matrix vector product
-M₃ = M₂ * M₁ # matrix matrix product
+w = M₁ * v # matrix-vector product
+M₃ = M₂ * M₁ # matrix-matrix product
 space(M₃)
 ```
 
@@ -161,7 +161,7 @@ that we also support this more mathemical notation, as illustrated in the constr
 support the syntax `codomain ← domain` and actually use this as the default way of printing
 `HomSpace` instances.
 
-The 'matrix vector' or 'matrix matrix' product can be computed between any two `TensorMap`
+The 'matrix-vector' or 'matrix-matrix' product can be computed between any two `TensorMap`
 instances for which the domain of the first matches with the codomain of the second, e.g.
 
 ```@repl tutorial
@@ -178,29 +178,28 @@ unitary, or at least a (left) isometric tensor
 codomain(U)
 domain(U)
 space(U)
-U'*U # should be the identity on the corresponding domain = codomain
-U'*U ≈ one(U'*U)
-P = U*U' # should be a projector
-P*P ≈ P
+U' * U # should be the identity on the corresponding domain = codomain
+U' * U ≈ one(U'*U)
+P = U * U' # should be a projector
+P * P ≈ P
 ```
 
 Here, the adjoint of a `TensorMap` results in a new tensor map (actually a simple wrapper
 of type `AdjointTensorMap <: AbstractTensorMap`) with domain and codomain interchanged.
 
 Our original tensor `A` living in `ℝ^4 * ℝ^2 * ℝ^3` is isomorphic to e.g. a linear map
-`ℝ^3 → ℝ^4 * ℝ^2`. This is where the full power of `permute` emerges. It allows to
-specify a permutation where some indices go to the codomain, and others go to the domain,
-as in
+`ℝ^3 → ℝ^4 * ℝ^2`. This is where the full power of `permute` emerges. It allows to specify a
+permutation where some indices go to the codomain, and others go to the domain, as in
 
 ```@repl tutorial
-A2 = permute(A,(1,2),(3,))
+A2 = permute(A, ((1, 2), (3,)))
 codomain(A2)
 domain(A2)
 ```
 
-In fact, `tsvd(A, (1,3),(2,))` is a shorthand for `tsvd(permute(A,(1,3),(2,)))`, where
-`tsvd(A::TensorMap)` will just compute the singular value decomposition according to the
-given codomain and domain of `A`.
+In fact, `tsvd(A, ((1, 3), (2,)))` is a shorthand for `tsvd(permute(A, ((1, 3), (2,))))`,
+where `tsvd(A::TensorMap)` will just compute the singular value decomposition according to
+the given codomain and domain of `A`.
 
 Note, finally, that the `@tensor` macro treats all indices at the same footing and thus
 does not distinguish between codomain and domain. The linear numbering is first all indices
@@ -209,13 +208,13 @@ new tensor (i.e. when using `:=`), the default syntax always creates a `Tensor`,
 all indices in the codomain.
 
 ```@repl tutorial
-@tensor A′[a,b,c] := U[a,c,d]*S[d,e]*Vd[e,b];
+@tensor A′[a,b,c] := U[a,c,d] * S[d,e] * Vd[e,b];
 codomain(A′)
 domain(A′)
-@tensor A2′[(a,b);(c,)] := U[a,c,d]*S[d,e]*Vd[e,b];
+@tensor A2′[(a,b); (c,)] := U[a,c,d] * S[d,e] * Vd[e,b];
 codomain(A2′)
 domain(A2′)
-@tensor A2′′[a b; c] := U[a,c,d]*S[d,e]*Vd[e,b];
+@tensor A2′′[a b; c] := U[a,c,d] * S[d,e] * Vd[e,b];
 A2 ≈ A2′ == A2′′
 ```
 
@@ -244,32 +243,32 @@ where `ℂ` is obtained as `\bbC+TAB` and we also have the non-Unicode alternati
 
 ```@repl tutorial
 B = randn(ℂ^3 * ℂ^2 * ℂ^4);
-C = im*A + (2.5-0.8im)*B
-scalarBA = dot(B,A)
-scalarAA = dot(A,A)
+C = im*A + (2.5 - 0.8im) * B
+scalarBA = dot(B, A)
+scalarAA = dot(A, A)
 normA² = norm(A)^2
-U,S,Vd = tsvd(A,(1,3),(2,));
-@tensor A′[a,b,c] := U[a,c,d]*S[d,e]*Vd[e,b];
+U, S, Vd = tsvd(A, ((1, 3), (2,)));
+@tensor A′[a,b,c] := U[a,c,d] * S[d,e] * Vd[e,b];
 A′ ≈ A
-permute(A,(1,3),(2,)) ≈ U*S*Vd
+permute(A, ((1, 3), (2,))) ≈ U * S * Vd
 ```
 
 However, trying the following
 
 ```@repl tutorial
-@tensor D[a,b,c,d] := A[a,b,e]*B[d,c,e]
-@tensor d = A[a,b,c]*A[a,b,c]
+@tensor D[a,b,c,d] := A[a,b,e] * B[d,c,e]
+@tensor d = A[a,b,c] * A[a,b,c]
 ```
 
 we obtain `SpaceMismatch` errors. The reason for this is that, with `ComplexSpace`, an
 index in a space `ℂ^n` can only be contracted with an index in the dual space
 `dual(ℂ^n) == (ℂ^n)'`. Because of the complex Euclidean inner product, the dual space is
-equivalent to the complex conjugate space, but not the the space itself.
+equivalent to the complex conjugate space, but not the space itself.
 
 ```@repl tutorial
 dual(ℂ^3) == conj(ℂ^3) == (ℂ^3)'
 (ℂ^3)' == ℂ^3
-@tensor d = conj(A[a,b,c])*A[a,b,c]
+@tensor d = conj(A[a,b,c]) * A[a,b,c]
 d ≈ normA²
 ```
 
@@ -290,7 +289,7 @@ space(m, 2)
 
 Hence, spaces become their corresponding dual space if they are 'permuted' from the domain
 to the codomain or vice versa. Also, spaces in the domain are reported as their dual when
-probing them with `space(A, i)`. Generalizing matrix vector and matrix matrix multiplication
+probing them with `space(A, i)`. Generalizing matrix-vector and matrix-matrix multiplication
 to arbitrary tensor contractions require that the two indices to be contracted have spaces
 which are each others dual. Knowing this, all the other functionality of tensors with
 `CartesianSpace` indices remains the same for tensors with `ComplexSpace` indices.
@@ -303,20 +302,20 @@ More power becomes visible when involving symmetries. With symmetries, we imply 
 is some symmetry action defined on every vector space associated with each of the indices
 of a `TensorMap`, and the `TensorMap` is then required to be equivariant, i.e. it acts as
 an intertwiner between the tensor product representation on the domain and that on the
-codomain. By Schur's lemma, this means that the tensor is block diagonal in some basis
+codomain. By Schur's lemma, this means that the tensor is block-diagonal in some basis
 corresponding to the irreducible representations that can be coupled to by combining the
 different representations on the different spaces in the domain or codomain. For Abelian
 symmetries, this does not require a basis change and it just imposes that the tensor has
-some block sparsity. Let's clarify all of this with some examples.
+some block-sparsity. Let's clarify all of this with some examples.
 
 We start with a simple ``ℤ₂`` symmetry:
 
 ```@repl tutorial
-V1 = ℤ₂Space(0=>3,1=>2)
+V1 = ℤ₂Space(0=>3, 1=>2)
 dim(V1)
-V2 = ℤ₂Space(0=>1,1=>1)
+V2 = ℤ₂Space(0=>1, 1=>1)
 dim(V2)
-A = randn(V1*V1*V2')
+A = randn(V1 * V1 * V2')
 convert(Array, A)
 ```
 
@@ -332,27 +331,27 @@ From there on, the resulting tensors support all of the same operations as the o
 encountered in the previous examples.
 
 ```@repl tutorial
-B = randn(V1'*V1*V2);
-@tensor C[a,b] := A[a,c,d]*B[c,b,d]
-U,S,V = tsvd(A,(1,3),(2,));
-U'*U # should be the identity on the corresponding domain = codomain
-U'*U ≈ one(U'*U)
-P = U*U' # should be a projector
-P*P ≈ P
+B = randn(V1' * V1 * V2);
+@tensor C[a,b] := A[a,c,d] * B[c,b,d]
+U, S, V = tsvd(A, ((1, 3), (2,)));
+U' * U # should be the identity on the corresponding domain = codomain
+U' * U ≈ one(U'*U)
+P = U * U' # should be a projector
+P * P ≈ P
 ```
 
 We also support other abelian symmetries, e.g.
 
 ```@repl tutorial
-V = U₁Space(0=>2,1=>1,-1=>1)
+V = U₁Space(0=>2, 1=>1, -1=>1)
 dim(V)
-A = randn(V*V, V)
+A = randn(V * V, V)
 dim(A)
 convert(Array, A)
 
 V = Rep[U₁×ℤ₂]((0, 0) => 2, (1, 1) => 1, (-1, 0) => 1)
 dim(V)
-A = randn(V*V, V)
+A = randn(V * V, V)
 dim(A)
 convert(Array, A)
 ```
@@ -367,12 +366,12 @@ more general sectortypes `I` it can be constructed as `Vect[I]`. Furthermore, `�
 synonyms, e.g.
 
 ```@repl tutorial
-Rep[U₁](0=>3,1=>2,-1=>1) == U1Space(-1=>1,1=>2,0=>3)
-V = U₁Space(1=>2,0=>3,-1=>1)
+Rep[U₁](0=>3, 1=>2, -1=>1) == U1Space(-1=>1, 1=>2, 0=>3)
+V = U₁Space(1=>2, 0=>3, -1=>1)
 for s in sectors(V)
   @show s, dim(V, s)
 end
-U₁Space(-1=>1,0=>3,1=>2) == GradedSpace(Irrep[U₁](1)=>2, Irrep[U₁](0)=>3, Irrep[U₁](-1)=>1)
+U₁Space(-1=>1, 0=>3, 1=>2) == GradedSpace(Irrep[U₁](1)=>2, Irrep[U₁](0)=>3, Irrep[U₁](-1)=>1)
 supertype(GradedSpace)
 ```
 
@@ -386,9 +385,8 @@ type, in this case `Irrep[U₁] == U1Irrep`. However, the `Vect[I]` constructor 
 converts the keys in the list of `Pair`s it receives to the correct type. Alternatively, we
 can directly create the sectors of the correct type and use the generic `GradedSpace`
 constructor. We can probe the subspace dimension of a certain sector `s` in a space `V` with
-`dim(V, s)`. Finally, note that `GradedSpace` is also a subtype of `EuclideanSpace`, which
-implies that it still has the standard Euclidean inner product and we assume all
-representations to be unitary.
+`dim(V, s)`. Finally, note that `GradedSpace` still has the standard Euclidean inner product
+and we assume all representations to be unitary.
 
 TensorKit.jl also allows for non-abelian symmetries such as `SU₂`. In this case, the vector
 space is characterized via the spin quantum number (i.e. the irrep label of `SU₂`) for each
@@ -396,18 +394,18 @@ of its subspaces, and is created using `SU₂Space` (or `SU2Space` or `Rep[SU₂
 `Vect[Irrep[SU₂]]`)
 
 ```@repl tutorial
-V = SU₂Space(0=>2,1/2=>1,1=>1)
+V = SU₂Space(0=>2, 1/2=>1, 1=>1)
 dim(V)
 V == Vect[Irrep[SU₂]](0=>2, 1=>1, 1//2=>1)
 ```
 
 Note that now `V` has a two-dimensional subspace with spin zero, and two one-dimensional
 subspaces with spin 1/2 and spin 1. However, a subspace with spin `j` has an additional
-`2j+1` dimensional degeneracy on which the irreducible representation acts. This brings the
-total dimension to `2*1 + 1*2 + 1*3`. Creating a tensor with `SU₂` symmetry yields
+`2j + 1` dimensional degeneracy on which the irreducible representation acts. This brings
+the total dimension to `2*1 + 1*2 + 1*3`. Creating a tensor with `SU₂` symmetry yields
 
 ```@repl tutorial
-A = randn(V*V, V)
+A = randn(V * V, V)
 dim(A)
 convert(Array, A)
 norm(A) ≈ norm(convert(Array, A))
@@ -419,7 +417,7 @@ in the original tensor data do not match with those in the `Array`. The reason i
 that the original tensor data now needs to be transformed with a construction known as
 fusion trees, which are made up out of the Clebsch-Gordan coefficients of the group.
 Indeed, note that the non-zero blocks are also no longer labeled by a list of sectors, but
-by pair of fusion trees. This will be explained further in the manual. However, the
+by pairs of fusion trees. This will be explained further in the manual. However, the
 Clebsch-Gordan coefficients of the group are only needed to actually convert a tensor to an
 `Array`. For working with tensors with `SU₂Space` indices, e.g. contracting or factorizing
 them, the Clebsch-Gordan coefficients are never needed explicitly. Instead, recoupling
