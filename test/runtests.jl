@@ -113,16 +113,16 @@ VSU₂U₁ = (Vect[SU2Irrep ⊠ U1Irrep]((0, 0) => 1, (1 // 2, -1) => 1),
 #     ℂ[SU3Irrep]((0, 0, 0) => 1, (1, 0, 0) => 1, (1, 1, 0) => 1)')
 
 Ti = time()
-#include("fusiontrees.jl")
-#include("spaces.jl")
-#include("tensors.jl")
+include("fusiontrees.jl")
+include("spaces.jl")
+include("tensors.jl")
 include("factorizations.jl")
-#include("diagonal.jl")
-#include("planar.jl")
+include("diagonal.jl")
+include("planar.jl")
 # TODO: remove once we know AD is slow on macOS CI
-#=if !(Sys.isapple() && get(ENV, "CI", "false") == "true") && isempty(VERSION.prerelease)
+if !(Sys.isapple() && get(ENV, "CI", "false") == "true") && isempty(VERSION.prerelease)
     include("ad.jl")
-end=#
+end
 include("bugfixes.jl")
 Tf = time()
 printstyled("Finished all tests in ",
