@@ -31,8 +31,8 @@ function _leftorth!(t, alg::Union{OFA,AbstractAlgorithm}; kwargs...)
 
     kind = _kindof(alg)
     if kind == :svd
-        alg_svd = alg === LAPACK_QRIteration() ? alg : 
-                  alg === LAPACK_DivideAndConquer() ? alg : 
+        alg_svd = alg === LAPACK_QRIteration() ? alg :
+                  alg === LAPACK_DivideAndConquer() ? alg :
                   alg === SVD() ? LAPACK_QRIteration() :
                   alg === SDD() ? LAPACK_DivideAndConquer() :
                   throw(ArgumentError(lazy"Unknown algorithm $alg"))
@@ -50,7 +50,9 @@ end
 _leftorth!(t, alg; kwargs...) = left_orth!(t, alg; kwargs...)
 
 function leftnull!(t::AbstractTensorMap;
-                   alg::Union{LAPACK_HouseholderQR,LAPACK_QRIteration, LAPACK_DivideAndConquer,PolarViaSVD,QR,QRpos,SVD,SDD,Nothing}=nothing, kwargs...)
+                   alg::Union{LAPACK_HouseholderQR,LAPACK_QRIteration,
+                              LAPACK_DivideAndConquer,PolarViaSVD,QR,QRpos,SVD,SDD,Nothing}=nothing,
+                   kwargs...)
     InnerProductStyle(t) === EuclideanInnerProduct() ||
         throw_invalid_innerproduct(:leftnull!)
     trunc = isempty(kwargs) ? nothing : (; kwargs...)
@@ -60,8 +62,8 @@ function leftnull!(t::AbstractTensorMap;
 
     kind = _kindof(alg)
     if kind == :svd
-        alg_svd = alg === LAPACK_QRIteration() ? alg : 
-                  alg === LAPACK_DivideAndConquer() ? alg : 
+        alg_svd = alg === LAPACK_QRIteration() ? alg :
+                  alg === LAPACK_DivideAndConquer() ? alg :
                   alg === SVD() ? LAPACK_QRIteration() :
                   alg === SDD() ? LAPACK_DivideAndConquer() :
                   throw(ArgumentError(lazy"Unknown algorithm $alg"))
@@ -75,11 +77,13 @@ function leftnull!(t::AbstractTensorMap;
 end
 
 function rightorth!(t::AbstractTensorMap;
-                    alg::Union{LAPACK_HouseholderLQ,LAPACK_QRIteration, LAPACK_DivideAndConquer,PolarViaSVD,LQ,LQpos,RQ,RQpos,SVD,SDD,Polar,Nothing}=nothing, kwargs...)
+                    alg::Union{LAPACK_HouseholderLQ,LAPACK_QRIteration,
+                               LAPACK_DivideAndConquer,PolarViaSVD,LQ,LQpos,RQ,RQpos,SVD,
+                               SDD,Polar,Nothing}=nothing, kwargs...)
     InnerProductStyle(t) === EuclideanInnerProduct() ||
         throw_invalid_innerproduct(:rightorth!)
     trunc = isempty(kwargs) ? nothing : (; kwargs...)
-    
+
     alg isa OFA && Base.depwarn(lazy"$alg is deprecated", :rightorth!)
 
     isnothing(alg) && return right_orth!(t; trunc)
@@ -94,8 +98,8 @@ function rightorth!(t::AbstractTensorMap;
 
     kind = _kindof(alg)
     if kind == :svd
-        alg_svd = alg === LAPACK_QRIteration() ? alg : 
-                  alg === LAPACK_DivideAndConquer() ? alg : 
+        alg_svd = alg === LAPACK_QRIteration() ? alg :
+                  alg === LAPACK_DivideAndConquer() ? alg :
                   alg === SVD() ? LAPACK_QRIteration() :
                   alg === SDD() ? LAPACK_DivideAndConquer() :
                   throw(ArgumentError(lazy"Unknown algorithm $alg"))
@@ -111,7 +115,9 @@ function rightorth!(t::AbstractTensorMap;
 end
 
 function rightnull!(t::AbstractTensorMap;
-                    alg::Union{LAPACK_HouseholderLQ, LAPACK_QRIteration, LAPACK_DivideAndConquer,PolarViaSVD,LQ,LQpos,SVD,SDD,Nothing}=nothing, kwargs...)
+                    alg::Union{LAPACK_HouseholderLQ,LAPACK_QRIteration,
+                               LAPACK_DivideAndConquer,PolarViaSVD,LQ,LQpos,SVD,SDD,
+                               Nothing}=nothing, kwargs...)
     InnerProductStyle(t) === EuclideanInnerProduct() ||
         throw_invalid_innerproduct(:rightnull!)
     trunc = isempty(kwargs) ? nothing : (; kwargs...)
@@ -122,8 +128,8 @@ function rightnull!(t::AbstractTensorMap;
 
     kind = _kindof(alg)
     if kind == :svd
-        alg_svd = alg === LAPACK_QRIteration() ? alg : 
-                  alg === LAPACK_DivideAndConquer() ? alg : 
+        alg_svd = alg === LAPACK_QRIteration() ? alg :
+                  alg === LAPACK_DivideAndConquer() ? alg :
                   alg === SVD() ? LAPACK_QRIteration() :
                   alg === SDD() ? LAPACK_DivideAndConquer() :
                   throw(ArgumentError(lazy"Unknown algorithm $alg"))

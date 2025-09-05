@@ -72,7 +72,9 @@ function initialize_output(::typeof(svd_trunc!), t::AdjointTensorMap,
     return initialize_output(svd_compact!, t, alg.alg)
 end
 # to fix ambiguity
-function svd_trunc!(t::AdjointTensorMap, USVᴴ::Tuple{AdjointTensorMap,DiagonalTensorMap,AdjointTensorMap}, alg::TruncatedAlgorithm)
+function svd_trunc!(t::AdjointTensorMap,
+                    USVᴴ::Tuple{AdjointTensorMap,DiagonalTensorMap,AdjointTensorMap},
+                    alg::TruncatedAlgorithm)
     USVᴴ′ = svd_compact!(t, USVᴴ, alg.alg)
     return truncate!(svd_trunc!, USVᴴ′, alg.trunc)
 end
