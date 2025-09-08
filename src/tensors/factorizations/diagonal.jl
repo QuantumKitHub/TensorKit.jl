@@ -8,14 +8,31 @@ for f in (:svd_compact, :svd_full, :svd_trunc, :svd_vals, :qr_compact, :qr_full,
     @eval copy_input(::typeof($f), d::DiagonalTensorMap) = copy(d)
 end
 
-for f! in (:qr_full!, :qr_compact!, :eig_full!, :eig_trunc!, :eigh_full!, :eigh_trunc!)
+for f! in (:eig_full!, :eig_trunc!, :eigh_full!, :eigh_trunc!)
     @eval function initialize_output(::typeof($f!), d::AbstractTensorMap,
+                                     ::DiagonalAlgorithm)
+        return d, similar(d)
+    end
+end
+
+for f! in (:qr_full!, :qr_compact!)
+    @eval function initialize_output(::typeof($f!), d::AbstractTensorMap,
+                                     ::DiagonalAlgorithm)
+        return d, similar(d)
+    end
+    # to avoid ambiguities
+    @eval function initialize_output(::typeof($f!), d::AdjointTensorMap,
                                      ::DiagonalAlgorithm)
         return d, similar(d)
     end
 end
 for f! in (:lq_full!, :lq_compact!)
     @eval function initialize_output(::typeof($f!), d::AbstractTensorMap,
+                                     ::DiagonalAlgorithm)
+        return similar(d), d
+    end
+    # to avoid ambiguities
+    @eval function initialize_output(::typeof($f!), d::AdjointTensorMap,
                                      ::DiagonalAlgorithm)
         return similar(d), d
     end

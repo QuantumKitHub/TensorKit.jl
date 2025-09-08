@@ -45,7 +45,7 @@ for f! in (:qr_compact!, :qr_full!,
 end
 
 # Handle these separately because single output instead of tuple
-for f! in (:qr_null!, :lq_null!, :svd_vals!, :eig_vals!, :eigh_vals!)
+for f! in (:qr_null!, :lq_null!)
     @eval function $f!(t::AbstractTensorMap, N, alg::AbstractAlgorithm)
         check_input($f!, t, N, alg)
 
@@ -53,6 +53,22 @@ for f! in (:qr_null!, :lq_null!, :svd_vals!, :eig_vals!, :eigh_vals!)
             n′ = $f!(b, n, alg)
             # deal with the case where the output is not the same as the input
             n === n′ || copyto!(n, n′)
+            return nothing
+        end
+
+        return N
+    end
+end
+
+# Handle these separately because single output instead of tuple
+for f! in (:svd_vals!, :eig_vals!, :eigh_vals!)
+    @eval function $f!(t::AbstractTensorMap, N, alg::AbstractAlgorithm)
+        check_input($f!, t, N, alg)
+
+        foreachblock(t, N) do _, (b, n)
+            n′ = $f!(b, n.diag, alg)
+            # deal with the case where the output is not the same as the input
+            n.diag === n′ || copyto!(n, diagview(n′))
             return nothing
         end
 
@@ -98,8 +114,16 @@ end
 
 function check_input(::typeof(svd_vals!), t::AbstractTensorMap, S::SectorDict, ::AbstractAlgorithm)
     @check_scalar S t real
-    V_cod = infimum(fuse(codomain(t)), fuse(domain(t)))
+    V_cod = V_dom = infimum(fuse(codomain(t)), fuse(domain(t)))
     @check_space(S, V_cod ← V_dom)
+    return nothing
+end
+
+function check_input(::typeof(svd_vals!), t::AbstractTensorMap, D::DiagonalTensorMap,
+                     ::AbstractAlgorithm)
+    @check_scalar D t real
+    V_cod = V_dom = infimum(fuse(codomain(t)), fuse(domain(t)))
+    @check_space(D, V_cod ← V_dom)
     return nothing
 end
 

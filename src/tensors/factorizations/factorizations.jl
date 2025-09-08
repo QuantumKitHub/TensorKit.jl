@@ -115,10 +115,10 @@ end
 #------------------------------#
 # LinearAlgebra overloads
 #------------------------------#
-LinearAlgebra.svdvals(t::AbstractTensorMap) = diagview(svd_vals(t))
+#LinearAlgebra.svdvals(t::AbstractTensorMap)  = diagview(svd_vals(t))
 LinearAlgebra.svdvals!(t::AbstractTensorMap) = diagview(svd_vals!(t))
-LinearAlgebra.eigvals(t::AbstractTensorMap) = diagview(eigvals(t))
-LinearAlgebra.eigvals!(t::AbstractTensorMap) = diagview(eigvals!(t))
+#LinearAlgebra.eigvals(t::AbstractTensorMap)  = diagview(eig_vals(t))
+LinearAlgebra.eigvals!(t::AbstractTensorMap; kwargs...) = diagview(eig_vals!(t))
 
 #--------------------------------------------------#
 # Checks for hermiticity and positive definiteness #
