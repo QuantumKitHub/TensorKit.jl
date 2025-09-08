@@ -302,11 +302,11 @@ More power becomes visible when involving symmetries. With symmetries, we imply 
 is some symmetry action defined on every vector space associated with each of the indices
 of a `TensorMap`, and the `TensorMap` is then required to be equivariant, i.e. it acts as
 an intertwiner between the tensor product representation on the domain and that on the
-codomain. By Schur's lemma, this means that the tensor is block-diagonal in some basis
+codomain. By Schur's lemma, this means that the tensor is block diagonal in some basis
 corresponding to the irreducible representations that can be coupled to by combining the
 different representations on the different spaces in the domain or codomain. For Abelian
 symmetries, this does not require a basis change and it just imposes that the tensor has
-some block-sparsity. Let's clarify all of this with some examples.
+some block sparsity. Let's clarify all of this with some examples.
 
 We start with a simple ``ℤ₂`` symmetry:
 

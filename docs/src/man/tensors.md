@@ -764,7 +764,7 @@ braid(t::AbstractTensorMap{T,S,N₁,N₂}, (p1, p2)::Index2Tuple{N₁′,N₂′
 and
 
 ```julia
-permute(t::AbstractTensorMap{T,S,N₁,N₂}(p1, p2)::Index2Tuple{N₁′,N₂′}; copy = false)
+permute(t::AbstractTensorMap{T,S,N₁,N₂}, (p1, p2)::Index2Tuple{N₁′,N₂′}; copy = false)
 ```
 
 both of which return an instance of `AbstractTensorMap{T,S,N₁′,N₂′}`.
@@ -873,7 +873,7 @@ A final operation that one might expect in this section is to fuse or join indic
 inverse, to split a given index into two or more indices. For a plain tensor (i.e. with
 `sectortype(t) == Trivial`) amount to the equivalent of `reshape` on the multidimensional
 data. However, this represents only one possibility, as there is no canonically unique way
-to embed the tensor product of two spaces `V1 ⊗ V₂` in a new space `V = fuse(V1⊗V₂)`. Such a
+to embed the tensor product of two spaces `V1 ⊗ V2` in a new space `V = fuse(V1 ⊗ V2)`. Such a
 mapping can always be accompagnied by a basis transform. However, one particular choice is
 created by the function `isomorphism`, or for `EuclideanProduct` spaces, `unitary`.
 Hence, we can join or fuse two indices of a tensor by first constructing

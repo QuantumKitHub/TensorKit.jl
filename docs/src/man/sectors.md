@@ -28,8 +28,8 @@ there is a canonical order of the sectors, so that the vector space ``V`` is
 completely specified by the values of ``n_a``.
 
 The gain in efficiency (both in memory occupation and computation time) obtained from using
-(technically: equivariant) tensor maps is that, by Schur's lemma, they are block-diagonal in
-the basis of coupled sectors. To exploit this block-diagonal form, it is however essential
+(technically: equivariant) tensor maps is that, by Schur's lemma, they are block diagonal in
+the basis of coupled sectors. To exploit this block diagonal form, it is however essential
 that we know the basis transformation from the individual (uncoupled) sectors appearing in
 the tensor product form of the domain and codomain, to the totally coupled sectors that
 label the different blocks. We refer to the latter as block sectors. The transformation from
