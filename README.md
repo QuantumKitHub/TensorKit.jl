@@ -32,7 +32,7 @@ A Julia package for large-scale tensor computations, with a hint of category the
 [ci-img]: https://github.com/QuantumKitHub/TensorKit.jl/actions/workflows/CI.yml/badge.svg
 [ci-url]: https://github.com/QuantumKitHub/TensorKit.jl/actions/workflows/CI.yml
 
-[codecov-img]: https://codecov.io/gh/QuantumKitHub/TensorKit.jl/branch/master/graph/badge.svg
+[codecov-img]: https://codecov.io/gh/QuantumKitHub/TensorKit.jl/branch/main/graph/badge.svg
 [codecov-url]: https://codecov.io/gh/QuantumKitHub/TensorKit.jl
 
 [aqua-img]: https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg

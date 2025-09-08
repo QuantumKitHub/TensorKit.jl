@@ -57,7 +57,7 @@ to introduce some syntactic sugar without committing type piracy. In particular,
 ```@repl tensorkit
 3 ∈ ℝ
 5.0 ∈ ℂ
-5.0+1.0*im ∈ ℝ
+5.0 + 1.0 * im ∈ ℝ
 Float64 ⊆ ℝ
 ComplexF64 ⊆ ℂ
 ℝ ⊆ ℂ
@@ -81,17 +81,17 @@ objects of the same concrete type (i.e. with the same type parameters in case of
 parametric type). In particular, every `ElementarySpace` should implement the following
 methods
 
-*   `dim(::ElementarySpace) -> ::Int` returns the dimension of the space as an `Int`
+*   `dim(::ElementarySpace)` returns the dimension of the space
 
 *   `dual(::S) where {S<:ElementarySpace} -> ::S` returns the
     [dual space](http://en.wikipedia.org/wiki/Dual_space) `dual(V)`, using an instance of
     the same concrete type (i.e. not via type parameters); this should satisfy
-    `dual(dual(V))==V`
+    `dual(dual(V)) == V`
 
 *   `conj(::S) where {S<:ElementarySpace} -> ::S` returns the
     [complex conjugate space](http://en.wikipedia.org/wiki/Complex_conjugate_vector_space)
     `conj(V)`, using an instance of the same concrete type (i.e. not via type parameters);
-    this should satisfy `conj(conj(V))==V` and we automatically have
+    this should satisfy `conj(conj(V)) == V` and we automatically have
     `conj(V::ElementarySpace{ℝ}) = V`.
 
 For convenience, the dual of a space `V` can also be obtained as `V'`.
@@ -186,7 +186,7 @@ struct ProductSpace{S<:ElementarySpace, N} <: CompositeSpace{S}
 end
 ```
 Given some `V1::S`, `V2::S`, `V3::S` of the same type `S<:ElementarySpace`, we can easily
-construct `ProductSpace{S,3}((V1,V2,V3))` as `ProductSpace(V1,V2,V3)` or using
+construct `ProductSpace{S,3}((V1, V2, V3))` as `ProductSpace(V1, V2, V3)` or using
 `V1 ⊗ V2 ⊗ V3`, where `⊗` is simply obtained by typing `\otimes`+TAB. In fact, for
 convenience, also the regular multiplication operator `*` acts as tensor product between
 vector spaces, and as a consequence so does raising a vector space to a positive integer
@@ -194,7 +194,7 @@ power, i.e.
 ```@repl tensorkit
 V1 = ℂ^2
 V2 = ℂ^3
-V1 ⊗ V2 ⊗ V1' == V1 * V2 * V1' == ProductSpace(V1,V2,V1') == ProductSpace(V1,V2) ⊗ V1'
+V1 ⊗ V2 ⊗ V1' == V1 * V2 * V1' == ProductSpace(V1, V2, V1') == ProductSpace(V1, V2) ⊗ V1'
 V1^3
 dim(V1 ⊗ V2)
 dims(V1 ⊗ V2)
