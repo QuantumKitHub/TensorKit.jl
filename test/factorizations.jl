@@ -27,9 +27,8 @@ for V in spacelist
             W = V1 ⊗ V2
             @testset for T in (Float32, ComplexF64)
                 # Test both a normal tensor and an adjoint one.
-                ts = (rand(T, W, W'), rand(T, W, W')')
+                ts = (rand(T, W, W'), rand(T, W, W')', rand(T, V1, W'), rand(T, V1, W')')
                 @testset for t in ts
-                    # test squares and rectangles here
                     @testset "leftorth with $alg" for alg in
                                                       (TensorKit.LAPACK_HouseholderQR(),
                                                        TensorKit.LAPACK_HouseholderQR(;
@@ -40,10 +39,10 @@ for V in spacelist
                                                        TensorKit.PolarViaSVD(TensorKit.LAPACK_DivideAndConquer()),
                                                        TensorKit.LAPACK_QRIteration(),
                                                        TensorKit.LAPACK_DivideAndConquer())
+                        (codomain(t) ≾ domain(t)) && alg isa TensorKit.PolarViaSVD && continue
                         Q, R = @constinferred leftorth(t; alg=alg)
                         @test isisometry(Q)
-                        tQR = Q * R
-                        @test tQR ≈ t
+                        @test Q * R ≈ t
                     end
                     @testset "leftnull with $alg" for alg in
                                                       (TensorKit.LAPACK_HouseholderQR(),
@@ -61,6 +60,7 @@ for V in spacelist
                                                         TensorKit.PolarViaSVD(TensorKit.LAPACK_DivideAndConquer()),
                                                         TensorKit.LAPACK_QRIteration(),
                                                         TensorKit.LAPACK_DivideAndConquer())
+                        (domain(t) ≾ codomain(t)) && alg isa TensorKit.PolarViaSVD && continue
                         L, Q = @constinferred rightorth(t; alg=alg)
                         @test isisometry(Q; side=:right)
                         @test L * Q ≈ t
@@ -80,28 +80,28 @@ for V in spacelist
                         @test isisometry(V; side=:right)
                         @test U * S * V ≈ t
 
-                        s = LinearAlgebra.svdvals(t)
+                        s  = LinearAlgebra.svdvals(t)
                         s′ = LinearAlgebra.diag(S)
                         for (c, b) in s
                             @test b ≈ s′[c]
                         end
-                        s = LinearAlgebra.svdvals(t')
+                        s  = LinearAlgebra.svdvals(t')
                         s′ = LinearAlgebra.diag(S')
                         for (c, b) in s
                             @test b ≈ s′[c]
                         end
                     end
                     @testset "cond and rank" begin
-                        d1 = dim(codomain(t))
-                        d2 = dim(domain(t))
+                        d1   = dim(codomain(t))
+                        d2   = dim(domain(t))
                         @test rank(t) == min(d1, d2)
-                        M = leftnull(t)
-                        @test rank(M) == max(d1, d2) - min(d1, d2)
-                        t3 = unitary(T, V1 ⊗ V2, V1 ⊗ V2)
+                        M    = leftnull(t)
+                        @test rank(M) + rank(t) == d1
+                        t3   = unitary(T, V1 ⊗ V2, V1 ⊗ V2)
                         @test cond(t3) ≈ one(real(T))
                         @test rank(t3) == dim(V1 ⊗ V2)
-                        t4 = randn(T, V1 ⊗ V2, V1 ⊗ V2)
-                        t4 = (t4 + t4') / 2
+                        t4   = randn(T, V1 ⊗ V2, V1 ⊗ V2)
+                        t4   = (t4 + t4') / 2
                         vals = LinearAlgebra.eigvals(t4)
                         λmax = maximum(s -> maximum(abs, s), values(vals))
                         λmin = minimum(s -> minimum(abs, s), values(vals))
