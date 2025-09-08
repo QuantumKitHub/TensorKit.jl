@@ -516,6 +516,7 @@ group `SU{N}`, for `N>2`. Such sectors are supported through
 provides numerical routines to compute the topological data of the representation theory of
 these groups, as no general analytic formula is available.
 
+
 ### [Combining different sectors](@id sss_productsectors)
 
 It is also possible to define two or more different types of symmetries, e.g. when the total
@@ -641,7 +642,9 @@ basis for that space. As TensorKit.jl does not rely on the ``X^{ab}_{c,μ}`` the
 when they do exist) it can also deal with such general fusion categories. Note, though, that
 when ``X^{ab}_{c,μ}`` does exist, it is available as `fusiontensor(a, b, c, [μ])` (even
 though it is actually the splitting tensor) and can be useful for checking purposes, as
-illustrated below.
+illustrated below. By default TensorKit includes the Fibonacci category and the Ising
+category, but a list of additional fusion categories is provided in
+[CategoryData.jl](https://github.com/lkdvos/CategoryData.jl).
 
 ## [Graded spaces](@id ss_rep)
 
