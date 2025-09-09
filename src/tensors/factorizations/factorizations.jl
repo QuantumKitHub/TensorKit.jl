@@ -7,6 +7,10 @@ export eig, eig!, eigh, eigh!
 export tsvd, tsvd!, svdvals, svdvals!
 export leftorth, leftorth!, rightorth, rightorth!
 export leftnull, leftnull!, rightnull, rightnull!
+export qr_full, qr_compact, qr_null
+export qr_full!, qr_compact!, qr_null!
+export lq_full, lq_compact, lq_null
+export lq_full!, lq_compact!, lq_null!
 export copy_oftype, permutedcopy_oftype, one!
 export TruncationScheme, notrunc, truncbelow, truncerr, truncdim, truncspace, PolarViaSVD
 

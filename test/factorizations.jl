@@ -29,6 +29,36 @@ for V in spacelist
                 # Test both a normal tensor and an adjoint one.
                 ts = (rand(T, W, W'), rand(T, W, W')', rand(T, V1, W'), rand(T, V1, W')')
                 @testset for t in ts
+                    @testset "qr_full" begin
+                        Q, R = @constinferred qr_full(t)
+                        @test isisometry(Q)
+                        @test Q * R ≈ t
+                    end
+                    @testset "qr_compact" begin
+                        Q, R = @constinferred qr_compact(t)
+                        @test isisometry(Q)
+                        @test Q * R ≈ t
+                    end
+                    @testset "qr_null" begin
+                        N = @constinferred qr_null(t)
+                        @test isisometry(N)
+                        @test norm(N' * t) < 100 * eps(norm(t))
+                    end
+                    @testset "lq_full" begin
+                        L, Q = @constinferred lq_full(t)
+                        @test isisometry(Q; side=:right)
+                        @test L * Q ≈ t
+                    end
+                    @testset "lq_compact" begin
+                        L, Q = @constinferred lq_compact(t)
+                        @test isisometry(Q; side=:right)
+                        @test L * Q ≈ t
+                    end
+                    @testset "lq_null" begin
+                        Nᴴ = @constinferred lq_null(t)
+                        @test isisometry(Nᴴ; side=:right)
+                        @test norm(t * Nᴴ') < 100 * eps(norm(t))
+                    end
                     @testset "leftorth with $alg" for alg in
                                                       (TensorKit.LAPACK_HouseholderQR(),
                                                        TensorKit.LAPACK_HouseholderQR(;
