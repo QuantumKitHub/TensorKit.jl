@@ -512,6 +512,36 @@ function catcodomain(t1::TT, t2::TT) where {S,N₂,TT<:AbstractTensorMap{<:Any,S
     return t
 end
 
+"""
+    embed!(tdst::AbstactTensorMap, tsrc::AbstractTensorMap)
+
+Embed the contents of `tsrc` into `tdst`, which may have different sizes of data.
+This is equivalent to the following operation on dense arrays, but also works for symmetric
+tensors. Note also that this only overwrites the regions that are shared, and will do
+nothing on the ones that are not, so it is up to the user to properly initialize the
+destination.
+
+```julia
+sub_axes = map((x, y) -> 1:min(x, y), size(tdst), size(tsrc))
+tdst[sub_axes...] .= tsrc[sub_axes...]
+```
+"""
+function embed!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap)
+    numin(tdst) == numin(tsrc) && numout(tdst) == numout(tsrc) ||
+        throw(DimensionError("Incompatible number of indices for source and destination"))
+    S = spacetype(tdst)
+    S == spacetype(tsrc) || throw(SpaceMismatch("incompatible spacetypes"))
+    dom = mapreduce(infimum, ⊗, domain(tdst), domain(tsrc); init=one(S))
+    cod = mapreduce(infimum, ⊗, codomain(tdst), codomain(tsrc); init=one(S))
+    for (f1, f2) in fusiontrees(cod ← dom)
+        @inbounds data_dst = tdst[f1, f2]
+        @inbounds data_src = tsrc[f1, f2]
+        sub_axes = map(Base.OneTo ∘ min, size(data_dst), size(data_src))
+        data_dst[sub_axes...] .= data_src[sub_axes...]
+    end
+    return tdst
+end
+
 # tensor product of tensors
 """
     ⊗(t1::AbstractTensorMap, t2::AbstractTensorMap, ...) -> TensorMap
