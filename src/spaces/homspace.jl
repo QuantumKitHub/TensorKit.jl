@@ -125,6 +125,13 @@ function dim(W::HomSpace)
     return d
 end
 
+"""
+    fusiontrees(W::HomSpace)
+
+Return the fusiontrees corresponding to all valid fusion channels of a given `HomSpace`.
+"""
+fusiontrees(W::HomSpace) = fusionblockstructure(W).fusiontreelist
+
 # Operations on HomSpaces
 # -----------------------
 """

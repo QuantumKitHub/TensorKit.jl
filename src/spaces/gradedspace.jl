@@ -168,23 +168,19 @@ function fuse(V₁::GradedSpace{I}, V₂::GradedSpace{I}) where {I<:Sector}
 end
 
 function infimum(V₁::GradedSpace{I}, V₂::GradedSpace{I}) where {I<:Sector}
-    if V₁.dual == V₂.dual
-        typeof(V₁)(c => min(dim(V₁, c), dim(V₂, c))
-                   for c in
-                       union(sectors(V₁), sectors(V₂)), dual in V₁.dual)
-    else
+    Visdual = isdual(V₁)
+    Visdual == isdual(V₂) ||
         throw(SpaceMismatch("Infimum of space and dual space does not exist"))
-    end
+    return typeof(V₁)((Visdual ? dual(c) : c) => min(dim(V₁, c), dim(V₂, c))
+                      for c in intersect(sectors(V₁), sectors(V₂)); dual=Visdual)
 end
 
 function supremum(V₁::GradedSpace{I}, V₂::GradedSpace{I}) where {I<:Sector}
-    if V₁.dual == V₂.dual
-        typeof(V₁)(c => max(dim(V₁, c), dim(V₂, c))
-                   for c in
-                       union(sectors(V₁), sectors(V₂)), dual in V₁.dual)
-    else
+    Visdual = isdual(V₁)
+    Visdual == isdual(V₂) ||
         throw(SpaceMismatch("Supremum of space and dual space does not exist"))
-    end
+    return typeof(V₁)((Visdual ? dual(c) : c) => max(dim(V₁, c), dim(V₂, c))
+                      for c in union(sectors(V₁), sectors(V₂)); dual=Visdual)
 end
 
 function Base.show(io::IO, V::GradedSpace{I}) where {I<:Sector}
