@@ -197,7 +197,25 @@ function check_input(::typeof(eig_full!), t::AbstractTensorMap, (D, V)::_T_DV, :
     return nothing
 end
 
-function check_input(::typeof(eigh_vals!), t::AbstractTensorMap, D::DiagonalTensorMap, ::AbstractAlgorithm)
+function check_input(::typeof(eig_full!), t::DiagonalTensorMap, (D, V)::_T_DV,
+                     ::AbstractAlgorithm)
+    domain(t) == codomain(t) ||
+        throw(ArgumentError("Eigenvalue decomposition requires square input tensor"))
+
+    # scalartype checks
+    @check_scalar D t
+    @check_scalar V t
+
+    # space checks
+    V_D = fuse(domain(t))
+    @check_space(D, V_D ← V_D)
+    @check_space(V, codomain(t) ← V_D)
+
+    return nothing
+end
+
+function check_input(::typeof(eigh_vals!), t::AbstractTensorMap, D::DiagonalTensorMap,
+                     ::AbstractAlgorithm)
     @check_scalar D t real
     V_D = fuse(domain(t))
     @check_space(D, V_D ← V_D)

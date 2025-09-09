@@ -8,10 +8,21 @@ for f in (:svd_compact, :svd_full, :svd_trunc, :svd_vals, :qr_compact, :qr_full,
     @eval copy_input(::typeof($f), d::DiagonalTensorMap) = copy(d)
 end
 
-for f! in (:eig_full!, :eig_trunc!, :eigh_full!, :eigh_trunc!)
+for f! in (:eig_full!, :eig_trunc!)
     @eval function initialize_output(::typeof($f!), d::AbstractTensorMap,
                                      ::DiagonalAlgorithm)
         return d, similar(d)
+    end
+end
+
+for f! in (:eigh_full!, :eigh_trunc!)
+    @eval function initialize_output(::typeof($f!), d::AbstractTensorMap,
+                                     ::DiagonalAlgorithm)
+        if scalartype(d) <: Real
+            return d, similar(d)
+        else
+            return similar(d, real(scalartype(d))), similar(d)
+        end
     end
 end
 
@@ -40,7 +51,7 @@ end
 
 for f! in
     (:qr_full!, :qr_compact!, :lq_full!, :lq_compact!, :eig_full!, :eig_trunc!, :eigh_full!,
-     :eigh_trunc!)
+     :eigh_trunc!, :right_orth!, :left_orth!)
     @eval function $f!(d::DiagonalTensorMap, F, alg::DiagonalAlgorithm)
         check_input($f!, d, F, alg)
         $f!(_repack_diagonal(d), _repack_diagonal.(F), alg)
@@ -92,9 +103,55 @@ for f! in (:eig_vals!, :eigh_vals!, :svd_vals!)
     end
 end
 
+function check_input(::typeof(eig_full!), t::DiagonalTensorMap, (D, V)::_T_DV,
+                     ::DiagonalAlgorithm)
+    domain(t) == codomain(t) ||
+        throw(ArgumentError("Eigenvalue decomposition requires square input tensor"))
+
+    # scalartype checks
+    @check_scalar D t
+    @check_scalar V t
+
+    # space checks
+    @check_space D space(t)
+    @check_space V space(t) 
+
+    return nothing
+end
+
+function check_input(::typeof(eigh_full!), t::DiagonalTensorMap, (D, V)::_T_DV,
+                     ::DiagonalAlgorithm)
+    domain(t) == codomain(t) ||
+        throw(ArgumentError("Eigenvalue decomposition requires square input tensor"))
+
+    # scalartype checks
+    @check_scalar D t real
+    @check_scalar V t
+
+    # space checks
+    @check_space D space(t)
+    @check_space V space(t) 
+
+    return nothing
+end
+
 function check_input(::typeof(eig_vals!), t::AbstractTensorMap, D::DiagonalTensorMap,
                      ::DiagonalAlgorithm)
     @check_scalar D t
+    @check_space D space(t)
+    return nothing
+end
+
+function check_input(::typeof(eigh_vals!), t::AbstractTensorMap, D::DiagonalTensorMap,
+                     ::DiagonalAlgorithm)
+    @check_scalar D t real
+    @check_space D space(t)
+    return nothing
+end
+
+function check_input(::typeof(svd_vals!), t::AbstractTensorMap, D::DiagonalTensorMap,
+                     ::DiagonalAlgorithm)
+    @check_scalar D t real
     @check_space D space(t)
     return nothing
 end
