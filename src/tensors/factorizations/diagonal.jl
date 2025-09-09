@@ -114,7 +114,7 @@ function check_input(::typeof(eig_full!), t::DiagonalTensorMap, (D, V)::_T_DV,
 
     # space checks
     @check_space D space(t)
-    @check_space V space(t) 
+    @check_space V space(t)
 
     return nothing
 end
@@ -130,7 +130,7 @@ function check_input(::typeof(eigh_full!), t::DiagonalTensorMap, (D, V)::_T_DV,
 
     # space checks
     @check_space D space(t)
-    @check_space V space(t) 
+    @check_space V space(t)
 
     return nothing
 end
