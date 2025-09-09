@@ -80,7 +80,8 @@ end
 
 function rightorth!(t::AbstractTensorMap;
                     alg::Union{LAPACK_HouseholderLQ,LAPACK_QRIteration,
-                               LAPACK_DivideAndConquer,DiagonalAlgorithm,PolarViaSVD,LQ,LQpos,RQ,RQpos,SVD,
+                               LAPACK_DivideAndConquer,DiagonalAlgorithm,PolarViaSVD,LQ,
+                               LQpos,RQ,RQpos,SVD,
                                SDD,Polar,Nothing}=nothing, kwargs...)
     InnerProductStyle(t) === EuclideanInnerProduct() ||
         throw_invalid_innerproduct(:rightorth!)
