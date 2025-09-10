@@ -947,7 +947,7 @@ the keyword argument `p`. The default value `notrunc()` implies no truncation, a
     dimension of the internal vector space is no larger than `χ`;
 
 *   `truncspace(W)`: truncates such that the dimension of the internal vector space is
-    smaller than that of `W` in any sector, i.e. with
+    smaller than or equal to that of `W` in any sector, i.e. with
     `W₀ = min(fuse(codomain(t)), fuse(domain(t)))` this option will result in
     `domain(U) == domain(Σ) == codomain(Σ) == codomain(Vᵈ) == min(W, W₀)`;
 
