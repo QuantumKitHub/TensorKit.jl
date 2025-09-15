@@ -739,17 +739,26 @@ for V in spacelist
                 @test t ≈ t′
             end
         end
-        @timedtestset "Tensor embedding" begin
-            t1 = rand(V1 ⊕ V1, V2 ⊗ V3)
+        @timedtestset "Tensor absorpsion" begin
+            # absorbing small into large
+            t1 = zeros(V1 ⊕ V1, V2 ⊗ V3)
             t2 = rand(V1, V2 ⊗ V3)
-
-            # embedding small into large
-            t3 = @constinferred embed!(zerovector(t1), t2)
+            t3 = @constinferred absorb(t1, t2)
             @test norm(t3) ≈ norm(t2)
+            @test norm(t1) == 0
+            t4 = @constinferred absorb!(t1, t2)
+            @test t1 === t4
+            @test t3 ≈ t4
 
-            # embedding large into small
-            t4 = @constinferred embed!(zerovector(t2), t1)
-            @test norm(t4) < norm(t1)
+            # absorbing large into small
+            t1 = rand(V1 ⊕ V1, V2 ⊗ V3)
+            t2 = zeros(V1, V2 ⊗ V3)
+            t3 = @constinferred absorb(t2, t1)
+            @test norm(t3) < norm(t1)
+            @test norm(t2) == 0
+            t4 = @constinferred absorb!(t2, t1)
+            @test t2 === t4
+            @test t3 ≈ t4
         end
     end
     TensorKit.empty_globalcaches!()

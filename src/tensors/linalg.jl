@@ -513,9 +513,10 @@ function catcodomain(t1::TT, t2::TT) where {S,N₂,TT<:AbstractTensorMap{<:Any,S
 end
 
 """
-    embed!(tdst::AbstactTensorMap, tsrc::AbstractTensorMap)
+    absorb(tdst::AbstractTensorMap, tsrc::AbstractTensorMap)
+    absorb!(tdst::AbstactTensorMap, tsrc::AbstractTensorMap)
 
-Embed the contents of `tsrc` into `tdst`, which may have different sizes of data.
+Absorb the contents of `tsrc` into `tdst`, which may have different sizes of data.
 This is equivalent to the following operation on dense arrays, but also works for symmetric
 tensors. Note also that this only overwrites the regions that are shared, and will do
 nothing on the ones that are not, so it is up to the user to properly initialize the
@@ -526,7 +527,8 @@ sub_axes = map((x, y) -> 1:min(x, y), size(tdst), size(tsrc))
 tdst[sub_axes...] .= tsrc[sub_axes...]
 ```
 """
-function embed!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap)
+absorb(tdst::AbstractTensorMap, tsrc::AbstractTensorMap) = absorb!(copy(tdst), tsrc)
+function absorb!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap)
     numin(tdst) == numin(tsrc) && numout(tdst) == numout(tsrc) ||
         throw(DimensionError("Incompatible number of indices for source and destination"))
     S = spacetype(tdst)

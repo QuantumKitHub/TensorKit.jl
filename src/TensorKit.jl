@@ -76,7 +76,7 @@ export leftorth, rightorth, leftnull, rightnull,
        isposdef, isposdef!, ishermitian, sylvester, rank, cond
 export braid, braid!, permute, permute!, transpose, transpose!, twist, twist!, repartition,
        repartition!
-export catdomain, catcodomain, embed!
+export catdomain, catcodomain, absorb, absorb!
 
 export OrthogonalFactorizationAlgorithm, QR, QRpos, QL, QLpos, LQ, LQpos, RQ, RQpos,
        SVD, SDD, Polar
