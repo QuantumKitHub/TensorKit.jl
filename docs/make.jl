@@ -1,6 +1,7 @@
 using Documenter
 using Random
 using TensorKit, TensorKitSectors
+using TensorKit: FusionTreePair, Index2Tuple
 
 pages = ["Home" => "index.md",
          "Manual" => ["man/intro.md", "man/tutorial.md", "man/categories.md",
