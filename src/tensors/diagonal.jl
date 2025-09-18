@@ -99,7 +99,7 @@ function Base.copy!(t::AbstractTensorMap, d::DiagonalTensorMap)
     end
     return t
 end
-TensorMap(d::DiagonalTensorMap) = copy!(similar(d), d)
+TensorMap(d::DiagonalTensorMap) = copy!(similar(d, scalartype(d), space(d)), d)
 Base.convert(::Type{TensorMap}, d::DiagonalTensorMap) = TensorMap(d)
 
 function Base.convert(D::Type{<:DiagonalTensorMap}, d::DiagonalTensorMap)
