@@ -32,8 +32,8 @@ case a truncated singular value decomposition will be computed. Choices are:
     smaller than `η`;
 *   `truncdim(χ::Int)`: truncates such that the equivalent total dimension of the internal
     vector space is no larger than `χ`;
-*   `truncspace(V)`: truncates such that the dimension of the internal vector space is
-    smaller than or equal to that of `V` in any sector.
+*   `truncspace(V)`: truncates such that the dimension of the internal vector space is no
+    greater than that of `V` in any sector.
 *   `truncbelow(η::Real)`: truncates such that every singular value is larger then `η` ;
 
 Truncation options can also be combined using `&`, i.e. `truncbelow(η) & truncdim(χ)` will
