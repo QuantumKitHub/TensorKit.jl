@@ -68,7 +68,7 @@ function VectorInterface.add(ty::AbstractTensorMap, tx::AbstractTensorMap,
                              α::Number, β::Number)
     space(ty) == space(tx) || throw(SpaceMismatch("$(space(ty)) ≠ $(space(tx))"))
     T = VectorInterface.promote_add(ty, tx, α, β)
-    return add!(scale!(similar(ty, T), ty, β), tx, α)
+    return add!(scale!(zerovector(ty, T), ty, β), tx, α)
 end
 function VectorInterface.add!(ty::AbstractTensorMap, tx::AbstractTensorMap,
                               α::Number, β::Number)
