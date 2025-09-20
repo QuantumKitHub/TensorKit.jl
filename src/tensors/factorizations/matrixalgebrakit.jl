@@ -81,7 +81,8 @@ end
 const _T_USVᴴ = Tuple{<:AbstractTensorMap,<:AbstractTensorMap,<:AbstractTensorMap}
 const _T_USVᴴ_diag = Tuple{<:AbstractTensorMap,<:DiagonalTensorMap,<:AbstractTensorMap}
 
-function check_input(::typeof(svd_full!), t::AbstractTensorMap, (U, S, Vᴴ)::_T_USVᴴ, ::AbstractAlgorithm)
+function check_input(::typeof(svd_full!), t::AbstractTensorMap, (U, S, Vᴴ)::_T_USVᴴ,
+                     ::AbstractAlgorithm)
     # scalartype checks
     @check_scalar U t
     @check_scalar S t real
@@ -97,7 +98,8 @@ function check_input(::typeof(svd_full!), t::AbstractTensorMap, (U, S, Vᴴ)::_T
     return nothing
 end
 
-function check_input(::typeof(svd_compact!), t::AbstractTensorMap, (U, S, Vᴴ)::_T_USVᴴ_diag, ::AbstractAlgorithm)
+function check_input(::typeof(svd_compact!), t::AbstractTensorMap, (U, S, Vᴴ)::_T_USVᴴ_diag,
+                     ::AbstractAlgorithm)
     # scalartype checks
     @check_scalar U t
     @check_scalar S t real
@@ -112,7 +114,8 @@ function check_input(::typeof(svd_compact!), t::AbstractTensorMap, (U, S, Vᴴ):
     return nothing
 end
 
-function check_input(::typeof(svd_vals!), t::AbstractTensorMap, S::SectorDict, ::AbstractAlgorithm)
+function check_input(::typeof(svd_vals!), t::AbstractTensorMap, S::SectorDict,
+                     ::AbstractAlgorithm)
     @check_scalar S t real
     V_cod = V_dom = infimum(fuse(codomain(t)), fuse(domain(t)))
     @check_space(S, V_cod ← V_dom)
@@ -165,7 +168,8 @@ end
 # ------------------------
 const _T_DV = Tuple{<:DiagonalTensorMap,<:AbstractTensorMap}
 
-function check_input(::typeof(eigh_full!), t::AbstractTensorMap, (D, V)::_T_DV, ::AbstractAlgorithm)
+function check_input(::typeof(eigh_full!), t::AbstractTensorMap, (D, V)::_T_DV,
+                     ::AbstractAlgorithm)
     domain(t) == codomain(t) ||
         throw(ArgumentError("Eigenvalue decomposition requires square input tensor"))
 
@@ -181,7 +185,8 @@ function check_input(::typeof(eigh_full!), t::AbstractTensorMap, (D, V)::_T_DV, 
     return nothing
 end
 
-function check_input(::typeof(eig_full!), t::AbstractTensorMap, (D, V)::_T_DV, ::AbstractAlgorithm)
+function check_input(::typeof(eig_full!), t::AbstractTensorMap, (D, V)::_T_DV,
+                     ::AbstractAlgorithm)
     domain(t) == codomain(t) ||
         throw(ArgumentError("Eigenvalue decomposition requires square input tensor"))
 
@@ -222,7 +227,8 @@ function check_input(::typeof(eigh_vals!), t::AbstractTensorMap, D::DiagonalTens
     return nothing
 end
 
-function check_input(::typeof(eig_vals!), t::AbstractTensorMap, D::DiagonalTensorMap, ::AbstractAlgorithm)
+function check_input(::typeof(eig_vals!), t::AbstractTensorMap, D::DiagonalTensorMap,
+                     ::AbstractAlgorithm)
     @check_scalar D t complex
     V_D = fuse(domain(t))
     @check_space(D, V_D ← V_D)
@@ -283,7 +289,8 @@ end
 # ----------------
 const _T_QR = Tuple{<:AbstractTensorMap,<:AbstractTensorMap}
 
-function check_input(::typeof(qr_full!), t::AbstractTensorMap, (Q, R)::_T_QR, ::AbstractAlgorithm)
+function check_input(::typeof(qr_full!), t::AbstractTensorMap, (Q, R)::_T_QR,
+                     ::AbstractAlgorithm)
     # scalartype checks
     @check_scalar Q t
     @check_scalar R t
@@ -296,7 +303,8 @@ function check_input(::typeof(qr_full!), t::AbstractTensorMap, (Q, R)::_T_QR, ::
     return nothing
 end
 
-function check_input(::typeof(qr_compact!), t::AbstractTensorMap, (Q, R)::_T_QR, ::AbstractAlgorithm)
+function check_input(::typeof(qr_compact!), t::AbstractTensorMap, (Q, R)::_T_QR,
+                     ::AbstractAlgorithm)
     # scalartype checks
     @check_scalar Q t
     @check_scalar R t
@@ -309,7 +317,8 @@ function check_input(::typeof(qr_compact!), t::AbstractTensorMap, (Q, R)::_T_QR,
     return nothing
 end
 
-function check_input(::typeof(qr_null!), t::AbstractTensorMap, N::AbstractTensorMap, ::AbstractAlgorithm)
+function check_input(::typeof(qr_null!), t::AbstractTensorMap, N::AbstractTensorMap,
+                     ::AbstractAlgorithm)
     # scalartype checks
     @check_scalar N t
 
@@ -346,7 +355,8 @@ end
 # ----------------
 const _T_LQ = Tuple{<:AbstractTensorMap,<:AbstractTensorMap}
 
-function check_input(::typeof(lq_full!), t::AbstractTensorMap, (L, Q)::_T_LQ, ::AbstractAlgorithm)
+function check_input(::typeof(lq_full!), t::AbstractTensorMap, (L, Q)::_T_LQ,
+                     ::AbstractAlgorithm)
     # scalartype checks
     @check_scalar L t
     @check_scalar Q t
@@ -359,7 +369,8 @@ function check_input(::typeof(lq_full!), t::AbstractTensorMap, (L, Q)::_T_LQ, ::
     return nothing
 end
 
-function check_input(::typeof(lq_compact!), t::AbstractTensorMap, (L, Q)::_T_LQ, ::AbstractAlgorithm)
+function check_input(::typeof(lq_compact!), t::AbstractTensorMap, (L, Q)::_T_LQ,
+                     ::AbstractAlgorithm)
     # scalartype checks
     @check_scalar L t
     @check_scalar Q t
@@ -410,7 +421,8 @@ end
 const _T_WP = Tuple{<:AbstractTensorMap,<:AbstractTensorMap}
 const _T_PWᴴ = Tuple{<:AbstractTensorMap,<:AbstractTensorMap}
 
-function check_input(::typeof(left_polar!), t::AbstractTensorMap, (W, P)::_T_WP, ::AbstractAlgorithm)
+function check_input(::typeof(left_polar!), t::AbstractTensorMap, (W, P)::_T_WP,
+                     ::AbstractAlgorithm)
     codomain(t) ≿ domain(t) ||
         throw(ArgumentError("Polar decomposition requires `codomain(t) ≿ domain(t)`"))
 
@@ -425,7 +437,8 @@ function check_input(::typeof(left_polar!), t::AbstractTensorMap, (W, P)::_T_WP,
     return nothing
 end
 
-function check_input(::typeof(left_orth_polar!), t::AbstractTensorMap, (W, P)::_T_WP, ::AbstractAlgorithm)
+function check_input(::typeof(left_orth_polar!), t::AbstractTensorMap, (W, P)::_T_WP,
+                     ::AbstractAlgorithm)
     codomain(t) ≿ domain(t) ||
         throw(ArgumentError("Polar decomposition requires `codomain(t) ≿ domain(t)`"))
 
@@ -447,7 +460,8 @@ function initialize_output(::typeof(left_polar!), t::AbstractTensorMap, ::Abstra
     return W, P
 end
 
-function check_input(::typeof(right_polar!), t::AbstractTensorMap, (P, Wᴴ)::_T_PWᴴ, ::AbstractAlgorithm)
+function check_input(::typeof(right_polar!), t::AbstractTensorMap, (P, Wᴴ)::_T_PWᴴ,
+                     ::AbstractAlgorithm)
     codomain(t) ≾ domain(t) ||
         throw(ArgumentError("Polar decomposition requires `domain(t) ≿ codomain(t)`"))
 
@@ -462,7 +476,8 @@ function check_input(::typeof(right_polar!), t::AbstractTensorMap, (P, Wᴴ)::_T
     return nothing
 end
 
-function check_input(::typeof(right_orth_polar!), t::AbstractTensorMap, (P, Wᴴ)::_T_PWᴴ, ::AbstractAlgorithm)
+function check_input(::typeof(right_orth_polar!), t::AbstractTensorMap, (P, Wᴴ)::_T_PWᴴ,
+                     ::AbstractAlgorithm)
     codomain(t) ≾ domain(t) ||
         throw(ArgumentError("Polar decomposition requires `domain(t) ≿ codomain(t)`"))
 
@@ -500,7 +515,8 @@ end
 const _T_VC = Tuple{<:AbstractTensorMap,<:AbstractTensorMap}
 const _T_CVᴴ = Tuple{<:AbstractTensorMap,<:AbstractTensorMap}
 
-function check_input(::typeof(left_orth!), t::AbstractTensorMap, (V, C)::_T_VC, ::AbstractAlgorithm)
+function check_input(::typeof(left_orth!), t::AbstractTensorMap, (V, C)::_T_VC,
+                     ::AbstractAlgorithm)
     # scalartype checks
     @check_scalar V t
     isnothing(C) || @check_scalar C t
@@ -513,7 +529,8 @@ function check_input(::typeof(left_orth!), t::AbstractTensorMap, (V, C)::_T_VC, 
     return nothing
 end
 
-function check_input(::typeof(right_orth!), t::AbstractTensorMap, (C, Vᴴ)::_T_CVᴴ, ::AbstractAlgorithm)
+function check_input(::typeof(right_orth!), t::AbstractTensorMap, (C, Vᴴ)::_T_CVᴴ,
+                     ::AbstractAlgorithm)
     # scalartype checks
     isnothing(C) || @check_scalar C t
     @check_scalar Vᴴ t
