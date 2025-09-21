@@ -198,7 +198,7 @@ diagspacelist = ((ℂ^4)', ℂ[Z2Irrep](0 => 2, 1 => 3),
                 VdV2 = V2' * V2
                 @test VdV2 ≈ one(VdV2)
                 @test t2 * V2 ≈ V2 * D2
-                
+
                 D3 = @constinferred eigh_vals(t2)
                 @test D2 ≈ D3
 
