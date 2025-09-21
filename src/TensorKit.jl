@@ -76,6 +76,8 @@ export leftorth, rightorth, leftnull, rightnull,
        qr_full, qr_compact, qr_null, lq_full, lq_compact, lq_null,
        qr_full!, qr_compact!, qr_null!, lq_full!, lq_compact!, lq_null!,
        tsvd!, tsvd, eigen, eigen!, eig, eig!, eigh, eigh!, exp, exp!,
+       eigh_full!, eigh_full, eig_full!, eig_full, eigh_vals!, eigh_vals,
+       eig_vals!, eig_vals,
        isposdef, isposdef!, ishermitian, isisometry, isunitary, sylvester, rank, cond
 export braid, braid!, permute, permute!, transpose, transpose!, twist, twist!, repartition,
        repartition!

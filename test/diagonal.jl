@@ -188,7 +188,9 @@ diagspacelist = ((ℂ^4)', ℂ[Z2Irrep](0 => 2, 1 => 3),
     @timedtestset "Factorization" begin
         for T in (Float32, ComplexF64)
             t = DiagonalTensorMap(rand(T, reduceddim(V)), V)
-            @testset "eig" begin
+            @testset "eig/eigh" begin
+                D, W = @constinferred eig_full(t)
+                @test t * W ≈ W * D
                 D, W = @constinferred eig(t)
                 @test t * W ≈ W * D
                 t2 = t + t'
@@ -196,6 +198,9 @@ diagspacelist = ((ℂ^4)', ℂ[Z2Irrep](0 => 2, 1 => 3),
                 VdV2 = V2' * V2
                 @test VdV2 ≈ one(VdV2)
                 @test t2 * V2 ≈ V2 * D2
+                
+                D3 = @constinferred eigh_vals(t2)
+                @test D2 ≈ D3
 
                 @test rank(D) ≈ rank(t)
                 @test cond(D) ≈ cond(t)
@@ -230,6 +235,26 @@ diagspacelist = ((ℂ^4)', ℂ[Z2Irrep](0 => 2, 1 => 3),
                 if alg isa Polar
                     @test isposdef(L)
                 end
+            end
+            @testset "qr_full with $alg" for alg in (TensorKit.DiagonalAlgorithm(),)
+                Q, R = @constinferred qr_full(t; alg=alg)
+                @test isisometry(Q)
+                @test Q * R ≈ t
+            end
+            @testset "qr_compact with $alg" for alg in (TensorKit.DiagonalAlgorithm(),)
+                Q, R = @constinferred qr_compact(t; alg=alg)
+                @test isisometry(Q)
+                @test Q * R ≈ t
+            end
+            @testset "lq_full with $alg" for alg in (TensorKit.DiagonalAlgorithm(),)
+                L, Q = @constinferred lq_full(t; alg=alg)
+                @test isisometry(Q; side=:right)
+                @test L * Q ≈ t
+            end
+            @testset "lq_compact with $alg" for alg in (TensorKit.DiagonalAlgorithm(),)
+                L, Q = @constinferred lq_compact(t; alg=alg)
+                @test isisometry(Q; side=:right)
+                @test L * Q ≈ t
             end
             @testset "tsvd with $alg" for alg in (TensorKit.DiagonalAlgorithm(),)
                 U, S, Vᴴ = @constinferred tsvd(t; alg=alg)
