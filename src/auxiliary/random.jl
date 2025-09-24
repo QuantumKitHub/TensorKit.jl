@@ -20,6 +20,6 @@ function randisometry!(rng::Random.AbstractRNG, A::AbstractMatrix)
     dims = size(A)
     dims[1] >= dims[2] ||
         throw(DimensionMismatch("cannot create isometric matrix with dimensions $dims; isometry needs to be tall or square"))
-    Q, = leftorth!(Random.randn!(rng, A); alg=QRpos())
+    Q, = qr_compact!(Random.randn!(rng, A); positive=true)
     return copy!(A, Q)
 end

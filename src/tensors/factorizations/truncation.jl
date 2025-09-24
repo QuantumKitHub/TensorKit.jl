@@ -4,8 +4,6 @@ notrunc() = NoTruncation()
 
 # deprecate
 const TruncationScheme = TruncationStrategy
-@deprecate truncdim(d::Int) truncrank(d)
-@deprecate truncbelow(ϵ::Real, add_back::Int=0) trunctol(ϵ)
 
 # TODO: add this to MatrixAlgebraKit
 struct TruncationError{T<:Real} <: TruncationStrategy

@@ -148,7 +148,6 @@ include("auxiliary/auxiliary.jl")
 include("auxiliary/caches.jl")
 include("auxiliary/dicts.jl")
 include("auxiliary/iterators.jl")
-include("auxiliary/linalg.jl")
 include("auxiliary/random.jl")
 
 #--------------------------------------------------------------------

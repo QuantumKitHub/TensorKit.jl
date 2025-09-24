@@ -15,7 +15,7 @@ export copy_oftype, permutedcopy_oftype, one!
 export TruncationScheme, notrunc, truncbelow, truncerr, truncdim, truncspace, PolarViaSVD
 
 using ..TensorKit
-using ..TensorKit: AdjointTensorMap, SectorDict, OFA, blocktype, foreachblock, one!
+using ..TensorKit: AdjointTensorMap, SectorDict, blocktype, foreachblock, one!
 
 using LinearAlgebra: LinearAlgebra, BlasFloat, Diagonal, svdvals, svdvals!
 import LinearAlgebra: eigen, eigen!, isposdef, isposdef!, ishermitian
@@ -27,7 +27,8 @@ using MatrixAlgebraKit: AbstractAlgorithm, TruncatedAlgorithm, TruncationStrateg
                         NoTruncation, TruncationKeepAbove, TruncationKeepBelow,
                         TruncationIntersection, TruncationKeepFiltered, PolarViaSVD,
                         LAPACK_SVDAlgorithm, LAPACK_QRIteration, LAPACK_HouseholderQR,
-                        LAPACK_HouseholderLQ, DiagonalAlgorithm
+                        LAPACK_HouseholderLQ, LAPACK_HouseholderQL, LAPACK_HouseholderRQ,
+                        DiagonalAlgorithm
 import MatrixAlgebraKit: default_algorithm,
                          copy_input, check_input, initialize_output,
                          qr_compact!, qr_full!, qr_null!, lq_compact!, lq_full!, lq_null!,
@@ -42,7 +43,7 @@ import MatrixAlgebraKit: default_algorithm,
 
 include("utility.jl")
 include("interface.jl")
-include("implementations.jl")
+# include("implementations.jl")
 include("matrixalgebrakit.jl")
 include("truncation.jl")
 include("deprecations.jl")
