@@ -1,21 +1,30 @@
 # AdjointTensorMap
 # ----------------
+# map algorithms to their adjoint counterpart
+# TODO: this probably belongs in MatrixAlgebraKit
+_adjoint(alg::LAPACK_HouseholderQR) = LAPACK_HouseholderLQ(; alg.positive, alg.blocksize)
+_adjoint(alg::LAPACK_HouseholderLQ) = LAPACK_HouseholderQR(; alg.positive, alg.blocksize)
+_adjoint(alg::LAPACK_HouseholderQL) = LAPACK_HouseholderRQ(; alg.positive, alg.blocksize)
+_adjoint(alg::LAPACK_HouseholderRQ) = LAPACK_HouseholderQL(; alg.positive, alg.blocksize)
+_adjoint(alg::PolarViaSVD) = PolarViaSVD(_adjoint(alg.svdalg))
+_adjoint(alg::AbstractAlgorithm) = alg
+
 # 1-arg functions
 function initialize_output(::typeof(left_null!), t::AdjointTensorMap,
                            alg::AbstractAlgorithm)
-    return adjoint(initialize_output(right_null!, adjoint(t), alg))
+    return adjoint(initialize_output(right_null!, adjoint(t), _adjoint(alg)))
 end
 function initialize_output(::typeof(right_null!), t::AdjointTensorMap,
                            alg::AbstractAlgorithm)
-    return adjoint(initialize_output(left_null!, adjoint(t), alg))
+    return adjoint(initialize_output(left_null!, adjoint(t), _adjoint(alg)))
 end
 
 function left_null!(t::AdjointTensorMap, N::AdjointTensorMap, alg::AbstractAlgorithm)
-    right_null!(adjoint(t), adjoint(N), alg)
+    right_null!(adjoint(t), adjoint(N), _adjoint(alg))
     return N
 end
 function right_null!(t::AdjointTensorMap, N::AdjointTensorMap, alg::AbstractAlgorithm)
-    left_null!(adjoint(t), adjoint(N), alg)
+    left_null!(adjoint(t), adjoint(N), _adjoint(alg))
     return N
 end
 
@@ -29,40 +38,51 @@ end
 # 2-arg functions
 for (left_f!, right_f!) in zip((:qr_full!, :qr_compact!, :left_polar!, :left_orth!),
                                (:lq_full!, :lq_compact!, :right_polar!, :right_orth!))
+    @eval function copy_input(::typeof($left_f!), t::AdjointTensorMap)
+        return adjoint(copy_input($right_f!, adjoint(t)))
+    end
+    @eval function copy_input(::typeof($right_f!), t::AdjointTensorMap)
+        return adjoint(copy_input($left_f!, adjoint(t)))
+    end
+
     @eval function initialize_output(::typeof($left_f!), t::AdjointTensorMap,
                                      alg::AbstractAlgorithm)
-        return reverse(adjoint.(initialize_output($right_f!, adjoint(t), alg)))
+        return reverse(adjoint.(initialize_output($right_f!, adjoint(t), _adjoint(alg))))
     end
     @eval function initialize_output(::typeof($right_f!), t::AdjointTensorMap,
                                      alg::AbstractAlgorithm)
-        return reverse(adjoint.(initialize_output($left_f!, adjoint(t), alg)))
+        return reverse(adjoint.(initialize_output($left_f!, adjoint(t), _adjoint(alg))))
     end
 
     @eval function $left_f!(t::AdjointTensorMap,
                             F::Tuple{AdjointTensorMap,AdjointTensorMap},
                             alg::AbstractAlgorithm)
-        $right_f!(adjoint(t), reverse(adjoint.(F)), alg)
+        $right_f!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
         return F
     end
     @eval function $right_f!(t::AdjointTensorMap,
                              F::Tuple{AdjointTensorMap,AdjointTensorMap},
                              alg::AbstractAlgorithm)
-        $left_f!(adjoint(t), reverse(adjoint.(F)), alg)
+        $left_f!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
         return F
     end
 end
 
 # 3-arg functions
 for f! in (:svd_full!, :svd_compact!, :svd_trunc!)
+    @eval function copy_input(::typeof($f!), t::AdjointTensorMap)
+        return adjoint(copy_input($f!, adjoint(t)))
+    end
+
     @eval function initialize_output(::typeof($f!), t::AdjointTensorMap,
                                      alg::AbstractAlgorithm)
-        return reverse(adjoint.(initialize_output($f!, adjoint(t), alg)))
+        return reverse(adjoint.(initialize_output($f!, adjoint(t), _adjoint(alg))))
     end
     _TS = f! === :svd_full! ? :AdjointTensorMap : DiagonalTensorMap
     @eval function $f!(t::AdjointTensorMap,
                        F::Tuple{AdjointTensorMap,$_TS,AdjointTensorMap},
                        alg::AbstractAlgorithm)
-        $f!(adjoint(t), reverse(adjoint.(F)), alg)
+        $f!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
         return F
     end
 end
