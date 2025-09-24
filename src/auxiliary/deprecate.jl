@@ -64,6 +64,7 @@ _kindof(::MatrixAlgebraKit.LAPACK_HouseholderQR) = :qr
 _kindof(::MatrixAlgebraKit.LAPACK_HouseholderLQ) = :lq
 _kindof(::MatrixAlgebraKit.LAPACK_SVDAlgorithm) = :svd
 _kindof(::MatrixAlgebraKit.PolarViaSVD) = :polar
+_kindof(::DiagonalAlgorithm) = :svd # shouldn't really matter
 
 _drop_alg(; alg=nothing, kwargs...) = kwargs
 _drop_p(; p=nothing, kwargs...) = kwargs

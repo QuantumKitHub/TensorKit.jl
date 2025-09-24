@@ -49,6 +49,13 @@ for f! in (:lq_full!, :lq_compact!)
     end
 end
 
+function initialize_output(::typeof(left_orth!), d::AdjointTensorMap)
+    return d, similar(d)
+end
+function initialize_output(::typeof(right_orth!), d::AdjointTensorMap)
+    return similar(d), d
+end
+
 for f! in
     (:qr_full!, :qr_compact!, :lq_full!, :lq_compact!, :eig_full!, :eig_trunc!, :eigh_full!,
      :eigh_trunc!, :right_orth!, :left_orth!)
