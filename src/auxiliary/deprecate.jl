@@ -1,5 +1,7 @@
 import Base: transpose
 
+#! format: off
+
 for f in (:rand, :randn, :zeros, :ones)
     @eval begin
         Base.@deprecate TensorMap(::typeof($f), T::Type, P::HomSpace) $f(T, P)

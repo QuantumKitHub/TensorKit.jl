@@ -4,7 +4,7 @@ for f in
     [:svd_compact, :svd_full, :svd_trunc, :svd_vals, :qr_compact, :qr_full, :qr_null,
      :lq_compact, :lq_full, :lq_null, :eig_full, :eig_trunc, :eig_vals, :eigh_full,
      :eigh_trunc, :eigh_vals, :left_polar, :right_polar]
-     f! = Symbol(f, :!)
+    f! = Symbol(f, :!)
     @eval function default_algorithm(::typeof($f!), ::Type{T};
                                      kwargs...) where {T<:AbstractTensorMap}
         return default_algorithm($f!, blocktype(T); kwargs...)

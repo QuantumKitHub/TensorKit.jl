@@ -177,11 +177,11 @@ for V in spacelist
                 v, c = @constinferred left_orth(t; kind=:svd)
                 @test v * c ≈ t
                 @test isisometry(v)
-                
+
                 N = @constinferred left_null(t; kind=:svd)
                 @test isisometry(N)
                 @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
-                
+
                 Nᴴ = @constinferred right_null(t; kind=:svd)
                 @test isisometry(Nᴴ; side=:right)
                 @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
@@ -204,12 +204,12 @@ for V in spacelist
             for T in eltypes, t in (rand(T, V1, V1), rand(T, W, W), rand(T, W, W)')
                 d, v = @constinferred eig_full(t)
                 @test t * v ≈ v * d
-                
+
                 d′ = LinearAlgebra.diag(d)
                 for (c, b) in LinearAlgebra.eigvals(t)
                     @test sort(b; by=abs) ≈ sort(d′[c]; by=abs)
                 end
-                
+
                 vdv = v' * v
                 vdv = (vdv + vdv') / 2
                 @test @constinferred isposdef(vdv)
@@ -218,8 +218,7 @@ for V in spacelist
                 d, v = @constinferred eig_trunc(t; trunc=truncrank(dim(domain(t)) ÷ 2))
                 @test t * v ≈ v * d
                 @test dim(domain(d)) ≤ dim(domain(t)) ÷ 2
-                
-                
+
                 t2 = (t + t')
                 D, V = eigen(t2)
                 @test isisometry(V)
@@ -232,13 +231,13 @@ for V in spacelist
                 @test isposdef(t2) == isposdef(λ)
                 @test isposdef(t2 - λ * one(t2) + 0.1 * one(t2))
                 @test !isposdef(t2 - λ * one(t2) - 0.1 * one(t2))
-                
+
                 add!(t, t')
 
                 d, v = @constinferred eigh_full(t)
                 @test t * v ≈ v * d
                 @test isunitary(v)
-                
+
                 λ = minimum(minimum(real(LinearAlgebra.diag(b))) for (c, b) in blocks(d))
                 @test cond(v) ≈ one(real(T))
                 @test isposdef(t) == isposdef(λ)
@@ -250,7 +249,7 @@ for V in spacelist
                 @test dim(domain(d)) ≤ dim(domain(t)) ÷ 2
             end
         end
-        
+
         @testset "Condition number and rank" begin
             for T in eltypes,
                 t in (rand(T, W, W), rand(T, W, W)',
@@ -268,7 +267,7 @@ for V in spacelist
                 u = unitary(T, V1 ⊗ V2, V1 ⊗ V2)
                 @test @constinferred(cond(u)) ≈ one(real(T))
                 @test @constinferred(rank(u)) == dim(V1 ⊗ V2)
-                
+
                 t = rand(T, zero(V1), W)
                 @test rank(t) == 0
                 t2 = rand(T, zero(V1) * zero(V2), zero(V1) * zero(V2))
