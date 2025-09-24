@@ -19,7 +19,9 @@ truncspace(space::ElementarySpace) = TruncationSpace(space)
 
 # Truncation
 # ----------
-function truncate!(::typeof(svd_trunc!), (U, S, Vᴴ)::_T_USVᴴ, strategy::TruncationStrategy)
+function truncate!(::typeof(svd_trunc!),
+                   (U, S, Vᴴ)::Tuple{AbstractTensorMap,AbstractTensorMap,AbstractTensorMap},
+                   strategy::TruncationStrategy)
     ind = findtruncated_sorted(diagview(S), strategy)
     V_truncated = spacetype(S)(c => length(I) for (c, I) in ind)
 
@@ -48,8 +50,7 @@ function truncate!(::typeof(svd_trunc!), (U, S, Vᴴ)::_T_USVᴴ, strategy::Trun
 end
 
 function truncate!(::typeof(left_null!),
-                   (U, S)::Tuple{<:AbstractTensorMap,
-                                 <:AbstractTensorMap},
+                   (U, S)::Tuple{AbstractTensorMap,AbstractTensorMap},
                    strategy::MatrixAlgebraKit.TruncationStrategy)
     extended_S = SectorDict(c => vcat(diagview(b),
                                       zeros(eltype(b), max(0, size(b, 2) - size(b, 1))))
@@ -63,7 +64,9 @@ function truncate!(::typeof(left_null!),
     return Ũ
 end
 
-function truncate!(::typeof(eigh_trunc!), (D, V)::_T_DV, strategy::TruncationStrategy)
+function truncate!(::typeof(eigh_trunc!),
+                   (D, V)::Tuple{AbstractTensorMap,AbstractTensorMap},
+                   strategy::TruncationStrategy)
     ind = findtruncated(diagview(D), strategy)
     V_truncated = spacetype(D)(c => length(I) for (c, I) in ind)
 
@@ -83,7 +86,8 @@ function truncate!(::typeof(eigh_trunc!), (D, V)::_T_DV, strategy::TruncationStr
 
     return D̃, Ṽ
 end
-function truncate!(::typeof(eig_trunc!), (D, V)::_T_DV, strategy::TruncationStrategy)
+function truncate!(::typeof(eig_trunc!), (D, V)::Tuple{AbstractTensorMap,AbstractTensorMap},
+                   strategy::TruncationStrategy)
     ind = findtruncated(diagview(D), strategy)
     V_truncated = spacetype(D)(c => length(I) for (c, I) in ind)
 

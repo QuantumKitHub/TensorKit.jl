@@ -42,8 +42,6 @@ import MatrixAlgebraKit: default_algorithm,
                          diagview, isisometry
 
 include("utility.jl")
-include("interface.jl")
-# include("implementations.jl")
 include("matrixalgebrakit.jl")
 include("truncation.jl")
 include("deprecations.jl")
@@ -66,8 +64,18 @@ const RealOrComplexFloat = Union{AbstractFloat,Complex{<:AbstractFloat}}
 #------------------------------#
 # LinearAlgebra overloads
 #------------------------------#
-LinearAlgebra.svdvals!(t::AbstractTensorMap) = diagview(svd_vals!(t))
+
+function LinearAlgebra.eigvals(t::AbstractTensorMap; kwargs...)
+    tcopy = copy_oftype(t, factorisation_scalartype(eigen, t))
+    return LinearAlgebra.eigvals!(tcopy; kwargs...)
+end
 LinearAlgebra.eigvals!(t::AbstractTensorMap; kwargs...) = diagview(eig_vals!(t))
+
+function LinearAlgebra.svdvals(t::AbstractTensorMap)
+    tcopy = copy_oftype(t, factorisation_scalartype(tsvd, t))
+    return LinearAlgebra.svdvals!(tcopy)
+end
+LinearAlgebra.svdvals!(t::AbstractTensorMap) = diagview(svd_vals!(t))
 
 #--------------------------------------------------#
 # Checks for hermiticity and positive definiteness #

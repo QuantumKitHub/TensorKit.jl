@@ -19,11 +19,11 @@ function initialize_output(::typeof(right_null!), t::AdjointTensorMap,
     return adjoint(initialize_output(left_null!, adjoint(t), _adjoint(alg)))
 end
 
-function left_null!(t::AdjointTensorMap, N::AdjointTensorMap, alg::AbstractAlgorithm)
+function left_null!(t::AdjointTensorMap, N, alg::AbstractAlgorithm)
     right_null!(adjoint(t), adjoint(N), _adjoint(alg))
     return N
 end
-function right_null!(t::AdjointTensorMap, N::AdjointTensorMap, alg::AbstractAlgorithm)
+function right_null!(t::AdjointTensorMap, N, alg::AbstractAlgorithm)
     left_null!(adjoint(t), adjoint(N), _adjoint(alg))
     return N
 end
@@ -54,15 +54,11 @@ for (left_f!, right_f!) in zip((:qr_full!, :qr_compact!, :left_polar!, :left_ort
         return reverse(adjoint.(initialize_output($left_f!, adjoint(t), _adjoint(alg))))
     end
 
-    @eval function $left_f!(t::AdjointTensorMap,
-                            F::Tuple{AdjointTensorMap,AdjointTensorMap},
-                            alg::AbstractAlgorithm)
+    @eval function $left_f!(t::AdjointTensorMap, F, alg::AbstractAlgorithm)
         $right_f!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
         return F
     end
-    @eval function $right_f!(t::AdjointTensorMap,
-                             F::Tuple{AdjointTensorMap,AdjointTensorMap},
-                             alg::AbstractAlgorithm)
+    @eval function $right_f!(t::AdjointTensorMap, F, alg::AbstractAlgorithm)
         $left_f!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
         return F
     end
@@ -78,10 +74,7 @@ for f! in (:svd_full!, :svd_compact!, :svd_trunc!)
                                      alg::AbstractAlgorithm)
         return reverse(adjoint.(initialize_output($f!, adjoint(t), _adjoint(alg))))
     end
-    _TS = f! === :svd_full! ? :AdjointTensorMap : DiagonalTensorMap
-    @eval function $f!(t::AdjointTensorMap,
-                       F::Tuple{AdjointTensorMap,$_TS,AdjointTensorMap},
-                       alg::AbstractAlgorithm)
+    @eval function $f!(t::AdjointTensorMap, F, alg::AbstractAlgorithm)
         $f!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
         return F
     end
@@ -92,9 +85,7 @@ function initialize_output(::typeof(svd_trunc!), t::AdjointTensorMap,
     return initialize_output(svd_compact!, t, alg.alg)
 end
 # to fix ambiguity
-function svd_trunc!(t::AdjointTensorMap,
-                    USVᴴ::Tuple{AdjointTensorMap,DiagonalTensorMap,AdjointTensorMap},
-                    alg::TruncatedAlgorithm)
+function svd_trunc!(t::AdjointTensorMap, USVᴴ, alg::TruncatedAlgorithm)
     USVᴴ′ = svd_compact!(t, USVᴴ, alg.alg)
     return truncate!(svd_trunc!, USVᴴ′, alg.trunc)
 end
