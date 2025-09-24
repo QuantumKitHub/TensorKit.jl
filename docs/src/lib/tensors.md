@@ -214,26 +214,49 @@ contract!
 
 ## `TensorMap` factorizations
 
-The factorisation methods come in two flavors, namely a non-destructive version where you
-can specify an additional permutation of the domain and codomain indices before the
-factorisation is performed (provided that `sectorstyle(t)` has a symmetric braiding) as
-well as a destructive version The non-destructive methods are given first:
+The factorisation methods are powered by [MatrixAlgebraKit.jl](https://github.com/QuantumKitHub/MatrixAlgebraKit.jl)
+and all follow the same strategy. The idea is that the `TensorMap` is interpreted as a linear
+map  based on the current partition of indices between `domain` and `codomain`, and then the
+entire range of MatrixAlgebraKit functions can be called.
+You can specify an additional permutation of the domain and codomain indices before the
+factorisation is performed by making use of [`permute`](@ref) or [`transpose`](@ref), 
 
 ```@docs
-leftorth
-rightorth
-leftnull
-rightnull
-tsvd
-eigh
-eig
-eigen
+left_orth
+right_orth
+left_null
+right_null
+svd_compact
+svd_full
+svd_vals
+eig_full
+eig_vals
+eigh_full
+eigh_vals
 isposdef
 ```
 
-The corresponding destructive methods have an exclamation mark at the end of their name,
-and only accept the `TensorMap` object as well as the method-specific algorithm and keyword
-arguments.
+Additionally, it is possible to obtain truncated versions of some of these factorizations
+through the [`MatrixAlgebraKit.TruncationStrategy`](@ref) objects.
 
+```@docs
+svd_trunc
+eig_trunc
+eigh_trunc
+```
 
-TODO: document svd truncation types
+The exact truncation strategy can be controlled through one of the following strategies:
+
+```@docs
+notrunc
+trunctol
+truncrank
+truncerr
+truncspace
+```
+
+It is additionally possible to combine multiple strategies through `&`, e.g.
+
+```julia
+combined_truncation = trunctol(; atol=1e-2) & truncrank(3)
+```
