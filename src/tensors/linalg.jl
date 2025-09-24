@@ -289,11 +289,17 @@ _default_rtol(t) = eps(real(float(scalartype(t)))) * min(dim(domain(t)), dim(cod
 
 function LinearAlgebra.rank(t::AbstractTensorMap;
                             atol::Real=0, rtol::Real=atol > 0 ? 0 : _default_rtol(t))
-    init = dim(one(sectortype(t))) * 0
-    dim(t) == 0 && return init
+    r = dim(one(sectortype(t))) * 0
+    dim(t) == 0 && return r
     S = LinearAlgebra.svdvals(t)
     tol = max(atol, rtol * maximum(first, values(S)))
-    return sum(((c, b),) -> dim(c) * count(>(tol), b), S; init)
+    for (c, b) in S
+        if !isempty(b)
+            r += dim(c) * count(>(tol), b)
+        end
+    end
+    return r
+    # return sum(((c, b),) -> dim(c) * count(>(tol), b), S; init)
 end
 
 function LinearAlgebra.cond(t::AbstractTensorMap, p::Real=2)
