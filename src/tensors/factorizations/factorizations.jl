@@ -44,7 +44,6 @@ import MatrixAlgebraKit: default_algorithm,
 include("utility.jl")
 include("matrixalgebrakit.jl")
 include("truncation.jl")
-include("deprecations.jl")
 include("adjoint.jl")
 include("diagonal.jl")
 
