@@ -1,12 +1,16 @@
 # Algorithm selection
 # -------------------
-for f! in
-    [:svd_compact!, :svd_full!, :svd_trunc!, :svd_vals!, :qr_compact!, :qr_full!, :qr_null!,
-     :lq_compact!, :lq_full!, :lq_null!, :eig_full!, :eig_trunc!, :eig_vals!, :eigh_full!,
-     :eigh_trunc!, :eigh_vals!, :left_polar!, :right_polar!]
+for f in
+    [:svd_compact, :svd_full, :svd_trunc, :svd_vals, :qr_compact, :qr_full, :qr_null,
+     :lq_compact, :lq_full, :lq_null, :eig_full, :eig_trunc, :eig_vals, :eigh_full,
+     :eigh_trunc, :eigh_vals, :left_polar, :right_polar]
+     f! = Symbol(f, :!)
     @eval function default_algorithm(::typeof($f!), ::Type{T};
                                      kwargs...) where {T<:AbstractTensorMap}
         return default_algorithm($f!, blocktype(T); kwargs...)
+    end
+    @eval function copy_input(::typeof($f), t::AbstractTensorMap)
+        return copy_oftype(t, factorisation_scalartype($f, t))
     end
 end
 
@@ -388,7 +392,7 @@ function check_input(::typeof(lq_full!), t::AbstractTensorMap, LQ, ::AbstractAlg
 
     # type checks
     @assert L isa AbstractTensorMap
-    @assert R isa AbstractTensorMap
+    @assert Q isa AbstractTensorMap
 
     # scalartype checks
     @check_scalar L t
@@ -407,7 +411,7 @@ function check_input(::typeof(lq_compact!), t::AbstractTensorMap, LQ, ::Abstract
 
     # type checks
     @assert L isa AbstractTensorMap
-    @assert R isa AbstractTensorMap
+    @assert Q isa AbstractTensorMap
 
     # scalartype checks
     @check_scalar L t
@@ -546,7 +550,7 @@ function initialize_output(::typeof(right_polar!), t::AbstractTensorMap,
                            ::AbstractAlgorithm)
     P = similar(t, codomain(t) ← codomain(t))
     Wᴴ = similar(t, space(t))
-    return Wᴴ, P
+    return P, Wᴴ
 end
 
 # Needed to get algorithm selection to behave

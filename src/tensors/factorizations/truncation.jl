@@ -64,48 +64,29 @@ function truncate!(::typeof(left_null!),
     return Ũ
 end
 
-function truncate!(::typeof(eigh_trunc!),
-                   (D, V)::Tuple{AbstractTensorMap,AbstractTensorMap},
-                   strategy::TruncationStrategy)
-    ind = findtruncated(diagview(D), strategy)
-    V_truncated = spacetype(D)(c => length(I) for (c, I) in ind)
+for f! in (:eig_trunc!, :eigh_trunc!)
+    @eval function truncate!(::typeof($f!),
+                             (D, V)::Tuple{AbstractTensorMap,AbstractTensorMap},
+                             strategy::TruncationStrategy)
+        ind = findtruncated(diagview(D), strategy)
+        V_truncated = spacetype(D)(c => length(I) for (c, I) in ind)
 
-    D̃ = DiagonalTensorMap{scalartype(D)}(undef, V_truncated)
-    for (c, b) in blocks(D̃)
-        I = get(ind, c, nothing)
-        @assert !isnothing(I)
-        copy!(b.diag, @view(block(D, c).diag[I]))
+        D̃ = DiagonalTensorMap{scalartype(D)}(undef, V_truncated)
+        for (c, b) in blocks(D̃)
+            I = get(ind, c, nothing)
+            @assert !isnothing(I)
+            copy!(b.diag, @view(block(D, c).diag[I]))
+        end
+
+        Ṽ = similar(V, codomain(V) ← V_truncated)
+        for (c, b) in blocks(Ṽ)
+            I = get(ind, c, nothing)
+            @assert !isnothing(I)
+            copy!(b, @view(block(V, c)[:, I]))
+        end
+
+        return D̃, Ṽ
     end
-
-    Ṽ = similar(V, V_truncated ← domain(V))
-    for (c, b) in blocks(Ṽ)
-        I = get(ind, c, nothing)
-        @assert !isnothing(I)
-        copy!(b, @view(block(V, c)[I, :]))
-    end
-
-    return D̃, Ṽ
-end
-function truncate!(::typeof(eig_trunc!), (D, V)::Tuple{AbstractTensorMap,AbstractTensorMap},
-                   strategy::TruncationStrategy)
-    ind = findtruncated(diagview(D), strategy)
-    V_truncated = spacetype(D)(c => length(I) for (c, I) in ind)
-
-    D̃ = DiagonalTensorMap{scalartype(D)}(undef, V_truncated)
-    for (c, b) in blocks(D̃)
-        I = get(ind, c, nothing)
-        @assert !isnothing(I)
-        copy!(b.diag, @view(block(D, c).diag[I]))
-    end
-
-    Ṽ = similar(V, V_truncated ← domain(V))
-    for (c, b) in blocks(Ṽ)
-        I = get(ind, c, nothing)
-        @assert !isnothing(I)
-        copy!(b, @view(block(V, c)[I, :]))
-    end
-
-    return D̃, Ṽ
 end
 
 # Find truncation
@@ -201,7 +182,7 @@ function findtruncated(Sd::SectorDict, strategy::TruncationKeepSorted)
         truncdim[cmin] -= 1
         totaldim -= dim(cmin)
         if totaldim < strategy.howmany
-            truncdim[cmin] += 1
+            # truncdim[cmin] += 1
             break
         end
         if truncdim[cmin] == 0

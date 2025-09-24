@@ -70,28 +70,30 @@ export inner, dot, norm, normalize, normalize!, tr
 
 # factorizations
 export mul!, lmul!, rmul!, adjoint!, pinv, axpy!, axpby!
-export leftorth, rightorth, leftnull, rightnull,
-       leftorth!, rightorth!, leftnull!, rightnull!,
+export left_orth, right_orth, left_null, right_null,
+       left_orth!, right_orth!, left_null!, right_null!,
        left_polar, left_polar!, right_polar, right_polar!,
        qr_full, qr_compact, qr_null, lq_full, lq_compact, lq_null,
        qr_full!, qr_compact!, qr_null!, lq_full!, lq_compact!, lq_null!,
-       tsvd!, tsvd, eigen, eigen!, eig, eig!, eigh, eigh!, exp, exp!,
-       eigh_full!, eigh_full, eig_full!, eig_full, eigh_vals!, eigh_vals,
-       eig_vals!, eig_vals,
+       svd_compact!, svd_full!, svd_trunc!, svd_compact, svd_full, svd_trunc,
+       exp, exp!,
+       eigh_full!, eigh_full, eigh_trunc!, eigh_trunc, eig_full!, eig_full, eig_trunc!,
+       eig_trunc,
+       eigh_vals!, eigh_vals, eig_vals!, eig_vals,
        isposdef, isposdef!, ishermitian, isisometry, isunitary, sylvester, rank, cond
+# deprecate:
+export eig, eig!, eigh, eigh!, eigen, eigen!, tsvd, tsvd!, leftorth, leftorth!, rightorth,
+       rightorth!, leftnull, leftnull!, rightnull, rightnull!
 export braid, braid!, permute, permute!, transpose, transpose!, twist, twist!, repartition,
        repartition!
 export catdomain, catcodomain, absorb, absorb!
-
-export OrthogonalFactorizationAlgorithm, QR, QRpos, QL, QLpos, LQ, LQpos, RQ, RQpos,
-       SVD, SDD, Polar
 
 # tensor operations
 export @tensor, @tensoropt, @ncon, ncon, @planar, @plansor
 export scalar, add!, contract!
 
 # truncation schemes
-export notrunc, truncerr, truncdim, truncspace, truncbelow
+export notrunc, truncerr, truncrank, truncspace, trunctol
 
 # cache management
 export empty_globalcaches!

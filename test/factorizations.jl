@@ -15,221 +15,272 @@ catch
     (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂)
 end
 
+eltypes = (Float32, ComplexF64)
 for V in spacelist
     I = sectortype(first(V))
     Istr = TensorKit.type_repr(I)
     println("---------------------------------------")
     println("Tensors with symmetry: $Istr")
     println("---------------------------------------")
-    @timedtestset "Tensors with symmetry: $Istr" verbose = true begin
+    @timedtestset "Factorizations with symmetry: $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
-        @timedtestset "Factorization" begin
-            W = V1 ⊗ V2
-            @testset for T in (Float32, ComplexF64)
-                # Test both a normal tensor and an adjoint one.
-                ts = (rand(T, W, W'), rand(T, W, W')', rand(T, V1, W'), rand(T, V1, W')')
-                @testset for t in ts
-                    @testset "qr_full" begin
-                        Q, R = @constinferred qr_full(t)
-                        @test isisometry(Q)
-                        @test Q * R ≈ t
-                    end
-                    @testset "qr_compact" begin
-                        Q, R = @constinferred qr_compact(t)
-                        @test isisometry(Q)
-                        @test Q * R ≈ t
-                    end
-                    @testset "qr_null" begin
-                        N = @constinferred qr_null(t)
-                        @test isisometry(N)
-                        @test norm(N' * t) < 100 * eps(norm(t))
-                    end
-                    @testset "lq_full" begin
-                        L, Q = @constinferred lq_full(t)
-                        @test isisometry(Q; side=:right)
-                        @test L * Q ≈ t
-                    end
-                    @testset "lq_compact" begin
-                        L, Q = @constinferred lq_compact(t)
-                        @test isisometry(Q; side=:right)
-                        @test L * Q ≈ t
-                    end
-                    @testset "lq_null" begin
-                        Nᴴ = @constinferred lq_null(t)
-                        @test isisometry(Nᴴ; side=:right)
-                        @test norm(t * Nᴴ') < 100 * eps(norm(t))
-                    end
-                    @testset "leftorth with $alg" for alg in
-                                                      (TensorKit.LAPACK_HouseholderQR(),
-                                                       TensorKit.LAPACK_HouseholderQR(;
-                                                                                      positive=true),
-                                                       #TensorKit.QL(),
-                                                       #TensorKit.QLpos(),
-                                                       TensorKit.PolarViaSVD(TensorKit.LAPACK_QRIteration()),
-                                                       TensorKit.PolarViaSVD(TensorKit.LAPACK_DivideAndConquer()),
-                                                       TensorKit.LAPACK_QRIteration(),
-                                                       TensorKit.LAPACK_DivideAndConquer())
-                        (codomain(t) ≾ domain(t)) && alg isa TensorKit.PolarViaSVD &&
-                            continue
-                        Q, R = @constinferred leftorth(t; alg=alg)
-                        @test isisometry(Q)
-                        @test Q * R ≈ t
-                    end
-                    @testset "leftnull with $alg" for alg in
-                                                      (TensorKit.LAPACK_HouseholderQR(),
-                                                       TensorKit.LAPACK_QRIteration(),
-                                                       TensorKit.LAPACK_DivideAndConquer())
-                        N = @constinferred leftnull(t; alg=alg)
-                        @test isisometry(N)
-                        @test norm(N' * t) < 100 * eps(norm(t))
-                    end
-                    @testset "rightorth with $alg" for alg in
-                                                       (TensorKit.LAPACK_HouseholderLQ(),
-                                                        TensorKit.LAPACK_HouseholderLQ(;
-                                                                                       positive=true),
-                                                        TensorKit.PolarViaSVD(TensorKit.LAPACK_QRIteration()),
-                                                        TensorKit.PolarViaSVD(TensorKit.LAPACK_DivideAndConquer()),
-                                                        TensorKit.LAPACK_QRIteration(),
-                                                        TensorKit.LAPACK_DivideAndConquer())
-                        (domain(t) ≾ codomain(t)) && alg isa TensorKit.PolarViaSVD &&
-                            continue
-                        L, Q = @constinferred rightorth(t; alg=alg)
-                        @test isisometry(Q; side=:right)
-                        @test L * Q ≈ t
-                    end
-                    @testset "rightnull with $alg" for alg in
-                                                       (TensorKit.LAPACK_HouseholderLQ(),
-                                                        TensorKit.LAPACK_QRIteration(),
-                                                        TensorKit.LAPACK_DivideAndConquer())
-                        M = @constinferred rightnull(t; alg=alg)
-                        @test isisometry(M; side=:right)
-                        @test norm(t * M') < 100 * eps(norm(t))
-                    end
-                    @testset "tsvd with $alg" for alg in (TensorKit.LAPACK_QRIteration(),
-                                                          TensorKit.LAPACK_DivideAndConquer())
-                        U, S, V = @constinferred tsvd(t; alg=alg)
-                        @test isisometry(U)
-                        @test isisometry(V; side=:right)
-                        @test U * S * V ≈ t
+        W = V1 ⊗ V2
 
-                        s = LinearAlgebra.svdvals(t)
-                        s′ = LinearAlgebra.diag(S)
-                        for (c, b) in s
-                            @test b ≈ s′[c]
-                        end
-                        s = LinearAlgebra.svdvals(t')
-                        s′ = LinearAlgebra.diag(S')
-                        for (c, b) in s
-                            @test b ≈ s′[c]
-                        end
-                    end
-                    @testset "cond and rank" begin
-                        d1 = dim(codomain(t))
-                        d2 = dim(domain(t))
-                        @test rank(t) == min(d1, d2)
-                        M = leftnull(t)
-                        @test rank(M) + rank(t) == d1
-                        t3 = unitary(T, V1 ⊗ V2, V1 ⊗ V2)
-                        @test cond(t3) ≈ one(real(T))
-                        @test rank(t3) == dim(V1 ⊗ V2)
-                        t4 = randn(T, V1 ⊗ V2, V1 ⊗ V2)
-                        t4 = (t4 + t4') / 2
-                        vals = LinearAlgebra.eigvals(t4)
-                        λmax = maximum(s -> maximum(abs, s), values(vals))
-                        λmin = minimum(s -> minimum(abs, s), values(vals))
-                        @test cond(t4) ≈ λmax / λmin
-                        vals = LinearAlgebra.eigvals(t4')
-                        λmax = maximum(s -> maximum(abs, s), values(vals))
-                        λmin = minimum(s -> minimum(abs, s), values(vals))
-                        @test cond(t4') ≈ λmax / λmin
-                    end
+        @testset "QR decomposition" begin
+            for T in eltypes,
+                t in (rand(T, W, W), rand(T, W, W)', rand(T, W, V1), rand(T, V1, W)')
+
+                Q, R = @constinferred qr_full(t)
+                @test Q * R ≈ t
+                @test isunitary(Q)
+
+                Q, R = @constinferred qr_compact(t)
+                @test Q * R ≈ t
+                @test isisometry(Q)
+
+                Q, R = @constinferred left_orth(t; kind=:qr)
+                @test Q * R ≈ t
+                @test isisometry(Q)
+
+                N = @constinferred qr_null(t)
+                @test isisometry(N)
+                @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
+
+                N = @constinferred left_null(t; kind=:qr)
+                @test isisometry(N)
+                @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
+            end
+
+            # empty tensor
+            for T in eltypes
+                t = rand(T, V1 ⊗ V2, zero(V1))
+
+                Q, R = @constinferred qr_full(t)
+                @test Q * R ≈ t
+                @test isunitary(Q)
+                @test dim(R) == dim(t) == 0
+
+                Q, R = @constinferred qr_compact(t)
+                @test Q * R ≈ t
+                @test isisometry(Q)
+                @test dim(Q) == dim(R) == dim(t)
+
+                Q, R = @constinferred left_orth(t; kind=:qr)
+                @test Q * R ≈ t
+                @test isisometry(Q)
+                @test dim(Q) == dim(R) == dim(t)
+
+                N = @constinferred qr_null(t)
+                @test isunitary(N)
+                @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
+            end
+        end
+
+        @testset "LQ decomposition" begin
+            for T in eltypes,
+                t in (rand(T, W, W), rand(T, W, W)', rand(T, W, V1), rand(T, V1, W)')
+
+                L, Q = @constinferred lq_full(t)
+                @test L * Q ≈ t
+                @test isunitary(Q)
+
+                L, Q = @constinferred lq_compact(t)
+                @test L * Q ≈ t
+                @test isisometry(Q; side=:right)
+
+                L, Q = @constinferred right_orth(t; kind=:lq)
+                @test L * Q ≈ t
+                @test isisometry(Q; side=:right)
+
+                Nᴴ = @constinferred lq_null(t)
+                @test isisometry(Nᴴ; side=:right)
+                @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
+            end
+
+            for T in eltypes
+                # empty tensor
+                t = rand(T, zero(V1), V1 ⊗ V2)
+
+                L, Q = @constinferred lq_full(t)
+                @test L * Q ≈ t
+                @test isunitary(Q)
+                @test dim(L) == dim(t) == 0
+
+                L, Q = @constinferred lq_compact(t)
+                @test L * Q ≈ t
+                @test isisometry(Q; side=:right)
+                @test dim(Q) == dim(L) == dim(t)
+
+                L, Q = @constinferred right_orth(t; kind=:lq)
+                @test L * Q ≈ t
+                @test isisometry(Q; side=:right)
+                @test dim(Q) == dim(L) == dim(t)
+
+                Nᴴ = @constinferred lq_null(t)
+                @test isunitary(Nᴴ)
+                @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
+            end
+        end
+
+        @testset "Polar decomposition" begin
+            for T in eltypes,
+                t in (rand(T, W, W), rand(T, W, W)', rand(T, W, V1), rand(T, V1, W)')
+
+                @assert domain(t) ≾ codomain(t)
+                w, p = @constinferred left_polar(t)
+                @test w * p ≈ t
+                @test isisometry(w)
+                @test isposdef(p)
+
+                w, p = @constinferred left_orth(t; kind=:polar)
+                @test w * p ≈ t
+                @test isisometry(w)
+            end
+
+            for T in eltypes,
+                t in (rand(T, W, W), rand(T, W, W)', rand(T, V1, W), rand(T, W, V1)')
+
+                @assert codomain(t) ≾ domain(t)
+                p, wᴴ = @constinferred right_polar(t)
+                @test p * wᴴ ≈ t
+                @test isisometry(wᴴ; side=:right)
+                @test isposdef(p)
+
+                p, wᴴ = @constinferred right_orth(t; kind=:polar)
+                @test p * wᴴ ≈ t
+                @test isisometry(wᴴ; side=:right)
+            end
+        end
+
+        @testset "SVD" begin
+            for T in eltypes,
+                t in (rand(T, W, W), rand(T, W, W)',
+                      rand(T, W, V1), rand(T, V1, W),
+                      rand(T, W, V1)', rand(T, V1, W)')
+
+                u, s, vᴴ = @constinferred svd_full(t)
+                @test u * s * vᴴ ≈ t
+                @test isunitary(u)
+                @test isunitary(vᴴ)
+
+                u, s, vᴴ = @constinferred svd_compact(t)
+                @test u * s * vᴴ ≈ t
+                @test isisometry(u)
+                @test isposdef(s)
+                @test isisometry(vᴴ; side=:right)
+
+                s′ = LinearAlgebra.diag(s)
+                for (c, b) in LinearAlgebra.svdvals(t)
+                    @test b ≈ s′[c]
                 end
-                @testset "empty tensor" begin
-                    t = randn(T, V1 ⊗ V2, zero(V1))
-                    @testset "leftorth with $alg" for alg in
-                                                      (TensorKit.LAPACK_HouseholderQR(),
-                                                       TensorKit.LAPACK_HouseholderQR(;
-                                                                                      positive=true),
-                                                       #TensorKit.QL(), TensorKit.QLpos(),
-                                                       TensorKit.PolarViaSVD(TensorKit.LAPACK_QRIteration()),
-                                                       TensorKit.PolarViaSVD(TensorKit.LAPACK_DivideAndConquer()),
-                                                       TensorKit.LAPACK_QRIteration(),
-                                                       TensorKit.LAPACK_DivideAndConquer())
-                        Q, R = @constinferred leftorth(t; alg=alg)
-                        @test Q == t
-                        @test dim(Q) == dim(R) == 0
-                    end
-                    @testset "leftnull with $alg" for alg in
-                                                      (TensorKit.LAPACK_HouseholderQR(),
-                                                       TensorKit.LAPACK_QRIteration(),
-                                                       TensorKit.LAPACK_DivideAndConquer())
-                        N = @constinferred leftnull(t; alg=alg)
-                        @test isunitary(N)
-                    end
-                    @testset "rightorth with $alg" for alg in
-                                                       (TensorKit.LAPACK_HouseholderLQ(),
-                                                        TensorKit.LAPACK_HouseholderLQ(;
-                                                                                       positive=true),
-                                                        TensorKit.PolarViaSVD(TensorKit.LAPACK_QRIteration()),
-                                                        TensorKit.PolarViaSVD(TensorKit.LAPACK_DivideAndConquer()),
-                                                        TensorKit.LAPACK_QRIteration(),
-                                                        TensorKit.LAPACK_DivideAndConquer())
-                        L, Q = @constinferred rightorth(copy(t'); alg=alg)
-                        @test Q == t'
-                        @test dim(Q) == dim(L) == 0
-                    end
-                    @testset "rightnull with $alg" for alg in
-                                                       (TensorKit.LAPACK_HouseholderLQ(),
-                                                        TensorKit.LAPACK_QRIteration(),
-                                                        TensorKit.LAPACK_DivideAndConquer())
-                        M = @constinferred rightnull(copy(t'); alg=alg)
-                        @test isunitary(M)
-                    end
-                    @testset "tsvd with $alg" for alg in (TensorKit.LAPACK_QRIteration(),
-                                                          TensorKit.LAPACK_DivideAndConquer())
-                        U, S, V = @constinferred tsvd(t; alg=alg)
-                        @test U == t
-                        @test dim(U) == dim(S) == dim(V)
-                    end
-                    @testset "cond and rank" begin
-                        @test rank(t) == 0
-                        W2 = zero(V1) * zero(V2)
-                        t2 = rand(W2, W2)
-                        @test rank(t2) == 0
-                        @test cond(t2) == 0.0
-                    end
+
+                v, c = @constinferred left_orth(t; kind=:svd)
+                @test v * c ≈ t
+                @test isisometry(v)
+                
+                N = @constinferred left_null(t; kind=:svd)
+                @test isisometry(N)
+                @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
+                
+                Nᴴ = @constinferred right_null(t; kind=:svd)
+                @test isisometry(Nᴴ; side=:right)
+                @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
+            end
+
+            # empty tensor
+            for T in eltypes, t in (rand(T, W, zero(V1)), rand(T, zero(V1), W))
+                U, S, Vᴴ = @constinferred svd_full(t)
+                @test U * S * Vᴴ ≈ t
+                @test isunitary(U)
+                @test isunitary(Vᴴ)
+
+                U, S, Vᴴ = @constinferred svd_compact(t)
+                @test U * S * Vᴴ ≈ t
+                @test dim(U) == dim(S) == dim(Vᴴ) == dim(t) == 0
+            end
+        end
+
+        @testset "Eigenvalue decomposition" begin
+            for T in eltypes, t in (rand(T, V1, V1), rand(T, W, W), rand(T, W, W)')
+                d, v = @constinferred eig_full(t)
+                @test t * v ≈ v * d
+                
+                d′ = LinearAlgebra.diag(d)
+                for (c, b) in LinearAlgebra.eigvals(t)
+                    @test sort(b; by=abs) ≈ sort(d′[c]; by=abs)
                 end
-                @testset "eig and isposdef" begin
-                    t = rand(T, V1, V1)
-                    D, V = eigen(t)
-                    @test t * V ≈ V * D
+                
+                vdv = v' * v
+                vdv = (vdv + vdv') / 2
+                @test @constinferred isposdef(vdv)
+                @test !isposdef(t) # unlikely for non-hermitian map
 
-                    d = LinearAlgebra.eigvals(t; sortby=nothing)
-                    d′ = LinearAlgebra.diag(D)
-                    for (c, b) in d
-                        @test b ≈ d′[c]
-                    end
+                d, v = @constinferred eig_trunc(t; trunc=truncrank(dim(domain(t)) ÷ 2))
+                @test t * v ≈ v * d
+                @test dim(domain(d)) ≤ dim(domain(t)) ÷ 2
+                
+                
+                t2 = (t + t')
+                D, V = eigen(t2)
+                @test isisometry(V)
+                D̃, Ṽ = @constinferred eigh(t2)
+                @test D ≈ D̃
+                @test V ≈ Ṽ
+                λ = minimum(minimum(real(LinearAlgebra.diag(b)))
+                            for (c, b) in blocks(D))
+                @test cond(Ṽ) ≈ one(real(T))
+                @test isposdef(t2) == isposdef(λ)
+                @test isposdef(t2 - λ * one(t2) + 0.1 * one(t2))
+                @test !isposdef(t2 - λ * one(t2) - 0.1 * one(t2))
+                
+                add!(t, t')
 
-                    # Somehow moving these test before the previous one gives rise to errors
-                    # with T=Float32 on x86 platforms. Is this an OpenBLAS issue? 
-                    VdV = V' * V
-                    VdV = (VdV + VdV') / 2
-                    @test isposdef(VdV)
+                d, v = @constinferred eigh_full(t)
+                @test t * v ≈ v * d
+                @test isunitary(v)
+                
+                λ = minimum(minimum(real(LinearAlgebra.diag(b))) for (c, b) in blocks(d))
+                @test cond(v) ≈ one(real(T))
+                @test isposdef(t) == isposdef(λ)
+                @test isposdef(t - λ * one(t) + 0.1 * one(t))
+                @test !isposdef(t - λ * one(t) - 0.1 * one(t))
 
-                    @test !isposdef(t) # unlikely for non-hermitian map
-                    t2 = (t + t')
-                    D, V = eigen(t2)
-                    @test isisometry(V)
-                    D̃, Ṽ = @constinferred eigh(t2)
-                    @test D ≈ D̃
-                    @test V ≈ Ṽ
-                    λ = minimum(minimum(real(LinearAlgebra.diag(b)))
-                                for (c, b) in blocks(D))
-                    @test cond(Ṽ) ≈ one(real(T))
-                    @test isposdef(t2) == isposdef(λ)
-                    @test isposdef(t2 - λ * one(t2) + 0.1 * one(t2))
-                    @test !isposdef(t2 - λ * one(t2) - 0.1 * one(t2))
-                end
+                d, v = @constinferred eigh_trunc(t; trunc=truncrank(dim(domain(t)) ÷ 2))
+                @test t * v ≈ v * d
+                @test dim(domain(d)) ≤ dim(domain(t)) ÷ 2
+            end
+        end
+        
+        @testset "Condition number and rank" begin
+            for T in eltypes,
+                t in (rand(T, W, W), rand(T, W, W)',
+                      rand(T, W, V1), rand(T, V1, W),
+                      rand(T, W, V1)', rand(T, V1, W)')
+
+                d1, d2 = dim(codomain(t)), dim(domain(t))
+                @test rank(t) == min(d1, d2)
+                M = left_null(t)
+                @test @constinferred(rank(M)) + rank(t) == d1
+                Mᴴ = right_null(t)
+                @test rank(Mᴴ) + rank(t) == d2
+            end
+            for T in eltypes
+                u = unitary(T, V1 ⊗ V2, V1 ⊗ V2)
+                @test @constinferred(cond(u)) ≈ one(real(T))
+                @test @constinferred(rank(u)) == dim(V1 ⊗ V2)
+                
+                t = rand(T, zero(V1), W)
+                @test rank(t) == 0
+                t2 = rand(T, zero(V1) * zero(V2), zero(V1) * zero(V2))
+                @test rank(t2) == 0
+                @test cond(t2) == 0.0
+            end
+            for T in eltypes, t in (rand(T, W, W), rand(T, W, W)')
+                add!(t, t')
+                vals = @constinferred LinearAlgebra.eigvals(t)
+                λmax = maximum(s -> maximum(abs, s), values(vals))
+                λmin = minimum(s -> minimum(abs, s), values(vals))
+                @test cond(t) ≈ λmax / λmin
             end
         end
     end

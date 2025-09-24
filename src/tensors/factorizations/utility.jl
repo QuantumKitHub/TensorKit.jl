@@ -16,7 +16,7 @@ function permutedcopy_oftype(t::AbstractTensorMap, T::Type{<:Number}, p::Index2T
     return permute!(similar(t, T, permute(space(t), p)), t, p)
 end
 function copy_oftype(t::AbstractTensorMap, T::Type{<:Number})
-    return copy!(similar(t, T), t)
+    return copy!(similar(t, T, space(t)), t)
 end
 
 function _reverse!(t::AbstractTensorMap; dims=:)

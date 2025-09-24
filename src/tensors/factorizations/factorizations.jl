@@ -65,6 +65,13 @@ const RealOrComplexFloat = Union{AbstractFloat,Complex{<:AbstractFloat}}
 # LinearAlgebra overloads
 #------------------------------#
 
+function eigen(t::AbstractTensorMap; kwargs...)
+    return ishermitian(t) ? eigh_full(t; kwargs...) : eig_full(t; kwargs...)
+end
+function eigen!(t::AbstractTensorMap; kwargs...)
+    return ishermitian(t) ? eigh_full!(t; kwargs...) : eig_full!(t; kwargs...)
+end
+
 function LinearAlgebra.eigvals(t::AbstractTensorMap; kwargs...)
     tcopy = copy_oftype(t, factorisation_scalartype(eigen, t))
     return LinearAlgebra.eigvals!(tcopy; kwargs...)
@@ -89,6 +96,9 @@ function LinearAlgebra.ishermitian(t::AbstractTensorMap)
     return true
 end
 
+function LinearAlgebra.isposdef(t::AbstractTensorMap)
+    return isposdef!(copy_oftype(t, factorisation_scalartype(isposdef, t)))
+end
 function LinearAlgebra.isposdef!(t::AbstractTensorMap)
     domain(t) == codomain(t) ||
         throw(SpaceMismatch("`isposdef` requires domain and codomain to be the same"))
