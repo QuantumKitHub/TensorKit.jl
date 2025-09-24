@@ -57,12 +57,12 @@ B = randn(ℝ^3 * ℝ^2 * ℝ^4);
 C = 0.5*A + 2.5*B
 ```
 
-Given that they are behave as vectors, they also have a scalar product and norm, which they
+Given that they are behave as vectors, they also have a inner product and norm, which they
 inherit from the Euclidean inner product on the individual `ℝ^n` spaces:
 
 ```@repl tutorial
-scalarBA = dot(B,A)
-scalarAA = dot(A,A)
+innerBA = inner(B,A)
+innerAA = inner(A,A)
 normA² = norm(A)^2
 ```
 
@@ -76,7 +76,7 @@ allowed
 B′ = randn(ℝ^4 * ℝ^2 * ℝ^3);
 space(B′) == space(A)
 C′ = 0.5 * A + 2.5 * B′
-scalarBA′ = dot(B′,A)
+innerBA′ = inner(B′,A)
 ```
 
 However, in this particular case, we can reorder the indices of `B′` to match space of `A`,
@@ -94,7 +94,7 @@ reexports the `@tensor` macro
 ```@repl tutorial
 @tensor D[a,b,c,d] := A[a,b,e] * B[d,c,e]
 @tensor d = A[a,b,c] * A[a,b,c]
-d ≈ scalarAA ≈ normA²
+d ≈ innerAA ≈ normA²
 ```
 
 We hope that the index convention is clear. The `:=` is to create a new tensor `D`, without
@@ -108,45 +108,52 @@ cast the array into a matrix before applying e.g. the singular value decompositi
 TensorKit.jl, one just specifies which indices go to the left (rows) and right (columns)
 
 ```@repl tutorial
-U, S, Vd = tsvd(A, ((1,3), (2,)));
-@tensor A′[a,b,c] := U[a,c,d] * S[d,e] * Vd[e,b];
+U, S, Vᴴ = tsvd(A, ((1,3), (2,)));
+@tensor A′[a,b,c] := U[a,c,d] * S[d,e] * Vᴴ[e,b];
 A ≈ A′
 U
 ```
 
 Note that the `tsvd` routine returns the decomposition of the linear map as three factors,
-`U`, `S` and `Vd`, each of them a `TensorMap`, such that `Vd` is already what is commonly
-called `V'`. Furthermore, observe that `U` is printed differently then `A`, i.e. as a
-`TensorMap((ℝ^3 ⊗ ℝ^4) ← ProductSpace(ℝ^2))`. What this means is that tensors (or more
-appropriately, `TensorMap` instances) in TensorKit.jl are always considered to be linear
-maps between two `ProductSpace` instances, with
+`U`, `S` and `Vd`, each of them a `TensorMap`, such that `Vᴴ` corresponds to the adjoint
+of the typical `V` factor. Furthermore, observe that `U` is printed differently then `A`,
+i.e. as a `TensorMap((ℝ^3 ⊗ ℝ^4) ← ProductSpace(ℝ^2))`. What this means is that tensors
+(or more appropriately, `TensorMap` instances) in TensorKit.jl are always considered to be
+linear maps between two `ProductSpace` instances, with
 
 ```@repl tutorial
 codomain(U)
 domain(U)
 codomain(A)
 domain(A)
+typeof(codomain(U))
+typeof(domain(A))
 ```
 
-An instance of `TensorMap` thus represents a linear map from its domain to its codomain,
-making it an element of the space of homomorphisms between these two spaces. That space is
-represented using its own type `HomSpace` in TensorKit.jl, and which admits a direct 
-constructor as well as a unicode alternative using the symbol `→` (obtained as `\to+TAB` or
-`\rightarrow+TAB`) or `←` (obtained as `\leftarrow+TAB`).
+An instance of `TensorMap` thus represents a linear map from its domain to its codomain.
+For the case of a `Tensor`, the domain is printed as `one` of the type of vector space,
+corresponding to the neutral element for the (monoidal) product of vector spaces. This
+corresponds to an instance of the singleton type `ProductSpace{S,0}`, with `S` the type
+of vector space, i.e. `CartesianSpace` in this example.
+
+The space of homomorphisms between these two `ProductSpace` instances, i.e. the space of
+which the `TensorMap` is an element, is itself represented as an instance of the `HomSpace`
+type in TensorKit.jl. `HomSpace` admits a direct constructor, as well as unicode
+alternatives using the symbol `→` (obtained as `\to+TAB` or `\rightarrow+TAB`) or `←`
+(obtained as `\leftarrow+TAB`).
 
 ```@repl tutorial
 P = space(U)
-space(U) == HomSpace(ℝ^3 ⊗ ℝ^4, ℝ^2) == (ℝ^3 ⊗ ℝ^4 ← ℝ^2) == ℝ^2 → ℝ^3 ⊗ ℝ^4
+space(U) == HomSpace(ℝ^3 ⊗ ℝ^4, ℝ^2) == (ℝ^3 ⊗ ℝ^4 ← ℝ^2) == (ℝ^2 → ℝ^3 ⊗ ℝ^4)
 (codomain(P), domain(P))
 ```
 
-Furthermore, a `Tensor` instance such as `A` is just a specific case of `TensorMap` with an
-empty domain, i.e. a `ProductSpace{CartesianSpace,0}` instance. Analogously, we can
-represent a vector `v` and matrix `m` as
+Our representation of tensors naturally encompasses the standard algebra of matrices
+and vectors, as illustrated by the following example
 
 ```@repl tutorial
-v = randn(ℝ^3)
-M₁ = randn(ℝ^4, ℝ^3)
+v = randn(ℝ^3) # vector
+M₁ = randn(ℝ^4, ℝ^3) # matrix
 M₂ = randn(ℝ^4 → ℝ^2) # alternative syntax for randn(ℝ^2, ℝ^4)
 w = M₁ * v # matrix-vector product
 M₃ = M₂ * M₁ # matrix-matrix product
@@ -155,7 +162,7 @@ space(M₃)
 
 Note that for the construction of `M₁`, in accordance with how one specifies the dimensions
 of a matrix (e.g. `randn(4,3)`), the first space is the codomain and the second the domain.
-This is somewhat opposite to the general notation for a function `f:domain→codomain`, so
+This is somewhat opposite to the general notation for a function `f : domain → codomain`, so
 that we also support this more mathemical notation, as illustrated in the construction of
 `M₂`.  However, as this is confusing from the perspective of rows and columns, we also
 support the syntax `codomain ← domain` and actually use this as the default way of printing
@@ -179,13 +186,16 @@ codomain(U)
 domain(U)
 space(U)
 U' * U # should be the identity on the corresponding domain = codomain
-U' * U ≈ one(U'*U)
+U' * U ≈ one(U' * U)
+one(U'*U) == id(domain(U))
 P = U * U' # should be a projector
 P * P ≈ P
 ```
 
 Here, the adjoint of a `TensorMap` results in a new tensor map (actually a simple wrapper
 of type `AdjointTensorMap <: AbstractTensorMap`) with domain and codomain interchanged.
+Furthermore, this example illustrates the use of `id(P)` to construct the identity 
+morphism on P, which is a tensor map on `P → P`.
 
 Our original tensor `A` living in `ℝ^4 * ℝ^2 * ℝ^3` is isomorphic to e.g. a linear map
 `ℝ^3 → ℝ^4 * ℝ^2`. This is where the full power of `permute` emerges. It allows to specify a
@@ -211,10 +221,10 @@ all indices in the codomain.
 @tensor A′[a,b,c] := U[a,c,d] * S[d,e] * Vd[e,b];
 codomain(A′)
 domain(A′)
-@tensor A2′[(a,b); (c,)] := U[a,c,d] * S[d,e] * Vd[e,b];
+@tensor A2′[(a,b); (c,)] := U[a,c,d] * S[d,e] * Vᴴ[e,b];
 codomain(A2′)
 domain(A2′)
-@tensor A2′′[a b; c] := U[a,c,d] * S[d,e] * Vd[e,b];
+@tensor A2′′[a b; c] := U[a,c,d] * S[d,e] * Vᴴ[e,b];
 A2 ≈ A2′ == A2′′
 ```
 
@@ -244,13 +254,13 @@ where `ℂ` is obtained as `\bbC+TAB` and we also have the non-Unicode alternati
 ```@repl tutorial
 B = randn(ℂ^3 * ℂ^2 * ℂ^4);
 C = im*A + (2.5 - 0.8im) * B
-scalarBA = dot(B, A)
-scalarAA = dot(A, A)
+innerBA = inner(B, A)
+innerAA = inner(A, A)
 normA² = norm(A)^2
-U, S, Vd = tsvd(A, ((1, 3), (2,)));
-@tensor A′[a,b,c] := U[a,c,d] * S[d,e] * Vd[e,b];
+U, S, Vᴴ = tsvd(A, ((1, 3), (2,)));
+@tensor A′[a,b,c] := U[a,c,d] * S[d,e] * Vᴴ[e,b];
 A′ ≈ A
-permute(A, ((1, 3), (2,))) ≈ U * S * Vd
+permute(A, ((1, 3), (2,))) ≈ U * S * Vᴴ
 ```
 
 However, trying the following
@@ -306,9 +316,9 @@ codomain. By Schur's lemma, this means that the tensor is block diagonal in some
 corresponding to the irreducible representations that can be coupled to by combining the
 different representations on the different spaces in the domain or codomain. For Abelian
 symmetries, this does not require a basis change and it just imposes that the tensor has
-some block sparsity. Let's clarify all of this with some examples.
+some block sparsity. Let us clarify all of this with some examples.
 
-We start with a simple ``ℤ₂`` symmetry:
+We start with a simple `ℤ₂` symmetry:
 
 ```@repl tutorial
 V1 = ℤ₂Space(0=>3, 1=>2)
@@ -320,9 +330,9 @@ convert(Array, A)
 ```
 
 Here, we create a 5-dimensional space `V1`, which has a three-dimensional subspace
-associated with charge 0 (the trivial irrep of ``ℤ₂``) and a two-dimensional subspace with
-charge 1 (the non-trivial irrep). Similar for `V2`, where both subspaces are one-
-dimensional. Representing the tensor as a dense `Array`, we see that it is zero in those
+associated with charge 0 (the trivial irrep of `ℤ₂`) and a two-dimensional subspace with
+charge 1 (the non-trivial irrep). Similar for `V2`, where both subspaces are one-dimensional.
+Representing the tensor as a dense `Array`, we see that it is zero in those
 regions where the charges don't add to zero (modulo 2). Of course, the `Tensor(Map)` type
 in TensorKit.jl won't store these zero blocks, and only stores the non-zero information,
 which we can recognize also in the full `Array` representation.
@@ -333,11 +343,11 @@ encountered in the previous examples.
 ```@repl tutorial
 B = randn(V1' * V1 * V2);
 @tensor C[a,b] := A[a,c,d] * B[c,b,d]
-U, S, V = tsvd(A, ((1, 3), (2,)));
+U, S, Vᴴ = tsvd(A, ((1, 3), (2,)));
 U' * U # should be the identity on the corresponding domain = codomain
 U' * U ≈ one(U'*U)
-P = U * U' # should be a projector
-P * P ≈ P
+P = U * U';
+P * P ≈ P # should be a projector
 ```
 
 We also support other abelian symmetries, e.g.
@@ -358,12 +368,12 @@ convert(Array, A)
 
 Here, the `dim` of a `TensorMap` returns the number of linearly independent components, i.e.
 the number of non-zero entries in the case of an abelian symmetry. Also note that we can use
-`×` (obtained as `\times+TAB`) to combine different symmetry groups. The general space
-associated with symmetries is a `GradedSpace`, which is parametrized to the type of
-symmetry. For a group `G`, the fully specified type can be obtained as `Rep[G]`, while for
-more general sectortypes `I` it can be constructed as `Vect[I]`. Furthermore, `ℤ₂Space`
-(also `Z2Space` as non-Unicode alternative) and `U₁Space` (or `U1Space`) are just convenient
-synonyms, e.g.
+`×` (obtained as `\times+TAB`) to combine different symmetry groups. Spaces associated with
+such symmetries are represented through instances of `GradedSpace`, a parametric type that
+contains a number of parameters that depend on the specific type of symmetry. For a group `G`,
+the fully specified type can be obtained as `Rep[G]`, while for more general sectortypes `I`
+it can be constructed as `Vect[I]`. Furthermore, `ℤ₂Space` (also `Z2Space` as non-Unicode
+alternative) and `U₁Space` (or `U1Space`) are just convenient synonyms, e.g.
 
 ```@repl tutorial
 Rep[U₁](0=>3, 1=>2, -1=>1) == U1Space(-1=>1, 1=>2, 0=>3)
@@ -371,22 +381,24 @@ V = U₁Space(1=>2, 0=>3, -1=>1)
 for s in sectors(V)
   @show s, dim(V, s)
 end
+typeof(V)
 U₁Space(-1=>1, 0=>3, 1=>2) == GradedSpace(Irrep[U₁](1)=>2, Irrep[U₁](0)=>3, Irrep[U₁](-1)=>1)
 supertype(GradedSpace)
 ```
 
-Note that `GradedSpace` is not immediately parameterized by some group `G`, but actually by
-the set of irreducible representations of `G`, denoted as `Irrep[G]`. Indeed, `GradedSpace`
-also supports a grading that is derived from the fusion ring of a (unitary) pre-fusion
-category. Note furthermore that the order in which the charges and their corresponding 
-subspace dimensionality are specified is irrelevant, and that the charges, henceforth called 
-sectors (which is a more general name for charges or quantum numbers) are of a specific
-type, in this case `Irrep[U₁] == U1Irrep`. However, the `Vect[I]` constructor automatically
-converts the keys in the list of `Pair`s it receives to the correct type. Alternatively, we
-can directly create the sectors of the correct type and use the generic `GradedSpace`
-constructor. We can probe the subspace dimension of a certain sector `s` in a space `V` with
-`dim(V, s)`. Finally, note that `GradedSpace` still has the standard Euclidean inner product
-and we assume all representations to be unitary.
+Note that `GradedSpace` is not directly parameterized by the group `G`, but actually by
+the set of irreducible representations of `G`. The representation of different groups
+can be encoded in different types, but we expose `Irrep[G]` to obtain the corresponding
+type. Furthermore, `GradedSpace` also supports a grading that is derived from the fusion ring
+of a (unitary) pre-fusion category. Note furthermore that the order in which the charges
+and their corresponding  subspace dimensionality are specified is irrelevant, and that the
+charges, henceforth called  sectors (which is a more general name for charges or quantum
+numbers) are of a specific type, in this case `Irrep[U₁] == U1Irrep`. However, the `Vect[I]`
+constructor automatically converts the keys in the list of `Pair`s it receives to the correct
+type. Alternatively, we can directly create the sectors of the correct type and use the generic
+`GradedSpace` constructor. We can probe the subspace dimension of a certain sector `s` in a
+space `V` with `dim(V, s)`. Finally, note that `GradedSpace` still has the standard Euclidean
+inner product and we assume all representations to be unitary.
 
 TensorKit.jl also allows for non-abelian symmetries such as `SU₂`. In this case, the vector
 space is characterized via the spin quantum number (i.e. the irrep label of `SU₂`) for each
@@ -413,9 +425,10 @@ norm(A) ≈ norm(convert(Array, A))
 
 In this case, the full `Array` representation of the tensor has again many zeros, but it is
 less obvious to recognize the dense blocks, as there are additional zeros and the numbers
-in the original tensor data do not match with those in the `Array`. The reason is of course
-that the original tensor data now needs to be transformed with a construction known as
-fusion trees, which are made up out of the Clebsch-Gordan coefficients of the group.
+in the original tensor data do not match with those in the `Array`, while some identical
+numbers appear at multiple positions. The reason is of course that the original tensor data
+now needs to be transformed with a construction known as fusion trees, which are made up
+out of the Clebsch-Gordan coefficients of the group.
 Indeed, note that the non-zero blocks are also no longer labeled by a list of sectors, but
 by pairs of fusion trees. This will be explained further in the manual. However, the
 Clebsch-Gordan coefficients of the group are only needed to actually convert a tensor to an
