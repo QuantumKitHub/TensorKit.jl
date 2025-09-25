@@ -553,16 +553,6 @@ function initialize_output(::typeof(right_polar!), t::AbstractTensorMap,
     return P, Wᴴ
 end
 
-# Needed to get algorithm selection to behave
-function left_orth_polar!(t::AbstractTensorMap, VC, alg)
-    alg′ = MatrixAlgebraKit.select_algorithm(left_polar!, t, alg)
-    return left_orth_polar!(t, VC, alg′)
-end
-function right_orth_polar!(t::AbstractTensorMap, CVᴴ, alg)
-    alg′ = MatrixAlgebraKit.select_algorithm(right_polar!, t, alg)
-    return right_orth_polar!(t, CVᴴ, alg′)
-end
-
 # Orthogonalization
 # -----------------
 function check_input(::typeof(left_orth!), t::AbstractTensorMap, VC, ::AbstractAlgorithm)
@@ -607,6 +597,68 @@ function initialize_output(::typeof(right_orth!), t::AbstractTensorMap)
     C = similar(t, codomain(t) ← V_C)
     Vᴴ = similar(t, V_C ← domain(t))
     return C, Vᴴ
+end
+
+# This is a rework of the dispatch logic in order to avoid having to deal with having to
+# allocate the output before knowing the kind of decomposition. In particular, here I disable
+# providing output arguments for left_ and right_orth.
+# This is mainly because polar decompositions have different shapes, and SVD for Diagonal
+# also does
+function left_orth!(t::AbstractTensorMap;
+                    trunc::TruncationStrategy=notrunc(),
+                    kind=trunc == notrunc() ? :qr : :svd,
+                    alg_qr=(; positive=true), alg_polar=(;), alg_svd=(;))
+    trunc == notrunc() || kind === :svd ||
+        throw(ArgumentError("truncation not supported for left_orth with kind = $kind"))
+
+    kind === :qr && return qr_compact!(t; alg_qr...)
+    kind === :polar && return left_orth_polar!(t; alg_polar...)
+    kind === :svd && return left_orth_svd!(t; trunc, alg_svd...)
+
+    throw(ArgumentError(lazy"`left_orth!` received unknown value `kind = $kind`"))
+end
+function right_orth!(t::AbstractTensorMap;
+                     trunc::TruncationStrategy=notrunc(),
+                     kind=trunc == notrunc() ? :lq : :svd,
+                     alg_lq=(; positive=true), alg_polar=(;), alg_svd=(;))
+    trunc == notrunc() || kind === :svd ||
+        throw(ArgumentError("truncation not supported for right_orth with kind = $kind"))
+
+    kind === :lq && return lq_compact!(t; alg_lq...)
+    kind === :polar && return right_orth_polar!(t; alg_polar...)
+    kind === :svd && return right_orth_svd!(t; trunc, alg_svd...)
+
+    throw(ArgumentError(lazy"`right_orth!` received unknown value `kind = $kind`"))
+end
+
+function left_orth_polar!(t::AbstractTensorMap; alg=nothing, kwargs...)
+    alg′ = MatrixAlgebraKit.select_algorithm(left_polar!, t, alg; kwargs...)
+    VC = initialize_output(left_orth!, t)
+    return left_orth_polar!(t, VC, alg′)
+end
+function left_orth_polar!(t::AbstractTensorMap, VC, alg)
+    alg′ = MatrixAlgebraKit.select_algorithm(left_polar!, t, alg)
+    return left_orth_polar!(t, VC, alg′)
+end
+function right_orth_polar!(t::AbstractTensorMap; alg=nothing, kwargs...)
+    alg′ = MatrixAlgebraKit.select_algorithm(right_polar!, t, alg; kwargs...)
+    CVᴴ = initialize_output(right_orth!, t)
+    return right_orth_polar!(t, CVᴴ, alg′)
+end
+function right_orth_polar!(t::AbstractTensorMap, CVᴴ, alg)
+    alg′ = MatrixAlgebraKit.select_algorithm(right_polar!, t, alg)
+    return right_orth_polar!(t, CVᴴ, alg′)
+end
+
+function left_orth_svd!(t::AbstractTensorMap; trunc=notrunc(), kwargs...)
+    U, S, Vᴴ = trunc == notrunc() ? svd_compact!(t; kwargs...) :
+               svd_trunc!(t; trunc, kwargs...)
+    return U, lmul!(S, Vᴴ)
+end
+function right_orth_svd!(t::AbstractTensorMap; trunc=notrunc(), kwargs...)
+    U, S, Vᴴ = trunc == notrunc() ? svd_compact!(t; kwargs...) :
+               svd_trunc!(t; trunc, kwargs...)
+    return rmul!(U, S), Vᴴ
 end
 
 # Nullspace
