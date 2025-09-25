@@ -1,5 +1,8 @@
 # Strategies
 # ----------
+"""
+    notrunc()
+"""
 notrunc() = NoTruncation()
 
 # deprecate
@@ -10,11 +13,22 @@ struct TruncationError{T<:Real} <: TruncationStrategy
     ϵ::T
     p::Real
 end
+
+"""
+    truncerr(epsilon, p)
+"""
 truncerr(epsilon::Real, p::Real=2) = TruncationError(epsilon, p)
 
 struct TruncationSpace{S<:ElementarySpace} <: TruncationStrategy
     space::S
 end
+
+"""
+    truncspace(space::ElementarySpace)
+
+Truncation strategy to keep the first values such that the resulting space is the infimum of
+the total space and the provided space.
+"""
 truncspace(space::ElementarySpace) = TruncationSpace(space)
 
 # Truncation

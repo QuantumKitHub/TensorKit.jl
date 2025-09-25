@@ -219,44 +219,16 @@ and all follow the same strategy. The idea is that the `TensorMap` is interprete
 map  based on the current partition of indices between `domain` and `codomain`, and then the
 entire range of MatrixAlgebraKit functions can be called.
 You can specify an additional permutation of the domain and codomain indices before the
-factorisation is performed by making use of [`permute`](@ref) or [`transpose`](@ref), 
+factorisation is performed by making use of [`permute`](@ref) or [`transpose`](@ref).
 
-```@docs
-left_orth
-right_orth
-left_null
-right_null
-svd_compact
-svd_full
-svd_vals
-eig_full
-eig_vals
-eigh_full
-eigh_vals
-isposdef
-```
+For the full list of factorizations, see [Decompositions](@extref MatrixAlgebraKit).
 
 Additionally, it is possible to obtain truncated versions of some of these factorizations
 through the [`MatrixAlgebraKit.TruncationStrategy`](@ref) objects.
 
-```@docs
-svd_trunc
-eig_trunc
-eigh_trunc
-```
-
-The exact truncation strategy can be controlled through one of the following strategies:
+The exact truncation strategy can be controlled through the strategies defined in [Truncations](@extref MatrixAlgebraKit),
+but for `TensorMap`s there is also the special-purpose scheme:
 
 ```@docs
-notrunc
-trunctol
-truncrank
-truncerr
 truncspace
-```
-
-It is additionally possible to combine multiple strategies through `&`, e.g.
-
-```julia
-combined_truncation = trunctol(; atol=1e-2) & truncrank(3)
 ```

@@ -1,6 +1,12 @@
 using Documenter
 using Random
-using TensorKit, TensorKitSectors
+using TensorKit
+using TensorKit.TensorKitSectors
+using TensorKit.MatrixAlgebraKit
+using DocumenterInterLinks
+
+links = InterLinks("MatrixAlgebraKit" => "https://quantumkithub.github.io/MatrixAlgebraKit.jl/stable/",
+                   "TensorOperations" => "https://quantumkithub.github.io/TensorOperations.jl/stable/")
 
 pages = ["Home" => "index.md",
          "Manual" => ["man/intro.md", "man/tutorial.md", "man/categories.md",
@@ -15,6 +21,7 @@ makedocs(; modules=[TensorKit, TensorKitSectors],
          format=Documenter.HTML(; prettyurls=true, mathengine=MathJax(),
                                 assets=["assets/custom.css"]),
          pages=pages,
-         pagesonly=true)
+         pagesonly=true,
+         plugins=[links])
 
 deploydocs(; repo="github.com/QuantumKitHub/TensorKit.jl.git", push_preview=true)
