@@ -80,7 +80,7 @@ for V in spacelist
                     end
                 end
                 for T in (Int, Float32, ComplexF64)
-                    t = randn(T, V1 ⊗ V2 ← zero(V1))
+                    t = randn(T, V1 ⊗ V2 ← zerospace(V1))
                     a = convert(Array, t)
                     @test norm(a) == 0
                 end

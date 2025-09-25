@@ -20,7 +20,7 @@ export FibonacciAnyon, IsingAnyon
 export unit, rightunit, leftunit, allunits, isunit
 
 export VectorSpace, Field, ElementarySpace # abstract vector spaces
-export unitspace
+export unitspace, zerospace
 export InnerProductStyle, NoInnerProduct, HasInnerProduct, EuclideanInnerProduct
 export ComplexSpace, CartesianSpace, GeneralSpace, GradedSpace # concrete spaces
 export ZNSpace, Z2Space, Z3Space, Z4Space, U1Space, CU1Space, SU2Space
