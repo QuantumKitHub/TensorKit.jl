@@ -54,12 +54,6 @@ function isisometry(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple)
     return isisometry(t)
 end
 
-# Orthogonal factorizations (mutation for recycling memory):
-# only possible if scalar type is floating point
-# only correct if Euclidean inner product
-#------------------------------------------------------------------------------------------
-const RealOrComplexFloat = Union{AbstractFloat,Complex{<:AbstractFloat}}
-
 #------------------------------#
 # LinearAlgebra overloads
 #------------------------------#

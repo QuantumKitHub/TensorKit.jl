@@ -230,7 +230,7 @@ for V in spacelist
                 t2 = (t + t')
                 D, V = eigen(t2)
                 @test isisometry(V)
-                D̃, Ṽ = @constinferred eigh(t2)
+                D̃, Ṽ = @constinferred eigh_full(t2)
                 @test D ≈ D̃
                 @test V ≈ Ṽ
                 λ = minimum(minimum(real(LinearAlgebra.diag(b)))
