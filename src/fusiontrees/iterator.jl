@@ -1,6 +1,6 @@
 """
     fusiontrees(uncoupled::NTuple{N,I}[,
-        coupled::I=one(I)[, isdual::NTuple{N,Bool}=ntuple(n -> false, length(uncoupled))]])
+        coupled::I=unit(I)[, isdual::NTuple{N,Bool}=ntuple(n -> false, length(uncoupled))]])
         where {N,I<:Sector} -> FusionTreeIterator{I,N,I}
 
 Return an iterator over all fusion trees with a given coupled sector label `coupled` and
@@ -17,7 +17,7 @@ function fusiontrees(uncoupled::Tuple{Vararg{I}}, coupled::I) where {I <: Sector
     return fusiontrees(uncoupled, coupled, isdual)
 end
 function fusiontrees(uncoupled::Tuple{I, Vararg{I}}) where {I <: Sector}
-    coupled = one(I)
+    coupled = unit(I)
     isdual = ntuple(n -> false, length(uncoupled))
     return fusiontrees(uncoupled, coupled, isdual)
 end
@@ -38,7 +38,7 @@ Base.IteratorEltype(::FusionTreeIterator) = Base.HasEltype()
 Base.eltype(::Type{<:FusionTreeIterator{I, N}}) where {I <: Sector, N} = fusiontreetype(I, N)
 
 Base.length(iter::FusionTreeIterator) = _fusiondim(iter.uncouplediterators, iter.coupled)
-_fusiondim(::Tuple{}, c::I) where {I <: Sector} = Int(isone(c))
+_fusiondim(::Tuple{}, c::I) where {I <: Sector} = Int(isunit(c))
 _fusiondim(iters::NTuple{1}, c::I) where {I <: Sector} = Int(c ∈ iters[1])
 function _fusiondim(iters::NTuple{2}, c::I) where {I <: Sector}
     d = 0
@@ -60,7 +60,7 @@ end
 
 # * Iterator methods:
 #   Start with special cases:
-function Base.iterate(it::FusionTreeIterator{I, 0}, state = !isone(it.coupled)) where {I <: Sector}
+function Base.iterate(it::FusionTreeIterator{I, 0}, state = !isunit(it.coupled)) where {I <: Sector}
     state && return nothing
     tree = FusionTree{I}((), it.coupled, (), (), ())
     return tree, true

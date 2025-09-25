@@ -608,13 +608,13 @@ function ⊠(t1::AbstractTensorMap, t2::AbstractTensorMap)
     dom1 = domain(t1) ⊠ one(S2)
     t1′ = similar(t1, codom1 ← dom1)
     for (c, b) in blocks(t1)
-        copy!(block(t1′, c ⊠ one(I2)), b)
+        copy!(block(t1′, c ⊠ unit(I2)), b)
     end
     codom2 = one(S1) ⊠ codomain(t2)
     dom2 = one(S1) ⊠ domain(t2)
     t2′ = similar(t2, codom2 ← dom2)
     for (c, b) in blocks(t2)
-        copy!(block(t2′, one(I1) ⊠ c), b)
+        copy!(block(t2′, unit(I1) ⊠ c), b)
     end
     return t1′ ⊗ t2′
 end

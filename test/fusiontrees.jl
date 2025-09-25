@@ -26,7 +26,7 @@ ti = time()
         @test eval(Meta.parse(sprint(show, f))) == f
     end
     @testset "Fusion tree $Istr: constructor properties" begin
-        u = one(I)
+        u = unit(I)
         @constinferred FusionTree((), u, (), (), ())
         @constinferred FusionTree((u,), u, (false,), (), ())
         @constinferred FusionTree((u, u), u, (false, false), (), (1,))
@@ -130,7 +130,7 @@ ti = time()
             outgoing = (s, dual(s), s, dual(s), s, dual(s))
             for bool in (true, false)
                 isdual = (bool, !bool, bool, !bool, bool, !bool)
-                for f in fusiontrees(outgoing, one(s), isdual)
+                for f in fusiontrees(outgoing, unit(s), isdual)
                     af = convert(Array, f)
                     T = eltype(af)
 
@@ -570,7 +570,7 @@ ti = time()
     @testset "Double fusion tree $Istr: planar trace" begin
         d1 = transpose(f1, f1, (N + 1, 1:N..., ((2N):-1:(N + 3))...), (N + 2,))
         f1front, = TK.split(f1, N - 1)
-        T = typeof(Fsymbol(one(I), one(I), one(I), one(I), one(I), one(I))[1, 1, 1, 1])
+        T = TensorKitSectors._Fscalartype(I)
         d2 = Dict{typeof((f1front, f1front)), T}()
         for ((f1′, f2′), coeff′) in d1
             for ((f1′′, f2′′), coeff′′) in
