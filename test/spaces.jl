@@ -209,7 +209,8 @@ println("------------------------------------")
         @test @constinferred(unitspace(V)) == W == unitspace(typeof(V))
         @test @constinferred(zerospace(V)) == GradedSpace(unit(I) => 0)
         # randsector never returns trivial sector, so this cannot error
-        @test_throws ArgumentError GradedSpace(unit(I) => 1, randsector(I) => 0, unit(I) => 3)
+        @test_throws ArgumentError GradedSpace(unit(I) => 1, randsector(I) => 0,
+                                               unit(I) => 3)
         @test eval(Meta.parse(sprint(show, W))) == W
         @test isa(V, VectorSpace)
         @test isa(V, ElementarySpace)
