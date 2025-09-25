@@ -48,7 +48,7 @@ sectors(V::CartesianSpace) = OneOrNoneIterator(dim(V) != 0, Trivial())
 sectortype(::Type{CartesianSpace}) = Trivial
 
 unitspace(::Type{CartesianSpace}) = CartesianSpace(1)
-Base.zero(::Type{CartesianSpace}) = CartesianSpace(0)
+zerospace(::Type{CartesianSpace}) = CartesianSpace(0)
 ⊕(V₁::CartesianSpace, V₂::CartesianSpace) = CartesianSpace(V₁.d + V₂.d)
 fuse(V₁::CartesianSpace, V₂::CartesianSpace) = CartesianSpace(V₁.d * V₂.d)
 flip(V::CartesianSpace) = V

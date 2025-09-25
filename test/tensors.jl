@@ -86,7 +86,7 @@ for V in spacelist
                     end
                 end
                 for T in (Int, Float32, ComplexF64)
-                    t = randn(T, V1 ⊗ V2 ← zero(V1))
+                    t = randn(T, V1 ⊗ V2 ← zerospace(V1))
                     a = convert(Array, t)
                     @test norm(a) == 0
                 end
@@ -525,7 +525,7 @@ for V in spacelist
                     end
                 end
                 @testset "empty tensor" begin
-                    t = randn(T, V1 ⊗ V2, zero(V1))
+                    t = randn(T, V1 ⊗ V2, zerospace(V1))
                     @testset "leftorth with $alg" for alg in
                                                       (TensorKit.QR(), TensorKit.QRpos(),
                                                        TensorKit.QL(), TensorKit.QLpos(),
@@ -565,7 +565,7 @@ for V in spacelist
                     end
                     @testset "cond and rank" begin
                         @test rank(t) == 0
-                        W2 = zero(V1) * zero(V2)
+                        W2 = zerospace(V1) * zerospace(V2)
                         t2 = rand(W2, W2)
                         @test rank(t2) == 0
                         @test cond(t2) == 0.0

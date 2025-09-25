@@ -36,7 +36,7 @@ field(::Type{GeneralSpace{𝔽}}) where {𝔽} = 𝔽
 InnerProductStyle(::Type{<:GeneralSpace}) = NoInnerProduct()
 
 unitspace(::Type{GeneralSpace{𝔽}}) where {𝔽} = GeneralSpace{𝔽}(1, false, false)
-Base.zero(::Type{GeneralSpace{𝔽}}) where {𝔽} = GeneralSpace{𝔽}(0, false, false)
+zerospace(::Type{GeneralSpace{𝔽}}) where {𝔽} = GeneralSpace{𝔽}(0, false, false)
 
 dual(V::GeneralSpace{𝔽}) where {𝔽} = GeneralSpace{𝔽}(dim(V), !isdual(V), isconj(V))
 Base.conj(V::GeneralSpace{𝔽}) where {𝔽} = GeneralSpace{𝔽}(dim(V), isdual(V), !isconj(V))
