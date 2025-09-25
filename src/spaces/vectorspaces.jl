@@ -129,7 +129,7 @@ that this is different from `one(V::S)`, which returns the empty product space
 """
 unitspace(V::ElementarySpace) = unitspace(typeof(V))
 Base.oneunit(V::ElementarySpace) = unitspace(V)
-#TODO: add for type
+Base.oneunit(::Type{V}) where {V<:ElementarySpace} = unitspace(V)
 
 """
     zerospace(V::S) where {S<:ElementarySpace} -> S
