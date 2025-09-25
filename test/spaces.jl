@@ -71,11 +71,11 @@ println("------------------------------------")
         @test @constinferred(TensorKit.axes(V)) == Base.OneTo(d)
         @test ℝ^d == ℝ[](d) == CartesianSpace(d) == typeof(V)(d)
         W = @constinferred ℝ^1
-        @test @constinferred(oneunit(V)) == W == oneunit(typeof(V))
+        @test @constinferred(unitspace(V)) == W == unitspace(typeof(V))
         @test @constinferred(zero(V)) == ℝ^0 == zero(typeof(V))
         @test @constinferred(⊕(V, zero(V))) == V
         @test @constinferred(⊕(V, V)) == ℝ^(2d)
-        @test @constinferred(⊕(V, oneunit(V))) == ℝ^(d + 1)
+        @test @constinferred(⊕(V, unitspace(V))) == ℝ^(d + 1)
         @test @constinferred(⊕(V, V, V, V)) == ℝ^(4d)
         @test @constinferred(fuse(V, V)) == ℝ^(d^2)
         @test @constinferred(fuse(V, V', V, V')) == ℝ^(d^4)
@@ -118,7 +118,7 @@ println("------------------------------------")
         @test @constinferred(TensorKit.axes(V)) == Base.OneTo(d)
         @test ℂ^d == Vect[Trivial](d) == Vect[](Trivial() => d) == ℂ[](d) == typeof(V)(d)
         W = @constinferred ℂ^1
-        @test @constinferred(oneunit(V)) == W == oneunit(typeof(V))
+        @test @constinferred(unitspace(V)) == W == unitspace(typeof(V))
         @test @constinferred(zero(V)) == ℂ^0 == zero(typeof(V))
         @test @constinferred(⊕(V, zero(V))) == V
         @test @constinferred(⊕(V, V)) == ℂ^(2d)
@@ -128,7 +128,7 @@ println("------------------------------------")
         # @test_throws promote_except (⊕(ℝ^d, ℂ^d))
         @test_throws ErrorException (⊗(ℝ^d, ℂ^d))
         @test @constinferred(⊕(V, V)) == ℂ^(2d)
-        @test @constinferred(⊕(V, oneunit(V))) == ℂ^(d + 1)
+        @test @constinferred(⊕(V, unitspace(V))) == ℂ^(d + 1)
         @test @constinferred(⊕(V, V, V, V)) == ℂ^(4d)
         @test @constinferred(fuse(V, V)) == ℂ^(d^2)
         @test @constinferred(fuse(V, V', V, V')) == ℂ^(d^4)
@@ -172,7 +172,7 @@ println("------------------------------------")
 
     @timedtestset "ElementarySpace: $(TensorKit.type_repr(Vect[I]))" for I in sectorlist
         if Base.IteratorSize(values(I)) === Base.IsInfinite()
-            set = unique(vcat(one(I), [randsector(I) for k in 1:10]))
+            set = unique(vcat(unit(I), [randsector(I) for k in 1:10]))
             gen = (c => 2 for c in set)
         else
             gen = (values(I)[k] => (k + 1) for k in 1:length(values(I)))
@@ -206,12 +206,12 @@ println("------------------------------------")
         # space with no sectors
         @test dim(@constinferred(zero(V))) == 0
         # space with a single sector
-        W = @constinferred GradedSpace(one(I) => 1)
-        @test W == GradedSpace(one(I) => 1, randsector(I) => 0)
-        @test @constinferred(oneunit(V)) == W == oneunit(typeof(V))
-        @test @constinferred(zero(V)) == GradedSpace(one(I) => 0)
+        W = @constinferred GradedSpace(unit(I) => 1)
+        @test W == GradedSpace(unit(I) => 1, randsector(I) => 0)
+        @test @constinferred(unitspace(V)) == W == unitspace(typeof(V))
+        @test @constinferred(zero(V)) == GradedSpace(unit(I) => 0)
         # randsector never returns trivial sector, so this cannot error
-        @test_throws ArgumentError GradedSpace(one(I) => 1, randsector(I) => 0, one(I) => 3)
+        @test_throws ArgumentError GradedSpace(unit(I) => 1, randsector(I) => 0, unit(I) => 3)
         @test eval(Meta.parse(sprint(show, W))) == W
         @test isa(V, VectorSpace)
         @test isa(V, ElementarySpace)
@@ -234,9 +234,9 @@ println("------------------------------------")
         @test @constinferred(⊕(V, zero(V))) == V
         @test @constinferred(⊕(V, V)) == Vect[I](c => 2dim(V, c) for c in sectors(V))
         @test @constinferred(⊕(V, V, V, V)) == Vect[I](c => 4dim(V, c) for c in sectors(V))
-        @test @constinferred(⊕(V, oneunit(V))) ==
-              Vect[I](c => isone(c) + dim(V, c) for c in sectors(V))
-        @test @constinferred(fuse(V, oneunit(V))) == V
+        @test @constinferred(⊕(V, unitspace(V))) ==
+              Vect[I](c => isunit(c) + dim(V, c) for c in sectors(V))
+        @test @constinferred(fuse(V, unitspace(V))) == V
         d = Dict{I,Int}()
         for a in sectors(V), b in sectors(V)
             for c in a ⊗ b
@@ -253,7 +253,7 @@ println("------------------------------------")
         @test V == @constinferred infimum(V, ⊕(V, V))
         @test V ≺ ⊕(V, V)
         @test !(V ≻ ⊕(V, V))
-        @test infimum(V, GradedSpace(one(I) => 3)) == GradedSpace(one(I) => 2)
+        @test infimum(V, GradedSpace(unit(I) => 3)) == GradedSpace(unit(I) => 2)
         @test_throws SpaceMismatch (⊕(V, V'))
     end
 
@@ -278,10 +278,10 @@ println("------------------------------------")
         @test @constinferred(⊗(V1 ⊗ V2, V3 ⊗ V4)) == P
         @test @constinferred(⊗(V1, V2, V3 ⊗ V4)) == P
         @test @constinferred(⊗(V1, V2 ⊗ V3, V4)) == P
-        @test V1 * V2 * oneunit(V1) * V3 * V4 ==
+        @test V1 * V2 * unitspace(V1) * V3 * V4 ==
               @constinferred(insertleftunit(P, 3)) ==
               @constinferred(insertrightunit(P, 2))
-        @test @constinferred(removeunit(V1 * V2 * oneunit(V1)' * V3 * V4, 3)) == P
+        @test @constinferred(removeunit(V1 * V2 * unitspace(V1)' * V3 * V4, 3)) == P
         @test fuse(V1, V2', V3) ≅ V1 ⊗ V2' ⊗ V3
         @test fuse(V1, V2', V3) ≾ V1 ⊗ V2' ⊗ V3
         @test fuse(V1, V2', V3) ≿ V1 ⊗ V2' ⊗ V3
@@ -342,7 +342,7 @@ println("------------------------------------")
         @test @constinferred(*(V1, V2, V3)) == P
         @test @constinferred(⊗(V1, V2, V3)) == P
         @test @constinferred(adjoint(P)) == dual(P) == V3' ⊗ V2' ⊗ V1'
-        @test V1 * V2 * oneunit(V1)' * V3 ==
+        @test V1 * V2 * unitspace(V1)' * V3 ==
               @constinferred(insertleftunit(P, 3; conj=true)) ==
               @constinferred(insertrightunit(P, 2; conj=true))
         @test P == @constinferred(removeunit(insertleftunit(P, 3), 3))
@@ -424,22 +424,22 @@ println("------------------------------------")
             @test W == @constinferred permute(W, ((1, 2), (3, 4, 5)))
             @test permute(W, ((2, 4, 5), (3, 1))) == (V2 ⊗ V4' ⊗ V5' ← V3 ⊗ V1')
             @test (V1 ⊗ V2 ← V1 ⊗ V2) == @constinferred TensorKit.compose(W, W')
-            @test (V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5 ⊗ oneunit(V5)) ==
+            @test (V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5 ⊗ unitspace(V5)) ==
                   @constinferred(insertleftunit(W)) ==
                   @constinferred(insertrightunit(W))
             @test @constinferred(removeunit(insertleftunit(W), $(numind(W) + 1))) == W
-            @test (V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5 ⊗ oneunit(V5)') ==
+            @test (V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5 ⊗ unitspace(V5)') ==
                   @constinferred(insertleftunit(W; conj=true)) ==
                   @constinferred(insertrightunit(W; conj=true))
-            @test (oneunit(V1) ⊗ V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5) ==
+            @test (unitspace(V1) ⊗ V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5) ==
                   @constinferred(insertleftunit(W, 1)) ==
                   @constinferred(insertrightunit(W, 0))
-            @test (V1 ⊗ V2 ⊗ oneunit(V1) ← V3 ⊗ V4 ⊗ V5) ==
+            @test (V1 ⊗ V2 ⊗ unitspace(V1) ← V3 ⊗ V4 ⊗ V5) ==
                   @constinferred(insertrightunit(W, 2))
-            @test (V1 ⊗ V2 ← oneunit(V1) ⊗ V3 ⊗ V4 ⊗ V5) ==
+            @test (V1 ⊗ V2 ← unitspace(V1) ⊗ V3 ⊗ V4 ⊗ V5) ==
                   @constinferred(insertleftunit(W, 3))
             @test @constinferred(removeunit(insertleftunit(W, 3), 3)) == W
-            @test @constinferred(insertrightunit(one(V1) ← V1, 0)) == (oneunit(V1) ← V1)
+            @test @constinferred(insertrightunit(one(V1) ← V1, 0)) == (unitspace(V1) ← V1)
             @test_throws BoundsError insertleftunit(one(V1) ← V1, 0)
         end
     end

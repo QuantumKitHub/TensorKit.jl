@@ -346,7 +346,7 @@ end
 #         rmul!(C, β)
 #     end
 #     I = sectortype(B)
-#     u = one(I)
+#     u = unit(I)
 #     f₀ = FusionTree{I}((), u, (), (), ())
 #     braidingtensor_levels = A.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
 #     inv_braid = braidingtensor_levels[cindA[2]] > braidingtensor_levels[cindA[3]]
@@ -414,7 +414,7 @@ end
 #         rmul!(C, β)
 #     end
 #     I = sectortype(B)
-#     u = one(I)
+#     u = unit(I)
 #     f₀ = FusionTree{I}((), u, (), (), ())
 #     braidingtensor_levels = B.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
 #     inv_braid = braidingtensor_levels[cindB[2]] > braidingtensor_levels[cindB[3]]
@@ -481,7 +481,7 @@ end
 #         rmul!(C, β)
 #     end
 #     I = sectortype(B)
-#     u = one(I)
+#     u = unit(I)
 #     braidingtensor_levels = A.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
 #     inv_braid = braidingtensor_levels[cindA[2]] > braidingtensor_levels[cindA[3]]
 #     for (f₁, f₂) in fusiontrees(B)
@@ -543,7 +543,7 @@ end
 #         rmul!(C, β)
 #     end
 #     I = sectortype(B)
-#     u = one(I)
+#     u = unit(I)
 #     braidingtensor_levels = B.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
 #     inv_braid = braidingtensor_levels[cindB[2]] > braidingtensor_levels[cindB[3]]
 #     for (f₁, f₂) in fusiontrees(A)

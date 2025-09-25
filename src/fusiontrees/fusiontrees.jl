@@ -32,7 +32,7 @@ struct FusionTree{I<:Sector,N,M,L}
                                  vertices::NTuple{L,Int}) where
              {I<:Sector,N,M,L}
         # if N == 0
-        #     @assert coupled == one(coupled)
+        #     @assert coupled == unit(coupled)
         # elseif N == 1
         #     @assert coupled == uncoupled[1]
         # elseif N == 2
@@ -78,7 +78,7 @@ function FusionTree(uncoupled::NTuple{N,I}, coupled::I,
     end
 end
 
-function FusionTree{I}(uncoupled::NTuple{N}, coupled=one(I),
+function FusionTree{I}(uncoupled::NTuple{N}, coupled=unit(I),
                        isdual=ntuple(n -> false, N)) where {I<:Sector,N}
     FusionStyle(I) isa UniqueFusion ||
         error("fusion tree requires inner lines if `FusionStyle(I) <: MultipleFusion`")
@@ -90,7 +90,7 @@ function FusionTree(uncoupled::NTuple{N,I}, coupled::I,
                     isdual=ntuple(n -> false, length(uncoupled))) where {N,I<:Sector}
     return FusionTree{I}(uncoupled, coupled, isdual)
 end
-FusionTree(uncoupled::Tuple{I,Vararg{I}}) where {I<:Sector} = FusionTree(uncoupled, one(I))
+FusionTree(uncoupled::Tuple{I,Vararg{I}}) where {I<:Sector} = FusionTree(uncoupled, unit(I))
 
 # Properties
 sectortype(::Type{<:FusionTree{I}}) where {I<:Sector} = I
@@ -146,17 +146,17 @@ end
 
 # converting to actual array
 function Base.convert(A::Type{<:AbstractArray}, f::FusionTree{I,0}) where {I}
-    X = convert(A, fusiontensor(one(I), one(I), one(I)))[1, 1, :]
+    X = convert(A, fusiontensor(unit(I), unit(I), unit(I)))[1, 1, :]
     return X
 end
 function Base.convert(A::Type{<:AbstractArray}, f::FusionTree{I,1}) where {I}
     c = f.coupled
     if f.isdual[1]
-        sqrtdc = sqrtdim(c)
-        Zcbartranspose = sqrtdc * convert(A, fusiontensor(conj(c), c, one(c)))[:, :, 1, 1]
+        sqrtdc = sqrtdim(c) # TODO: change conj to dual
+        Zcbartranspose = sqrtdc * convert(A, fusiontensor(conj(c), c, unit(c)))[:, :, 1, 1]
         X = conj!(Zcbartranspose) # we want Zcbar^†
     else
-        X = convert(A, fusiontensor(c, one(c), c))[:, 1, :, 1, 1]
+        X = convert(A, fusiontensor(c, unit(c), c))[:, 1, :, 1, 1]
     end
     return X
 end
@@ -234,13 +234,13 @@ include("iterator.jl")
 # _abelianinner: generate the inner indices for given outer indices in the abelian case
 _abelianinner(outer::Tuple{}) = ()
 function _abelianinner(outer::Tuple{I}) where {I<:Sector}
-    return isone(outer[1]) ? () : throw(SectorMismatch())
+    return isunit(outer[1]) ? () : throw(SectorMismatch())
 end
 function _abelianinner(outer::Tuple{I,I}) where {I<:Sector}
     return outer[1] == dual(outer[2]) ? () : throw(SectorMismatch())
 end
 function _abelianinner(outer::Tuple{I,I,I}) where {I<:Sector}
-    return isone(first(⊗(outer...))) ? () : throw(SectorMismatch())
+    return isunit(first(⊗(outer...))) ? () : throw(SectorMismatch())
 end
 function _abelianinner(outer::Tuple{I,I,I,I,Vararg{I}}) where {I<:Sector}
     c = first(outer[1] ⊗ outer[2])

@@ -23,7 +23,7 @@ function ⊠(V::GradedSpace, P₀::ProductSpace{<:ElementarySpace,0})
     field(V) == field(P₀) || throw_incompatible_fields(V, P₀)
     I₁ = sectortype(V)
     I₂ = sectortype(P₀)
-    return Vect[I₁ ⊠ I₂](ifelse(isdual(V), dual(c), c) ⊠ one(I₂) => dim(V, c)
+    return Vect[I₁ ⊠ I₂](ifelse(isdual(V), dual(c), c) ⊠ unit(I₂) => dim(V, c)
                          for c in sectors(V); dual=isdual(V))
 end
 
@@ -31,20 +31,20 @@ function ⊠(P₀::ProductSpace{<:ElementarySpace,0}, V::GradedSpace)
     field(P₀) == field(V) || throw_incompatible_fields(P₀, V)
     I₁ = sectortype(P₀)
     I₂ = sectortype(V)
-    return Vect[I₁ ⊠ I₂](one(I₁) ⊠ ifelse(isdual(V), dual(c), c) => dim(V, c)
+    return Vect[I₁ ⊠ I₂](unit(I₁) ⊠ ifelse(isdual(V), dual(c), c) => dim(V, c)
                          for c in sectors(V); dual=isdual(V))
 end
 
 function ⊠(V::ComplexSpace, P₀::ProductSpace{<:ElementarySpace,0})
     field(V) == field(P₀) || throw_incompatible_fields(V, P₀)
     I₂ = sectortype(P₀)
-    return Vect[I₂](one(I₂) => dim(V); dual=isdual(V))
+    return Vect[I₂](unit(I₂) => dim(V); dual=isdual(V))
 end
 
 function ⊠(P₀::ProductSpace{<:ElementarySpace,0}, V::ComplexSpace)
     field(P₀) == field(V) || throw_incompatible_fields(P₀, V)
     I₁ = sectortype(P₀)
-    return Vect[I₁](one(I₁) => dim(V); dual=isdual(V))
+    return Vect[I₁](unit(I₁) => dim(V); dual=isdual(V))
 end
 
 function ⊠(P::ProductSpace{<:ElementarySpace,0}, P₀::ProductSpace{<:ElementarySpace,0})
