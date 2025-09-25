@@ -4,6 +4,7 @@ println("------------------------------------")
 ti = time()
 @timedtestset "Fusion trees for $(TensorKit.type_repr(I))" verbose = true for I in
                                                                               sectorlist
+
     Istr = TensorKit.type_repr(I)
     N = 5
     out = ntuple(n -> randsector(I), N)
@@ -548,7 +549,8 @@ ti = time()
     @testset "Double fusion tree $Istr: planar trace" begin
         d1 = transpose(f1, f1, (N + 1, 1:N..., ((2N):-1:(N + 3))...), (N + 2,))
         f1front, = TK.split(f1, N - 1)
-        T = typeof(Fsymbol(unit(I), unit(I), unit(I), unit(I), unit(I), unit(I))[1, 1, 1, 1]) #TODO: change to _fscalartype
+        T = typeof(Fsymbol(unit(I), unit(I), unit(I), unit(I), unit(I), unit(I))[1, 1, 1,
+                                                                                 1]) #TODO: change to _fscalartype
         d2 = Dict{typeof((f1front, f1front)),T}()
         for ((f1′, f2′), coeff′) in d1
             for ((f1′′, f2′′), coeff′′) in
