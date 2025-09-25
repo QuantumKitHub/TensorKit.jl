@@ -80,7 +80,7 @@ Base.adjoint(V::VectorSpace) = dual(V)
 """
     isdual(V::ElementarySpace) -> Bool
 
-Return wether an ElementarySpace `V` is normal or rather a dual space. Always returns
+Return whether an ElementarySpace `V` is normal or rather a dual space. Always returns
 `false` for spaces where `V == dual(V)`.
 """
 function isdual end
@@ -120,14 +120,15 @@ Return the sum of all degeneracy dimensions of the vector space `V`.
 reduceddim(V::ElementarySpace) = sum(Base.Fix1(dim, V), sectors(V); init=0)
 
 """
-    oneunit(V::S) where {S<:ElementarySpace} -> S
+    unitspace(V::S) where {S<:ElementarySpace} -> S
 
 Return the corresponding vector space of type `S` that represents the trivial
 one-dimensional space, i.e. the space that is isomorphic to the corresponding field. Note
 that this is different from `one(V::S)`, which returns the empty product space
-`ProductSpace{S,0}(())`.
+`ProductSpace{S,0}(())`. `Base.oneunit` falls back to `unitspace`.
 """
-Base.oneunit(V::ElementarySpace) = oneunit(typeof(V))
+unitspace(V::ElementarySpace) = unitspace(typeof(V))
+Base.oneunit(V::ElementarySpace) = unitspace(V)
 
 """
     zero(V::S) where {S<:ElementarySpace} -> S
@@ -135,6 +136,7 @@ Base.oneunit(V::ElementarySpace) = oneunit(typeof(V))
 Return the corresponding vector space of type `S` that represents the zero-dimensional or empty space.
 This is, with a slight abuse of notation, the zero element of the direct sum of vector spaces. 
 """
+#TODO: zerospace?
 Base.zero(V::ElementarySpace) = zero(typeof(V))
 
 """
