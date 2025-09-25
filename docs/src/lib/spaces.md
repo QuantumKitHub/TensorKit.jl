@@ -92,7 +92,7 @@ flip
 ⊕
 ⊖
 zero(::ElementarySpace)
-oneunit
+unitspace
 supremum
 infimum
 ```

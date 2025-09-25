@@ -230,6 +230,7 @@ end
 Return a tensor product of zero spaces of type `S`, i.e. this is the unit object under the
 tensor product operation, such that `V ⊗ one(V) == V`.
 """
+#TODO: unit(V::S)?
 Base.one(V::VectorSpace) = one(typeof(V))
 Base.one(::Type{<:ProductSpace{S}}) where {S <: ElementarySpace} = ProductSpace{S, 0}(())
 Base.one(::Type{S}) where {S <: ElementarySpace} = ProductSpace{S, 0}(())
@@ -240,8 +241,8 @@ function Base.literal_pow(::typeof(^), V::ElementarySpace, p::Val{N}) where {N}
     return ProductSpace{typeof(V), N}(ntuple(n -> V, p))
 end
 
-fuse(P::ProductSpace{S, 0}) where {S <: ElementarySpace} = oneunit(S)
-fuse(P::ProductSpace{S}) where {S <: ElementarySpace} = fuse(P.spaces...)
+fuse(P::ProductSpace{S,0}) where {S<:ElementarySpace} = unitspace(S)
+fuse(P::ProductSpace{S}) where {S<:ElementarySpace} = fuse(P.spaces...)
 
 """
     insertleftunit(P::ProductSpace, i::Int=length(P) + 1; conj=false, dual=false)
@@ -252,10 +253,9 @@ More specifically, adds a left monoidal unit or its dual.
 
 See also [`insertrightunit`](@ref insertrightunit(::ProductSpace, ::Val{i}) where {i}), [`removeunit`](@ref removeunit(::ProductSpace, ::Val{i}) where {i}).
 """
-function insertleftunit(
-        P::ProductSpace, ::Val{i} = Val(length(P) + 1); conj::Bool = false, dual::Bool = false
-    ) where {i}
-    u = oneunit(spacetype(P))
+function insertleftunit(P::ProductSpace, ::Val{i}=Val(length(P) + 1);
+                        conj::Bool=false, dual::Bool=false) where {i}
+    u = unitspace(spacetype(P))
     if dual
         u = TensorKit.dual(u)
     end
@@ -274,10 +274,9 @@ More specifically, adds a right monoidal unit or its dual.
 
 See also [`insertleftunit`](@ref insertleftunit(::ProductSpace, ::Val{i}) where {i}), [`removeunit`](@ref removeunit(::ProductSpace, ::Val{i}) where {i}).
 """
-function insertrightunit(
-        P::ProductSpace, ::Val{i} = Val(length(P)); conj::Bool = false, dual::Bool = false
-    ) where {i}
-    u = oneunit(spacetype(P))
+function insertrightunit(P::ProductSpace, ::Val{i}=Val(length(P));
+                         conj::Bool=false, dual::Bool=false) where {i}
+    u = unitspace(spacetype(P))
     if dual
         u = TensorKit.dual(u)
     end
@@ -299,7 +298,7 @@ and [`insertrightunit`](@ref insertrightunit(::ProductSpace, ::Val{i}) where {i}
 """
 function removeunit(P::ProductSpace, ::Val{i}) where {i}
     1 ≤ i ≤ length(P) || _boundserror(P, i)
-    isisomorphic(P[i], oneunit(P[i])) || _nontrivialspaceerror(P, i)
+    isisomorphic(P[i], unitspace(P[i])) || _nontrivialspaceerror(P, i)
     return ProductSpace{spacetype(P)}(TupleTools.deleteat(P.spaces, i))
 end
 
@@ -326,8 +325,8 @@ function Base.promote_rule(::Type{S}, ::Type{<:ProductSpace{S}}) where {S <: Ele
 end
 
 # ProductSpace to ElementarySpace
-Base.convert(::Type{S}, P::ProductSpace{S, 0}) where {S <: ElementarySpace} = oneunit(S)
-Base.convert(::Type{S}, P::ProductSpace{S}) where {S <: ElementarySpace} = fuse(P.spaces...)
+Base.convert(::Type{S}, P::ProductSpace{S,0}) where {S<:ElementarySpace} = unitspace(S)
+Base.convert(::Type{S}, P::ProductSpace{S}) where {S<:ElementarySpace} = fuse(P.spaces...)
 
 # ElementarySpace to ProductSpace
 Base.convert(::Type{<:ProductSpace}, V::S) where {S <: ElementarySpace} = ⊗(V)
