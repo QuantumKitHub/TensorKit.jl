@@ -152,8 +152,8 @@ end
 function Base.convert(A::Type{<:AbstractArray}, f::FusionTree{I,1}) where {I}
     c = f.coupled
     if f.isdual[1]
-        sqrtdc = sqrtdim(c) # TODO: change conj to dual
-        Zcbartranspose = sqrtdc * convert(A, fusiontensor(conj(c), c, unit(c)))[:, :, 1, 1]
+        sqrtdc = sqrtdim(c)
+        Zcbartranspose = sqrtdc * convert(A, fusiontensor(dual(c), c, unit(c)))[:, :, 1, 1]
         X = conj!(Zcbartranspose) # we want Zcbar^†
     else
         X = convert(A, fusiontensor(c, unit(c), c))[:, 1, :, 1, 1]
