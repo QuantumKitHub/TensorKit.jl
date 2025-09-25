@@ -49,11 +49,20 @@ for f! in (:lq_full!, :lq_compact!)
     end
 end
 
-function initialize_output(::typeof(left_orth!), d::AdjointTensorMap)
+function initialize_output(::typeof(left_orth!), d::DiagonalTensorMap)
     return d, similar(d)
 end
-function initialize_output(::typeof(right_orth!), d::AdjointTensorMap)
+function initialize_output(::typeof(right_orth!), d::DiagonalTensorMap)
     return similar(d), d
+end
+
+function initialize_output(::typeof(svd_full!), t::AbstractTensorMap, ::DiagonalAlgorithm)
+    V_cod = fuse(codomain(t))
+    V_dom = fuse(domain(t))
+    U = similar(t, codomain(t) ← V_cod)
+    S = DiagonalTensorMap{real(scalartype(t))}(undef, V_cod ← V_dom)
+    Vᴴ = similar(t, V_dom ← domain(t))
+    return U, S, Vᴴ
 end
 
 for f! in
