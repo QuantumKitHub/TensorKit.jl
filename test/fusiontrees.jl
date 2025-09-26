@@ -2,9 +2,9 @@ println("------------------------------------")
 println("Fusion Trees")
 println("------------------------------------")
 ti = time()
-@timedtestset "Fusion trees for $(TensorKit.type_repr(I))" verbose = true for I in
+@timedtestset "Fusion trees for $(TK.type_repr(I))" verbose = true for I in
     sectorlist
-    Istr = TensorKit.type_repr(I)
+    Istr = TK.type_repr(I)
     N = 5
     out = ntuple(n -> randsector(I), N)
     isdual = ntuple(n -> rand(Bool), N)
@@ -446,12 +446,12 @@ ti = time()
                 ip = invperm(p)
                 ip1, ip2 = ip[1:N], ip[(N + 1):(2N)]
 
-                d = @constinferred TensorKit.permute(f1, f2, p1, p2)
+                d = @constinferred TK.permute(f1, f2, p1, p2)
                 @test dim(incoming) ≈
                     sum(abs2(coef) * dim(f1.coupled) for ((f1, f2), coef) in d)
                 d2 = Dict{typeof((f1, f2)), valtype(d)}()
                 for ((f1′, f2′), coeff) in d
-                    d′ = TensorKit.permute(f1′, f2′, ip1, ip2)
+                    d′ = TK.permute(f1′, f2′, ip1, ip2)
                     for ((f1′′, f2′′), coeff2) in d′
                         d2[(f1′′, f2′′)] = get(d2, (f1′′, f2′′), zero(coeff)) +
                             coeff2 * coeff
@@ -590,7 +590,7 @@ ti = time()
             end
         end
     end
-    TensorKit.empty_globalcaches!()
+    TK.empty_globalcaches!()
 end
 tf = time()
 printstyled(

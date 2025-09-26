@@ -32,7 +32,7 @@ diagspacelist = (
             b2 = @constinferred block(t, first(blocksectors(t)))
             @test b1 == b2
             @test eltype(bs) === Pair{typeof(c), typeof(b1)}
-            @test typeof(b1) === TensorKit.blocktype(t)
+            @test typeof(b1) === TK.blocktype(t)
             # basic linear algebra
             @test isa(@constinferred(norm(t)), real(T))
             @test norm(t)^2 ≈ dot(t, t)

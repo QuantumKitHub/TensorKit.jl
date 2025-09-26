@@ -17,7 +17,7 @@ end
 
 for V in spacelist
     I = sectortype(first(V))
-    Istr = TensorKit.type_repr(I)
+    Istr = TK.type_repr(I)
     println("---------------------------------------")
     println("Tensors with symmetry: $Istr")
     println("---------------------------------------")
@@ -42,7 +42,7 @@ for V in spacelist
                 b2 = @constinferred block(t, first(blocksectors(t)))
                 @test b1 == b2
                 @test eltype(bs) === Pair{typeof(c), typeof(b1)}
-                @test typeof(b1) === TensorKit.blocktype(t)
+                @test typeof(b1) === TK.blocktype(t)
                 @test typeof(c) === sectortype(t)
             end
         end
@@ -104,7 +104,7 @@ for V in spacelist
                 b2 = @constinferred block(t', first(blocksectors(t')))
                 @test b1 == b2
                 @test eltype(bs) === Pair{typeof(c), typeof(b1)}
-                @test typeof(b1) === TensorKit.blocktype(t')
+                @test typeof(b1) === TK.blocktype(t')
                 @test typeof(c) === sectortype(t)
                 # linear algebra
                 @test isa(@constinferred(norm(t)), real(T))
@@ -550,7 +550,7 @@ for V in spacelist
             @test t3 ≈ t4
         end
     end
-    TensorKit.empty_globalcaches!()
+    TK.empty_globalcaches!()
 end
 
 @timedtestset "Deligne tensor product: test via conversion" begin
