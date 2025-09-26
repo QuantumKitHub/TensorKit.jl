@@ -40,11 +40,11 @@ function FiniteDifferences.to_vec(t::TK.SectorDict)
         x = T <: Real ? x_real : reinterpret(T, x_real)
         ctr = 0
         return TK.SectorDict(c => (n = length(b);
-                                          b′ = reshape(view(x, ctr .+ (1:n)), size(b)) ./
-                                               sqrt(dim(c));
-                                          ctr += n;
-                                          b′)
-                                    for (c, b) in t)
+                                   b′ = reshape(view(x, ctr .+ (1:n)), size(b)) ./
+                                        sqrt(dim(c));
+                                   ctr += n;
+                                   b′)
+                             for (c, b) in t)
     end
     return vec_real, from_vec
 end
@@ -135,7 +135,7 @@ Vlist = ((ℂ^2, (ℂ^3)', ℂ^3, ℂ^2, (ℂ^2)'),
           ℂ[FibonacciAnyon](:I => 2, :τ => 2)))
 
 @timedtestset "Automatic Differentiation with spacetype $(TK.type_repr(eltype(V)))" verbose = true for V in
-                                                                                                              Vlist
+                                                                                                       Vlist
     eltypes = isreal(sectortype(eltype(V))) ? (Float64, ComplexF64) : (ComplexF64,)
     symmetricbraiding = BraidingStyle(sectortype(eltype(V))) isa SymmetricBraiding
 
@@ -429,7 +429,7 @@ Vlist = ((ℂ^2, (ℂ^3)', ℂ^3, ℂ^2, (ℂ^2)'),
             test_rrule(tsvd, B; atol, output_tangent=(ΔU, ΔS, ΔV, 0.0))
 
             Vtrunc = spacetype(S)(TK.SectorDict(c => ceil(Int, size(b, 1) / 2)
-                                                       for (c, b) in blocks(S)))
+                                                for (c, b) in blocks(S)))
 
             U, S, V, ϵ = tsvd(B; trunc=truncspace(Vtrunc))
             ΔU = randn(scalartype(U), space(U))
@@ -448,7 +448,7 @@ Vlist = ((ℂ^2, (ℂ^3)', ℂ^3, ℂ^2, (ℂ^2)'),
             test_rrule(tsvd, C; atol, output_tangent=(ΔU, ΔS, ΔV, 0.0))
 
             c, = TK.MatrixAlgebra._argmax(x -> sqrt(dim(x[1])) * maximum(diag(x[2])),
-                                                 blocks(S))
+                                          blocks(S))
             trunc = truncdim(round(Int, 2 * dim(c)))
             U, S, V, ϵ = tsvd(C; trunc)
             ΔU = randn(scalartype(U), space(U))

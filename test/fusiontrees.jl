@@ -3,8 +3,7 @@ println("Fusion Trees")
 println("------------------------------------")
 ti = time()
 @timedtestset "Fusion trees for $(TK.type_repr(I))" verbose = true for I in
-                                                                              sectorlist
-
+                                                                       sectorlist
     Istr = TK.type_repr(I)
     N = 5
     out = ntuple(n -> randsector(I), N)
