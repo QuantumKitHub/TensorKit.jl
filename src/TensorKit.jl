@@ -82,9 +82,6 @@ export left_orth, right_orth, left_null, right_null,
        eigh_vals!, eigh_vals, eig_vals!, eig_vals,
        isposdef, isposdef!, ishermitian, isisometry, isunitary, sylvester, rank, cond
 
-# deprecate:
-export eig, eig!, eigh, eigh!, eigen, eigen!, tsvd, tsvd!, leftorth, leftorth!, rightorth,
-       rightorth!, leftnull, leftnull!, rightnull, rightnull!
 export braid, braid!, permute, permute!, transpose, transpose!, twist, twist!, repartition,
        repartition!
 export catdomain, catcodomain, absorb, absorb!

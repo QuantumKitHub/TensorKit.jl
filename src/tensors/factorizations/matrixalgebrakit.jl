@@ -611,11 +611,17 @@ function left_orth!(t::AbstractTensorMap;
     trunc == notrunc() || kind === :svd ||
         throw(ArgumentError("truncation not supported for left_orth with kind = $kind"))
 
-    kind === :qr && return qr_compact!(t; alg_qr...)
-    kind === :polar && return left_orth_polar!(t; alg_polar...)
-    kind === :svd && return left_orth_svd!(t; trunc, alg_svd...)
-
-    throw(ArgumentError(lazy"`left_orth!` received unknown value `kind = $kind`"))
+    return if kind === :qr
+        alg_qr isa NamedTuple ? qr_compact!(t; alg_qr...) : qr_compact!(t; alg=alg_qr)
+    elseif kind === :polar
+        alg_polar isa NamedTuple ? left_orth_polar!(t; alg_polar...) :
+        left_orth_polar!(t; alg=alg_polar)
+    elseif kind === :svd
+        alg_svd isa NamedTuple ? left_orth_svd!(t; trunc, alg_svd...) :
+        left_orth_svd!(t; trunc, alg=alg_svd)
+    else
+        throw(ArgumentError(lazy"`left_orth!` received unknown value `kind = $kind`"))
+    end
 end
 function right_orth!(t::AbstractTensorMap;
                      trunc::TruncationStrategy=notrunc(),
@@ -624,11 +630,17 @@ function right_orth!(t::AbstractTensorMap;
     trunc == notrunc() || kind === :svd ||
         throw(ArgumentError("truncation not supported for right_orth with kind = $kind"))
 
-    kind === :lq && return lq_compact!(t; alg_lq...)
-    kind === :polar && return right_orth_polar!(t; alg_polar...)
-    kind === :svd && return right_orth_svd!(t; trunc, alg_svd...)
-
-    throw(ArgumentError(lazy"`right_orth!` received unknown value `kind = $kind`"))
+    return if kind === :lq
+        alg_lq isa NamedTuple ? lq_compact!(t; alg_lq...) : lq_compact!(t; alg=alg_lq)
+    elseif kind === :polar
+        alg_polar isa NamedTuple ? right_orth_polar!(t; alg_polar...) :
+        right_orth_polar!(t; alg=alg_polar)
+    elseif kind === :svd
+        alg_svd isa NamedTuple ? right_orth_svd!(t; trunc, alg_svd...) :
+        right_orth_svd!(t; trunc, alg=alg_svd)
+    else
+        throw(ArgumentError(lazy"`right_orth!` received unknown value `kind = $kind`"))
+    end
 end
 
 function left_orth_polar!(t::AbstractTensorMap; alg=nothing, kwargs...)

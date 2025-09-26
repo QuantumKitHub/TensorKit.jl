@@ -65,7 +65,7 @@ function ChainRulesCore.rrule(::typeof(LinearAlgebra.eigvals!), t::AbstractTenso
 end
 
 function ChainRulesCore.rrule(::typeof(leftorth!), t::AbstractTensorMap; alg=QRpos())
-    alg isa TensorKit.QR || alg isa TensorKit.QRpos ||
+    alg isa MatrixAlgebraKit.LAPACK_HouseholderQR ||
         error("only `alg=QR()` and `alg=QRpos()` are supported")
     QR = leftorth(t; alg)
     function leftorth!_pullback(ΔQR′)
@@ -85,7 +85,7 @@ function ChainRulesCore.rrule(::typeof(leftorth!), t::AbstractTensorMap; alg=QRp
 end
 
 function ChainRulesCore.rrule(::typeof(rightorth!), t::AbstractTensorMap; alg=LQpos())
-    alg isa TensorKit.LQ || alg isa TensorKit.LQpos ||
+    alg isa MatrixAlgebraKit.LAPACK_HouseholderLQ ||
         error("only `alg=LQ()` and `alg=LQpos()` are supported")
     LQ = rightorth(t; alg)
     function rightorth!_pullback(ΔLQ′)
