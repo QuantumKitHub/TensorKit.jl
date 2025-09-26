@@ -216,7 +216,7 @@ ti = time()
             end
         end
     end
-    @testset "Fusion tree $Istr: elementy artin braid" begin
+    @testset "Fusion tree $Istr: elementary artin braid" begin
         N = length(out)
         isdual = ntuple(n -> rand(Bool), N)
         for in in ⊗(out...)
@@ -273,7 +273,7 @@ ti = time()
         end
     end
     @testset "Fusion tree $Istr: braiding and permuting" begin
-        f = rand(collect(fusiontrees(out, in, isdual)))
+        f = rand(collect(it))
         p = tuple(randperm(N)...)
         ip = invperm(p)
 
@@ -389,7 +389,7 @@ ti = time()
     f1 = rand(collect(fusiontrees(out, incoming, ntuple(n -> rand(Bool), N))))
     f2 = rand(collect(fusiontrees(out[randperm(N)], incoming, ntuple(n -> rand(Bool), N))))
 
-    @testset "Double fusion tree $Istr: repartioning" begin
+    @testset "Double fusion tree $Istr: repartitioning" begin
         for n in 0:(2 * N)
             d = @constinferred TK.repartition(f1, f2, $n)
             @test dim(incoming) ≈

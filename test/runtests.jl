@@ -3,7 +3,7 @@ using TestExtras
 using Random
 using TensorKit
 using Combinatorics
-using TensorKit: ProductSector, fusiontensor, pentagon_equation, hexagon_equation
+using TensorKit: ProductSector, fusiontensor
 using TensorOperations
 using Base.Iterators: take, product
 # using SUNRepresentations: SUNIrrep
