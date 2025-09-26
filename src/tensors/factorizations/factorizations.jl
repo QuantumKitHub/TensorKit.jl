@@ -12,7 +12,8 @@ export qr_full!, qr_compact!, qr_null!
 export lq_full, lq_compact, lq_null
 export lq_full!, lq_compact!, lq_null!
 export copy_oftype, permutedcopy_oftype, factorisation_scalartype, one!
-export TruncationScheme, notrunc, truncbelow, truncerr, truncdim, truncspace, PolarViaSVD
+export TruncationScheme, notrunc, trunctol, truncerror, truncrank, truncspace, truncfilter,
+       PolarViaSVD
 
 using ..TensorKit
 using ..TensorKit: AdjointTensorMap, SectorDict, blocktype, foreachblock, one!
@@ -23,12 +24,13 @@ import LinearAlgebra: eigen, eigen!, isposdef, isposdef!, ishermitian
 using TensorOperations: Index2Tuple
 
 using MatrixAlgebraKit
-using MatrixAlgebraKit: AbstractAlgorithm, TruncatedAlgorithm, TruncationStrategy,
-                        NoTruncation, TruncationKeepAbove, TruncationKeepBelow,
-                        TruncationIntersection, TruncationKeepFiltered, PolarViaSVD,
-                        LAPACK_SVDAlgorithm, LAPACK_QRIteration, LAPACK_HouseholderQR,
-                        LAPACK_HouseholderLQ, LAPACK_HouseholderQL, LAPACK_HouseholderRQ,
-                        DiagonalAlgorithm
+using MatrixAlgebraKit: AbstractAlgorithm, TruncatedAlgorithm, DiagonalAlgorithm
+using MatrixAlgebraKit: TruncationStrategy, NoTruncation, TruncationByValue,
+                        TruncationByError, TruncationIntersection, TruncationByFilter,
+                        TruncationByOrder
+using MatrixAlgebraKit: PolarViaSVD
+using MatrixAlgebraKit: LAPACK_SVDAlgorithm, LAPACK_QRIteration, LAPACK_HouseholderQR,
+                        LAPACK_HouseholderLQ, LAPACK_HouseholderQL, LAPACK_HouseholderRQ
 import MatrixAlgebraKit: default_algorithm,
                          copy_input, check_input, initialize_output,
                          qr_compact!, qr_full!, qr_null!, lq_compact!, lq_full!, lq_null!,
@@ -38,7 +40,7 @@ import MatrixAlgebraKit: default_algorithm,
                          left_polar!, left_orth_polar!, right_polar!, right_orth_polar!,
                          left_null_svd!, right_null_svd!, left_orth_svd!, right_orth_svd!,
                          left_orth!, right_orth!, left_null!, right_null!,
-                         truncate!, findtruncated, findtruncated_sorted,
+                         truncate!, findtruncated, findtruncated_svd,
                          diagview, isisometry
 
 include("utility.jl")

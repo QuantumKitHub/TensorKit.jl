@@ -1,43 +1,40 @@
 # Strategies
 # ----------
-"""
-    notrunc()
-"""
-notrunc() = NoTruncation()
 
-# deprecate
+# TODO: deprecate
 const TruncationScheme = TruncationStrategy
 
-# TODO: add this to MatrixAlgebraKit
-struct TruncationError{T<:Real} <: TruncationStrategy
-    ϵ::T
-    p::Real
-end
-
 """
-    truncerr(epsilon, p)
-"""
-truncerr(epsilon::Real, p::Real=2) = TruncationError(epsilon, p)
+    TruncationSpace(V::ElementarySpace, by::Function, rev::Bool)
 
-struct TruncationSpace{S<:ElementarySpace} <: TruncationStrategy
+Truncation strategy to keep the first values for each sector when sorted according to `by` and `rev`,
+such that the resulting vector space is no greater than `V`.
+
+See also [`truncspace`](@ref).
+"""
+struct TruncationSpace{S<:ElementarySpace,F} <: TruncationStrategy
     space::S
+    by::F
+    rev::Bool
 end
 
 """
-    truncspace(space::ElementarySpace)
+    truncspace(space::ElementarySpace; by=abs, rev::Bool=true)
 
-Truncation strategy to keep the first values such that the resulting space is the infimum of
-the total space and the provided space.
+Truncation strategy to keep the first values for each sector when sorted according to `by` and `rev`,
+such that the resulting vector space is no greater than `V`.
 """
-truncspace(space::ElementarySpace) = TruncationSpace(space)
+function truncspace(space::ElementarySpace; by=abs, rev::Bool=true)
+    isdual(space) && throw(ArgumentError("resulting vector space is never dual"))
+    return TruncationSpace(space, by, rev)
+end
 
-# Truncation
-# ----------
+# truncate!
+# ---------
 function truncate!(::typeof(svd_trunc!),
                    (U, S, Vᴴ)::Tuple{AbstractTensorMap,AbstractTensorMap,AbstractTensorMap},
                    strategy::TruncationStrategy)
-    strategy == notrunc() && return (U, S, Vᴴ)
-    ind = findtruncated_sorted(diagview(S), strategy)
+    ind = findtruncated_svd(diagview(S), strategy)
     V_truncated = spacetype(S)(c => length(I) for (c, I) in ind)
 
     Ũ = similar(U, codomain(U) ← V_truncated)
@@ -67,7 +64,6 @@ end
 function truncate!(::typeof(left_null!),
                    (U, S)::Tuple{AbstractTensorMap,AbstractTensorMap},
                    strategy::MatrixAlgebraKit.TruncationStrategy)
-    strategy == notrunc() && return (U, S)
     extended_S = SectorDict(c => vcat(diagview(b),
                                       zeros(eltype(b), max(0, size(b, 2) - size(b, 1))))
                             for (c, b) in blocks(S))
@@ -84,7 +80,6 @@ for f! in (:eig_trunc!, :eigh_trunc!)
     @eval function truncate!(::typeof($f!),
                              (D, V)::Tuple{AbstractTensorMap,AbstractTensorMap},
                              strategy::TruncationStrategy)
-        strategy == notrunc() && return (D, V)
         ind = findtruncated(diagview(D), strategy)
         V_truncated = spacetype(D)(c => length(I) for (c, I) in ind)
 
@@ -109,7 +104,7 @@ end
 # Find truncation
 # ---------------
 # auxiliary functions
-rtol_to_atol(S, p, atol, rtol) = rtol > 0 ? max(atol, _norm(S, p) * rtol) : atol
+rtol_to_atol(S, p, atol, rtol) = rtol > 0 ? max(atol, TensorKit._norm(S, p) * rtol) : atol
 
 function _compute_truncerr(Σdata, truncdim, p=2)
     I = keytype(Σdata)
@@ -138,99 +133,96 @@ function _findnexttruncvalue(S, truncdim::SectorDict{I,Int}; by=identity,
     end
 end
 
-# implementations
-function findtruncated_sorted(S::SectorDict, strategy::TruncationStrategy)
-    return findtruncated(S, strategy)
+# findtruncated
+# -------------
+# Generic fallback
+function findtruncated_svd(values::SectorDict, strategy::TruncationStrategy)
+    return findtruncated(values, strategy)
 end
 
-function findtruncated_sorted(S::SectorDict, strategy::TruncationKeepAbove)
-    atol = rtol_to_atol(S, strategy.p, strategy.atol, strategy.rtol)
-    findtrunc = Base.Fix2(findtruncated_sorted, truncbelow(atol))
-    return SectorDict(c => findtrunc(d) for (c, d) in S)
-end
-function findtruncated(S::SectorDict, strategy::TruncationKeepAbove)
-    atol = rtol_to_atol(S, strategy.p, strategy.atol, strategy.rtol)
-    findtrunc = Base.Fix2(findtruncated, truncbelow(atol))
-    return SectorDict(c => findtrunc(d) for (c, d) in Sd)
+function findtruncated(values::SectorDict, ::NoTruncation)
+    return SectorDict(c => Base.OneTo(length(b)) for (c, b) in values)
 end
 
-function findtruncated_sorted(S::SectorDict, strategy::TruncationKeepBelow)
-    atol = rtol_to_atol(S, strategy.p, strategy.atol, strategy.rtol)
-    findtrunc = Base.Fix2(findtruncated_sorted, truncabove(atol))
-    return SectorDict(c => findtrunc(d) for (c, d) in Sd)
+function findtruncated(values::SectorDict, strategy::TruncationByOrder)
+    perms = SectorDict(c => (sortperm(d; strategy.by, strategy.rev)) for (c, d) in values)
+    values_sorted = SectorDict(c => d[perms[c]] for (c, d) in values)
+    inds = findtruncated_svd(values_sorted, truncrank(strategy.howmany))
+    return SectorDict(c => perms[c][I] for (c, I) in inds)
 end
-function findtruncated(S::SectorDict, strategy::TruncationKeepBelow)
-    atol = rtol_to_atol(S, strategy.p, strategy.atol, strategy.rtol)
-    findtrunc = Base.Fix2(findtruncated, truncabove(atol))
-    return SectorDict(c => findtrunc(d) for (c, d) in Sd)
-end
-
-function findtruncated_sorted(Sd::SectorDict, strategy::TruncationError)
-    I = keytype(Sd)
-    truncdim = SectorDict{I,Int}(c => length(d) for (c, d) in Sd)
-    while true
-        next = _findnexttruncvalue(Sd, truncdim)
-        isnothing(next) && break
-        σmin, cmin = next
-        truncdim[cmin] -= 1
-        err = _compute_truncerr(Sd, truncdim, strategy.p)
-        if err > strategy.ϵ
-            truncdim[cmin] += 1
-            break
-        end
-        if truncdim[cmin] == 0
-            delete!(truncdim, cmin)
-        end
-    end
-    return SectorDict{I,Base.OneTo{Int}}(c => Base.OneTo(d) for (c, d) in truncdim)
-end
-
-function findtruncated_sorted(Sd::SectorDict, strategy::TruncationKeepSorted)
-    return findtruncated(Sd, strategy)
-end
-function findtruncated(Sd::SectorDict, strategy::TruncationKeepSorted)
-    permutations = SectorDict(c => (sortperm(d; strategy.by, strategy.rev))
-                              for (c, d) in Sd)
-    Sd = SectorDict(c => sort(d; strategy.by, strategy.rev) for (c, d) in Sd)
-
-    I = keytype(Sd)
-    truncdim = SectorDict{I,Int}(c => length(d) for (c, d) in Sd)
+function findtruncated_svd(values::SectorDict, strategy::TruncationByOrder)
+    I = keytype(values)
+    truncdim = SectorDict{I,Int}(c => length(d) for (c, d) in values)
     totaldim = sum(dim(c) * d for (c, d) in truncdim; init=0)
     while true
-        next = _findnexttruncvalue(Sd, truncdim; strategy.by, strategy.rev)
+        next = _findnexttruncvalue(values, truncdim; strategy.by, strategy.rev)
         isnothing(next) && break
         _, cmin = next
         truncdim[cmin] -= 1
         totaldim -= dim(cmin)
-        if truncdim[cmin] == 0
-            delete!(truncdim, cmin)
-        end
+        truncdim[cmin] == 0 && delete!(truncdim, cmin)
         totaldim <= strategy.howmany && break
     end
-    return SectorDict(c => permutations[c][Base.OneTo(d)] for (c, d) in truncdim)
+    return SectorDict(c => Base.OneTo(d) for (c, d) in truncdim)
 end
 
-function findtruncated_sorted(Sd::SectorDict, strategy::TruncationSpace)
-    I = keytype(Sd)
-    return SectorDict{I,Base.OneTo{Int}}(c => Base.OneTo(min(length(d),
-                                                             dim(strategy.space, c)))
-                                         for (c, d) in Sd)
+function findtruncated(values::SectorDict, strategy::TruncationByFilter)
+    return SectorDict(c => findall(strategy.filter, d) for (c, d) in values)
 end
 
-function findtruncated_sorted(Sd::SectorDict, strategy::TruncationKeepFiltered)
-    return SectorDict(c => findtruncated_sorted(d, strategy) for (c, d) in Sd)
+function findtruncated(values::SectorDict, strategy::TruncationByValue)
+    atol = rtol_to_atol(values, strategy.p, strategy.atol, strategy.rtol)
+    strategy′ = trunctol(; atol, strategy.by, strategy.keep_below)
+    return SectorDict(c => findtruncated(d, strategy′) for (c, d) in values)
 end
-function findtruncated(Sd::SectorDict, strategy::TruncationKeepFiltered)
-    return SectorDict(c => findtruncated(d, strategy) for (c, d) in Sd)
+function findtruncated_svd(values::SectorDict, strategy::TruncationByValue)
+    atol = rtol_to_atol(values, strategy.p, strategy.atol, strategy.rtol)
+    strategy′ = trunctol(; atol, strategy.by, strategy.keep_below)
+    return SectorDict(c => findtruncated_svd(d, strategy′) for (c, d) in values)
 end
 
-function findtruncated_sorted(Sd::SectorDict, strategy::TruncationIntersection)
-    inds = map(Base.Fix1(findtruncated_sorted, Sd), strategy)
-    return SectorDict(c => intersect(map(Base.Fix2(getindex, c), inds)...)
+function findtruncated(values::SectorDict, strategy::TruncationByError)
+    perms = SectorDict(c => sortperm(d; by=abs, rev=true) for (c, d) in values)
+    values_sorted = SectorDict(c => d[perms[c]] for (c, d) in Sd)
+    inds = findtruncated_svd(values_sorted, truncrank(strategy.howmany))
+    return SectorDict(c => perms[c][I] for (c, I) in inds)
+end
+function findtruncated_svd(values::SectorDict, strategy::TruncationByError)
+    I = keytype(values)
+    truncdim = SectorDict{I,Int}(c => length(d) for (c, d) in values)
+    by(c, v) = abs(v)^strategy.p * dim(c)
+    Nᵖ = sum(((c, v),) -> sum(Base.Fix1(by, c), v), values)
+    ϵᵖ = max(strategy.atol^strategy.p, strategy.rtol^strategy.p * Nᵖ)
+    truncerrᵖ = zero(real(scalartype(valtype(values))))
+    next = _findnexttruncvalue(values, truncdim)
+    while !isnothing(next)
+        σmin, cmin = next
+        truncerrᵖ += by(cmin, σmin)
+        truncerrᵖ >= ϵᵖ && break
+        (truncdim[cmin] -= 1) == 0 && delete!(truncdim, cmin)
+        next = _findnexttruncvalue(values, truncdim)
+    end
+    return SectorDict{I,Base.OneTo{Int}}(c => Base.OneTo(d) for (c, d) in truncdim)
+end
+
+function findtruncated(values::SectorDict, strategy::TruncationSpace)
+    blockstrategy(c) = truncrank(dim(strategy.space, c); strategy.by, strategy.rev)
+    return SectorDict(c => findtruncated(d, blockstrategy(c)) for (c, d) in values)
+end
+function findtruncated_svd(values::SectorDict, strategy::TruncationSpace)
+    blockstrategy(c) = truncrank(dim(strategy.space, c); strategy.by, strategy.rev)
+    return SectorDict(c => findtruncated_svd(d, blockstrategy(c)) for (c, d) in values)
+end
+
+function findtruncated(values::SectorDict, strategy::TruncationIntersection)
+    inds = map(Base.Fix1(findtruncated, values), strategy)
+    return SectorDict(c => mapreduce(Base.Fix2(getindex, c), _ind_intersect, inds;
+                                     init=trues(length(values[c])))
                       for c in intersect(map(keys, inds)...))
 end
-function findtruncated(Sd::SectorDict, strategy::TruncationIntersection)
-    inds = map(Base.Fix1(findtruncated, Sd), strategy)
-    return SectorDict(c => intersect(map(Base.Fix2(getindex, c), inds)...)
+function findtruncated_svd(Sd::SectorDict, strategy::TruncationIntersection)
+    inds = map(Base.Fix1(findtruncated_svd, Sd), strategy)
+    return SectorDict(c => mapreduce(Base.Fix2(getindex, c), _ind_intersect, inds;
+                                     init=trues(length(values[c])))
                       for c in intersect(map(keys, inds)...))
 end

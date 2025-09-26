@@ -226,7 +226,7 @@ for V in spacelist
                 @test dim(domain(S1)) <= trunc.howmany
 
                 λ = minimum(minimum, values(LinearAlgebra.diag(S1)))
-                trunc = trunctol(λ - 10eps(λ))
+                trunc = trunctol(; atol=λ - 10eps(λ))
                 U2, S2, Vᴴ2 = @constinferred svd_trunc(t; trunc)
                 @test t * Vᴴ2' ≈ U2 * S2
                 @test isisometry(U2)
@@ -243,7 +243,7 @@ for V in spacelist
                 @test isisometry(Vᴴ3; side=:right)
                 @test space(S3, 1) ≾ space(S2, 1)
 
-                trunc = truncerr(0.5)
+                trunc = truncerror(; atol=0.5)
                 U4, S4, Vᴴ4 = @constinferred svd_trunc(t; trunc)
                 @test t * Vᴴ4' ≈ U4 * S4
                 @test isisometry(U4)
