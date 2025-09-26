@@ -64,11 +64,11 @@ println("------------------------------------")
         @test @constinferred(sectortype(V)) == Trivial
         @test ((@constinferred sectors(V))...,) == (Trivial(),)
         @test length(sectors(V)) == 1
-        @test @constinferred(TensorKit.hassector(V, Trivial()))
+        @test @constinferred(TK.hassector(V, Trivial()))
         @test @constinferred(dim(V)) == d == @constinferred(dim(V, Trivial()))
         @test dim(@constinferred(zerospace(V))) == 0
         @test (sectors(zerospace(V))...,) == ()
-        @test @constinferred(TensorKit.axes(V)) == Base.OneTo(d)
+        @test @constinferred(TK.axes(V)) == Base.OneTo(d)
         @test ℝ^d == ℝ[](d) == CartesianSpace(d) == typeof(V)(d)
         W = @constinferred ℝ^1
         @test @constinferred(unitspace(V)) == W == unitspace(typeof(V))
@@ -111,11 +111,11 @@ println("------------------------------------")
         @test @constinferred(sectortype(V)) == Trivial
         @test ((@constinferred sectors(V))...,) == (Trivial(),)
         @test length(sectors(V)) == 1
-        @test @constinferred(TensorKit.hassector(V, Trivial()))
+        @test @constinferred(TK.hassector(V, Trivial()))
         @test @constinferred(dim(V)) == d == @constinferred(dim(V, Trivial()))
         @test dim(@constinferred(zerospace(V))) == 0
         @test (sectors(zerospace(V))...,) == ()
-        @test @constinferred(TensorKit.axes(V)) == Base.OneTo(d)
+        @test @constinferred(TK.axes(V)) == Base.OneTo(d)
         @test ℂ^d == Vect[Trivial](d) == Vect[](Trivial() => d) == ℂ[](d) == typeof(V)(d)
         W = @constinferred ℂ^1
         @test @constinferred(unitspace(V)) == W == unitspace(typeof(V))
@@ -153,10 +153,10 @@ println("------------------------------------")
         @test isdual(V')
         @test !isdual(conj(V))
         @test isdual(conj(V'))
-        @test !TensorKit.isconj(V)
-        @test !TensorKit.isconj(V')
-        @test TensorKit.isconj(conj(V))
-        @test TensorKit.isconj(conj(V'))
+        @test !TK.isconj(V)
+        @test !TK.isconj(V')
+        @test TK.isconj(conj(V))
+        @test TK.isconj(conj(V'))
         @test isa(V, VectorSpace)
         @test isa(V, ElementarySpace)
         @test !isa(InnerProductStyle(V), HasInnerProduct)
@@ -165,12 +165,12 @@ println("------------------------------------")
         @test @constinferred(dual(V)) != @constinferred(conj(V)) != V
         @test @constinferred(field(V)) == ℂ
         @test @constinferred(sectortype(V)) == Trivial
-        @test @constinferred(TensorKit.hassector(V, Trivial()))
+        @test @constinferred(TK.hassector(V, Trivial()))
         @test @constinferred(dim(V)) == d == @constinferred(dim(V, Trivial()))
-        @test @constinferred(TensorKit.axes(V)) == Base.OneTo(d)
+        @test @constinferred(TK.axes(V)) == Base.OneTo(d)
     end
 
-    @timedtestset "ElementarySpace: $(TensorKit.type_repr(Vect[I]))" for I in sectorlist
+    @timedtestset "ElementarySpace: $(TK.type_repr(Vect[I]))" for I in sectorlist
         if Base.IteratorSize(values(I)) === Base.IsInfinite()
             set = unique(vcat(unit(I), [randsector(I) for k in 1:10]))
             gen = (c => 2 for c in set)
@@ -178,7 +178,7 @@ println("------------------------------------")
             gen = (values(I)[k] => (k + 1) for k in 1:length(values(I)))
         end
         V = GradedSpace(gen)
-        @test eval(Meta.parse(TensorKit.type_repr(typeof(V)))) == typeof(V)
+        @test eval(Meta.parse(TK.type_repr(typeof(V)))) == typeof(V)
         @test eval(Meta.parse(sprint(show, V))) == V
         @test eval(Meta.parse(sprint(show, V'))) == V'
         @test V' == GradedSpace(gen; dual=true)
@@ -225,12 +225,12 @@ println("------------------------------------")
         @test @constinferred(field(V)) == ℂ
         @test @constinferred(sectortype(V)) == I
         slist = @constinferred sectors(V)
-        @test @constinferred(TensorKit.hassector(V, first(slist)))
+        @test @constinferred(TK.hassector(V, first(slist)))
         @test @constinferred(dim(V)) == sum(dim(s) * dim(V, s) for s in slist)
         @test @constinferred(reduceddim(V)) == sum(dim(V, s) for s in slist)
         @constinferred dim(V, first(slist))
         if hasfusiontensor(I)
-            @test @constinferred(TensorKit.axes(V)) == Base.OneTo(dim(V))
+            @test @constinferred(TK.axes(V)) == Base.OneTo(dim(V))
         end
         @test @constinferred(⊕(V, zerospace(V))) == V
         @test @constinferred(⊕(V, V)) == Vect[I](c => 2dim(V, c) for c in sectors(V))
@@ -407,7 +407,7 @@ println("------------------------------------")
 
     @timedtestset "HomSpace" begin
         for (V1, V2, V3, V4, V5) in (Vtr, Vℤ₃, VSU₂)
-            W = TensorKit.HomSpace(V1 ⊗ V2, V3 ⊗ V4 ⊗ V5)
+            W = TK.HomSpace(V1 ⊗ V2, V3 ⊗ V4 ⊗ V5)
             @test W == (V3 ⊗ V4 ⊗ V5 → V1 ⊗ V2)
             @test W == (V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5)
             @test W' == (V1 ⊗ V2 → V3 ⊗ V4 ⊗ V5)
@@ -424,7 +424,7 @@ println("------------------------------------")
             @test W == deepcopy(W)
             @test W == @constinferred permute(W, ((1, 2), (3, 4, 5)))
             @test permute(W, ((2, 4, 5), (3, 1))) == (V2 ⊗ V4' ⊗ V5' ← V3 ⊗ V1')
-            @test (V1 ⊗ V2 ← V1 ⊗ V2) == @constinferred TensorKit.compose(W, W')
+            @test (V1 ⊗ V2 ← V1 ⊗ V2) == @constinferred TK.compose(W, W')
             @test (V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5 ⊗ unitspace(V5)) ==
                   @constinferred(insertleftunit(W)) ==
                   @constinferred(insertrightunit(W))
@@ -444,5 +444,5 @@ println("------------------------------------")
             @test_throws BoundsError insertleftunit(one(V1) ← V1, 0)
         end
     end
-    TensorKit.empty_globalcaches!()
+    TK.empty_globalcaches!()
 end

@@ -30,7 +30,7 @@ diagspacelist = ((ℂ^4)', ℂ[Z2Irrep](0 => 2, 1 => 3),
             b2 = @constinferred block(t, first(blocksectors(t)))
             @test b1 == b2
             @test eltype(bs) === Pair{typeof(c),typeof(b1)}
-            @test typeof(b1) === TensorKit.blocktype(t)
+            @test typeof(b1) === TK.blocktype(t)
             # basic linear algebra
             @test isa(@constinferred(norm(t)), real(T))
             @test norm(t)^2 ≈ dot(t, t)
@@ -201,7 +201,7 @@ diagspacelist = ((ℂ^4)', ℂ[Z2Irrep](0 => 2, 1 => 3),
                           zip(values(LinearAlgebra.eigvals(D)),
                               values(LinearAlgebra.eigvals(t))))
             end
-            @testset "leftorth with $alg" for alg in (TensorKit.QR(), TensorKit.QL())
+            @testset "leftorth with $alg" for alg in (TK.QR(), TK.QL())
                 Q, R = @constinferred leftorth(t; alg=alg)
                 QdQ = Q' * Q
                 @test QdQ ≈ one(QdQ)
@@ -210,7 +210,7 @@ diagspacelist = ((ℂ^4)', ℂ[Z2Irrep](0 => 2, 1 => 3),
                     @test isposdef(R)
                 end
             end
-            @testset "rightorth with $alg" for alg in (TensorKit.RQ(), TensorKit.LQ())
+            @testset "rightorth with $alg" for alg in (TK.RQ(), TK.LQ())
                 L, Q = @constinferred rightorth(t; alg=alg)
                 QQd = Q * Q'
                 @test QQd ≈ one(QQd)
@@ -219,7 +219,7 @@ diagspacelist = ((ℂ^4)', ℂ[Z2Irrep](0 => 2, 1 => 3),
                     @test isposdef(L)
                 end
             end
-            @testset "tsvd with $alg" for alg in (TensorKit.SVD(), TensorKit.SDD())
+            @testset "tsvd with $alg" for alg in (TK.SVD(), TK.SDD())
                 U, S, Vᴴ = @constinferred tsvd(t; alg=alg)
                 UdU = U' * U
                 @test UdU ≈ one(UdU)

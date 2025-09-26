@@ -29,7 +29,7 @@ function ChainRulesTestUtils.test_approx(actual::AbstractTensorMap,
 end
 
 # make sure that norms are computed correctly:
-function FiniteDifferences.to_vec(t::TensorKit.SectorDict)
+function FiniteDifferences.to_vec(t::TK.SectorDict)
     T = scalartype(valtype(t))
     vec = mapreduce(vcat, t; init=T[]) do (c, b)
         return reshape(b, :) .* sqrt(dim(c))
@@ -39,7 +39,7 @@ function FiniteDifferences.to_vec(t::TensorKit.SectorDict)
     function from_vec(x_real)
         x = T <: Real ? x_real : reinterpret(T, x_real)
         ctr = 0
-        return TensorKit.SectorDict(c => (n = length(b);
+        return TK.SectorDict(c => (n = length(b);
                                           b′ = reshape(view(x, ctr .+ (1:n)), size(b)) ./
                                                sqrt(dim(c));
                                           ctr += n;
@@ -61,25 +61,25 @@ end
 
 # rrules for functions that destroy inputs
 # ----------------------------------------
-function ChainRulesCore.rrule(::typeof(TensorKit.tsvd), args...; kwargs...)
+function ChainRulesCore.rrule(::typeof(TK.tsvd), args...; kwargs...)
     return ChainRulesCore.rrule(tsvd!, args...; kwargs...)
 end
 function ChainRulesCore.rrule(::typeof(LinearAlgebra.svdvals), args...; kwargs...)
     return ChainRulesCore.rrule(svdvals!, args...; kwargs...)
 end
-function ChainRulesCore.rrule(::typeof(TensorKit.eig), args...; kwargs...)
+function ChainRulesCore.rrule(::typeof(TK.eig), args...; kwargs...)
     return ChainRulesCore.rrule(eig!, args...; kwargs...)
 end
-function ChainRulesCore.rrule(::typeof(TensorKit.eigh), args...; kwargs...)
+function ChainRulesCore.rrule(::typeof(TK.eigh), args...; kwargs...)
     return ChainRulesCore.rrule(eigh!, args...; kwargs...)
 end
 function ChainRulesCore.rrule(::typeof(LinearAlgebra.eigvals), args...; kwargs...)
     return ChainRulesCore.rrule(eigvals!, args...; kwargs...)
 end
-function ChainRulesCore.rrule(::typeof(TensorKit.leftorth), args...; kwargs...)
+function ChainRulesCore.rrule(::typeof(TK.leftorth), args...; kwargs...)
     return ChainRulesCore.rrule(leftorth!, args...; kwargs...)
 end
-function ChainRulesCore.rrule(::typeof(TensorKit.rightorth), args...; kwargs...)
+function ChainRulesCore.rrule(::typeof(TK.rightorth), args...; kwargs...)
     return ChainRulesCore.rrule(rightorth!, args...; kwargs...)
 end
 
@@ -134,7 +134,7 @@ Vlist = ((ℂ^2, (ℂ^3)', ℂ^3, ℂ^2, (ℂ^2)'),
           ℂ[FibonacciAnyon](:I => 2, :τ => 3),
           ℂ[FibonacciAnyon](:I => 2, :τ => 2)))
 
-@timedtestset "Automatic Differentiation with spacetype $(TensorKit.type_repr(eltype(V)))" verbose = true for V in
+@timedtestset "Automatic Differentiation with spacetype $(TK.type_repr(eltype(V)))" verbose = true for V in
                                                                                                               Vlist
     eltypes = isreal(sectortype(eltype(V))) ? (Float64, ComplexF64) : (ComplexF64,)
     symmetricbraiding = BraidingStyle(sectortype(eltype(V))) isa SymmetricBraiding
@@ -149,9 +149,9 @@ Vlist = ((ℂ^2, (ℂ^3)', ℂ^3, ℂ^2, (ℂ^2)'),
 
         test_rrule(copy, T1)
         test_rrule(copy, T2)
-        test_rrule(TensorKit.copy_oftype, T1, ComplexF64)
+        test_rrule(TK.copy_oftype, T1, ComplexF64)
         if symmetricbraiding
-            test_rrule(TensorKit.permutedcopy_oftype, T1, ComplexF64, ((3, 1), (2, 4)))
+            test_rrule(TK.permutedcopy_oftype, T1, ComplexF64, ((3, 1), (2, 4)))
 
             test_rrule(convert, Array, T1)
             test_rrule(TensorMap, convert(Array, T1), codomain(T1), domain(T1);
@@ -364,13 +364,13 @@ Vlist = ((ℂ^2, (ℂ^3)', ℂ^3, ℂ^2, (ℂ^2)'),
         H = (H + H') / 2
         atol = precision(T)
 
-        for alg in (TensorKit.QR(), TensorKit.QRpos())
+        for alg in (TK.QR(), TK.QRpos())
             test_rrule(leftorth, A; fkwargs=(; alg=alg), atol)
             test_rrule(leftorth, B; fkwargs=(; alg=alg), atol)
             test_rrule(leftorth, C; fkwargs=(; alg=alg), atol)
         end
 
-        for alg in (TensorKit.LQ(), TensorKit.LQpos())
+        for alg in (TK.LQ(), TK.LQpos())
             test_rrule(rightorth, A; fkwargs=(; alg=alg), atol)
             test_rrule(rightorth, B; fkwargs=(; alg=alg), atol)
             test_rrule(rightorth, C; fkwargs=(; alg=alg), atol)
@@ -428,7 +428,7 @@ Vlist = ((ℂ^2, (ℂ^3)', ℂ^3, ℂ^2, (ℂ^2)'),
             T <: Complex && remove_svdgauge_depence!(ΔU, ΔV, U, S, V)
             test_rrule(tsvd, B; atol, output_tangent=(ΔU, ΔS, ΔV, 0.0))
 
-            Vtrunc = spacetype(S)(TensorKit.SectorDict(c => ceil(Int, size(b, 1) / 2)
+            Vtrunc = spacetype(S)(TK.SectorDict(c => ceil(Int, size(b, 1) / 2)
                                                        for (c, b) in blocks(S)))
 
             U, S, V, ϵ = tsvd(B; trunc=truncspace(Vtrunc))
@@ -447,7 +447,7 @@ Vlist = ((ℂ^2, (ℂ^3)', ℂ^3, ℂ^2, (ℂ^2)'),
             T <: Complex && remove_svdgauge_depence!(ΔU, ΔV, U, S, V)
             test_rrule(tsvd, C; atol, output_tangent=(ΔU, ΔS, ΔV, 0.0))
 
-            c, = TensorKit.MatrixAlgebra._argmax(x -> sqrt(dim(x[1])) * maximum(diag(x[2])),
+            c, = TK.MatrixAlgebra._argmax(x -> sqrt(dim(x[1])) * maximum(diag(x[2])),
                                                  blocks(S))
             trunc = truncdim(round(Int, 2 * dim(c)))
             U, S, V, ϵ = tsvd(C; trunc)
