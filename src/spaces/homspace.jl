@@ -22,7 +22,7 @@ end
 function HomSpace(codomain::S, domain::S) where {S<:ElementarySpace}
     return HomSpace(⊗(codomain), ⊗(domain))
 end
-HomSpace(codomain::VectorSpace) = HomSpace(codomain, zero(codomain))
+HomSpace(codomain::VectorSpace) = HomSpace(codomain, zerospace(codomain))
 
 codomain(W::HomSpace) = W.codomain
 domain(W::HomSpace) = W.domain

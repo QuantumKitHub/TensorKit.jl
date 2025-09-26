@@ -2,9 +2,9 @@ println("------------------------------------")
 println("Fusion Trees")
 println("------------------------------------")
 ti = time()
-@timedtestset "Fusion trees for $(TensorKit.type_repr(I))" verbose = true for I in
-                                                                              sectorlist
-    Istr = TensorKit.type_repr(I)
+@timedtestset "Fusion trees for $(TK.type_repr(I))" verbose = true for I in
+                                                                       sectorlist
+    Istr = TK.type_repr(I)
     N = 5
     out = ntuple(n -> randsector(I), N)
     isdual = ntuple(n -> rand(Bool), N)
@@ -26,7 +26,7 @@ ti = time()
         @test eval(Meta.parse(sprint(show, f))) == f
     end
     @testset "Fusion tree $Istr: constructor properties" begin
-        u = one(I)
+        u = unit(I)
         @constinferred FusionTree((), u, (), (), ())
         @constinferred FusionTree((u,), u, (false,), (), ())
         @constinferred FusionTree((u, u), u, (false, false), (), (1,))
@@ -125,7 +125,7 @@ ti = time()
             outgoing = (s, dual(s), s, dual(s), s, dual(s))
             for bool in (true, false)
                 isdual = (bool, !bool, bool, !bool, bool, !bool)
-                for f in fusiontrees(outgoing, one(s), isdual)
+                for f in fusiontrees(outgoing, unit(s), isdual)
                     af = convert(Array, f)
                     T = eltype(af)
 
@@ -211,7 +211,7 @@ ti = time()
             end
         end
     end
-    @testset "Fusion tree $Istr: elementy artin braid" begin
+    @testset "Fusion tree $Istr: elementary artin braid" begin
         N = length(out)
         isdual = ntuple(n -> rand(Bool), N)
         for in in ⊗(out...)
@@ -268,7 +268,7 @@ ti = time()
         end
     end
     @testset "Fusion tree $Istr: braiding and permuting" begin
-        f = rand(collect(fusiontrees(out, in, isdual)))
+        f = rand(collect(it))
         p = tuple(randperm(N)...)
         ip = invperm(p)
 
@@ -379,7 +379,7 @@ ti = time()
     f1 = rand(collect(fusiontrees(out, incoming, ntuple(n -> rand(Bool), N))))
     f2 = rand(collect(fusiontrees(out[randperm(N)], incoming, ntuple(n -> rand(Bool), N))))
 
-    @testset "Double fusion tree $Istr: repartioning" begin
+    @testset "Double fusion tree $Istr: repartitioning" begin
         for n in 0:(2 * N)
             d = @constinferred TK.repartition(f1, f2, $n)
             @test dim(incoming) ≈
@@ -432,12 +432,12 @@ ti = time()
                 ip = invperm(p)
                 ip1, ip2 = ip[1:N], ip[(N + 1):(2N)]
 
-                d = @constinferred TensorKit.permute(f1, f2, p1, p2)
+                d = @constinferred TK.permute(f1, f2, p1, p2)
                 @test dim(incoming) ≈
                       sum(abs2(coef) * dim(f1.coupled) for ((f1, f2), coef) in d)
                 d2 = Dict{typeof((f1, f2)),valtype(d)}()
                 for ((f1′, f2′), coeff) in d
-                    d′ = TensorKit.permute(f1′, f2′, ip1, ip2)
+                    d′ = TK.permute(f1′, f2′, ip1, ip2)
                     for ((f1′′, f2′′), coeff2) in d′
                         d2[(f1′′, f2′′)] = get(d2, (f1′′, f2′′), zero(coeff)) +
                                            coeff2 * coeff
@@ -548,7 +548,7 @@ ti = time()
     @testset "Double fusion tree $Istr: planar trace" begin
         d1 = transpose(f1, f1, (N + 1, 1:N..., ((2N):-1:(N + 3))...), (N + 2,))
         f1front, = TK.split(f1, N - 1)
-        T = typeof(Fsymbol(one(I), one(I), one(I), one(I), one(I), one(I))[1, 1, 1, 1])
+        T = sectorscalartype(I)
         d2 = Dict{typeof((f1front, f1front)),T}()
         for ((f1′, f2′), coeff′) in d1
             for ((f1′′, f2′′), coeff′′) in
@@ -566,7 +566,7 @@ ti = time()
             end
         end
     end
-    TensorKit.empty_globalcaches!()
+    TK.empty_globalcaches!()
 end
 tf = time()
 printstyled("Finished fusion tree tests in ",

@@ -538,9 +538,9 @@ since it assumes a  uniquely defined coupled charge.
         throw(ArgumentError("Number of sectors does not match."))
     s₁ = TupleTools.getindices(sectors, codomainind(t))
     s₂ = map(dual, TupleTools.getindices(sectors, domainind(t)))
-    c1 = length(s₁) == 0 ? one(I) : (length(s₁) == 1 ? s₁[1] : first(⊗(s₁...)))
+    c1 = length(s₁) == 0 ? unit(I) : (length(s₁) == 1 ? s₁[1] : first(⊗(s₁...)))
     @boundscheck begin
-        c2 = length(s₂) == 0 ? one(I) : (length(s₂) == 1 ? s₂[1] : first(⊗(s₂...)))
+        c2 = length(s₂) == 0 ? unit(I) : (length(s₂) == 1 ? s₂[1] : first(⊗(s₂...)))
         c2 == c1 || throw(SectorMismatch("Not a valid sector for this tensor"))
         hassector(codomain(t), s₁) && hassector(domain(t), s₂)
     end

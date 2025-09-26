@@ -48,8 +48,8 @@ sectortype(::Type{ComplexSpace}) = Trivial
 
 Base.conj(V::ComplexSpace) = ComplexSpace(dim(V), !isdual(V))
 
-Base.oneunit(::Type{ComplexSpace}) = ComplexSpace(1)
-Base.zero(::Type{ComplexSpace}) = ComplexSpace(0)
+unitspace(::Type{ComplexSpace}) = ComplexSpace(1)
+zerospace(::Type{ComplexSpace}) = ComplexSpace(0)
 function ⊕(V₁::ComplexSpace, V₂::ComplexSpace)
     return isdual(V₁) == isdual(V₂) ?
            ComplexSpace(dim(V₁) + dim(V₂), isdual(V₁)) :
