@@ -432,50 +432,6 @@ for V in spacelist
             @test LinearAlgebra.isdiag(D)
             @test LinearAlgebra.diag(D) == d
         end
-        @timedtestset "Tensor truncation" begin
-            for T in (Float32, ComplexF64)
-                for p in (1, 2, 3, Inf)
-                    # Test both a normal tensor and an adjoint one.
-                    ts = (randn(T, V1 ⊗ V2 ⊗ V3, V4 ⊗ V5),
-                          randn(T, V4 ⊗ V5, V1 ⊗ V2 ⊗ V3)')
-                    for t in ts
-                        U₀, S₀, V₀, = tsvd(t)
-                        t = rmul!(t, 1 / norm(S₀, p))
-                        U, S, V = @constinferred tsvd(t; trunc=truncerr(5e-1, p))
-                        ϵ = TensorKit._norm(LinearAlgebra.svdvals(U * S * V - t), p,
-                                            zero(scalartype(S)))
-                        p == 2 && @test ϵ < 5e-1
-                        # @show p, ϵ
-                        # @show domain(S)
-                        # @test min(space(S,1), space(S₀,1)) != space(S₀,1)
-                        U′, S′, V′ = tsvd(t; trunc=truncerr(ϵ + 10eps(ϵ), p))
-                        ϵ′ = TensorKit._norm(LinearAlgebra.svdvals(U′ * S′ * V′ - t), p,
-                                             zero(scalartype(S)))
-
-                        @test (U, S, V, ϵ) == (U′, S′, V′, ϵ′)
-                        U′, S′, V′ = tsvd(t; trunc=truncdim(ceil(Int, dim(domain(S)))))
-                        ϵ′ = TensorKit._norm(LinearAlgebra.svdvals(U′ * S′ * V′ - t), p,
-                                             zero(scalartype(S)))
-                        @test (U, S, V, ϵ) == (U′, S′, V′, ϵ′)
-                        U′, S′, V′ = tsvd(t; trunc=truncspace(space(S, 1)))
-                        ϵ′ = TensorKit._norm(LinearAlgebra.svdvals(U′ * S′ * V′ - t), p,
-                                             zero(scalartype(S)))
-                        @test (U, S, V, ϵ) == (U′, S′, V′, ϵ′)
-                        # results with truncationcutoff cannot be compared because they don't take degeneracy into account, and thus truncate differently
-                        U, S, V = tsvd(t; trunc=truncbelow(1 / dim(domain(S₀))))
-                        ϵ = TensorKit._norm(LinearAlgebra.svdvals(U * S * V - t), p,
-                                            zero(scalartype(S)))
-                        # @show p, ϵ
-                        # @show domain(S)
-                        # @test min(space(S,1), space(S₀,1)) != space(S₀,1)
-                        U′, S′, V′ = tsvd(t; trunc=truncspace(space(S, 1)))
-                        ϵ′ = TensorKit._norm(LinearAlgebra.svdvals(U′ * S′ * V′ - t), p,
-                                             zero(scalartype(S)))
-                        @test (U, S, V, ϵ) == (U′, S′, V′, ϵ′)
-                    end
-                end
-            end
-        end
         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
             @timedtestset "Tensor functions" begin
                 W = V1 ⊗ V2

@@ -204,6 +204,54 @@ for V in spacelist
             end
         end
 
+        @testset "truncated SVD" begin
+            for T in eltypes,
+                t in (randn(T, W, W), randn(T, W, W)',
+                      randn(T, W, V1), randn(T, V1, W),
+                      randn(T, W, V1)', randn(T, V1, W)',
+                      DiagonalTensorMap(randn(T, reduceddim(V1)), V1))
+
+                @constinferred normalize!(t)
+
+                U, S, Vᴴ = @constinferred svd_trunc(t; trunc=notrunc())
+                @test U * S * Vᴴ ≈ t
+                @test isisometry(U)
+                @test isisometry(Vᴴ; side=:right)
+
+                trunc = truncrank(dim(domain(S)) ÷ 2)
+                U1, S1, Vᴴ1 = @constinferred svd_trunc(t; trunc)
+                @test t * Vᴴ1' ≈ U1 * S1
+                @test isisometry(U1)
+                @test isisometry(Vᴴ1; side=:right)
+                @test dim(domain(S1)) <= trunc.howmany
+
+                λ = minimum(minimum, values(LinearAlgebra.diag(S1)))
+                trunc = trunctol(λ - 10eps(λ))
+                U2, S2, Vᴴ2 = @constinferred svd_trunc(t; trunc)
+                @test t * Vᴴ2' ≈ U2 * S2
+                @test isisometry(U2)
+                @test isisometry(Vᴴ2; side=:right)
+                @test minimum(minimum, values(LinearAlgebra.diag(S1))) >= λ
+                @test U2 ≈ U1
+                @test S2 ≈ S1
+                @test Vᴴ2 ≈ Vᴴ1
+
+                trunc = truncspace(space(S2, 1))
+                U3, S3, Vᴴ3 = @constinferred svd_trunc(t; trunc)
+                @test t * Vᴴ3' ≈ U3 * S3
+                @test isisometry(U3)
+                @test isisometry(Vᴴ3; side=:right)
+                @test space(S3, 1) ≾ space(S2, 1)
+
+                trunc = truncerr(0.5)
+                U4, S4, Vᴴ4 = @constinferred svd_trunc(t; trunc)
+                @test t * Vᴴ4' ≈ U4 * S4
+                @test isisometry(U4)
+                @test isisometry(Vᴴ4; side=:right)
+                @test norm(t - U4 * S4 * Vᴴ4) <= 0.5
+            end
+        end
+
         @testset "Eigenvalue decomposition" begin
             for T in eltypes,
                 t in

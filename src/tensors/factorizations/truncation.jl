@@ -36,6 +36,7 @@ truncspace(space::ElementarySpace) = TruncationSpace(space)
 function truncate!(::typeof(svd_trunc!),
                    (U, S, Vᴴ)::Tuple{AbstractTensorMap,AbstractTensorMap,AbstractTensorMap},
                    strategy::TruncationStrategy)
+    strategy == notrunc() && return (U, S, Vᴴ)
     ind = findtruncated_sorted(diagview(S), strategy)
     V_truncated = spacetype(S)(c => length(I) for (c, I) in ind)
 
@@ -66,6 +67,7 @@ end
 function truncate!(::typeof(left_null!),
                    (U, S)::Tuple{AbstractTensorMap,AbstractTensorMap},
                    strategy::MatrixAlgebraKit.TruncationStrategy)
+    strategy == notrunc() && return (U, S)
     extended_S = SectorDict(c => vcat(diagview(b),
                                       zeros(eltype(b), max(0, size(b, 2) - size(b, 1))))
                             for (c, b) in blocks(S))
@@ -82,6 +84,7 @@ for f! in (:eig_trunc!, :eigh_trunc!)
     @eval function truncate!(::typeof($f!),
                              (D, V)::Tuple{AbstractTensorMap,AbstractTensorMap},
                              strategy::TruncationStrategy)
+        strategy == notrunc() && return (D, V)
         ind = findtruncated(diagview(D), strategy)
         V_truncated = spacetype(D)(c => length(I) for (c, I) in ind)
 
@@ -136,10 +139,14 @@ function _findnexttruncvalue(S, truncdim::SectorDict{I,Int}; by=identity,
 end
 
 # implementations
+function findtruncated_sorted(S::SectorDict, strategy::TruncationStrategy)
+    return findtruncated(S, strategy)
+end
+
 function findtruncated_sorted(S::SectorDict, strategy::TruncationKeepAbove)
     atol = rtol_to_atol(S, strategy.p, strategy.atol, strategy.rtol)
     findtrunc = Base.Fix2(findtruncated_sorted, truncbelow(atol))
-    return SectorDict(c => findtrunc(d) for (c, d) in Sd)
+    return SectorDict(c => findtrunc(d) for (c, d) in S)
 end
 function findtruncated(S::SectorDict, strategy::TruncationKeepAbove)
     atol = rtol_to_atol(S, strategy.p, strategy.atol, strategy.rtol)
@@ -195,13 +202,10 @@ function findtruncated(Sd::SectorDict, strategy::TruncationKeepSorted)
         _, cmin = next
         truncdim[cmin] -= 1
         totaldim -= dim(cmin)
-        if totaldim < strategy.howmany
-            # truncdim[cmin] += 1
-            break
-        end
         if truncdim[cmin] == 0
             delete!(truncdim, cmin)
         end
+        totaldim <= strategy.howmany && break
     end
     return SectorDict(c => permutations[c][Base.OneTo(d)] for (c, d) in truncdim)
 end
