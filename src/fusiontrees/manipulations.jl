@@ -786,13 +786,13 @@ function elementary_trace(f::FusionTree{I,N}, i) where {I<:Sector,N}
         vertices_ = TupleTools.front(f.vertices)
         f_ = FusionTree(uncoupled_, coupled_, isdual_, inner_, vertices_)
         fs = FusionTree((b,), b, (!f.isdual[1],), (), ())
-        for (f_′, coeff) in merge(fs, f_, unit, 1) # coloring gets reversed here, should be the other unit
+        for (f_′, coeff) in merge(fs, f_, unit, 1)
             f_′.innerlines[1] == unit || continue
             uncoupled′ = Base.tail(Base.tail(f_′.uncoupled))
             isdual′ = Base.tail(Base.tail(f_′.isdual))
             inner′ = N <= 4 ? () : Base.tail(Base.tail(f_′.innerlines))
             vertices′ = N <= 3 ? () : Base.tail(Base.tail(f_′.vertices))
-            f′ = FusionTree(uncoupled′, unit, isdual′, inner′, vertices′) # and this one?
+            f′ = FusionTree(uncoupled′, unit, isdual′, inner′, vertices′)
             coeff *= sqrtdim(b)
             if !(f.isdual[N])
                 coeff *= conj(frobeniusschur(b))

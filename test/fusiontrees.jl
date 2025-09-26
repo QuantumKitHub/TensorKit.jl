@@ -212,7 +212,7 @@ ti = time()
             end
         end
     end
-    @testset "Fusion tree $Istr: elementy artin braid" begin
+    @testset "Fusion tree $Istr: elementary artin braid" begin
         N = length(out)
         isdual = ntuple(n -> rand(Bool), N)
         for in in ⊗(out...)
@@ -269,7 +269,7 @@ ti = time()
         end
     end
     @testset "Fusion tree $Istr: braiding and permuting" begin
-        f = rand(collect(fusiontrees(out, in, isdual)))
+        f = rand(collect(it))
         p = tuple(randperm(N)...)
         ip = invperm(p)
 
@@ -380,7 +380,7 @@ ti = time()
     f1 = rand(collect(fusiontrees(out, incoming, ntuple(n -> rand(Bool), N))))
     f2 = rand(collect(fusiontrees(out[randperm(N)], incoming, ntuple(n -> rand(Bool), N))))
 
-    @testset "Double fusion tree $Istr: repartioning" begin
+    @testset "Double fusion tree $Istr: repartitioning" begin
         for n in 0:(2 * N)
             d = @constinferred TK.repartition(f1, f2, $n)
             @test dim(incoming) ≈
@@ -549,8 +549,7 @@ ti = time()
     @testset "Double fusion tree $Istr: planar trace" begin
         d1 = transpose(f1, f1, (N + 1, 1:N..., ((2N):-1:(N + 3))...), (N + 2,))
         f1front, = TK.split(f1, N - 1)
-        T = typeof(Fsymbol(unit(I), unit(I), unit(I), unit(I), unit(I), unit(I))[1, 1, 1,
-                                                                                 1]) #TODO: change to _fscalartype
+        T = sectorscalartype(I)
         d2 = Dict{typeof((f1front, f1front)),T}()
         for ((f1′, f2′), coeff′) in d1
             for ((f1′′, f2′′), coeff′′) in
