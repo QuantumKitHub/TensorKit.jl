@@ -16,11 +16,12 @@ catch
 end
 
 eltypes = (Float32, ComplexF64)
+
 for V in spacelist
     I = sectortype(first(V))
     Istr = TensorKit.type_repr(I)
     println("---------------------------------------")
-    println("Tensors with symmetry: $Istr")
+    println("Factorizations with symmetry: $Istr")
     println("---------------------------------------")
     @timedtestset "Factorizations with symmetry: $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
@@ -254,9 +255,8 @@ for V in spacelist
 
         @testset "Eigenvalue decomposition" begin
             for T in eltypes,
-                t in
-                (rand(T, V1, V1), rand(T, W, W), rand(T, W, W)',
-                 DiagonalTensorMap(rand(T, reduceddim(V1)), V1))
+                t in (rand(T, V1, V1), rand(T, W, W), rand(T, W, W)',
+                      DiagonalTensorMap(rand(T, reduceddim(V1)), V1))
 
                 d, v = @constinferred eig_full(t)
                 @test t * v ≈ v * d

@@ -2,10 +2,10 @@
 # ----------------
 # map algorithms to their adjoint counterpart
 # TODO: this probably belongs in MatrixAlgebraKit
-_adjoint(alg::LAPACK_HouseholderQR) = LAPACK_HouseholderLQ(; alg.positive, alg.blocksize)
-_adjoint(alg::LAPACK_HouseholderLQ) = LAPACK_HouseholderQR(; alg.positive, alg.blocksize)
-_adjoint(alg::LAPACK_HouseholderQL) = LAPACK_HouseholderRQ(; alg.positive, alg.blocksize)
-_adjoint(alg::LAPACK_HouseholderRQ) = LAPACK_HouseholderQL(; alg.positive, alg.blocksize)
+_adjoint(alg::LAPACK_HouseholderQR) = LAPACK_HouseholderLQ(; alg.kwargs...)
+_adjoint(alg::LAPACK_HouseholderLQ) = LAPACK_HouseholderQR(; alg.kwargs...)
+_adjoint(alg::LAPACK_HouseholderQL) = LAPACK_HouseholderRQ(; alg.kwargs...)
+_adjoint(alg::LAPACK_HouseholderRQ) = LAPACK_HouseholderQL(; alg.kwargs...)
 _adjoint(alg::PolarViaSVD) = PolarViaSVD(_adjoint(alg.svdalg))
 _adjoint(alg::AbstractAlgorithm) = alg
 
