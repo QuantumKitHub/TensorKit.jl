@@ -47,7 +47,7 @@
     # https://github.com/quantumkithub/TensorKit.jl/issues/201
     @testset "Issue #201" begin
         function f(A::AbstractTensorMap)
-            U, S, V, = tsvd(A)
+            U, S, V, = svd_compact(A)
             return tr(S)
         end
         function f(A::AbstractMatrix)
@@ -60,7 +60,7 @@
         @test convert(Array, grad1) ≈ grad2
 
         function g(A::AbstractTensorMap)
-            U, S, V, = tsvd(A)
+            U, S, V, = svd_compact(A)
             return tr(U * V)
         end
         function g(A::AbstractMatrix)

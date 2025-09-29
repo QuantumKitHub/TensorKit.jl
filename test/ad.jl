@@ -148,22 +148,32 @@ project_hermitian(A) = (A + A') / 2
 
 ChainRulesTestUtils.test_method_tables()
 
-spacelist = try
-    if ENV["CI"] == "true"
-        println("Detected running on CI")
-        if Sys.iswindows()
-            (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂)
-        elseif Sys.isapple()
-            (Vtr, Vℤ₃, VfU₁, VfSU₂)
-        else
-            (Vtr, VU₁, VCU₁, VfSU₂, Vfib)
-        end
-    else
-        (Vtr, Vℤ₃, VU₁, VfU₁, VSU₂, VfSU₂, Vfib)
-    end
-catch
-    (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, Vfib)
-end
+spacelist = ((ℂ^2, (ℂ^3)', ℂ^3, ℂ^2, (ℂ^2)'),
+             (Vect[Z2Irrep](0 => 1, 1 => 1),
+              Vect[Z2Irrep](0 => 1, 1 => 2)',
+              Vect[Z2Irrep](0 => 3, 1 => 2)',
+              Vect[Z2Irrep](0 => 2, 1 => 3),
+              Vect[Z2Irrep](0 => 2, 1 => 2)),
+             (Vect[FermionParity](0 => 1, 1 => 1),
+              Vect[FermionParity](0 => 1, 1 => 2)',
+              Vect[FermionParity](0 => 2, 1 => 2)',
+              Vect[FermionParity](0 => 2, 1 => 3),
+              Vect[FermionParity](0 => 2, 1 => 2)),
+             (Vect[U1Irrep](0 => 2, 1 => 1, -1 => 1),
+              Vect[U1Irrep](0 => 3, 1 => 1, -1 => 1),
+              Vect[U1Irrep](0 => 2, 1 => 2, -1 => 1)',
+              Vect[U1Irrep](0 => 1, 1 => 1, -1 => 2),
+              Vect[U1Irrep](0 => 1, 1 => 2, -1 => 1)'),
+             (Vect[SU2Irrep](0 => 2, 1 // 2 => 1),
+              Vect[SU2Irrep](0 => 1, 1 => 1),
+              Vect[SU2Irrep](1 // 2 => 1, 1 => 1)',
+              Vect[SU2Irrep](1 // 2 => 2),
+              Vect[SU2Irrep](0 => 1, 1 // 2 => 1, 3 // 2 => 1)'),
+             (Vect[FibonacciAnyon](:I => 1, :τ => 1),
+              Vect[FibonacciAnyon](:I => 1, :τ => 2)',
+              Vect[FibonacciAnyon](:I => 3, :τ => 2)',
+              Vect[FibonacciAnyon](:I => 2, :τ => 3),
+              Vect[FibonacciAnyon](:I => 2, :τ => 2)))
 
 for V in spacelist
     I = sectortype(eltype(V))
@@ -308,8 +318,8 @@ for V in spacelist
 
                 @timedtestset "tensortrace!" begin
                     for _ in 1:5
-                        k1 = rand(0:3)
-                        k2 = k1 == 3 ? 1 : rand(1:2)
+                        k1 = rand(0:2)
+                        k2 = rand(1:2)
                         V1 = map(v -> rand(Bool) ? v' : v, rand(V, k1))
                         V2 = map(v -> rand(Bool) ? v' : v, rand(V, k2))
 
@@ -331,13 +341,13 @@ for V in spacelist
                 end
 
                 @timedtestset "tensoradd!" begin
-                    A = randn(T, V[1] ⊗ V[2] ⊗ V[3] ← V[4] ⊗ V[5])
+                    A = randn(T, V[1] ⊗ V[2] ← V[4] ⊗ V[5])
                     α = randn(T)
                     β = randn(T)
 
                     # repeat a couple times to get some distribution of arrows
                     for _ in 1:5
-                        p = randindextuple(length(V))
+                        p = randindextuple(numind(A))
 
                         C1 = randn!(TensorOperations.tensoralloc_add(T, A, p, false,
                                                                      Val(false)))
@@ -399,19 +409,20 @@ for V in spacelist
             end
 
         @timedtestset "Factorizations" begin
+            W = V[1] ⊗ V[2]
             @testset "QR" begin
                 for T in eltypes,
                     t in (randn(T, W, W), randn(T, W, W)',
-                          randn(T, W, V1), randn(T, V1, W),
-                          randn(T, W, V1)', randn(T, V1, W)',
-                          DiagonalTensorMap(randn(T, reduceddim(V1)), V1))
+                          randn(T, W, V[1]), randn(T, V[1], W),
+                          randn(T, W, V[1])', randn(T, V[1], W)',
+                          DiagonalTensorMap(randn(T, reduceddim(V[1])), V[1]))
 
                     atol = rtol = precision(T) * dim(space(t))
                     fkwargs = (; positive=true) # make FiniteDifferences happy
 
                     test_ad_rrule(qr_compact, t; fkwargs, atol, rtol)
-                    test_ad_rrule(first ∘ qr_compact, t; fkwargs, atol, rtol,)
-                    test_ad_rrule(last ∘ qr_compact, t; fkwargs, atol, rtol,)
+                    test_ad_rrule(first ∘ qr_compact, t; fkwargs, atol, rtol)
+                    test_ad_rrule(last ∘ qr_compact, t; fkwargs, atol, rtol)
 
                     # qr_full/qr_null requires being careful with gauges
                     Q, R = qr_full(t)
@@ -445,9 +456,9 @@ for V in spacelist
             @testset "LQ" begin
                 for T in eltypes,
                     t in (randn(T, W, W), randn(T, W, W)',
-                          randn(T, W, V1), randn(T, V1, W),
-                          randn(T, W, V1)', randn(T, V1, W)',
-                          DiagonalTensorMap(randn(T, reduceddim(V1)), V1))
+                          randn(T, W, V[1]), randn(T, V[1], W),
+                          randn(T, W, V[1])', randn(T, V[1], W)',
+                          DiagonalTensorMap(randn(T, reduceddim(V[1])), V[1]))
 
                     atol = rtol = precision(T) * dim(space(t))
                     fkwargs = (; positive=true) # make FiniteDifferences happy
@@ -489,8 +500,8 @@ for V in spacelist
 
             @testset "Eigenvalue decomposition" begin
                 for T in eltypes,
-                    t in (rand(T, V1, V1), rand(T, W, W), rand(T, W, W)',
-                          DiagonalTensorMap(rand(T, reduceddim(V1)), V1))
+                    t in (rand(T, V[1], V[1]), rand(T, W, W), rand(T, W, W)',
+                          DiagonalTensorMap(rand(T, reduceddim(V[1])), V[1]))
 
                     atol = rtol = precision(T) * dim(space(t))
 
@@ -524,7 +535,7 @@ for V in spacelist
 
             @testset "Singular value decomposition" begin
                 for T in eltypes,
-                    t in (randn(T, V1, V1), randn(T, W, W), randn(T, W, W))
+                    t in (randn(T, V[1], V[1]), randn(T, W, W), randn(T, W, W))
                     # TODO: fix diagonaltensormap case
                     #   DiagonalTensorMap(rand(T, reduceddim(V1)), V1))
 

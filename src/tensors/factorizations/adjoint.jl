@@ -78,6 +78,12 @@ for f! in (:svd_full!, :svd_compact!, :svd_trunc!)
         $f!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
         return F
     end
+
+    # disambiguate by prohibition
+    @eval function initialize_output(::typeof($f!), t::AdjointTensorMap,
+                                     alg::DiagonalAlgorithm)
+        throw(MethodError($f!, (t, alg)))
+    end
 end
 # avoid amgiguity
 function initialize_output(::typeof(svd_trunc!), t::AdjointTensorMap,

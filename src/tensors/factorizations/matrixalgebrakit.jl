@@ -128,14 +128,6 @@ function check_input(::typeof(svd_compact!), t::AbstractTensorMap, USVᴴ,
     return nothing
 end
 
-function check_input(::typeof(svd_vals!), t::AbstractTensorMap, S::SectorDict,
-                     ::AbstractAlgorithm)
-    @check_scalar S t real
-    V_cod = V_dom = infimum(fuse(codomain(t)), fuse(domain(t)))
-    @check_space(S, V_cod ← V_dom)
-    return nothing
-end
-
 function check_input(::typeof(svd_vals!), t::AbstractTensorMap, D, ::AbstractAlgorithm)
     @check_scalar D t real
     @assert D isa DiagonalTensorMap
