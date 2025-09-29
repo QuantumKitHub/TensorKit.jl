@@ -14,9 +14,9 @@ using VectorInterface: promote_scale, promote_add
 
 using MatrixAlgebraKit
 using MatrixAlgebraKit: TruncationStrategy, TruncatedAlgorithm,
-                        svd_compact_pullback!, eig_full_pullback!, eigh_full_pullback!,
-                        qr_compact_pullback!, lq_compact_pullback!, left_polar_pullback!,
-                        right_polar_pullback!
+                        svd_pullback!, eig_pullback!, eigh_pullback!,
+                        qr_compact_pullback!, lq_compact_pullback!,
+                        left_polar_pullback!, right_polar_pullback!
 
 include("utility.jl")
 include("constructors.jl")

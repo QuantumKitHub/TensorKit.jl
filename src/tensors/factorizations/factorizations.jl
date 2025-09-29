@@ -42,9 +42,11 @@ import MatrixAlgebraKit: default_algorithm,
                          left_orth!, right_orth!, left_null!, right_null!,
                          truncate!, findtruncated, findtruncated_svd,
                          diagview, isisometry
-import MatrixAlgebraKit: qr_compact_pullback!, lq_compact_pullback!, svd_compact_pullback!,
-                         left_polar_pullback!, right_polar_pullback!, eig_full_pullback!,
-                         eigh_full_pullback!
+using MatrixAlgebraKit: qr_compact_pullback!, lq_compact_pullback!,
+                        svd_pullback!, svd_trunc_pullback!,
+                        eig_pullback!, eig_trunc_pullback!,
+                        eigh_pullback!, eigh_trunc_pullback!,
+                        left_polar_pullback!, right_polar_pullback!
 
 include("utility.jl")
 include("matrixalgebrakit.jl")

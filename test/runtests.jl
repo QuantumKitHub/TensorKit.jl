@@ -110,11 +110,11 @@ VSU₂U₁ = (Vect[SU2Irrep ⊠ U1Irrep]((0, 0) => 1, (1 // 2, -1) => 1),
           Vect[SU2Irrep ⊠ U1Irrep]((1 // 2, 1) => 1, (1, -2) => 1)',
           Vect[SU2Irrep ⊠ U1Irrep]((0, 0) => 2, (0, 2) => 1, (1 // 2, 1) => 1),
           Vect[SU2Irrep ⊠ U1Irrep]((0, 0) => 1, (1 // 2, 1) => 1)')
-# VSU₃ = (ℂ[SU3Irrep]((0, 0, 0) => 3, (1, 0, 0) => 1),
-#     ℂ[SU3Irrep]((0, 0, 0) => 3, (2, 0, 0) => 1)',
-#     ℂ[SU3Irrep]((1, 1, 0) => 1, (2, 1, 0) => 1),
-#     ℂ[SU3Irrep]((1, 0, 0) => 1, (2, 0, 0) => 1),
-#     ℂ[SU3Irrep]((0, 0, 0) => 1, (1, 0, 0) => 1, (1, 1, 0) => 1)')
+Vfib = (Vect[FibonacciAnyon](:I => 1, :τ => 1),
+        Vect[FibonacciAnyon](:I => 1, :τ => 2)',
+        Vect[FibonacciAnyon](:I => 3, :τ => 2)',
+        Vect[FibonacciAnyon](:I => 2, :τ => 3),
+        Vect[FibonacciAnyon](:I => 2, :τ => 2))
 
 if !is_buildkite
     Ti = time()

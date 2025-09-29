@@ -18,7 +18,7 @@ for qr_f in (:qr_compact, :qr_full)
         function qr_pullback(ΔQR′)
             ΔQR = unthunk.(ΔQR′)
             Δt = zerovector(t)
-            MatrixAlgebraKit.qr_compact_pullback!(Δt, QR, ΔQR)
+            MatrixAlgebraKit.qr_compact_pullback!(Δt, t, QR, ΔQR)
             return NoTangent(), Δt, ZeroTangent(), NoTangent()
         end
         function qr_pullback(::Tuple{ZeroTangent,ZeroTangent})
@@ -44,7 +44,7 @@ function ChainRulesCore.rrule(::typeof(qr_null!), t::AbstractTensorMap, N, alg)
             return copy!(@view(ΔQc[:, (end - n + 1):end]), b)
         end
         ΔR = ZeroTangent()
-        MatrixAlgebraKit.qr_compact_pullback!(Δt, (Q, R), (ΔQ, ΔR))
+        MatrixAlgebraKit.qr_compact_pullback!(Δt, t, (Q, R), (ΔQ, ΔR))
         return NoTangent(), Δt, ZeroTangent(), NoTangent()
     end
     qr_null_pullback(::ZeroTangent) = NoTangent(), ZeroTangent(), ZeroTangent(), NoTangent()
@@ -60,7 +60,7 @@ for lq_f in (:lq_compact, :lq_full)
         function lq_pullback(ΔLQ′)
             ΔLQ = unthunk.(ΔLQ′)
             Δt = zerovector(t)
-            MatrixAlgebraKit.lq_compact_pullback!(Δt, LQ, ΔLQ)
+            MatrixAlgebraKit.lq_compact_pullback!(Δt, t, LQ, ΔLQ)
             return NoTangent(), Δt, ZeroTangent(), NoTangent()
         end
         function lq_pullback(::Tuple{ZeroTangent,ZeroTangent})
@@ -86,7 +86,7 @@ function ChainRulesCore.rrule(::typeof(lq_null!), t::AbstractTensorMap, Nᴴ, al
             return copy!(@view(ΔQc[(end - m + 1):end, :]), b)
         end
         ΔL = ZeroTangent()
-        MatrixAlgebraKit.lq_compact_pullback!(Δt, (L, Q), (ΔL, ΔQ))
+        MatrixAlgebraKit.lq_compact_pullback!(Δt, t, (L, Q), (ΔL, ΔQ))
         return NoTangent(), Δt, ZeroTangent(), NoTangent()
     end
     lq_null_pullback(::ZeroTangent) = NoTangent(), ZeroTangent(), ZeroTangent(), NoTangent()
@@ -97,14 +97,14 @@ end
 for eig in (:eig, :eigh)
     eig_f = Symbol(eig, "_full")
     eig_f! = Symbol(eig_f, "!")
-    eig_f_pb! = Symbol(eig, "_full_pullback!")
+    eig_f_pb! = Symbol(eig, "_pullback!")
     eig_pb = Symbol(eig, "_pullback")
     @eval function ChainRulesCore.rrule(::typeof($eig_f!), t::AbstractTensorMap, DV, alg)
-        tc = copy_input($eig_f, t)
+        tc = MatrixAlgebraKit.copy_input($eig_f, t)
         DV = $(eig_f!)(tc, DV, alg)
         function $eig_pb(ΔDV)
             Δt = zerovector(t)
-            MatrixAlgebraKit.$eig_f_pb!(Δt, DV, unthunk.(ΔDV))
+            MatrixAlgebraKit.$eig_f_pb!(Δt, t, DV, unthunk.(ΔDV))
             return NoTangent(), Δt, ZeroTangent(), NoTangent()
         end
         function $eig_pb(::Tuple{ZeroTangent,ZeroTangent})
@@ -118,11 +118,11 @@ for svd_f in (:svd_compact, :svd_full)
     svd_f! = Symbol(svd_f, "!")
     @eval begin
         function ChainRulesCore.rrule(::typeof($svd_f!), t::AbstractTensorMap, USVᴴ, alg)
-            tc = copy_input($svd_f, t)
+            tc = MatrixAlgebraKit.copy_input($svd_f, t)
             USVᴴ = $(svd_f!)(tc, USVᴴ, alg)
             function svd_pullback(ΔUSVᴴ)
                 Δt = zerovector(t)
-                MatrixAlgebraKit.svd_compact_pullback!(Δt, USVᴴ, unthunk.(ΔUSVᴴ))
+                MatrixAlgebraKit.svd_pullback!(Δt, t, USVᴴ, unthunk.(ΔUSVᴴ))
                 return NoTangent(), Δt, ZeroTangent(), NoTangent()
             end
             function svd_pullback(::Tuple{ZeroTangent,ZeroTangent,ZeroTangent})
@@ -137,23 +137,28 @@ function ChainRulesCore.rrule(::typeof(svd_trunc!), t::AbstractTensorMap, USVᴴ
                               alg::TruncatedAlgorithm)
     tc = MatrixAlgebraKit.copy_input(svd_compact, t)
     USVᴴ = svd_compact!(tc, USVᴴ, alg.alg)
+    USVᴴ_trunc, ind = TensorKit.Factorizations.truncate(svd_trunc!, USVᴴ, alg.trunc)
+    svd_trunc_pullback = _make_svd_trunc_pullback(t, USVᴴ, ind)
+    return USVᴴ_trunc, svd_trunc_pullback
+end
+function _make_svd_trunc_pullback(t::AbstractTensorMap, USVᴴ, ind)
     function svd_trunc_pullback(ΔUSVᴴ)
         Δt = zerovector(t)
-        MatrixAlgebraKit.svd_compact_pullback!(Δt, USVᴴ, unthunk.(ΔUSVᴴ))
-        return NoTangent(), ΔA, ZeroTangent(), NoTangent()
+        MatrixAlgebraKit.svd_pullback!(Δt, t, USVᴴ, unthunk.(ΔUSVᴴ), ind)
+        return NoTangent(), Δt, ZeroTangent(), NoTangent()
     end
-    function svd_trunc_pullback(::Tuple{ZeroTangent,ZeroTangent,ZeroTangent})
+    function svd_trunc_pullback(::NTuple{3,ZeroTangent})
         return NoTangent(), ZeroTangent(), ZeroTangent(), NoTangent()
     end
-    return MatrixAlgebraKit.truncate!(svd_trunc!, USVᴴ, alg.trunc), svd_trunc_pullback
+    return svd_trunc_pullback
 end
 
 function ChainRulesCore.rrule(::typeof(left_polar!), t::AbstractTensorMap, WP, alg)
-    tc = copy_input(left_polar, t)
+    tc = MatrixAlgebraKit.copy_input(left_polar, t)
     WP = left_polar!(tc, WP, alg)
     function left_polar_pullback(ΔWP)
         Δt = zerovector(t)
-        MatrixAlgebraKit.left_polar_pullback!(Δt, WP, unthunk.(ΔWP))
+        MatrixAlgebraKit.left_polar_pullback!(Δt, t, WP, unthunk.(ΔWP))
         return NoTangent(), Δt, ZeroTangent(), NoTangent()
     end
     function left_polar_pullback(::Tuple{ZeroTangent,ZeroTangent})
@@ -163,11 +168,11 @@ function ChainRulesCore.rrule(::typeof(left_polar!), t::AbstractTensorMap, WP, a
 end
 
 function ChainRulesCore.rrule(::typeof(right_polar!), t::AbstractTensorMap, PWᴴ, alg)
-    tc = copy_input(left_polar, t)
-    PWᴴ = right_polar!(Ac, PWᴴ, alg)
+    tc = MatrixAlgebraKit.copy_input(left_polar, t)
+    PWᴴ = right_polar!(tc, PWᴴ, alg)
     function right_polar_pullback(ΔPWᴴ)
         Δt = zerovector(t)
-        MatrixAlgebraKit.right_polar_pullback!(Δt, PWᴴ, unthunk.(ΔPWᴴ))
+        MatrixAlgebraKit.right_polar_pullback!(Δt, t, PWᴴ, unthunk.(ΔPWᴴ))
         return NoTangent(), Δt, ZeroTangent(), NoTangent()
     end
     function right_polar_pullback(::Tuple{ZeroTangent,ZeroTangent})
@@ -175,41 +180,6 @@ function ChainRulesCore.rrule(::typeof(right_polar!), t::AbstractTensorMap, PW�
     end
     return PWᴴ, right_polar_pullback
 end
-
-# for f in (:tsvd, :eig, :eigh)
-#     f! = Symbol(f, :!)
-#     f_trunc! = f == :tsvd ? :svd_trunc! : Symbol(f, :_trunc!)
-#     f_pullback = Symbol(f, :_pullback)
-#     f_pullback! = f == :tsvd ? :svd_compact_pullback! : Symbol(f, :_full_pullback!)
-#     @eval function ChainRulesCore.rrule(::typeof(TensorKit.$f!), t::AbstractTensorMap;
-#                                         trunc::TruncationStrategy=TensorKit.notrunc(),
-#                                         kwargs...)
-#         # TODO: I think we can use f! here without issues because we don't actually require
-#         # the data of `t` anymore.
-#         F = $f(t; trunc=TensorKit.notrunc(), kwargs...)
-
-#         if trunc != TensorKit.notrunc() && !isempty(blocksectors(t))
-#             F′ = MatrixAlgebraKit.truncate!($f_trunc!, F, trunc)
-#         else
-#             F′ = F
-#         end
-
-#         function $f_pullback(ΔF′)
-#             ΔF = unthunk.(ΔF′)
-#             Δt = zerovector(t)
-#             foreachblock(Δt) do c, (b,)
-#                 Fc = block.(F, Ref(c))
-#                 ΔFc = block.(ΔF, Ref(c))
-#                 $f_pullback!(b, Fc, ΔFc)
-#                 return nothing
-#             end
-#             return NoTangent(), Δt
-#         end
-#         $f_pullback(::Tuple{ZeroTangent,Vararg{ZeroTangent}}) = NoTangent(), ZeroTangent()
-
-#         return F′, $f_pullback
-#     end
-# end
 
 # function ChainRulesCore.rrule(::typeof(LinearAlgebra.svdvals!), t::AbstractTensorMap)
 #     U, S, V⁺ = tsvd(t)
@@ -238,43 +208,4 @@ end
 #     end
 
 #     return d, eigvals_pullback
-# end
-
-# function ChainRulesCore.rrule(::typeof(leftorth!), t::AbstractTensorMap; alg=QRpos())
-#     alg isa MatrixAlgebraKit.LAPACK_HouseholderQR ||
-#         error("only `alg=QR()` and `alg=QRpos()` are supported")
-#     QR = leftorth(t; alg)
-#     function leftorth!_pullback(ΔQR′)
-#         ΔQR = unthunk.(ΔQR′)
-#         Δt = zerovector(t)
-#         foreachblock(Δt) do c, (b,)
-#             QRc = block.(QR, Ref(c))
-#             ΔQRc = block.(ΔQR, Ref(c))
-#             qr_compact_pullback!(b, QRc, ΔQRc)
-#             return nothing
-#         end
-#         return NoTangent(), Δt
-#     end
-#     leftorth!_pullback(::NTuple{2,ZeroTangent}) = NoTangent(), ZeroTangent()
-
-#     return QR, leftorth!_pullback
-# end
-
-# function ChainRulesCore.rrule(::typeof(rightorth!), t::AbstractTensorMap; alg=LQpos())
-#     alg isa MatrixAlgebraKit.LAPACK_HouseholderLQ ||
-#         error("only `alg=LQ()` and `alg=LQpos()` are supported")
-#     LQ = rightorth(t; alg)
-#     function rightorth!_pullback(ΔLQ′)
-#         ΔLQ = unthunk(ΔLQ′)
-#         Δt = zerovector(t)
-#         foreachblock(Δt) do c, (b,)
-#             LQc = block.(LQ, Ref(c))
-#             ΔLQc = block.(ΔLQ, Ref(c))
-#             lq_compact_pullback!(b, LQc, ΔLQc)
-#             return nothing
-#         end
-#         return NoTangent(), Δt
-#     end
-#     rightorth!_pullback(::NTuple{2,ZeroTangent}) = NoTangent(), ZeroTangent()
-#     return LQ, rightorth!_pullback
 # end

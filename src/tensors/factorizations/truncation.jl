@@ -31,73 +31,94 @@ end
 
 # truncate!
 # ---------
-function truncate!(::typeof(svd_trunc!),
-                   (U, S, Vᴴ)::Tuple{AbstractTensorMap,AbstractTensorMap,AbstractTensorMap},
-                   strategy::TruncationStrategy)
-    ind = findtruncated_svd(diagview(S), strategy)
-    V_truncated = spacetype(S)(c => length(I) for (c, I) in ind)
-
-    Ũ = similar(U, codomain(U) ← V_truncated)
-    for (c, b) in blocks(Ũ)
-        I = get(ind, c, nothing)
-        @assert !isnothing(I)
-        copy!(b, @view(block(U, c)[:, I]))
-    end
-
-    S̃ = DiagonalTensorMap{scalartype(S)}(undef, V_truncated)
-    for (c, b) in blocks(S̃)
-        I = get(ind, c, nothing)
-        @assert !isnothing(I)
-        copy!(b.diag, @view(block(S, c).diag[I]))
-    end
-
-    Ṽᴴ = similar(Vᴴ, V_truncated ← domain(Vᴴ))
-    for (c, b) in blocks(Ṽᴴ)
-        I = get(ind, c, nothing)
-        @assert !isnothing(I)
-        copy!(b, @view(block(Vᴴ, c)[I, :]))
-    end
-
-    return Ũ, S̃, Ṽᴴ
+_blocklength(d::Integer, ind) = _blocklength(Base.OneTo(d), ind)
+_blocklength(ax, ind) = length(ax[ind])
+function truncate_space(V::ElementarySpace, inds)
+    return spacetype(V)(c => _blocklength(dim(V, c), ind) for (c, ind) in inds)
 end
 
-function truncate!(::typeof(left_null!),
-                   (U, S)::Tuple{AbstractTensorMap,AbstractTensorMap},
-                   strategy::MatrixAlgebraKit.TruncationStrategy)
+function truncate_domain!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, inds)
+    for (c, b) in blocks(tdst)
+        I = get(inds, c, nothing)
+        @assert !isnothing(I)
+        copy!(b, @view(block(tsrc, c)[:, I]))
+    end
+    return tdst
+end
+function truncate_codomain!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, inds)
+    for (c, b) in blocks(tdst)
+        I = get(inds, c, nothing)
+        @assert !isnothing(I)
+        copy!(b, @view(block(tsrc, c)[I, :]))
+    end
+    return tdst
+end
+function truncate_diagonal!(Ddst::DiagonalTensorMap, Dsrc::DiagonalTensorMap, inds)
+    for (c, b) in blocks(Ddst)
+        I = get(inds, c, nothing)
+        @assert !isnothing(I)
+        copy!(diagview(b), @view(diagview(block(Dsrc, c))[I]))
+    end
+    return Ddst
+end
+
+function truncate(::typeof(svd_trunc!), (U, S, Vᴴ)::NTuple{3,AbstractTensorMap},
+                  strategy::TruncationStrategy)
+    ind = findtruncated_svd(diagview(S), strategy)
+    V_truncated = truncate_space(space(S, 1), ind)
+
+    Ũ = similar(U, codomain(U) ← V_truncated)
+    truncate_domain!(Ũ, U, ind)
+    S̃ = DiagonalTensorMap{scalartype(S)}(undef, V_truncated)
+    truncate_diagonal!(S̃, S, ind)
+    Ṽᴴ = similar(Vᴴ, V_truncated ← domain(Vᴴ))
+    truncate_codomain!(Ṽᴴ, Vᴴ, ind)
+
+    return (Ũ, S̃, Ṽᴴ), ind
+end
+function truncate!(::typeof(svd_trunc!), USVᴴ::NTuple{3,AbstractTensorMap},
+                   strategy::TruncationStrategy)
+    USVᴴ_trunc, _ = truncate(svd_trunc!, USVᴴ, strategy)
+    return USVᴴ_trunc
+end
+
+function truncate(::typeof(left_null!),
+                  (U, S)::Tuple{AbstractTensorMap,AbstractTensorMap},
+                  strategy::MatrixAlgebraKit.TruncationStrategy)
     extended_S = SectorDict(c => vcat(diagview(b),
                                       zeros(eltype(b), max(0, size(b, 2) - size(b, 1))))
                             for (c, b) in blocks(S))
     ind = findtruncated(extended_S, strategy)
-    V_truncated = spacetype(S)(c => length(axes(b, 1)[ind[c]]) for (c, b) in blocks(S))
+    V_truncated = truncate_space(space(S, 1), ind)
     Ũ = similar(U, codomain(U) ← V_truncated)
-    for (c, b) in blocks(Ũ)
-        copy!(b, @view(block(U, c)[:, ind[c]]))
-    end
-    return Ũ
+    truncate_domain!(Ũ, U, ind)
+    return Ũ, ind
+end
+function truncate!(::typeof(left_null!), US::NTuple{2,AbstractTensorMap},
+                   strategy::TruncationStrategy)
+    U_trunc, _ = truncate(left_null!, US, strategy)
+    return U_trunc
 end
 
 for f! in (:eig_trunc!, :eigh_trunc!)
-    @eval function truncate!(::typeof($f!),
-                             (D, V)::Tuple{AbstractTensorMap,AbstractTensorMap},
-                             strategy::TruncationStrategy)
+    @eval function truncate(::typeof($f!),
+                            (D, V)::Tuple{DiagonalTensorMap,AbstractTensorMap},
+                            strategy::TruncationStrategy)
         ind = findtruncated(diagview(D), strategy)
         V_truncated = spacetype(D)(c => length(I) for (c, I) in ind)
 
         D̃ = DiagonalTensorMap{scalartype(D)}(undef, V_truncated)
-        for (c, b) in blocks(D̃)
-            I = get(ind, c, nothing)
-            @assert !isnothing(I)
-            copy!(b.diag, @view(block(D, c).diag[I]))
-        end
+        truncate_diagonal!(D̃, D, ind)
 
         Ṽ = similar(V, codomain(V) ← V_truncated)
-        for (c, b) in blocks(Ṽ)
-            I = get(ind, c, nothing)
-            @assert !isnothing(I)
-            copy!(b, @view(block(V, c)[:, I]))
-        end
+        truncate_domain!(Ṽ, V, ind)
 
-        return D̃, Ṽ
+        return (D̃, Ṽ), ind
+    end
+    @eval function truncate!(::typeof($f!), DV::Tuple{DiagonalTensorMap,AbstractTensorMap},
+                             strategy::TruncationStrategy)
+        DV_trunc, _ = truncate($f!, DV, strategy)
+        return DV_trunc
     end
 end
 
@@ -141,7 +162,7 @@ function findtruncated_svd(values::SectorDict, strategy::TruncationStrategy)
 end
 
 function findtruncated(values::SectorDict, ::NoTruncation)
-    return SectorDict(c => Base.OneTo(length(b)) for (c, b) in values)
+    return SectorDict(c => Colon() for (c, b) in values)
 end
 
 function findtruncated(values::SectorDict, strategy::TruncationByOrder)
