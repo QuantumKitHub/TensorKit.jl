@@ -26,8 +26,8 @@ are now explicitly represented as `DiagonalTensorMap` instances.
 There are is new functionality for manipulating the spaces associated with a tensor:
 * `flip(t, i)` changes the duality flag of the `i`th index of `t`, in such a way that flipping
   a pair of contracted indices in an `@tensor` contraction does not affect the result.
-* `insertleftunitspace(t, i)` and `insertrightunitspace(t, i)` insert a trivial unit space to the left
-  or to right of index `i`, whereas `removeunitspace(t, i)` removes such a trivial unit space.
+* `insertleftunit(t, i)` and `insertrightunit(t, i)` insert a trivial unit space to the left
+  or to right of index `i`, whereas `removeunit(t, i)` removes such a trivial unit space.
 
 ### SVD truncation change (breaking)
 There is a subtle but breaking change in the truncation mechanism in SVD, where now it is
