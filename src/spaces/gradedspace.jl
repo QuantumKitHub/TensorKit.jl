@@ -132,6 +132,44 @@ function Base.axes(V::GradedSpace{I}, c::I) where {I<:Sector}
     return (offset + 1):(offset + dim(c) * dim(V, c))
 end
 
+"""
+    leftunitspace(S::GradedSpace{I}) where {I<:Sector} -> GradedSpace{I}
+
+Return the corresponding vector space of type `GradedSpace{I}` that represents the trivial
+one-dimensional space consisting of the left unit of the objects in  `Sector` `I`.
+"""
+function leftunitspace(S::GradedSpace{I}) where {I<:Sector}
+    if UnitStyle(I) isa SimpleUnit
+        return unitspace(typeof(S))
+    else
+        !isempty(sectors(S)) || throw(ArgumentError("Cannot determine type of empty space"))
+        allequal(a.row for a in sectors(S)) ||
+            throw(ArgumentError("sectors of $S do not have the same left unit"))
+
+        sector = leftunit(first(sectors(S)))
+        return spacetype(S)(sector => 1)
+    end
+end
+
+"""
+    rightunitspace(S::GradedSpace{I}) where {I<:Sector} -> GradedSpace{I}
+
+Return the corresponding vector space of type `GradedSpace{I}` that represents the trivial
+one-dimensional space consisting of the right unit of the objects in `Sector` `I`.
+"""
+function rightunitspace(S::GradedSpace{I}) where {I<:Sector}
+    if UnitStyle(I) isa SimpleUnit
+        return unitspace(typeof(S))
+    else
+        !isempty(sectors(S)) || throw(ArgumentError("Cannot determine type of empty space"))
+        allequal(a.row for a in sectors(S)) ||
+            throw(ArgumentError("sectors of $S do not have the same right unit"))
+
+        sector = rightunit(first(sectors(S)))
+        return spacetype(S)(sector => 1)
+    end
+end
+
 function unitspace(S::Type{<:GradedSpace{I}}) where {I<:Sector}
     if UnitStyle(I) isa SimpleUnit
         return S(unit(I) => 1)
