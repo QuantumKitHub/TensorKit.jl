@@ -257,7 +257,15 @@ See also [`insertrightunitspace`](@ref insertrightunitspace(::ProductSpace, ::Va
 """
 function insertleftunitspace(P::ProductSpace, ::Val{i}=Val(length(P) + 1);
                         conj::Bool=false, dual::Bool=false) where {i}
-    u = unitspace(spacetype(P))
+    N = length(P)
+    I = sectortype(P)
+    if UnitStyle(I) isa SimpleUnit
+        u = unitspace(spacetype(P))
+    else
+        N > 0 || throw(ArgumentError("cannot insert a sensible unit space in the empty product space"))
+        i > N && throw(DomainError((P, i), "cannot insert a sensible left unit space"))
+        u = leftunitspace(P[i])
+    end
     if dual
         u = TensorKit.dual(u)
     end
@@ -278,7 +286,15 @@ See also [`insertleftunitspace`](@ref insertleftunitspace(::ProductSpace, ::Val{
 """
 function insertrightunitspace(P::ProductSpace, ::Val{i}=Val(length(P));
                          conj::Bool=false, dual::Bool=false) where {i}
-    u = unitspace(spacetype(P))
+    N = length(P)
+    I = sectortype(P)
+    if UnitStyle(I) isa SimpleUnit
+        u = unitspace(spacetype(P))
+    else
+        N > 0 || throw(ArgumentError("cannot insert a sensible unit space in the empty product space"))
+        i == 0 && throw(DomainError((P, i), "cannot insert a sensible right unit space"))
+        u = rightunitspace(P[i])
+    end
     if dual
         u = TensorKit.dual(u)
     end
