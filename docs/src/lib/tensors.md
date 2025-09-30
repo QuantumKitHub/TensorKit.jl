@@ -216,10 +216,10 @@ contract!
 
 The factorisation methods are powered by [MatrixAlgebraKit.jl](https://github.com/QuantumKitHub/MatrixAlgebraKit.jl)
 and all follow the same strategy. The idea is that the `TensorMap` is interpreted as a linear
-map  based on the current partition of indices between `domain` and `codomain`, and then the
+map based on the current partition of indices between `domain` and `codomain`, and then the
 entire range of MatrixAlgebraKit functions can be called.
-You can specify an additional permutation of the domain and codomain indices before the
-factorisation is performed by making use of [`permute`](@ref) or [`transpose`](@ref).
+Factorizing a tensor according to a different partition of the indices is possible
+by prepending the factorization step with an explicit call to [`permute`](@ref) or [`transpose`](@ref).
 
 For the full list of factorizations, see [Decompositions](@extref MatrixAlgebraKit).
 
