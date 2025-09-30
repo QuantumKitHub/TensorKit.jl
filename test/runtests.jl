@@ -124,8 +124,7 @@ if !is_buildkite
     include("factorizations.jl")
     include("diagonal.jl")
     include("planar.jl")
-    # TODO: remove once we know AD is slow on macOS CI
-    if !(Sys.isapple() && get(ENV, "CI", "false") == "true") && isempty(VERSION.prerelease)
+    if isempty(VERSION.prerelease)
         include("ad.jl")
     end
     include("bugfixes.jl")
