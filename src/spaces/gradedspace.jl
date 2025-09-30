@@ -91,7 +91,7 @@ Base.hash(V::GradedSpace, h::UInt) = hash(V.dual, hash(V.dims, h))
 field(::Type{<:GradedSpace}) = ℂ
 InnerProductStyle(::Type{<:GradedSpace}) = EuclideanInnerProduct()
 function dim(V::GradedSpace)
-    T = Base.promote_op(*, Int, real(sectorscalartype(sectortype(V))))
+    T = Base.promote_op(*, Int, real(sectorscalartype(sectortype(V)))) #FIXME: doesn't work 
     return reduce(+, dim(V, c) * dim(c) for c in sectors(V);
                   init=zero(T))
 end
