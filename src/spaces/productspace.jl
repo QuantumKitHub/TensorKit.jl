@@ -148,7 +148,7 @@ function blocksectors(P::ProductSpace{S,N}) where {S,N}
     end
     bs = Vector{I}()
     if N == 0
-        push!(bs, one(I))
+        push!(bs, unit(I))
     elseif N == 1
         for s in sectors(P)
             push!(bs, first(s))
@@ -232,6 +232,7 @@ end
 Return a tensor product of zero spaces of type `S`, i.e. this is the unit object under the
 tensor product operation, such that `V ⊗ one(V) == V`.
 """
+#TODO: unit(V::S)?
 Base.one(V::VectorSpace) = one(typeof(V))
 Base.one(::Type{<:ProductSpace{S}}) where {S<:ElementarySpace} = ProductSpace{S,0}(())
 Base.one(::Type{S}) where {S<:ElementarySpace} = ProductSpace{S,0}(())
@@ -242,21 +243,29 @@ function Base.literal_pow(::typeof(^), V::ElementarySpace, p::Val{N}) where {N}
     return ProductSpace{typeof(V),N}(ntuple(n -> V, p))
 end
 
-fuse(P::ProductSpace{S,0}) where {S<:ElementarySpace} = oneunit(S)
+fuse(P::ProductSpace{S,0}) where {S<:ElementarySpace} = unitspace(S)
 fuse(P::ProductSpace{S}) where {S<:ElementarySpace} = fuse(P.spaces...)
 
 """
-    insertleftunit(P::ProductSpace, i::Int=length(P) + 1; conj=false, dual=false)
+    insertleftunitspace(P::ProductSpace, i::Int=length(P) + 1; conj=false, dual=false)
 
 Insert a trivial vector space, isomorphic to the underlying field, at position `i`,
 which can be specified as an `Int` or as `Val(i)` for improved type stability.
 More specifically, adds a left monoidal unit or its dual.
 
-See also [`insertrightunit`](@ref insertrightunit(::ProductSpace, ::Val{i}) where {i}), [`removeunit`](@ref removeunit(::ProductSpace, ::Val{i}) where {i}).
+See also [`insertrightunitspace`](@ref insertrightunitspace(::ProductSpace, ::Val{i}) where {i}), [`removeunitspace`](@ref removeunitspace(::ProductSpace, ::Val{i}) where {i}).
 """
-function insertleftunit(P::ProductSpace, ::Val{i}=Val(length(P) + 1);
+function insertleftunitspace(P::ProductSpace, ::Val{i}=Val(length(P) + 1);
                         conj::Bool=false, dual::Bool=false) where {i}
-    u = oneunit(spacetype(P))
+    N = length(P)
+    I = sectortype(P)
+    if UnitStyle(I) isa SimpleUnit
+        u = unitspace(spacetype(P))
+    else
+        N > 0 || throw(ArgumentError("cannot insert a sensible unit space in the empty product space"))
+        i > N && throw(DomainError((P, i), "cannot insert a sensible left unit space"))
+        u = leftunitspace(P[i])
+    end
     if dual
         u = TensorKit.dual(u)
     end
@@ -267,17 +276,25 @@ function insertleftunit(P::ProductSpace, ::Val{i}=Val(length(P) + 1);
 end
 
 """
-    insertrightunit(P::ProductSpace, i=lenght(P); conj=false, dual=false)
+    insertrightunitspace(P::ProductSpace, i=length(P); conj=false, dual=false)
 
 Insert a trivial vector space, isomorphic to the underlying field, after position `i`,
 which can be specified as an `Int` or as `Val(i)` for improved type stability.
 More specifically, adds a right monoidal unit or its dual.
 
-See also [`insertleftunit`](@ref insertleftunit(::ProductSpace, ::Val{i}) where {i}), [`removeunit`](@ref removeunit(::ProductSpace, ::Val{i}) where {i}).
+See also [`insertleftunitspace`](@ref insertleftunitspace(::ProductSpace, ::Val{i}) where {i}), [`removeunitspace`](@ref removeunitspace(::ProductSpace, ::Val{i}) where {i}).
 """
-function insertrightunit(P::ProductSpace, ::Val{i}=Val(length(P));
+function insertrightunitspace(P::ProductSpace, ::Val{i}=Val(length(P));
                          conj::Bool=false, dual::Bool=false) where {i}
-    u = oneunit(spacetype(P))
+    N = length(P)
+    I = sectortype(P)
+    if UnitStyle(I) isa SimpleUnit
+        u = unitspace(spacetype(P))
+    else
+        N > 0 || throw(ArgumentError("cannot insert a sensible unit space in the empty product space"))
+        i == 0 && throw(DomainError((P, i), "cannot insert a sensible right unit space"))
+        u = rightunitspace(P[i])
+    end
     if dual
         u = TensorKit.dual(u)
     end
@@ -288,18 +305,18 @@ function insertrightunit(P::ProductSpace, ::Val{i}=Val(length(P));
 end
 
 """
-    removeunit(P::ProductSpace, i::Int)
+    removeunitspace(P::ProductSpace, i::Int)
 
 This removes a trivial tensor product factor at position `1 ≤ i ≤ N`, where `i`
 can be specified as an `Int` or as `Val(i)` for improved type stability.
 For this to work, that factor has to be isomorphic to the field of scalars.
 
-This operation undoes the work of [`insertleftunit`](@ref insertleftunit(::ProductSpace, ::Val{i}) where {i}) 
-and [`insertrightunit`](@ref insertrightunit(::ProductSpace, ::Val{i}) where {i}).
+This operation undoes the work of [`insertleftunitspace`](@ref insertleftunitspace(::ProductSpace, ::Val{i}) where {i}) 
+and [`insertrightunitspace`](@ref insertrightunitspace(::ProductSpace, ::Val{i}) where {i}).
 """
-function removeunit(P::ProductSpace, ::Val{i}) where {i}
+function removeunitspace(P::ProductSpace, ::Val{i}) where {i}
     1 ≤ i ≤ length(P) || _boundserror(P, i)
-    isisomorphic(P[i], oneunit(P[i])) || _nontrivialspaceerror(P, i)
+    isisomorphic(P[i], unitspace(P[i])) || _nontrivialspaceerror(P, i)
     return ProductSpace{spacetype(P)}(TupleTools.deleteat(P.spaces, i))
 end
 
@@ -326,7 +343,7 @@ function Base.promote_rule(::Type{S}, ::Type{<:ProductSpace{S}}) where {S<:Eleme
 end
 
 # ProductSpace to ElementarySpace
-Base.convert(::Type{S}, P::ProductSpace{S,0}) where {S<:ElementarySpace} = oneunit(S)
+Base.convert(::Type{S}, P::ProductSpace{S,0}) where {S<:ElementarySpace} = unitspace(S)
 Base.convert(::Type{S}, P::ProductSpace{S}) where {S<:ElementarySpace} = fuse(P.spaces...)
 
 # ElementarySpace to ProductSpace

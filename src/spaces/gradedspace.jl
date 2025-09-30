@@ -91,8 +91,9 @@ Base.hash(V::GradedSpace, h::UInt) = hash(V.dual, hash(V.dims, h))
 field(::Type{<:GradedSpace}) = ℂ
 InnerProductStyle(::Type{<:GradedSpace}) = EuclideanInnerProduct()
 function dim(V::GradedSpace)
+    T = Base.promote_op(*, Int, real(sectorscalartype(sectortype(V)))) #FIXME: doesn't work 
     return reduce(+, dim(V, c) * dim(c) for c in sectors(V);
-                  init=zero(dim(one(sectortype(V)))))
+                  init=zero(T))
 end
 function dim(V::GradedSpace{I,<:AbstractDict}, c::I) where {I<:Sector}
     return get(V.dims, isdual(V) ? dual(c) : c, 0)
@@ -131,8 +132,58 @@ function Base.axes(V::GradedSpace{I}, c::I) where {I<:Sector}
     return (offset + 1):(offset + dim(c) * dim(V, c))
 end
 
-Base.oneunit(S::Type{<:GradedSpace{I}}) where {I<:Sector} = S(one(I) => 1)
-Base.zero(S::Type{<:GradedSpace{I}}) where {I<:Sector} = S(one(I) => 0)
+"""
+    leftunitspace(S::GradedSpace{I}) where {I<:Sector} -> GradedSpace{I}
+
+Return the corresponding vector space of type `GradedSpace{I}` that represents the trivial
+one-dimensional space consisting of the left unit of the objects in  `Sector` `I`.
+"""
+function leftunitspace(S::GradedSpace{I}) where {I<:Sector}
+    if UnitStyle(I) isa SimpleUnit
+        return unitspace(typeof(S))
+    else
+        !isempty(sectors(S)) || throw(ArgumentError("Cannot determine type of empty space"))
+        allequal(a.row for a in sectors(S)) ||
+            throw(ArgumentError("sectors of $S do not have the same left unit"))
+
+        sector = leftunit(first(sectors(S)))
+        return spacetype(S)(sector => 1)
+    end
+end
+
+"""
+    rightunitspace(S::GradedSpace{I}) where {I<:Sector} -> GradedSpace{I}
+
+Return the corresponding vector space of type `GradedSpace{I}` that represents the trivial
+one-dimensional space consisting of the right unit of the objects in `Sector` `I`.
+"""
+function rightunitspace(S::GradedSpace{I}) where {I<:Sector}
+    if UnitStyle(I) isa SimpleUnit
+        return unitspace(typeof(S))
+    else
+        !isempty(sectors(S)) || throw(ArgumentError("Cannot determine type of empty space"))
+        allequal(a.row for a in sectors(S)) ||
+            throw(ArgumentError("sectors of $S do not have the same right unit"))
+
+        sector = rightunit(first(sectors(S)))
+        return spacetype(S)(sector => 1)
+    end
+end
+
+function unitspace(S::Type{<:GradedSpace{I}}) where {I<:Sector}
+    if UnitStyle(I) isa SimpleUnit
+        return S(unit(I) => 1)
+    else
+        return S(unit => 1 for unit in allunits(I))
+    end
+end
+function zerospace(S::Type{<:GradedSpace{I}}) where {I<:Sector}
+    if UnitStyle(I) isa SimpleUnit
+        return S(unit(I) => 0)
+    else
+        return S(unit => 0 for unit in allunits(I))
+    end
+end
 
 # TODO: the following methods can probably be implemented more efficiently for
 # `FiniteGradedSpace`, but we don't expect them to be used often in hot loops, so

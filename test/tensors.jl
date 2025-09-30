@@ -23,7 +23,7 @@ end
 
 for V in spacelist
     I = sectortype(first(V))
-    Istr = TensorKit.type_repr(I)
+    Istr = TK.type_repr(I)
     println("---------------------------------------")
     println("Tensors with symmetry: $Istr")
     println("---------------------------------------")
@@ -48,7 +48,7 @@ for V in spacelist
                 b2 = @constinferred block(t, first(blocksectors(t)))
                 @test b1 == b2
                 @test eltype(bs) === Pair{typeof(c),typeof(b1)}
-                @test typeof(b1) === TensorKit.blocktype(t)
+                @test typeof(b1) === TK.blocktype(t)
                 @test typeof(c) === sectortype(t)
             end
         end
@@ -86,7 +86,7 @@ for V in spacelist
                     end
                 end
                 for T in (Int, Float32, ComplexF64)
-                    t = randn(T, V1 ⊗ V2 ← zero(V1))
+                    t = randn(T, V1 ⊗ V2 ← zerospace(V1))
                     a = convert(Array, t)
                     @test norm(a) == 0
                 end
@@ -110,7 +110,7 @@ for V in spacelist
                 b2 = @constinferred block(t', first(blocksectors(t')))
                 @test b1 == b2
                 @test eltype(bs) === Pair{typeof(c),typeof(b1)}
-                @test typeof(b1) === TensorKit.blocktype(t')
+                @test typeof(b1) === TK.blocktype(t')
                 @test typeof(c) === sectortype(t)
                 # linear algebra
                 @test isa(@constinferred(norm(t)), real(T))
@@ -147,32 +147,32 @@ for V in spacelist
             W = V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5
             for T in (Float32, ComplexF64)
                 t = @constinferred rand(T, W)
-                t2 = @constinferred insertleftunit(t)
-                @test t2 == @constinferred insertrightunit(t)
+                t2 = @constinferred insertleftunitspace(t)
+                @test t2 == @constinferred insertrightunitspace(t)
                 @test numind(t2) == numind(t) + 1
-                @test space(t2) == insertleftunit(space(t))
+                @test space(t2) == insertleftunitspace(space(t))
                 @test scalartype(t2) === T
                 @test t.data === t2.data
-                @test @constinferred(removeunit(t2, $(numind(t2)))) == t
-                t3 = @constinferred insertleftunit(t; copy=true)
-                @test t3 == @constinferred insertrightunit(t; copy=true)
+                @test @constinferred(removeunitspace(t2, $(numind(t2)))) == t
+                t3 = @constinferred insertleftunitspace(t; copy=true)
+                @test t3 == @constinferred insertrightunitspace(t; copy=true)
                 @test t.data !== t3.data
                 for (c, b) in blocks(t)
                     @test b == block(t3, c)
                 end
-                @test @constinferred(removeunit(t3, $(numind(t3)))) == t
-                t4 = @constinferred insertrightunit(t, 3; dual=true)
+                @test @constinferred(removeunitspace(t3, $(numind(t3)))) == t
+                t4 = @constinferred insertrightunitspace(t, 3; dual=true)
                 @test numin(t4) == numin(t) && numout(t4) == numout(t) + 1
                 for (c, b) in blocks(t)
                     @test b == block(t4, c)
                 end
-                @test @constinferred(removeunit(t4, 4)) == t
-                t5 = @constinferred insertleftunit(t, 4; dual=true)
+                @test @constinferred(removeunitspace(t4, 4)) == t
+                t5 = @constinferred insertleftunitspace(t, 4; dual=true)
                 @test numin(t5) == numin(t) + 1 && numout(t5) == numout(t)
                 for (c, b) in blocks(t)
                     @test b == block(t5, c)
                 end
-                @test @constinferred(removeunit(t5, 4)) == t
+                @test @constinferred(removeunitspace(t5, 4)) == t
             end
         end
         if hasfusiontensor(I)
@@ -446,10 +446,10 @@ for V in spacelist
                 ts = (rand(T, W), rand(T, W)')
                 for t in ts
                     @testset "leftorth with $alg" for alg in
-                                                      (TensorKit.QR(), TensorKit.QRpos(),
-                                                       TensorKit.QL(), TensorKit.QLpos(),
-                                                       TensorKit.Polar(), TensorKit.SVD(),
-                                                       TensorKit.SDD())
+                                                      (TK.QR(), TK.QRpos(),
+                                                       TK.QL(), TK.QLpos(),
+                                                       TK.Polar(), TK.SVD(),
+                                                       TK.SDD())
                         Q, R = @constinferred leftorth(t, ((3, 4, 2), (1, 5)); alg=alg)
                         QdQ = Q' * Q
                         @test QdQ ≈ one(QdQ)
@@ -460,8 +460,8 @@ for V in spacelist
                         end
                     end
                     @testset "leftnull with $alg" for alg in
-                                                      (TensorKit.QR(), TensorKit.SVD(),
-                                                       TensorKit.SDD())
+                                                      (TK.QR(), TK.SVD(),
+                                                       TK.SDD())
                         N = @constinferred leftnull(t, ((3, 4, 2), (1, 5)); alg=alg)
                         NdN = N' * N
                         @test NdN ≈ one(NdN)
@@ -469,10 +469,10 @@ for V in spacelist
                               100 * eps(norm(t))
                     end
                     @testset "rightorth with $alg" for alg in
-                                                       (TensorKit.RQ(), TensorKit.RQpos(),
-                                                        TensorKit.LQ(), TensorKit.LQpos(),
-                                                        TensorKit.Polar(), TensorKit.SVD(),
-                                                        TensorKit.SDD())
+                                                       (TK.RQ(), TK.RQpos(),
+                                                        TK.LQ(), TK.LQpos(),
+                                                        TK.Polar(), TK.SVD(),
+                                                        TK.SDD())
                         L, Q = @constinferred rightorth(t, ((3, 4), (2, 1, 5)); alg=alg)
                         QQd = Q * Q'
                         @test QQd ≈ one(QQd)
@@ -483,15 +483,15 @@ for V in spacelist
                         end
                     end
                     @testset "rightnull with $alg" for alg in
-                                                       (TensorKit.LQ(), TensorKit.SVD(),
-                                                        TensorKit.SDD())
+                                                       (TK.LQ(), TK.SVD(),
+                                                        TK.SDD())
                         M = @constinferred rightnull(t, ((3, 4), (2, 1, 5)); alg=alg)
                         MMd = M * M'
                         @test MMd ≈ one(MMd)
                         @test norm(permute(t, ((3, 4), (2, 1, 5))) * M') <
                               100 * eps(norm(t))
                     end
-                    @testset "tsvd with $alg" for alg in (TensorKit.SVD(), TensorKit.SDD())
+                    @testset "tsvd with $alg" for alg in (TK.SVD(), TK.SDD())
                         U, S, V = @constinferred tsvd(t, ((3, 4, 2), (1, 5)); alg=alg)
                         UdU = U' * U
                         @test UdU ≈ one(UdU)
@@ -525,47 +525,47 @@ for V in spacelist
                     end
                 end
                 @testset "empty tensor" begin
-                    t = randn(T, V1 ⊗ V2, zero(V1))
+                    t = randn(T, V1 ⊗ V2, zerospace(V1))
                     @testset "leftorth with $alg" for alg in
-                                                      (TensorKit.QR(), TensorKit.QRpos(),
-                                                       TensorKit.QL(), TensorKit.QLpos(),
-                                                       TensorKit.Polar(), TensorKit.SVD(),
-                                                       TensorKit.SDD())
+                                                      (TK.QR(), TK.QRpos(),
+                                                       TK.QL(), TK.QLpos(),
+                                                       TK.Polar(), TK.SVD(),
+                                                       TK.SDD())
                         Q, R = @constinferred leftorth(t; alg=alg)
                         @test Q == t
                         @test dim(Q) == dim(R) == 0
                     end
                     @testset "leftnull with $alg" for alg in
-                                                      (TensorKit.QR(), TensorKit.SVD(),
-                                                       TensorKit.SDD())
+                                                      (TK.QR(), TK.SVD(),
+                                                       TK.SDD())
                         N = @constinferred leftnull(t; alg=alg)
                         @test N' * N ≈ id(domain(N))
                         @test N * N' ≈ id(codomain(N))
                     end
                     @testset "rightorth with $alg" for alg in
-                                                       (TensorKit.RQ(), TensorKit.RQpos(),
-                                                        TensorKit.LQ(), TensorKit.LQpos(),
-                                                        TensorKit.Polar(), TensorKit.SVD(),
-                                                        TensorKit.SDD())
+                                                       (TK.RQ(), TK.RQpos(),
+                                                        TK.LQ(), TK.LQpos(),
+                                                        TK.Polar(), TK.SVD(),
+                                                        TK.SDD())
                         L, Q = @constinferred rightorth(copy(t'); alg=alg)
                         @test Q == t'
                         @test dim(Q) == dim(L) == 0
                     end
                     @testset "rightnull with $alg" for alg in
-                                                       (TensorKit.LQ(), TensorKit.SVD(),
-                                                        TensorKit.SDD())
+                                                       (TK.LQ(), TK.SVD(),
+                                                        TK.SDD())
                         M = @constinferred rightnull(copy(t'); alg=alg)
                         @test M * M' ≈ id(codomain(M))
                         @test M' * M ≈ id(domain(M))
                     end
-                    @testset "tsvd with $alg" for alg in (TensorKit.SVD(), TensorKit.SDD())
+                    @testset "tsvd with $alg" for alg in (TK.SVD(), TK.SDD())
                         U, S, V = @constinferred tsvd(t; alg=alg)
                         @test U == t
                         @test dim(U) == dim(S) == dim(V)
                     end
                     @testset "cond and rank" begin
                         @test rank(t) == 0
-                        W2 = zero(V1) * zero(V2)
+                        W2 = zerospace(V1) * zerospace(V2)
                         t2 = rand(W2, W2)
                         @test rank(t2) == 0
                         @test cond(t2) == 0.0
@@ -761,7 +761,7 @@ for V in spacelist
             @test t3 ≈ t4
         end
     end
-    TensorKit.empty_globalcaches!()
+    TK.empty_globalcaches!()
 end
 
 @timedtestset "Deligne tensor product: test via conversion" begin

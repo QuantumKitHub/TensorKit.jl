@@ -316,19 +316,18 @@ flip(ℂ^4) == ℂ^4
 ```
 
 We also define the direct sum `V1` and `V2` as `V1 ⊕ V2`, where `⊕` is obtained by typing
-`\oplus`+TAB. This is possible only if `isdual(V1) == isdual(V2)`. With a little pun on
-Julia Base, `oneunit` applied to an elementary space (in the value or type domain) returns
-the one-dimensional space, which is isomorphic to the scalar field of the space itself. Some
-examples illustrate this better
+`\oplus`+TAB. This is possible only if `isdual(V1) == isdual(V2)`. `unitspace` applied to an elementary space 
+(in the value or type domain) returns the one-dimensional space, which is isomorphic to the 
+scalar field of the space itself. Some examples illustrate this better.
 ```@repl tensorkit
 ℝ^5 ⊕ ℝ^3
 ℂ^5 ⊕ ℂ^3
 ℂ^5 ⊕ (ℂ^3)'
-oneunit(ℝ^3)
-ℂ^5 ⊕ oneunit(ComplexSpace)
-oneunit((ℂ^3)')
-(ℂ^5) ⊕ oneunit((ℂ^5))
-(ℂ^5)' ⊕ oneunit((ℂ^5)')
+unitspace(ℝ^3)
+ℂ^5 ⊕ unitspace(ComplexSpace)
+unitspace((ℂ^3)')
+(ℂ^5) ⊕ unitspace((ℂ^5))
+(ℂ^5)' ⊕ unitspace((ℂ^5)')
 ```
 
 Finally, while spaces have a partial order, there is no unique infimum or supremum of a two
