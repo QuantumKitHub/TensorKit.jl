@@ -94,11 +94,16 @@ function blocksectors(W::HomSpace)
     N₁ = length(codom)
     N₂ = length(dom)
     I = sectortype(W)
-    # TODO: is sort! still necessary now that blocksectors of ProductSpace is sorted?
-    if N₂ <= N₁
-        return sort!(filter!(c -> hasblock(codom, c), blocksectors(dom)))
+     if N₁ == 0 && N₂ == 0
+        return allunits(I)
+    elseif N₁ == 0
+        return filter!(isone, collect(blocksectors(dom))) # module space cannot end in empty space
+    elseif N₂ == 0
+        return filter!(isone, collect(blocksectors(codom)))
+    elseif N₂ <= N₁
+        return filter!(c -> hasblock(codom, c), collect(blocksectors(dom)))
     else
-        return sort!(filter!(c -> hasblock(dom, c), blocksectors(codom)))
+        return filter!(c -> hasblock(dom, c), collect(blocksectors(codom)))
     end
 end
 
