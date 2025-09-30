@@ -69,6 +69,10 @@ _kindof(::DiagonalAlgorithm) = :svd # shouldn't really matter
 _drop_alg(; alg=nothing, kwargs...) = kwargs
 _drop_p(; p=nothing, kwargs...) = kwargs
 
+function permutedcopy_oftype(t::AbstractTensorMap, T::Type{<:Number}, p::Index2Tuple)
+    return permute!(similar(t, T, permute(space(t), p)), t, p)
+end
+
 # orthogonalization
 export leftorth, leftorth!, rightorth, rightorth!
 function leftorth(t::AbstractTensorMap, p::Index2Tuple; kwargs...)

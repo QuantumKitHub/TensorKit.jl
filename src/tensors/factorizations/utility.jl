@@ -12,9 +12,6 @@ function factorisation_scalartype(t::AbstractTensorMap)
 end
 factorisation_scalartype(f, t) = factorisation_scalartype(t)
 
-function permutedcopy_oftype(t::AbstractTensorMap, T::Type{<:Number}, p::Index2Tuple)
-    return permute!(similar(t, T, permute(space(t), p)), t, p)
-end
 function copy_oftype(t::AbstractTensorMap, T::Type{<:Number})
     return copy!(similar(t, T, space(t)), t)
 end
