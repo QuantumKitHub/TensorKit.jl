@@ -336,8 +336,9 @@ end
 
 # Scalar implementation
 #-----------------------
-function scalar(t::AbstractTensorMap)
-    # TODO: should scalar only work if N₁ == N₂ == 0?
-    return dim(codomain(t)) == dim(domain(t)) == 1 ?
-           first(blocks(t))[2][1, 1] : throw(DimensionMismatch())
+function scalar(t::AbstractTensorMap{T, S, 0, 0}) where {T, S}
+    Bs = collect(blocks(t))
+    inds = findall(!iszero ∘ last, Bs)
+    isempty(inds) && return zero(scalartype(t))
+    return only(last(Bs[only(inds)]))
 end
