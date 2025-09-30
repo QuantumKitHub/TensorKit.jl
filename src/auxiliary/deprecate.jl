@@ -76,23 +76,23 @@ end
 # orthogonalization
 export leftorth, leftorth!, rightorth, rightorth!
 function leftorth(t::AbstractTensorMap, p::Index2Tuple; kwargs...)
-    Base.depwarn("`leftorth` is no longer supported, use `left_orth` instead", :leftorth)
+    Base.depwarn("`leftorth` is deprecated, use `left_orth` instead", :leftorth)
     return leftorth!(permutedcopy_oftype(t, factorisation_scalartype(leftorth, t), p); kwargs...)
 end
 function rightorth(t::AbstractTensorMap, p::Index2Tuple; kwargs...)
-    Base.depwarn("`rightorth` is no longer supported, use `right_orth` instead", :rightorth)
+    Base.depwarn("`rightorth` is deprecated, use `right_orth` instead", :rightorth)
     return rightorth!(permutedcopy_oftype(t, factorisation_scalartype(rightorth, t), p); kwargs...)
 end
 function leftorth(t::AbstractTensorMap; kwargs...)
-    Base.depwarn("`leftorth` is no longer supported, use `left_orth` instead", :leftorth)
+    Base.depwarn("`leftorth` is deprecated, use `left_orth` instead", :leftorth)
     return leftorth!(copy_oftype(t, factorisation_scalartype(leftorth, t)); kwargs...)
 end
 function rightorth(t::AbstractTensorMap; kwargs...)
-    Base.depwarn("`rightorth` is no longer supported, use `right_orth` instead", :rightorth)
+    Base.depwarn("`rightorth` is deprecated, use `right_orth` instead", :rightorth)
     return rightorth!(copy_oftype(t, factorisation_scalartype(rightorth, t)); kwargs...)
 end
 function leftorth!(t::AbstractTensorMap; kwargs...)
-    Base.depwarn("`leftorth!` is no longer supported, use `left_orth!` instead", :leftorth!)
+    Base.depwarn("`leftorth!` is deprecated, use `left_orth!` instead", :leftorth!)
     haskey(kwargs, :alg) || return left_orth!(t; kwargs...)
     alg = kwargs[:alg]
     kind = _kindof(alg)
@@ -102,7 +102,7 @@ function leftorth!(t::AbstractTensorMap; kwargs...)
     throw(ArgumentError("invalid leftorth kind"))
 end
 function rightorth!(t::AbstractTensorMap; kwargs...)
-    Base.depwarn("`rightorth!` is no longer supported, use `right_orth!` instead", :rightorth!)
+    Base.depwarn("`rightorth!` is deprecated, use `right_orth!` instead", :rightorth!)
     haskey(kwargs, :alg) || return right_orth!(t; kwargs...)
     alg = kwargs[:alg]
     kind = _kindof(alg)
@@ -115,23 +115,23 @@ end
 # nullspaces
 export leftnull, leftnull!, rightnull, rightnull!
 function leftnull(t::AbstractTensorMap; kwargs...)
-    Base.depwarn("`leftnull` is no longer supported, use `left_null` instead", :leftnull)
+    Base.depwarn("`leftnull` is deprecated, use `left_null` instead", :leftnull)
     return leftnull!(copy_oftype(t, factorisation_scalartype(leftnull, t)); kwargs...)
 end
 function leftnull(t::AbstractTensorMap, p::Index2Tuple; kwargs...)
-    Base.depwarn("`leftnull` is no longer supported, use `left_null` instead", :leftnull)
+    Base.depwarn("`leftnull` is deprecated, use `left_null` instead", :leftnull)
     return leftnull!(permutedcopy_oftype(t, factorisation_scalartype(leftnull, t), p); kwargs...)
 end
 function rightnull(t::AbstractTensorMap; kwargs...)
-    Base.depwarn("`rightnull` is no longer supported, use `right_null` instead", :rightnull)
+    Base.depwarn("`rightnull` is deprecated, use `right_null` instead", :rightnull)
     return rightnull!(copy_oftype(t, factorisation_scalartype(rightnull, t)); kwargs...)
 end
 function rightnull(t::AbstractTensorMap, p::Index2Tuple; kwargs...)
-    Base.depwarn("`rightnull` is no longer supported, use `right_null` instead", :rightnull)
+    Base.depwarn("`rightnull` is deprecated, use `right_null` instead", :rightnull)
     return rightnull!(permutedcopy_oftype(t, factorisation_scalartype(rightnull, t), p); kwargs...)
 end
 function leftnull!(t::AbstractTensorMap; kwargs...)
-    Base.depwarn("`left_null!` is no longer supported, use `left_null!` instead", :leftnull!)
+    Base.depwarn("`left_null!` is deprecated, use `left_null!` instead", :leftnull!)
     haskey(kwargs, :alg) || return left_null!(t; kwargs...)
     alg = kwargs[:alg]
     kind = _kindof(alg)
@@ -140,7 +140,7 @@ function leftnull!(t::AbstractTensorMap; kwargs...)
     throw(ArgumentError("invalid leftnull kind"))
 end
 function rightnull!(t::AbstractTensorMap; kwargs...)
-    Base.depwarn("`rightnull!` is no longer supported, use `right_null!` instead", :rightnull!)
+    Base.depwarn("`rightnull!` is deprecated, use `right_null!` instead", :rightnull!)
     haskey(kwargs, :alg) || return right_null!(t; kwargs...)
     alg = kwargs[:alg]
     kind = _kindof(alg)
@@ -159,19 +159,19 @@ export eig!, eigh!, eigen, eigen!
            eigen!(permutedcopy_oftype(t, factorisation_scalartype(eigen, t), p); kwargs...),
            false)
 function eig(t::AbstractTensorMap; kwargs...)
-    Base.depwarn("`eig` is no longer supported, use `eig_full` or `eig_trunc` instead", :eig)
+    Base.depwarn("`eig` is deprecated, use `eig_full` or `eig_trunc` instead", :eig)
     return haskey(kwargs, :trunc) ? eig_trunc(t; kwargs...) : eig_full(t; kwargs...)
 end
 function eig!(t::AbstractTensorMap; kwargs...)
-    Base.depwarn("`eig!` is no longer supported, use `eig_full!` or `eig_trunc!` instead", :eig!)
+    Base.depwarn("`eig!` is deprecated, use `eig_full!` or `eig_trunc!` instead", :eig!)
     return haskey(kwargs, :trunc) ? eig_trunc!(t; kwargs...) : eig_full!(t; kwargs...)
 end
 function eigh(t::AbstractTensorMap; kwargs...)
-    Base.depwarn("`eigh` is no longer supported, use `eigh_full` or `eigh_trunc` instead", :eigh)
+    Base.depwarn("`eigh` is deprecated, use `eigh_full` or `eigh_trunc` instead", :eigh)
     return haskey(kwargs, :trunc) ? eigh_trunc(t; kwargs...) : eigh_full(t; kwargs...)
 end
 function eigh!(t::AbstractTensorMap; kwargs...)
-    Base.depwarn("`eigh!` is no longer supported, use `eigh_full!` or `eigh_trunc!` instead", :eigh!)
+    Base.depwarn("`eigh!` is deprecated, use `eigh_full!` or `eigh_trunc!` instead", :eigh!)
     return haskey(kwargs, :trunc) ? eigh_trunc!(t; kwargs...) : eigh_full!(t; kwargs...)
 end
 
@@ -180,17 +180,17 @@ export tsvd, tsvd!
 @deprecate(tsvd(t::AbstractTensorMap, p::Index2Tuple; kwargs...),
            tsvd!(permutedcopy_oftype(t, factorisation_scalartype(tsvd, t), p); kwargs...))
 function tsvd(t::AbstractTensorMap; kwargs...)
-    Base.depwarn("`tsvd` is no longer supported, use `svd_compact`, `svd_full` or `svd_trunc` instead", :tsvd)
+    Base.depwarn("`tsvd` is deprecated, use `svd_compact`, `svd_full` or `svd_trunc` instead", :tsvd)
     if haskey(kwargs, :p)
-        Base.depwarn("p is no longer a supported kwarg, and should be specified through the truncation strategy", :tsvd)
+        Base.depwarn("p is a deprecated kwarg, and should be specified through the truncation strategy", :tsvd)
         kwargs = _drop_p(; kwargs...)
     end
     return haskey(kwargs, :trunc) ? svd_trunc(t; kwargs...) : svd_compact(t; kwargs...)
 end
 function tsvd!(t::AbstractTensorMap; kwargs...)
-    Base.depwarn("`tsvd!` is no longer supported, use `svd_compact!`, `svd_full!` or `svd_trunc!` instead", :tsvd!)
+    Base.depwarn("`tsvd!` is deprecated, use `svd_compact!`, `svd_full!` or `svd_trunc!` instead", :tsvd!)
     if haskey(kwargs, :p)
-        Base.depwarn("p is no longer a supported kwarg, and should be specified through the truncation strategy", :tsvd!)
+        Base.depwarn("p is a deprecated kwarg, and should be specified through the truncation strategy", :tsvd!)
         kwargs = _drop_p(; kwargs...)
     end
     return haskey(kwargs, :trunc) ? svd_trunc!(t; kwargs...) : svd_compact!(t; kwargs...)
