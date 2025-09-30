@@ -56,6 +56,6 @@ end
 
 Base.@deprecate EuclideanProduct() EuclideanInnerProduct()
 
-Base.@deprecate insertunit(P::ProductSpace, args...; kwargs...) insertleftunit(args...; kwargs...)
+Base.@deprecate insertunit(P::ProductSpace, args...; kwargs...) insertleftunitspace(args...; kwargs...)
 
 #! format: on

@@ -209,14 +209,14 @@ end
 
 # In the following, X can be a ProductSpace, a HomSpace or an AbstractTensorMap
 # TODO: should we deprecate those in the future?
-@constprop :aggressive function insertleftunit(X, i::Int; kwargs...)
-    return insertleftunit(X, Val(i); kwargs...)
+@constprop :aggressive function insertleftunitspace(X, i::Int; kwargs...)
+    return insertleftunitspace(X, Val(i); kwargs...)
 end
-@constprop :aggressive function insertrightunit(X, i::Int; kwargs...)
-    return insertrightunit(X, Val(i); kwargs...)
+@constprop :aggressive function insertrightunitspace(X, i::Int; kwargs...)
+    return insertrightunitspace(X, Val(i); kwargs...)
 end
-@constprop :aggressive function removeunit(X, i::Int; kwargs...)
-    return removeunit(X, Val(i); kwargs...)
+@constprop :aggressive function removeunitspace(X, i::Int; kwargs...)
+    return removeunitspace(X, Val(i); kwargs...)
 end
 
 # trait to describe the inner product type of vector spaces

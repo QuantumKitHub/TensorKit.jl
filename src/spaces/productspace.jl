@@ -247,15 +247,15 @@ fuse(P::ProductSpace{S,0}) where {S<:ElementarySpace} = unitspace(S)
 fuse(P::ProductSpace{S}) where {S<:ElementarySpace} = fuse(P.spaces...)
 
 """
-    insertleftunit(P::ProductSpace, i::Int=length(P) + 1; conj=false, dual=false)
+    insertleftunitspace(P::ProductSpace, i::Int=length(P) + 1; conj=false, dual=false)
 
 Insert a trivial vector space, isomorphic to the underlying field, at position `i`,
 which can be specified as an `Int` or as `Val(i)` for improved type stability.
 More specifically, adds a left monoidal unit or its dual.
 
-See also [`insertrightunit`](@ref insertrightunit(::ProductSpace, ::Val{i}) where {i}), [`removeunit`](@ref removeunit(::ProductSpace, ::Val{i}) where {i}).
+See also [`insertrightunitspace`](@ref insertrightunitspace(::ProductSpace, ::Val{i}) where {i}), [`removeunitspace`](@ref removeunitspace(::ProductSpace, ::Val{i}) where {i}).
 """
-function insertleftunit(P::ProductSpace, ::Val{i}=Val(length(P) + 1);
+function insertleftunitspace(P::ProductSpace, ::Val{i}=Val(length(P) + 1);
                         conj::Bool=false, dual::Bool=false) where {i}
     u = unitspace(spacetype(P))
     if dual
@@ -268,15 +268,15 @@ function insertleftunit(P::ProductSpace, ::Val{i}=Val(length(P) + 1);
 end
 
 """
-    insertrightunit(P::ProductSpace, i=lenght(P); conj=false, dual=false)
+    insertrightunitspace(P::ProductSpace, i=length(P); conj=false, dual=false)
 
 Insert a trivial vector space, isomorphic to the underlying field, after position `i`,
 which can be specified as an `Int` or as `Val(i)` for improved type stability.
 More specifically, adds a right monoidal unit or its dual.
 
-See also [`insertleftunit`](@ref insertleftunit(::ProductSpace, ::Val{i}) where {i}), [`removeunit`](@ref removeunit(::ProductSpace, ::Val{i}) where {i}).
+See also [`insertleftunitspace`](@ref insertleftunitspace(::ProductSpace, ::Val{i}) where {i}), [`removeunitspace`](@ref removeunitspace(::ProductSpace, ::Val{i}) where {i}).
 """
-function insertrightunit(P::ProductSpace, ::Val{i}=Val(length(P));
+function insertrightunitspace(P::ProductSpace, ::Val{i}=Val(length(P));
                          conj::Bool=false, dual::Bool=false) where {i}
     u = unitspace(spacetype(P))
     if dual
@@ -289,16 +289,16 @@ function insertrightunit(P::ProductSpace, ::Val{i}=Val(length(P));
 end
 
 """
-    removeunit(P::ProductSpace, i::Int)
+    removeunitspace(P::ProductSpace, i::Int)
 
 This removes a trivial tensor product factor at position `1 ≤ i ≤ N`, where `i`
 can be specified as an `Int` or as `Val(i)` for improved type stability.
 For this to work, that factor has to be isomorphic to the field of scalars.
 
-This operation undoes the work of [`insertleftunit`](@ref insertleftunit(::ProductSpace, ::Val{i}) where {i}) 
-and [`insertrightunit`](@ref insertrightunit(::ProductSpace, ::Val{i}) where {i}).
+This operation undoes the work of [`insertleftunitspace`](@ref insertleftunitspace(::ProductSpace, ::Val{i}) where {i}) 
+and [`insertrightunitspace`](@ref insertrightunitspace(::ProductSpace, ::Val{i}) where {i}).
 """
-function removeunit(P::ProductSpace, ::Val{i}) where {i}
+function removeunitspace(P::ProductSpace, ::Val{i}) where {i}
     1 ≤ i ≤ length(P) || _boundserror(P, i)
     isisomorphic(P[i], unitspace(P[i])) || _nontrivialspaceerror(P, i)
     return ProductSpace{spacetype(P)}(TupleTools.deleteat(P.spaces, i))

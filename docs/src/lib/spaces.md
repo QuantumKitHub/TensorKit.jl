@@ -111,9 +111,9 @@ isisomorphic
 Inserting trivial space factors or removing such factors for `ProductSpace` instances
 can be done with the following methods.
 ```@docs
-insertleftunit(::ProductSpace, ::Val{i}) where {i}
-insertrightunit(::ProductSpace, ::Val{i}) where {i}
-removeunit(::ProductSpace, ::Val{i}) where {i}
+insertleftunitspace(::ProductSpace, ::Val{i}) where {i}
+insertrightunitspace(::ProductSpace, ::Val{i}) where {i}
+removeunitspace(::ProductSpace, ::Val{i}) where {i}
 ```
 
 There are also specific methods for `HomSpace` instances, that are used in determining
@@ -124,7 +124,7 @@ flip(W::HomSpace{S}, I) where {S}
 TensorKit.permute(::HomSpace{S}, ::Index2Tuple{N₁,N₂}) where {S,N₁,N₂}
 TensorKit.select(::HomSpace{S}, ::Index2Tuple{N₁,N₂}) where {S,N₁,N₂}
 TensorKit.compose(::HomSpace{S}, ::HomSpace{S}) where {S}
-insertleftunit(::HomSpace, ::Val{i}) where {i}
-insertrightunit(::HomSpace, ::Val{i}) where {i}
-removeunit(::HomSpace, ::Val{i}) where {i}
+insertleftunitspace(::HomSpace, ::Val{i}) where {i}
+insertrightunitspace(::HomSpace, ::Val{i}) where {i}
+removeunitspace(::HomSpace, ::Val{i}) where {i}
 ```

@@ -303,7 +303,7 @@ twist(t::AbstractTensorMap, i; inv::Bool=false) = twist!(copy(t), i; inv)
 
 # Methods which change the number of indices, implement using `Val(i)` for type inference
 """
-    insertleftunit(tsrc::AbstractTensorMap, i=numind(t) + 1;
+    insertleftunitspace(tsrc::AbstractTensorMap, i=numind(t) + 1;
                    conj=false, dual=false, copy=false) -> tdst
 
 Insert a trivial vector space, isomorphic to the underlying field, at position `i`,
@@ -312,12 +312,12 @@ More specifically, adds a left monoidal unit or its dual.
 
 If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwise, a copy is always made.
 
-See also [`insertrightunit`](@ref insertrightunit(::AbstractTensorMap, ::Val{i}) where {i}),
-[`removeunit`](@ref removeunit(::AbstractTensorMap, ::Val{i}) where {i}).
+See also [`insertrightunitspace`](@ref insertrightunitspace(::AbstractTensorMap, ::Val{i}) where {i}),
+[`removeunitspace`](@ref removeunitspace(::AbstractTensorMap, ::Val{i}) where {i}).
 """
-function insertleftunit(t::AbstractTensorMap, ::Val{i}=Val(numind(t) + 1);
+function insertleftunitspace(t::AbstractTensorMap, ::Val{i}=Val(numind(t) + 1);
                         copy::Bool=false, conj::Bool=false, dual::Bool=false) where {i}
-    W = insertleftunit(space(t), Val(i); conj, dual)
+    W = insertleftunitspace(space(t), Val(i); conj, dual)
     if t isa TensorMap
         return TensorMap{scalartype(t)}(copy ? Base.copy(t.data) : t.data, W)
     else
@@ -330,7 +330,7 @@ function insertleftunit(t::AbstractTensorMap, ::Val{i}=Val(numind(t) + 1);
 end
 
 """
-    insertrightunit(tsrc::AbstractTensorMap, i=numind(t);
+    insertrightunitspace(tsrc::AbstractTensorMap, i=numind(t);
                     conj=false, dual=false, copy=false) -> tdst
 
 Insert a trivial vector space, isomorphic to the underlying field, after position `i`,
@@ -339,12 +339,12 @@ More specifically, adds a right monoidal unit or its dual.
 
 If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwise, a copy is always made.
 
-See also [`insertleftunit`](@ref insertleftunit(::AbstractTensorMap, ::Val{i}) where {i}),
-[`removeunit`](@ref removeunit(::AbstractTensorMap, ::Val{i}) where {i}).
+See also [`insertleftunitspace`](@ref insertleftunitspace(::AbstractTensorMap, ::Val{i}) where {i}),
+[`removeunitspace`](@ref removeunitspace(::AbstractTensorMap, ::Val{i}) where {i}).
 """
-function insertrightunit(t::AbstractTensorMap, ::Val{i}=Val(numind(t));
+function insertrightunitspace(t::AbstractTensorMap, ::Val{i}=Val(numind(t));
                          copy::Bool=false, conj::Bool=false, dual::Bool=false) where {i}
-    W = insertrightunit(space(t), Val(i); conj, dual)
+    W = insertrightunitspace(space(t), Val(i); conj, dual)
     if t isa TensorMap
         return TensorMap{scalartype(t)}(copy ? Base.copy(t.data) : t.data, W)
     else
@@ -357,7 +357,7 @@ function insertrightunit(t::AbstractTensorMap, ::Val{i}=Val(numind(t));
 end
 
 """
-    removeunit(tsrc::AbstractTensorMap, i; copy=false) -> tdst
+    removeunitspace(tsrc::AbstractTensorMap, i; copy=false) -> tdst
 
 This removes a trivial tensor product factor at position `1 ≤ i ≤ N`, where `i`
 can be specified as an `Int` or as `Val(i)` for improved type stability.
@@ -365,11 +365,11 @@ For this to work, that factor has to be isomorphic to the field of scalars.
 
 If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwise, a copy is always made.
 
-This operation undoes the work of [`insertleftunit`](@ref insertleftunit(::AbstractTensorMap, ::Val{i}) where {i}) 
-and [`insertrightunit`](@ref insertrightunit(::AbstractTensorMap, ::Val{i}) where {i}).
+This operation undoes the work of [`insertleftunitspace`](@ref insertleftunitspace(::AbstractTensorMap, ::Val{i}) where {i}) 
+and [`insertrightunitspace`](@ref insertrightunitspace(::AbstractTensorMap, ::Val{i}) where {i}).
 """
-function removeunit(t::AbstractTensorMap, ::Val{i}; copy::Bool=false) where {i}
-    W = removeunit(space(t), Val(i))
+function removeunitspace(t::AbstractTensorMap, ::Val{i}; copy::Bool=false) where {i}
+    W = removeunitspace(space(t), Val(i))
     if t isa TensorMap
         return TensorMap{scalartype(t)}(copy ? Base.copy(t.data) : t.data, W)
     else
