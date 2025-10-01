@@ -154,6 +154,7 @@ function initialize_output(::typeof(svd_compact!), t::AbstractTensorMap,
     return U, S, Vᴴ
 end
 
+# TODO: remove this once `AbstractMatrix` specialization is removed in MatrixAlgebraKit
 function initialize_output(::typeof(svd_trunc!), t::AbstractTensorMap,
                            alg::TruncatedAlgorithm)
     return initialize_output(svd_compact!, t, alg.alg)
@@ -163,11 +164,6 @@ function initialize_output(::typeof(svd_vals!), t::AbstractTensorMap,
                            alg::AbstractAlgorithm)
     V_cod = infimum(fuse(codomain(t)), fuse(domain(t)))
     return DiagonalTensorMap{real(scalartype(t))}(undef, V_cod)
-end
-
-function svd_trunc!(t::AbstractTensorMap, USVᴴ, alg::TruncatedAlgorithm)
-    USVᴴ′ = svd_compact!(t, USVᴴ, alg.alg)
-    return truncate!(svd_trunc!, USVᴴ′, alg.trunc)
 end
 
 # Eigenvalue decomposition
@@ -282,26 +278,6 @@ function initialize_output(::typeof(eig_vals!), t::AbstractTensorMap,
     V_D = fuse(domain(t))
     Tc = complex(scalartype(t))
     return D = DiagonalTensorMap{Tc}(undef, V_D)
-end
-
-function initialize_output(::typeof(eigh_trunc!), t::AbstractTensorMap,
-                           alg::TruncatedAlgorithm)
-    return initialize_output(eigh_full!, t, alg.alg)
-end
-
-function initialize_output(::typeof(eig_trunc!), t::AbstractTensorMap,
-                           alg::TruncatedAlgorithm)
-    return initialize_output(eig_full!, t, alg.alg)
-end
-
-function eigh_trunc!(t::AbstractTensorMap, DV, alg::TruncatedAlgorithm)
-    DV′ = eigh_full!(t, DV, alg.alg)
-    return truncate!(eigh_trunc!, DV′, alg.trunc)
-end
-
-function eig_trunc!(t::AbstractTensorMap, DV, alg::TruncatedAlgorithm)
-    DV′ = eig_full!(t, DV, alg.alg)
-    return truncate!(eig_trunc!, DV′, alg.trunc)
 end
 
 # QR decomposition

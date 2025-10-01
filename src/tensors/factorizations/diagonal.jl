@@ -105,6 +105,9 @@ for f! in (:lq_full!, :lq_compact!)
     end
 end
 
+# disambiguate
+svd_compact!(t::AbstractTensorMap, USVᴴ, alg::DiagonalAlgorithm) = svd_full!(t, USVᴴ, alg)
+
 # f_vals
 # ------
 
