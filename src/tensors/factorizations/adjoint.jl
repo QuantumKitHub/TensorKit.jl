@@ -93,5 +93,5 @@ end
 # to fix ambiguity
 function svd_trunc!(t::AdjointTensorMap, USVᴴ, alg::TruncatedAlgorithm)
     USVᴴ′ = svd_compact!(t, USVᴴ, alg.alg)
-    return truncate!(svd_trunc!, USVᴴ′, alg.trunc)
+    return truncate(svd_trunc!, USVᴴ′, alg.trunc)
 end

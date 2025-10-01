@@ -1,9 +1,5 @@
 # Strategies
 # ----------
-
-# TODO: deprecate
-const TruncationScheme = TruncationStrategy
-
 """
     TruncationSpace(V::ElementarySpace, by::Function, rev::Bool)
 
@@ -76,11 +72,6 @@ function truncate(::typeof(svd_trunc!), (U, S, Vᴴ)::NTuple{3,AbstractTensorMap
 
     return (Ũ, S̃, Ṽᴴ), ind
 end
-function truncate!(::typeof(svd_trunc!), USVᴴ::NTuple{3,AbstractTensorMap},
-                   strategy::TruncationStrategy)
-    USVᴴ_trunc, _ = truncate(svd_trunc!, USVᴴ, strategy)
-    return USVᴴ_trunc
-end
 
 function truncate(::typeof(left_null!),
                   (U, S)::Tuple{AbstractTensorMap,AbstractTensorMap},
@@ -93,11 +84,6 @@ function truncate(::typeof(left_null!),
     Ũ = similar(U, codomain(U) ← V_truncated)
     truncate_domain!(Ũ, U, ind)
     return Ũ, ind
-end
-function truncate!(::typeof(left_null!), US::NTuple{2,AbstractTensorMap},
-                   strategy::TruncationStrategy)
-    U_trunc, _ = truncate(left_null!, US, strategy)
-    return U_trunc
 end
 
 for f! in (:eig_trunc!, :eigh_trunc!)
@@ -114,11 +100,6 @@ for f! in (:eig_trunc!, :eigh_trunc!)
         truncate_domain!(Ṽ, V, ind)
 
         return (D̃, Ṽ), ind
-    end
-    @eval function truncate!(::typeof($f!), DV::Tuple{DiagonalTensorMap,AbstractTensorMap},
-                             strategy::TruncationStrategy)
-        DV_trunc, _ = truncate($f!, DV, strategy)
-        return DV_trunc
     end
 end
 

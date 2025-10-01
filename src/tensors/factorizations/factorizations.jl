@@ -40,7 +40,7 @@ import MatrixAlgebraKit: default_algorithm,
                          left_polar!, left_orth_polar!, right_polar!, right_orth_polar!,
                          left_null_svd!, right_null_svd!, left_orth_svd!, right_orth_svd!,
                          left_orth!, right_orth!, left_null!, right_null!,
-                         truncate!, findtruncated, findtruncated_svd,
+                         truncate, findtruncated, findtruncated_svd,
                          diagview, isisometry
 using MatrixAlgebraKit: qr_compact_pullback!, lq_compact_pullback!,
                         svd_pullback!, svd_trunc_pullback!,
