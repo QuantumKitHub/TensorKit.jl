@@ -1,10 +1,21 @@
-for pullback! in (:qr_compact_pullback!, :lq_compact_pullback!,
+for pullback! in (:qr_pullback!, :lq_pullback!,
                   :left_polar_pullback!, :right_polar_pullback!)
     @eval function MatrixAlgebraKit.$pullback!(Δt::AbstractTensorMap, t::AbstractTensorMap,
                                                F, ΔF; kwargs...)
         foreachblock(Δt, t) do c, (Δb, b)
             Fc = block.(F, Ref(c))
             ΔFc = block.(ΔF, Ref(c))
+            return $pullback!(Δb, b, Fc, ΔFc; kwargs...)
+        end
+        return Δt
+    end
+end
+for pullback! in (:qr_null_pullback!, :lq_null_pullback!)
+    @eval function MatrixAlgebraKit.$pullback!(Δt::AbstractTensorMap, t::AbstractTensorMap,
+                                               F, ΔF; kwargs...)
+        foreachblock(Δt, t) do c, (Δb, b)
+            Fc = block(F, c)
+            ΔFc = block(ΔF, c)
             return $pullback!(Δb, b, Fc, ΔFc; kwargs...)
         end
         return Δt
