@@ -36,7 +36,7 @@ for f! in (:qr_compact!, :qr_full!,
             factors′ = $f!(first(bs), factors, alg)
             # deal with the case where the output is not in-place
             for (f′, f) in zip(factors′, factors)
-                f′ === f || copyto!(f, f′)
+                f′ === f || copy!(f, f′)
             end
             return nothing
         end
@@ -53,7 +53,7 @@ for f! in (:qr_null!, :lq_null!)
         foreachblock(t, N) do _, (b, n)
             n′ = $f!(b, n, alg)
             # deal with the case where the output is not the same as the input
-            n === n′ || copyto!(n, n′)
+            n === n′ || copy!(n, n′)
             return nothing
         end
 
@@ -67,9 +67,9 @@ for f! in (:svd_vals!, :eig_vals!, :eigh_vals!)
         MAK.check_input($f!, t, N, alg)
 
         foreachblock(t, N) do _, (b, n)
-            n′ = $f!(b, n.diag, alg)
+            n′ = $f!(b, diagview(n), alg)
             # deal with the case where the output is not the same as the input
-            n.diag === n′ || copyto!(n, diagview(n′))
+            diagview(n) === n′ || copy!(diagview(n), n′)
             return nothing
         end
 
