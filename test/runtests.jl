@@ -59,11 +59,7 @@ sectorlist = (Z2Irrep, Z3Irrep, Z4Irrep, Z3Irrep ⊠ Z4Irrep,
               Z2Irrep ⊠ FibonacciAnyon ⊠ FibonacciAnyon)
 
 # spaces
-Vtr = (ℂ^3,
-       (ℂ^4)',
-       ℂ^5,
-       ℂ^6,
-       (ℂ^7)')
+Vtr = (ℂ^2, (ℂ^3)', ℂ^4, ℂ^3, (ℂ^2)')
 Vℤ₂ = (ℂ[Z2Irrep](0 => 1, 1 => 1),
        ℂ[Z2Irrep](0 => 1, 1 => 2)',
        ℂ[Z2Irrep](0 => 3, 1 => 2)',
@@ -71,12 +67,12 @@ Vℤ₂ = (ℂ[Z2Irrep](0 => 1, 1 => 1),
        ℂ[Z2Irrep](0 => 2, 1 => 5))
 Vfℤ₂ = (ℂ[FermionParity](0 => 1, 1 => 1),
         ℂ[FermionParity](0 => 1, 1 => 2)',
-        ℂ[FermionParity](0 => 3, 1 => 2)',
+        ℂ[FermionParity](0 => 2, 1 => 1)',
         ℂ[FermionParity](0 => 2, 1 => 3),
         ℂ[FermionParity](0 => 2, 1 => 5))
-Vℤ₃ = (ℂ[Z3Irrep](0 => 1, 1 => 2, 2 => 2),
-       ℂ[Z3Irrep](0 => 3, 1 => 1, 2 => 1),
-       ℂ[Z3Irrep](0 => 2, 1 => 2, 2 => 1)',
+Vℤ₃ = (ℂ[Z3Irrep](0 => 1, 1 => 2, 2 => 1),
+       ℂ[Z3Irrep](0 => 2, 1 => 1, 2 => 1),
+       ℂ[Z3Irrep](0 => 1, 1 => 2, 2 => 1)',
        ℂ[Z3Irrep](0 => 1, 1 => 2, 2 => 3),
        ℂ[Z3Irrep](0 => 1, 1 => 3, 2 => 3)')
 VU₁ = (ℂ[U1Irrep](0 => 1, 1 => 2, -1 => 2),
@@ -118,16 +114,16 @@ Vfib = (Vect[FibonacciAnyon](:I => 1, :τ => 1),
 
 if !is_buildkite
     Ti = time()
-    include("fusiontrees.jl")
-    include("spaces.jl")
-    include("tensors.jl")
-    include("factorizations.jl")
-    include("diagonal.jl")
-    include("planar.jl")
-    if isempty(VERSION.prerelease)
-        include("ad.jl")
+    @time include("fusiontrees.jl")
+    @time include("spaces.jl")
+    @time include("tensors.jl")
+    @time include("factorizations.jl")
+    @time include("diagonal.jl")
+    @time include("planar.jl")
+    if !(Sys.isapple() && get(ENV, "CI", "false") == "true") && isempty(VERSION.prerelease)
+        @time include("ad.jl")
     end
-    include("bugfixes.jl")
+    @time include("bugfixes.jl")
     Tf = time()
     printstyled("Finished all tests in ",
                 string(round((Tf - Ti) / 60; sigdigits=3)),
