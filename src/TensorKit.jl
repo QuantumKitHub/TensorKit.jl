@@ -223,7 +223,7 @@ include("tensors/indexmanipulations.jl")
 include("tensors/diagonal.jl")
 include("tensors/braidingtensor.jl")
 
-include("tensors/factorizations/factorizations.jl")
+include("factorizations/factorizations.jl")
 using .Factorizations
 
 # # Planar macros and related functionality
