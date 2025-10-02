@@ -1,6 +1,6 @@
 using ChainRulesCore
 using ChainRulesTestUtils
-using FiniteDifferences: FiniteDifferences
+using FiniteDifferences: FiniteDifferences, central_fdm, forward_fdm
 using Random
 using LinearAlgebra
 using Zygote
@@ -302,12 +302,25 @@ for V in spacelist
                 t1 = randn(T, V[1] ← V[1])
                 t2 = randn(T, V[2] ← V[2])
                 d = DiagonalTensorMap{T}(undef, V[1])
-                (T <: Real && f === sqrt) ? randexp!(d.data) : randn!(d.data)
                 d2 = DiagonalTensorMap{T}(undef, V[1])
-                (T <: Real && f === sqrt) ? randexp!(d2.data) : randn!(d2.data)
+                d3 = DiagonalTensorMap{T}(undef, V[1])
+                if (T <: Real && f === sqrt)
+                    # ensuring no square root of negative numbers
+                    randexp!(d.data)
+                    d.data .+= 5
+                    randexp!(d2.data)
+                    d2.data .+= 5
+                    randexp!(d3.data)
+                    d3.data .+= 5
+                else
+                    randn!(d.data)
+                    randn!(d2.data)
+                    randn!(d3.data)
+                end
+
                 test_rrule(f, t1; rrule_f=Zygote.rrule_via_ad, check_inferred)
                 test_rrule(f, t2; rrule_f=Zygote.rrule_via_ad, check_inferred)
-                test_rrule(f, d; check_inferred, output_tangent=d2)
+                test_rrule(f, d ⊢ d2; check_inferred, output_tangent=d3)
             end
         end
 
@@ -516,7 +529,7 @@ for V in spacelist
                     test_ad_rrule(last ∘ eig_full, t; output_tangent=Δv, atol, rtol)
                     test_ad_rrule(eig_full, t; output_tangent=(Δd2, Δv), atol, rtol)
 
-                    add!(t, t')
+                    t += t'
                     d, v = eigh_full(t)
                     Δv = rand_tangent(v)
                     Δd = rand_tangent(d)
