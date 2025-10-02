@@ -23,4 +23,4 @@ function _reverse!(t::AbstractTensorMap; dims=:)
     return t
 end
 
-diagview(t::AbstractTensorMap) = SectorDict(c => diagview(b) for (c, b) in blocks(t))
+MAK.diagview(t::AbstractTensorMap) = SectorDict(c => diagview(b) for (c, b) in blocks(t))

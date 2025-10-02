@@ -109,7 +109,7 @@ using TensorOperations: TensorOperations, @tensor, @tensoropt, @ncon, ncon
 using TensorOperations: IndexTuple, Index2Tuple, linearize, AbstractBackend
 const TO = TensorOperations
 
-using MatrixAlgebraKit: MatrixAlgebraKit as MAK
+using MatrixAlgebraKit
 
 using LRUCache
 using OhMyThreads

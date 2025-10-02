@@ -3,51 +3,24 @@
 # using submodule here to import MatrixAlgebraKit functions without polluting namespace
 module Factorizations
 
-export eig, eig!, eigh, eigh!
-export tsvd, tsvd!, svdvals, svdvals!
-export leftorth, leftorth!, rightorth, rightorth!
-export leftnull, leftnull!, rightnull, rightnull!
-export qr_full, qr_compact, qr_null
-export qr_full!, qr_compact!, qr_null!
-export lq_full, lq_compact, lq_null
-export lq_full!, lq_compact!, lq_null!
-export copy_oftype, factorisation_scalartype, one!
-export TruncationScheme, notrunc, trunctol, truncerror, truncrank, truncspace, truncfilter,
-       PolarViaSVD
+export copy_oftype, factorisation_scalartype, one!, truncspace
 
 using ..TensorKit
 using ..TensorKit: AdjointTensorMap, SectorDict, blocktype, foreachblock, one!
 
-using LinearAlgebra: LinearAlgebra, BlasFloat, Diagonal, svdvals, svdvals!
-import LinearAlgebra: eigen, eigen!, isposdef, isposdef!, ishermitian
+using LinearAlgebra: LinearAlgebra, BlasFloat, Diagonal, svdvals, svdvals!, eigen, eigen!,
+                     isposdef, isposdef!, ishermitian
 
 using TensorOperations: Index2Tuple
 
 using MatrixAlgebraKit
+import MatrixAlgebraKit as MAK
 using MatrixAlgebraKit: AbstractAlgorithm, TruncatedAlgorithm, DiagonalAlgorithm
 using MatrixAlgebraKit: TruncationStrategy, NoTruncation, TruncationByValue,
                         TruncationByError, TruncationIntersection, TruncationByFilter,
                         TruncationByOrder
-using MatrixAlgebraKit: PolarViaSVD
-using MatrixAlgebraKit: LAPACK_SVDAlgorithm, LAPACK_QRIteration, LAPACK_HouseholderQR,
-                        LAPACK_HouseholderLQ, LAPACK_HouseholderQL, LAPACK_HouseholderRQ
-import MatrixAlgebraKit: default_algorithm,
-                         copy_input, check_input, initialize_output,
-                         qr_compact!, qr_full!, qr_null!, lq_compact!, lq_full!, lq_null!,
-                         svd_compact!, svd_full!, svd_trunc!, svd_vals!,
-                         eigh_full!, eigh_trunc!, eigh_vals!,
-                         eig_full!, eig_trunc!, eig_vals!,
-                         left_polar!, left_orth_polar!, right_polar!, right_orth_polar!,
-                         left_null_svd!, right_null_svd!, left_orth_svd!, right_orth_svd!,
-                         left_orth!, right_orth!, left_null!, right_null!,
-                         truncate, findtruncated, findtruncated_svd,
-                         diagview, isisometry
-using MatrixAlgebraKit: qr_pullback!, qr_null_pullback!,
-                        lq_pullback!, lq_null_pullback!,
-                        svd_pullback!, svd_trunc_pullback!,
-                        eig_pullback!, eig_trunc_pullback!,
-                        eigh_pullback!, eigh_trunc_pullback!,
-                        left_polar_pullback!, right_polar_pullback!
+using MatrixAlgebraKit: left_orth_polar!, right_orth_polar!, left_orth_svd!,
+                        right_orth_svd!, left_null_svd!, right_null_svd!, diagview
 
 include("utility.jl")
 include("matrixalgebrakit.jl")
@@ -58,7 +31,7 @@ include("pullbacks.jl")
 
 TensorKit.one!(A::AbstractMatrix) = MatrixAlgebraKit.one!(A)
 
-function isisometry(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple)
+function MatrixAlgebraKit.isisometry(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple)
     t = permute(t, (p₁, p₂); copy=false)
     return isisometry(t)
 end
@@ -67,10 +40,10 @@ end
 # LinearAlgebra overloads
 #------------------------------#
 
-function eigen(t::AbstractTensorMap; kwargs...)
+function LinearAlgebra.eigen(t::AbstractTensorMap; kwargs...)
     return ishermitian(t) ? eigh_full(t; kwargs...) : eig_full(t; kwargs...)
 end
-function eigen!(t::AbstractTensorMap; kwargs...)
+function LinearAlgebra.eigen!(t::AbstractTensorMap; kwargs...)
     return ishermitian(t) ? eigh_full!(t; kwargs...) : eig_full!(t; kwargs...)
 end
 
