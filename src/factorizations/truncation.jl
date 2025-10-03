@@ -91,7 +91,7 @@ for f! in (:eig_trunc!, :eigh_trunc!)
                                 (D, V)::Tuple{DiagonalTensorMap,AbstractTensorMap},
                                 strategy::TruncationStrategy)
         ind = MAK.findtruncated(diagview(D), strategy)
-        V_truncated = spacetype(D)(c => length(I) for (c, I) in ind)
+        V_truncated = truncate_space(space(D, 1), ind)
 
         D̃ = DiagonalTensorMap{scalartype(D)}(undef, V_truncated)
         truncate_diagonal!(D̃, D, ind)
