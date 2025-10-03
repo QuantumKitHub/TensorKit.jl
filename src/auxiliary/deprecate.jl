@@ -56,7 +56,8 @@ Base.@deprecate insertunit(P::ProductSpace, args...; kwargs...) insertleftunit(a
 # truncations
 const TruncationScheme = MatrixAlgebraKit.TruncationStrategy
 @deprecate truncdim(d::Int) truncrank(d)
-@deprecate truncbelow(ϵ::Real) trunctol(ϵ)
+@deprecate truncbelow(ϵ::Real) trunctol(; atol = ϵ)
+@deprecate truncerr(ϵ::Real) truncerror(ϵ)
 
 # factorizations
 # --------------
