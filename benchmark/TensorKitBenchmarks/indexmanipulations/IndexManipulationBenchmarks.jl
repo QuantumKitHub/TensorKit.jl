@@ -25,15 +25,15 @@ function benchmark_permute!(benchgroup, params::Dict)
     end
     return nothing
 end
-function benchmark_permute!(bench; sigmas=nothing, T="Float64", I="Trivial", dims, p)
+function benchmark_permute!(bench; sigmas = nothing, T = "Float64", I = "Trivial", dims, p)
     T_ = parse_type(T)
     I_ = parse_type(I)
 
     p_ = (Tuple(p[1]), Tuple(p[2]))
     Vs = generate_space.(I_, dims, sigmas)
 
-    codomain = mapreduce(Base.Fix1(getindex, Vs), ⊗, p_[1]; init=one(eltype(Vs)))
-    domain = mapreduce(Base.Fix1(getindex, Vs), ⊗, p_[2]; init=one(eltype(Vs)))
+    codomain = mapreduce(Base.Fix1(getindex, Vs), ⊗, p_[1]; init = one(eltype(Vs)))
+    domain = mapreduce(Base.Fix1(getindex, Vs), ⊗, p_[2]; init = one(eltype(Vs)))
     init() = init_permute_tensors(T_, codomain ← domain, p_)
 
     bench[T, I, dims, sigmas, p] = @benchmarkable permute!(C, A, $p_) setup = ((C, A) = $init())

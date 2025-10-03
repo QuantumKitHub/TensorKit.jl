@@ -26,11 +26,12 @@ function planaradd!(C, A, p::Index2Tuple, α::Number, β::Number, backend, alloc
     end
 end
 # implementation
-function planaradd!(C::AbstractTensorMap,
-                    A::AbstractTensorMap,
-                    p::Index2Tuple,
-                    α::Number, β::Number,
-                    backend, allocator)
+function planaradd!(
+        C::AbstractTensorMap,
+        A::AbstractTensorMap, p::Index2Tuple,
+        α::Number, β::Number,
+        backend, allocator
+    )
     return add_transpose!(C, A, p, α, β, backend)
 end
 
@@ -43,8 +44,9 @@ function planartrace!(C, A, p::Index2Tuple, q::Index2Tuple, α::Number, β::Numb
     return planartrace!(C, A, p, q, α, β, backend, TO.DefaultAllocator())
 end
 # replace default backend with select_backend mechanism
-function planartrace!(C, A, p::Index2Tuple, q::Index2Tuple, α::Number, β::Number,
-                      backend, allocator)
+function planartrace!(
+        C, A, p::Index2Tuple, q::Index2Tuple, α::Number, β::Number, backend, allocator
+    )
     if backend isa TO.DefaultBackend
         backend = TO.select_backend(planartrace!, C, A)
         return planartrace!(C, A, p, q, α, β, backend, allocator)
@@ -61,10 +63,12 @@ function planartrace!(C, A, p::Index2Tuple, q::Index2Tuple, α::Number, β::Numb
     end
 end
 # implementation
-function planartrace!(C::AbstractTensorMap,
-                      A::AbstractTensorMap, (p₁, p₂)::Index2Tuple, (q₁, q₂)::Index2Tuple,
-                      α::Number, β::Number,
-                      backend, allocator)
+function planartrace!(
+        C::AbstractTensorMap,
+        A::AbstractTensorMap, (p₁, p₂)::Index2Tuple, (q₁, q₂)::Index2Tuple,
+        α::Number, β::Number,
+        backend, allocator
+    )
     (S = spacetype(C)) == spacetype(A) ||
         throw(SpaceMismatch("incompatible spacetypes"))
     if BraidingStyle(sectortype(S)) == Bosonic()
@@ -96,27 +100,34 @@ function planartrace!(C::AbstractTensorMap,
     β′ = One()
     for (f₁, f₂) in fusiontrees(A)
         for ((f₁′, f₂′), coeff) in planar_trace(f₁, f₂, p₁, p₂, q₁, q₂)
-            TO.tensortrace!(C[f₁′, f₂′], A[f₁, f₂], (p₁, p₂), (q₁, q₂), false, α * coeff,
-                            β′,
-                            backend, allocator)
+            TO.tensortrace!(
+                C[f₁′, f₂′], A[f₁, f₂], (p₁, p₂), (q₁, q₂), false, α * coeff, β′,
+                backend, allocator
+            )
         end
     end
     return C
 end
 
 # insert default backend
-function planarcontract!(C, A, pA::Index2Tuple, B, pB::Index2Tuple, pAB::Index2Tuple,
-                         α::Number, β::Number)
+function planarcontract!(
+        C, A, pA::Index2Tuple, B, pB::Index2Tuple, pAB::Index2Tuple,
+        α::Number, β::Number
+    )
     return planarcontract!(C, A, pA, B, pB, pAB, α, β, TO.DefaultBackend())
 end
 # insert default allocator
-function planarcontract!(C, A, pA::Index2Tuple, B, pB::Index2Tuple, pAB::Index2Tuple,
-                         α::Number, β::Number, backend)
+function planarcontract!(
+        C, A, pA::Index2Tuple, B, pB::Index2Tuple, pAB::Index2Tuple,
+        α::Number, β::Number, backend
+    )
     return planarcontract!(C, A, pA, B, pB, pAB, α, β, backend, TO.DefaultAllocator())
 end
 # replace default backend with select_backend mechanism
-function planarcontract!(C, A, pA::Index2Tuple, B, pB::Index2Tuple, pAB::Index2Tuple,
-                         α::Number, β::Number, backend, allocator)
+function planarcontract!(
+        C, A, pA::Index2Tuple, B, pB::Index2Tuple, pAB::Index2Tuple,
+        α::Number, β::Number, backend, allocator
+    )
     if backend isa TO.DefaultBackend
         backend = TO.select_backend(planarcontract!, C, A, B)
         return planarcontract!(C, A, pA, B, pB, pAB, α, β, backend, allocator)
@@ -135,12 +146,14 @@ function planarcontract!(C, A, pA::Index2Tuple, B, pB::Index2Tuple, pAB::Index2T
     end
 end
 # implementation
-function planarcontract!(C::AbstractTensorMap,
-                         A::AbstractTensorMap, pA::Index2Tuple,
-                         B::AbstractTensorMap, pB::Index2Tuple,
-                         pAB::Index2Tuple,
-                         α::Number, β::Number,
-                         backend, allocator)
+function planarcontract!(
+        C::AbstractTensorMap,
+        A::AbstractTensorMap, pA::Index2Tuple,
+        B::AbstractTensorMap, pB::Index2Tuple,
+        pAB::Index2Tuple,
+        α::Number, β::Number,
+        backend, allocator
+    )
     if BraidingStyle(sectortype(C)) == Bosonic()
         return contract!(C, A, pA, B, pB, pAB, α, β, backend, allocator)
     end
@@ -149,22 +162,25 @@ function planarcontract!(C::AbstractTensorMap,
     codB, domB = codomainind(B), domainind(B)
     oindA, cindA = pA
     cindB, oindB = pB
-    oindA, cindA, oindB, cindB = reorder_indices(codA, domA, codB, domB, oindA, cindA,
-                                                 oindB, cindB, pAB...)
+    oindA, cindA, oindB, cindB = reorder_indices(
+        codA, domA, codB, domB, oindA, cindA, oindB, cindB, pAB...
+    )
 
     if oindA == codA && cindA == domA
         A′ = A
     else
-        A′ = TO.tensoralloc_add(scalartype(A), A, (oindA, cindA), false, Val(true),
-                                allocator)
+        A′ = TO.tensoralloc_add(
+            scalartype(A), A, (oindA, cindA), false, Val(true), allocator
+        )
         add_transpose!(A′, A, (oindA, cindA), One(), Zero(), backend)
     end
 
     if cindB == codB && oindB == domB
         B′ = B
     else
-        B′ = TensorOperations.tensoralloc_add(scalartype(B), B, (cindB, oindB), false,
-                                              Val(true), allocator)
+        B′ = TensorOperations.tensoralloc_add(
+            scalartype(B), B, (cindB, oindB), false, Val(true), allocator
+        )
         add_transpose!(B′, B, (cindB, oindB), One(), Zero(), backend)
     end
     mul!(C, A′, B′, α, β)
@@ -210,8 +226,9 @@ function reorder_indices(codA, domA, codB, domB, oindA, oindB, p1, p2)
 end
 
 function reorder_indices(codA, domA, codB, domB, oindA, cindA, oindB, cindB, p1, p2)
-    oindA2, cindA2, oindB2, cindB2 = reorder_indices(codA, domA, codB, domB, oindA, oindB,
-                                                     p1, p2)
+    oindA2, cindA2, oindB2, cindB2 = reorder_indices(
+        codA, domA, codB, domB, oindA, oindB, p1, p2
+    )
 
     #if oindA or oindB are empty, then reorder indices can only order it correctly up to a cyclic permutation!
     if isempty(oindA2) && !isempty(cindA)

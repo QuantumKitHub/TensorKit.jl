@@ -10,12 +10,13 @@ _adjoint(alg::MAK.PolarViaSVD) = MAK.PolarViaSVD(_adjoint(alg.svdalg))
 _adjoint(alg::AbstractAlgorithm) = alg
 
 # 1-arg functions
-function MAK.initialize_output(::typeof(left_null!), t::AdjointTensorMap,
-                               alg::AbstractAlgorithm)
+function MAK.initialize_output(::typeof(left_null!), t::AdjointTensorMap, alg::AbstractAlgorithm)
     return adjoint(MAK.initialize_output(right_null!, adjoint(t), _adjoint(alg)))
 end
-function MAK.initialize_output(::typeof(right_null!), t::AdjointTensorMap,
-                               alg::AbstractAlgorithm)
+function MAK.initialize_output(
+        ::typeof(right_null!), t::AdjointTensorMap,
+        alg::AbstractAlgorithm
+    )
     return adjoint(MAK.initialize_output(left_null!, adjoint(t), _adjoint(alg)))
 end
 
@@ -36,8 +37,10 @@ function MAK.is_right_isometry(t::AdjointTensorMap; kwargs...)
 end
 
 # 2-arg functions
-for (left_f!, right_f!) in zip((:qr_full!, :qr_compact!, :left_polar!, :left_orth!),
-                               (:lq_full!, :lq_compact!, :right_polar!, :right_orth!))
+for (left_f!, right_f!) in zip(
+        (:qr_full!, :qr_compact!, :left_polar!, :left_orth!),
+        (:lq_full!, :lq_compact!, :right_polar!, :right_orth!)
+    )
     @eval function MAK.copy_input(::typeof($left_f!), t::AdjointTensorMap)
         return adjoint(MAK.copy_input($right_f!, adjoint(t)))
     end
@@ -45,12 +48,14 @@ for (left_f!, right_f!) in zip((:qr_full!, :qr_compact!, :left_polar!, :left_ort
         return adjoint(MAK.copy_input($left_f!, adjoint(t)))
     end
 
-    @eval function MAK.initialize_output(::typeof($left_f!), t::AdjointTensorMap,
-                                         alg::AbstractAlgorithm)
+    @eval function MAK.initialize_output(
+            ::typeof($left_f!), t::AdjointTensorMap, alg::AbstractAlgorithm
+        )
         return reverse(adjoint.(MAK.initialize_output($right_f!, adjoint(t), _adjoint(alg))))
     end
-    @eval function MAK.initialize_output(::typeof($right_f!), t::AdjointTensorMap,
-                                         alg::AbstractAlgorithm)
+    @eval function MAK.initialize_output(
+            ::typeof($right_f!), t::AdjointTensorMap, alg::AbstractAlgorithm
+        )
         return reverse(adjoint.(MAK.initialize_output($left_f!, adjoint(t), _adjoint(alg))))
     end
 
@@ -70,8 +75,9 @@ for f! in (:svd_full!, :svd_compact!, :svd_trunc!)
         return adjoint(MAK.copy_input($f!, adjoint(t)))
     end
 
-    @eval function MAK.initialize_output(::typeof($f!), t::AdjointTensorMap,
-                                         alg::AbstractAlgorithm)
+    @eval function MAK.initialize_output(
+            ::typeof($f!), t::AdjointTensorMap, alg::AbstractAlgorithm
+        )
         return reverse(adjoint.(MAK.initialize_output($f!, adjoint(t), _adjoint(alg))))
     end
     @eval function MAK.$f!(t::AdjointTensorMap, F, alg::AbstractAlgorithm)
@@ -80,14 +86,16 @@ for f! in (:svd_full!, :svd_compact!, :svd_trunc!)
     end
 
     # disambiguate by prohibition
-    @eval function MAK.initialize_output(::typeof($f!), t::AdjointTensorMap,
-                                         alg::DiagonalAlgorithm)
+    @eval function MAK.initialize_output(
+            ::typeof($f!), t::AdjointTensorMap, alg::DiagonalAlgorithm
+        )
         throw(MethodError($f!, (t, alg)))
     end
 end
 # avoid amgiguity
-function MAK.initialize_output(::typeof(svd_trunc!), t::AdjointTensorMap,
-                               alg::TruncatedAlgorithm)
+function MAK.initialize_output(
+        ::typeof(svd_trunc!), t::AdjointTensorMap, alg::TruncatedAlgorithm
+    )
     return MAK.initialize_output(svd_compact!, t, alg.alg)
 end
 # to fix ambiguity

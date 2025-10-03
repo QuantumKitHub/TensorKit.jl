@@ -10,7 +10,7 @@ module TensorKit
 # Types:
 export Sector, AbstractIrrep, Irrep
 export FusionStyle, UniqueFusion, MultipleFusion, MultiplicityFreeFusion,
-       SimpleFusion, GenericFusion
+    SimpleFusion, GenericFusion
 export BraidingStyle, SymmetricBraiding, Bosonic, Fermionic, Anyonic, NoBraiding
 export Trivial, Z2Irrep, Z3Irrep, Z4Irrep, ZNIrrep, U1Irrep, SU2Irrep, CU1Irrep
 export ProductSector
@@ -32,14 +32,14 @@ export SpaceMismatch, SectorMismatch, IndexError # error types
 
 # general vector space methods
 export space, field, dual, dim, reduceddim, dims, fuse, flip, isdual, oplus, ominus,
-       insertleftunit, insertrightunit, removeunit
+    insertleftunit, insertrightunit, removeunit
 
 # partial order for vector spaces
 export infimum, supremum, isisomorphic, ismonomorphic, isepimorphic
 
 # methods for sectors and properties thereof
 export sectortype, sectors, hassector, Nsymbol, Fsymbol, Rsymbol, Bsymbol,
-       frobeniusschur, twist, otimes, sectorscalartype, deligneproduct
+    frobeniusschur, twist, otimes, sectorscalartype, deligneproduct
 export fusiontrees, braid, permute, transpose
 export ZNSpace, SU2Irrep, U1Irrep, CU1Irrep
 # other fusion tree manipulations, should not be exported:
@@ -62,7 +62,7 @@ export randisometry, randisometry!, rand, rand!, randn, randn!
 
 # special purpose constructors
 export zero, one, one!, id, id!, isomorphism, isomorphism!, unitary, unitary!, isometry,
-       isometry!
+    isometry!
 
 # reexport most of VectorInterface and some more tensor algebra
 export zerovector, zerovector!, zerovector!!, scale, scale!, scale!!, add, add!, add!!
@@ -71,19 +71,19 @@ export inner, dot, norm, normalize, normalize!, tr
 # factorizations
 export mul!, lmul!, rmul!, adjoint!, pinv, axpy!, axpby!
 export left_orth, right_orth, left_null, right_null,
-       left_orth!, right_orth!, left_null!, right_null!,
-       left_polar, left_polar!, right_polar, right_polar!,
-       qr_full, qr_compact, qr_null, lq_full, lq_compact, lq_null,
-       qr_full!, qr_compact!, qr_null!, lq_full!, lq_compact!, lq_null!,
-       svd_compact!, svd_full!, svd_trunc!, svd_compact, svd_full, svd_trunc,
-       exp, exp!,
-       eigh_full!, eigh_full, eigh_trunc!, eigh_trunc, eig_full!, eig_full, eig_trunc!,
-       eig_trunc,
-       eigh_vals!, eigh_vals, eig_vals!, eig_vals,
-       isposdef, isposdef!, ishermitian, isisometry, isunitary, sylvester, rank, cond
+    left_orth!, right_orth!, left_null!, right_null!,
+    left_polar, left_polar!, right_polar, right_polar!,
+    qr_full, qr_compact, qr_null, lq_full, lq_compact, lq_null,
+    qr_full!, qr_compact!, qr_null!, lq_full!, lq_compact!, lq_null!,
+    svd_compact!, svd_full!, svd_trunc!, svd_compact, svd_full, svd_trunc,
+    exp, exp!,
+    eigh_full!, eigh_full, eigh_trunc!, eigh_trunc, eig_full!, eig_full, eig_trunc!,
+    eig_trunc,
+    eigh_vals!, eigh_vals, eig_vals!, eig_vals,
+    isposdef, isposdef!, ishermitian, isisometry, isunitary, sylvester, rank, cond
 
 export braid, braid!, permute, permute!, transpose, transpose!, twist, twist!, repartition,
-       repartition!
+    repartition!
 export catdomain, catcodomain, absorb, absorb!
 
 # tensor operations
@@ -121,19 +121,19 @@ import TensorKitSectors: dual, type_repr
 import TensorKitSectors: twist
 
 using Base: @boundscheck, @propagate_inbounds, @constprop,
-            OneTo, tail, front,
-            tuple_type_head, tuple_type_tail, tuple_type_cons,
-            SizeUnknown, HasLength, HasShape, IsInfinite, EltypeUnknown, HasEltype
+    OneTo, tail, front,
+    tuple_type_head, tuple_type_tail, tuple_type_cons,
+    SizeUnknown, HasLength, HasShape, IsInfinite, EltypeUnknown, HasEltype
 using Base.Iterators: product, filter
 
 using LinearAlgebra: LinearAlgebra, BlasFloat
 using LinearAlgebra: norm, dot, normalize, normalize!, tr,
-                     axpy!, axpby!, lmul!, rmul!, mul!, ldiv!, rdiv!,
-                     adjoint, adjoint!, transpose, transpose!,
-                     lu, pinv, sylvester,
-                     eigen, eigen!, svd, svd!,
-                     isposdef, isposdef!, ishermitian, rank, cond,
-                     Diagonal, Hermitian
+    axpy!, axpby!, lmul!, rmul!, mul!, ldiv!, rdiv!,
+    adjoint, adjoint!, transpose, transpose!,
+    lu, pinv, sylvester,
+    eigen, eigen!, svd, svd!,
+    isposdef, isposdef!, ishermitian, rank, cond,
+    Diagonal, Hermitian
 using MatrixAlgebraKit
 
 import Base.Meta
@@ -152,8 +152,8 @@ include("auxiliary/random.jl")
 
 #--------------------------------------------------------------------
 # experiment with different dictionaries
-const SectorDict{K,V} = SortedVectorDict{K,V}
-const FusionTreeDict{K,V} = Dict{K,V}
+const SectorDict{K, V} = SortedVectorDict{K, V}
+const FusionTreeDict{K, V} = Dict{K, V}
 #--------------------------------------------------------------------
 
 # Exception types:
@@ -161,7 +161,7 @@ const FusionTreeDict{K,V} = Dict{K,V}
 abstract type TensorException <: Exception end
 
 # Exception type for all errors related to sector mismatch
-struct SectorMismatch{S<:Union{Nothing,AbstractString}} <: TensorException
+struct SectorMismatch{S <: Union{Nothing, AbstractString}} <: TensorException
     message::S
 end
 SectorMismatch() = SectorMismatch{Nothing}(nothing)
@@ -169,7 +169,7 @@ Base.showerror(io::IO, ::SectorMismatch{Nothing}) = print(io, "SectorMismatch()"
 Base.showerror(io::IO, e::SectorMismatch) = print(io, "SectorMismatch(\"", e.message, "\")")
 
 # Exception type for all errors related to vector space mismatch
-struct SpaceMismatch{S<:Union{Nothing,AbstractString}} <: TensorException
+struct SpaceMismatch{S <: Union{Nothing, AbstractString}} <: TensorException
     message::S
 end
 SpaceMismatch() = SpaceMismatch{Nothing}(nothing)
@@ -177,7 +177,7 @@ Base.showerror(io::IO, ::SpaceMismatch{Nothing}) = print(io, "SpaceMismatch()")
 Base.showerror(io::IO, e::SpaceMismatch) = print(io, "SpaceMismatch(\"", e.message, "\")")
 
 # Exception type for all errors related to invalid tensor index specification.
-struct IndexError{S<:Union{Nothing,AbstractString}} <: TensorException
+struct IndexError{S <: Union{Nothing, AbstractString}} <: TensorException
     message::S
 end
 IndexError() = IndexError{Nothing}(nothing)
@@ -243,7 +243,7 @@ include("auxiliary/deprecate.jl")
 # Extensions
 # ----------
 function __init__()
-    @require_extensions
+    return @require_extensions
 end
 
 end

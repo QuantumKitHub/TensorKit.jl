@@ -27,9 +27,9 @@ for i in 1:N
     Vmpo = Index(Dmpo)
     Vphys = Index(Dphys)
 
-    mpo_timer = ITensorsTimers.mpo_timer(; Vmps=Vmps, Vmpo=Vmpo, Vphys=Vphys)
+    mpo_timer = ITensorsTimers.mpo_timer(; Vmps = Vmps, Vmpo = Vmpo, Vphys = Vphys)
 
-    times, times_gc = mpo_timer(; outer=K)
+    times, times_gc = mpo_timer(; outer = K)
     mpo_triv_times[:, i] = times
     mpo_triv_times_gc[:, i] = times_gc
 
@@ -54,9 +54,9 @@ for i in 1:N
     Vmpo = Index((QN(a, 2) => b for (a, b) in Dmpo)...)
     Vphys = Index((QN(a, 2) => b for (a, b) in Dphys)...)
 
-    mpo_timer = ITensorsTimers.mpo_timer(; Vmps=Vmps, Vmpo=Vmpo, Vphys=Vphys)
+    mpo_timer = ITensorsTimers.mpo_timer(; Vmps = Vmps, Vmpo = Vmpo, Vphys = Vphys)
 
-    times, times_gc = mpo_timer(; outer=K)
+    times, times_gc = mpo_timer(; outer = K)
     mpo_z2_times[:, i] = times
     mpo_z2_times_gc[:, i] = times_gc
 
@@ -81,9 +81,9 @@ for i in 1:N
     Vmpo = Index((QN(a) => b for (a, b) in Dmpo)...)
     Vphys = Index((QN(a) => b for (a, b) in Dphys)...)
 
-    mpo_timer = ITensorsTimers.mpo_timer(; Vmps=Vmps, Vmpo=Vmpo, Vphys=Vphys)
+    mpo_timer = ITensorsTimers.mpo_timer(; Vmps = Vmps, Vmpo = Vmpo, Vphys = Vphys)
 
-    times, times_gc = mpo_timer(; outer=K)
+    times, times_gc = mpo_timer(; outer = K)
     mpo_u1_times[:, i] = times
     mpo_u1_times_gc[:, i] = times_gc
 
@@ -112,10 +112,9 @@ for i in 1:N
     Vphys = Index(Dphys)
     Venv = Index(Denv)
 
-    pepo_timer = ITensorsTimers.pepo_timer(; Vpeps=Vpeps, Vpepo=Vpepo, Vphys=Vphys,
-                                           Venv=Venv)
+    pepo_timer = ITensorsTimers.pepo_timer(; Vpeps, Vpepo, Vphys, Venv)
 
-    times, times_gc = pepo_timer(; outer=K)
+    times, times_gc = pepo_timer(; outer = K)
     pepo_triv_times[:, i] = times
     pepo_triv_times_gc[:, i] = times_gc
 
@@ -142,10 +141,9 @@ for i in 1:N
     Vphys = Index((QN(a, 2) => b for (a, b) in Dphys)...)
     Venv = Index((QN(a, 2) => b for (a, b) in Denv)...)
 
-    pepo_timer = ITensorsTimers.pepo_timer(; Vpeps=Vpeps, Vpepo=Vpepo, Vphys=Vphys,
-                                           Venv=Venv)
+    pepo_timer = ITensorsTimers.pepo_timer(; Vpeps, Vpepo, Vphys, Venv)
 
-    times, times_gc = pepo_timer(; outer=K)
+    times, times_gc = pepo_timer(; outer = K)
     pepo_z2_times[:, i] = times
     pepo_z2_times_gc[:, i] = times_gc
 
@@ -172,10 +170,9 @@ for i in 1:N
     Vphys = Index((QN(a) => b for (a, b) in Dphys)...)
     Venv = Index((QN(a) => b for (a, b) in Denv)...)
 
-    pepo_timer = ITensorsTimers.pepo_timer(; Vpeps=Vpeps, Vpepo=Vpepo, Vphys=Vphys,
-                                           Venv=Venv)
+    pepo_timer = ITensorsTimers.pepo_timer(; Vpeps, Vpepo, Vphys, Venv)
 
-    times, times_gc = pepo_timer(; outer=K)
+    times, times_gc = pepo_timer(; outer = K)
     pepo_u1_times[:, i] = times
     pepo_u1_times_gc[:, i] = times_gc
 
@@ -198,9 +195,9 @@ for i in 1:N
 
     Vmera = Index(Dmera)
 
-    mera_timer = ITensorsTimers.mera_timer(; Vmera=Vmera)
+    mera_timer = ITensorsTimers.mera_timer(; Vmera = Vmera)
 
-    times, times_gc = mera_timer(; outer=K)
+    times, times_gc = mera_timer(; outer = K)
 
     mera_triv_times[:, i] = times
     mera_triv_times_gc[:, i] = times_gc
@@ -222,9 +219,9 @@ for i in 1:N
 
     Vmera = Index((QN(a, 2) => b for (a, b) in Dmera)...)
 
-    mera_timer = ITensorsTimers.mera_timer(; Vmera=Vmera)
+    mera_timer = ITensorsTimers.mera_timer(; Vmera = Vmera)
 
-    times, times_gc = mera_timer(; outer=K)
+    times, times_gc = mera_timer(; outer = K)
 
     mera_z2_times[:, i] = times
     mera_z2_times_gc[:, i] = times_gc
@@ -246,9 +243,9 @@ for i in 1:N
 
     Vmera = Index((QN(a) => b for (a, b) in Dmera)...)
 
-    mera_timer = ITensorsTimers.mera_timer(; Vmera=Vmera)
+    mera_timer = ITensorsTimers.mera_timer(; Vmera = Vmera)
 
-    times, times_gc = mera_timer(; outer=K)
+    times, times_gc = mera_timer(; outer = K)
 
     mera_u1_times[:, i] = times
     mera_u1_times_gc[:, i] = times_gc

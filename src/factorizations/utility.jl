@@ -2,7 +2,7 @@
 macro check_space(x, V)
     return esc(:($MatrixAlgebraKit.@check_size($x, $V, $space)))
 end
-macro check_scalar(x, y, op=:identity, eltype=:scalartype)
+macro check_scalar(x, y, op = :identity, eltype = :scalartype)
     return esc(:($MatrixAlgebraKit.@check_scalar($x, $y, $op, $eltype)))
 end
 
@@ -16,7 +16,7 @@ function copy_oftype(t::AbstractTensorMap, T::Type{<:Number})
     return copy!(similar(t, T, space(t)), t)
 end
 
-function _reverse!(t::AbstractTensorMap; dims=:)
+function _reverse!(t::AbstractTensorMap; dims = :)
     for (c, b) in blocks(t)
         reverse!(b; dims)
     end

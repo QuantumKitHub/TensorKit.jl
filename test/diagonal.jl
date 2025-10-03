@@ -1,6 +1,8 @@
-diagspacelist = ((ℂ^4)', ℂ[Z2Irrep](0 => 2, 1 => 3),
-                 ℂ[FermionNumber](0 => 2, 1 => 2, -1 => 1),
-                 ℂ[SU2Irrep](0 => 2, 1 => 1)', ℂ[FibonacciAnyon](:I => 2, :τ => 2))
+diagspacelist = (
+    (ℂ^4)', Vect[Z2Irrep](0 => 2, 1 => 3),
+    Vect[FermionNumber](0 => 2, 1 => 2, -1 => 1),
+    Vect[SU2Irrep](0 => 2, 1 => 1)', Vect[FibonacciAnyon](:I => 2, :τ => 2),
+)
 
 @testset "DiagonalTensor with domain $V" for V in diagspacelist
     @timedtestset "Basic properties and algebra" begin
@@ -29,7 +31,7 @@ diagspacelist = ((ℂ^4)', ℂ[Z2Irrep](0 => 2, 1 => 3),
             next = @constinferred Nothing iterate(bs, state)
             b2 = @constinferred block(t, first(blocksectors(t)))
             @test b1 == b2
-            @test eltype(bs) === Pair{typeof(c),typeof(b1)}
+            @test eltype(bs) === Pair{typeof(c), typeof(b1)}
             @test typeof(b1) === TensorKit.blocktype(t)
             # basic linear algebra
             @test isa(@constinferred(norm(t)), real(T))
@@ -73,8 +75,7 @@ diagspacelist = ((ℂ^4)', ℂ[Z2Irrep](0 => 2, 1 => 3),
             α = rand(T)
             @test convert(TensorMap, α * t1) ≈ α * convert(TensorMap, t1)
             @test convert(TensorMap, t1') ≈ convert(TensorMap, t1)'
-            @test convert(TensorMap, t1 + t2) ≈
-                  convert(TensorMap, t1) + convert(TensorMap, t2)
+            @test convert(TensorMap, t1 + t2) ≈ convert(TensorMap, t1) + convert(TensorMap, t2)
         end
     end
     @timedtestset "Real and imaginary parts" begin
@@ -138,8 +139,9 @@ diagspacelist = ((ℂ^4)', ℂ[Z2Irrep](0 => 2, 1 => 3),
         @test TensorMap(@constinferred t1 / t2) ≈ TensorMap(t1) / TensorMap(t2)
         @test TensorMap(@constinferred inv(t1)) ≈ inv(TensorMap(t1))
         @test TensorMap(@constinferred pinv(t1)) ≈ pinv(TensorMap(t1))
-        @test all(Base.Fix2(isa, DiagonalTensorMap),
-                  (t1 * t2, t1 \ t2, t1 / t2, inv(t1), pinv(t1)))
+        @test all(
+            Base.Fix2(isa, DiagonalTensorMap), (t1 * t2, t1 \ t2, t1 / t2, inv(t1), pinv(t1))
+        )
 
         u = randn(Float64, V * V' * V, V)
         @test u * t1 ≈ u * TensorMap(t1)

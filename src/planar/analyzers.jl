@@ -80,8 +80,10 @@ function possible_planar_complements(ind1, ind2)
     # general case:
     j1 = findfirst(in(ind2), ind1)
     if j1 === nothing # disconnected diagrams, can be made planar in various ways
-        return Any[(circshift(ind1, i - 1), circshift(ind2, j - 1), Any[], Any[])
-                   for i in eachindex(ind1), j in eachindex(ind2)]
+        return Any[
+            (circshift(ind1, i - 1), circshift(ind2, j - 1), Any[], Any[])
+                for i in eachindex(ind1), j in eachindex(ind2)
+        ]
     else # genuine contraction
         N1, N2 = length(ind1), length(ind2)
         j2 = findfirst(==(ind1[j1]), ind2)
@@ -104,11 +106,11 @@ function possible_planar_complements(ind1, ind2)
             jmin2 -= N2
         end
         indo1 = jmin1 < 1 ? ind1[(jmax1 + 1):mod1(jmin1 - 1, N1)] :
-                vcat(ind1[(jmax1 + 1):N1], ind1[1:(jmin1 - 1)])
+            vcat(ind1[(jmax1 + 1):N1], ind1[1:(jmin1 - 1)])
         cind1 = jmin1 < 1 ? vcat(ind1[mod1(jmin1, N1):N1], ind1[1:jmax1]) :
-                ind1[jmin1:jmax1]
+            ind1[jmin1:jmax1]
         indo2 = jmin2 < 1 ? ind2[(jmax2 + 1):mod1(jmin2 - 1, N2)] :
-                vcat(ind2[(jmax2 + 1):N2], ind2[1:(jmin2 - 1)])
+            vcat(ind2[(jmax2 + 1):N2], ind2[1:(jmin2 - 1)])
         cind2 = reverse(cind1)
         return isempty(intersect(indo1, indo2)) ? Any[(indo1, indo2, cind1, cind2)] : Any[]
     end

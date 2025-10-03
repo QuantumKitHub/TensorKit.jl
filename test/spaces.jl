@@ -58,8 +58,7 @@ println("------------------------------------")
         @test !isdual(V')
         @test V == CartesianSpace(Trivial() => d) == CartesianSpace(Dict(Trivial() => d))
         @test @constinferred(hash(V)) == hash(deepcopy(V))
-        @test V == @constinferred(dual(V)) == @constinferred(conj(V)) ==
-              @constinferred(adjoint(V))
+        @test V == @constinferred(dual(V)) == @constinferred(conj(V)) == @constinferred(adjoint(V))
         @test field(V) == ℝ
         @test @constinferred(sectortype(V)) == Trivial
         @test ((@constinferred sectors(V))...,) == (Trivial(),)
@@ -104,8 +103,7 @@ println("------------------------------------")
         @test isdual(V')
         @test V == ComplexSpace(Trivial() => d) == ComplexSpace(Dict(Trivial() => d))
         @test @constinferred(hash(V)) == hash(deepcopy(V)) != hash(V')
-        @test @constinferred(dual(V)) == @constinferred(conj(V)) ==
-              @constinferred(adjoint(V)) != V
+        @test @constinferred(dual(V)) == @constinferred(conj(V)) == @constinferred(adjoint(V)) != V
         @test @constinferred(field(V)) == ℂ
         @test @constinferred(sectortype(V)) == Trivial
         @test @constinferred(sectortype(V)) == Trivial
@@ -181,23 +179,23 @@ println("------------------------------------")
         @test eval(Meta.parse(TensorKit.type_repr(typeof(V)))) == typeof(V)
         @test eval(Meta.parse(sprint(show, V))) == V
         @test eval(Meta.parse(sprint(show, V'))) == V'
-        @test V' == GradedSpace(gen; dual=true)
+        @test V' == GradedSpace(gen; dual = true)
         @test V == @constinferred GradedSpace(gen...)
-        @test V' == @constinferred GradedSpace(gen...; dual=true)
+        @test V' == @constinferred GradedSpace(gen...; dual = true)
         @test V == @constinferred GradedSpace(tuple(gen...))
-        @test V' == @constinferred GradedSpace(tuple(gen...); dual=true)
+        @test V' == @constinferred GradedSpace(tuple(gen...); dual = true)
         @test V == @constinferred GradedSpace(Dict(gen))
-        @test V' == @constinferred GradedSpace(Dict(gen); dual=true)
+        @test V' == @constinferred GradedSpace(Dict(gen); dual = true)
         @test V == @inferred Vect[I](gen)
-        @test V' == @constinferred Vect[I](gen; dual=true)
+        @test V' == @constinferred Vect[I](gen; dual = true)
         @test V == @constinferred Vect[I](gen...)
-        @test V' == @constinferred Vect[I](gen...; dual=true)
+        @test V' == @constinferred Vect[I](gen...; dual = true)
         @test V == @constinferred Vect[I](Dict(gen))
-        @test V' == @constinferred Vect[I](Dict(gen); dual=true)
+        @test V' == @constinferred Vect[I](Dict(gen); dual = true)
         @test V == @constinferred typeof(V)(c => dim(V, c) for c in sectors(V))
         if I isa ZNIrrep
             @test V == @constinferred typeof(V)(V.dims)
-            @test V' == @constinferred typeof(V)(V.dims; dual=true)
+            @test V' == @constinferred typeof(V)(V.dims; dual = true)
         end
         @test @constinferred(hash(V)) == hash(deepcopy(V)) != hash(V')
         @test V == GradedSpace(reverse(collect(gen))...)
@@ -219,8 +217,7 @@ println("------------------------------------")
         @test isa(InnerProductStyle(V), EuclideanInnerProduct)
         @test isa(V, GradedSpace)
         @test isa(V, GradedSpace{I})
-        @test @constinferred(dual(V)) == @constinferred(conj(V)) ==
-              @constinferred(adjoint(V)) != V
+        @test @constinferred(dual(V)) == @constinferred(conj(V)) == @constinferred(adjoint(V)) != V
         @test @constinferred(field(V)) == ℂ
         @test @constinferred(sectortype(V)) == I
         slist = @constinferred sectors(V)
@@ -234,18 +231,16 @@ println("------------------------------------")
         @test @constinferred(⊕(V, zero(V))) == V
         @test @constinferred(⊕(V, V)) == Vect[I](c => 2dim(V, c) for c in sectors(V))
         @test @constinferred(⊕(V, V, V, V)) == Vect[I](c => 4dim(V, c) for c in sectors(V))
-        @test @constinferred(⊕(V, oneunit(V))) ==
-              Vect[I](c => isone(c) + dim(V, c) for c in sectors(V))
+        @test @constinferred(⊕(V, oneunit(V))) == Vect[I](c => isone(c) + dim(V, c) for c in sectors(V))
         @test @constinferred(fuse(V, oneunit(V))) == V
-        d = Dict{I,Int}()
+        d = Dict{I, Int}()
         for a in sectors(V), b in sectors(V)
             for c in a ⊗ b
                 d[c] = get(d, c, 0) + dim(V, a) * dim(V, b) * Nsymbol(a, b, c)
             end
         end
         @test @constinferred(fuse(V, V)) == GradedSpace(d)
-        @test @constinferred(flip(V)) ==
-              Vect[I](conj(c) => dim(V, c) for c in sectors(V))'
+        @test @constinferred(flip(V)) == Vect[I](conj(c) => dim(V, c) for c in sectors(V))'
         @test flip(V) ≅ V
         @test flip(V) ≾ V
         @test flip(V) ≿ V
@@ -279,8 +274,8 @@ println("------------------------------------")
         @test @constinferred(⊗(V1, V2, V3 ⊗ V4)) == P
         @test @constinferred(⊗(V1, V2 ⊗ V3, V4)) == P
         @test V1 * V2 * oneunit(V1) * V3 * V4 ==
-              @constinferred(insertleftunit(P, 3)) ==
-              @constinferred(insertrightunit(P, 2))
+            @constinferred(insertleftunit(P, 3)) ==
+            @constinferred(insertrightunit(P, 2))
         @test @constinferred(removeunit(V1 * V2 * oneunit(V1)' * V3 * V4, 3)) == P
         @test fuse(V1, V2', V3) ≅ V1 ⊗ V2' ⊗ V3
         @test fuse(V1, V2', V3) ≾ V1 ⊗ V2' ⊗ V3
@@ -290,8 +285,8 @@ println("------------------------------------")
         @test @constinferred(⊗(V1)) == ProductSpace(V1)
         @test eval(Meta.parse(sprint(show, ⊗(V1)))) == ⊗(V1)
         @test @constinferred(one(V1)) == @constinferred(one(typeof(V1))) ==
-              @constinferred(one(P)) == @constinferred(one(typeof(P))) ==
-              ProductSpace{ComplexSpace}(())
+            @constinferred(one(P)) == @constinferred(one(typeof(P))) ==
+            ProductSpace{ComplexSpace}(())
         @test eval(Meta.parse(sprint(show, one(P)))) == one(P)
         @test @constinferred(⊗(one(P), P)) == P
         @test @constinferred(⊗(P, one(P))) == P
@@ -301,8 +296,7 @@ println("------------------------------------")
         @test @constinferred(dim(P)) == prod(dim, (V1, V2, V3, V4))
         @test @constinferred(dim(P, 2)) == dim(V2)
         @test @constinferred(dim(one(P))) == 1
-        @test first(@constinferred(sectors(P))) ==
-              (Trivial(), Trivial(), Trivial(), Trivial())
+        @test first(@constinferred(sectors(P))) == (Trivial(), Trivial(), Trivial(), Trivial())
         @test first(@constinferred(sectors(one(P)))) == ()
         cube(x) = x^3
         @test @constinferred(cube(V1)) == V1 ⊗ V1 ⊗ V1
@@ -316,10 +310,8 @@ println("------------------------------------")
         @test @constinferred(blockdim(P, first(blocksectors(P)))) == dim(P)
         @test @constinferred(blockdim(P, Trivial())) == dim(P)
         @test @constinferred(blockdim(one(P), Trivial())) == 1
-        @test Base.IteratorEltype(P) == Base.IteratorEltype(typeof(P)) ==
-              Base.IteratorEltype(P.spaces)
-        @test Base.IteratorSize(P) == Base.IteratorSize(typeof(P)) ==
-              Base.IteratorSize(P.spaces)
+        @test Base.IteratorEltype(P) == Base.IteratorEltype(typeof(P)) == Base.IteratorEltype(P.spaces)
+        @test Base.IteratorSize(P) == Base.IteratorSize(typeof(P)) == Base.IteratorSize(P.spaces)
         @test Base.eltype(P) == Base.eltype(typeof(P)) == typeof(V1)
         @test eltype(collect(P)) == typeof(V1)
         @test collect(P) == [V1, V2, V3, V4]
@@ -328,7 +320,7 @@ println("------------------------------------")
 
     @timedtestset "ProductSpace{SU₂Space}" begin
         V1, V2, V3 = SU₂Space(0 => 3, 1 // 2 => 1), SU₂Space(0 => 2, 1 => 1),
-                     SU₂Space(1 // 2 => 1, 1 => 1)'
+            SU₂Space(1 // 2 => 1, 1 => 1)'
         P = @constinferred ProductSpace(V1, V2, V3)
         @test eval(Meta.parse(sprint(show, P))) == P
         @test eval(Meta.parse(sprint(show, typeof(P)))) == typeof(P)
@@ -343,8 +335,8 @@ println("------------------------------------")
         @test @constinferred(⊗(V1, V2, V3)) == P
         @test @constinferred(adjoint(P)) == dual(P) == V3' ⊗ V2' ⊗ V1'
         @test V1 * V2 * oneunit(V1)' * V3 ==
-              @constinferred(insertleftunit(P, 3; conj=true)) ==
-              @constinferred(insertrightunit(P, 2; conj=true))
+            @constinferred(insertleftunit(P, 3; conj = true)) ==
+            @constinferred(insertrightunit(P, 2; conj = true))
         @test P == @constinferred(removeunit(insertleftunit(P, 3), 3))
         @test fuse(V1, V2', V3) ≅ V1 ⊗ V2' ⊗ V3
         @test fuse(V1, V2', V3) ≾ V1 ⊗ V2' ⊗ V3 ≾ fuse(V1 ⊗ V2' ⊗ V3)
@@ -354,7 +346,7 @@ println("------------------------------------")
         @test fuse(flip(V1) ⊗ V2) ⊗ flip(V3) ≅ V1 ⊗ V2 ⊗ V3
         @test @constinferred(⊗(V1)) == ProductSpace(V1)
         @test @constinferred(one(V1)) == @constinferred(one(typeof(V1))) ==
-              @constinferred(one(P)) == @constinferred(one(typeof(P)))
+            @constinferred(one(P)) == @constinferred(one(typeof(P)))
         @test @constinferred(dims(P)) == map(dim, (V1, V2, V3))
         @test @constinferred(dim(P)) == prod(dim, (V1, V2, V3))
         @test @constinferred(dim(one(P))) == 1
@@ -364,8 +356,7 @@ println("------------------------------------")
             @test hassector(P, s)
             @test @constinferred(dims(P, s)) == dim.((V1, V2, V3), s)
         end
-        @test sum(dim(c) * blockdim(P, c) for c in @constinferred(blocksectors(P))) ==
-              dim(P)
+        @test sum(dim(c) * blockdim(P, c) for c in @constinferred(blocksectors(P))) == dim(P)
     end
 
     @timedtestset "Deligne tensor product of spaces" begin
@@ -380,17 +371,17 @@ println("------------------------------------")
                     for W4 in (V1, V2, V3, V4)
                         Ws = @constinferred(W1 ⊠ W2 ⊠ W3 ⊠ W4)
                         @test Ws == @constinferred((W1 ⊠ W2) ⊠ (W3 ⊠ W4)) ==
-                              @constinferred(((W1 ⊠ W2) ⊠ W3) ⊠ W4) ==
-                              @constinferred((W1 ⊠ (W2 ⊠ W3)) ⊠ W4) ==
-                              @constinferred(W1 ⊠ ((W2 ⊠ W3)) ⊠ W4) ==
-                              @constinferred(W1 ⊠ (W2 ⊠ (W3 ⊠ W4)))
+                            @constinferred(((W1 ⊠ W2) ⊠ W3) ⊠ W4) ==
+                            @constinferred((W1 ⊠ (W2 ⊠ W3)) ⊠ W4) ==
+                            @constinferred(W1 ⊠ ((W2 ⊠ W3)) ⊠ W4) ==
+                            @constinferred(W1 ⊠ (W2 ⊠ (W3 ⊠ W4)))
                         I1, I2, I3, I4 = map(sectortype, (W1, W2, W3, W4))
                         I = sectortype(Ws)
                         @test I == @constinferred((I1 ⊠ I2) ⊠ (I3 ⊠ I4)) ==
-                              @constinferred(((I1 ⊠ I2) ⊠ I3) ⊠ I4) ==
-                              @constinferred((I1 ⊠ (I2 ⊠ I3)) ⊠ I4) ==
-                              @constinferred(I1 ⊠ ((I2 ⊠ I3)) ⊠ I4) ==
-                              @constinferred(I1 ⊠ (I2 ⊠ (I3 ⊠ I4)))
+                            @constinferred(((I1 ⊠ I2) ⊠ I3) ⊠ I4) ==
+                            @constinferred((I1 ⊠ (I2 ⊠ I3)) ⊠ I4) ==
+                            @constinferred(I1 ⊠ ((I2 ⊠ I3)) ⊠ I4) ==
+                            @constinferred(I1 ⊠ (I2 ⊠ (I3 ⊠ I4)))
                         @test dim(Ws) == dim(W1) * dim(W2) * dim(W3) * dim(W4)
                     end
                 end
@@ -425,19 +416,19 @@ println("------------------------------------")
             @test permute(W, ((2, 4, 5), (3, 1))) == (V2 ⊗ V4' ⊗ V5' ← V3 ⊗ V1')
             @test (V1 ⊗ V2 ← V1 ⊗ V2) == @constinferred TensorKit.compose(W, W')
             @test (V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5 ⊗ oneunit(V5)) ==
-                  @constinferred(insertleftunit(W)) ==
-                  @constinferred(insertrightunit(W))
+                @constinferred(insertleftunit(W)) ==
+                @constinferred(insertrightunit(W))
             @test @constinferred(removeunit(insertleftunit(W), $(numind(W) + 1))) == W
             @test (V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5 ⊗ oneunit(V5)') ==
-                  @constinferred(insertleftunit(W; conj=true)) ==
-                  @constinferred(insertrightunit(W; conj=true))
+                @constinferred(insertleftunit(W; conj = true)) ==
+                @constinferred(insertrightunit(W; conj = true))
             @test (oneunit(V1) ⊗ V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5) ==
-                  @constinferred(insertleftunit(W, 1)) ==
-                  @constinferred(insertrightunit(W, 0))
+                @constinferred(insertleftunit(W, 1)) ==
+                @constinferred(insertrightunit(W, 0))
             @test (V1 ⊗ V2 ⊗ oneunit(V1) ← V3 ⊗ V4 ⊗ V5) ==
-                  @constinferred(insertrightunit(W, 2))
+                @constinferred(insertrightunit(W, 2))
             @test (V1 ⊗ V2 ← oneunit(V1) ⊗ V3 ⊗ V4 ⊗ V5) ==
-                  @constinferred(insertleftunit(W, 3))
+                @constinferred(insertleftunit(W, 3))
             @test @constinferred(removeunit(insertleftunit(W, 3), 3)) == W
             @test @constinferred(insertrightunit(one(V1) ← V1, 0)) == (oneunit(V1) ← V1)
             @test_throws BoundsError insertleftunit(one(V1) ← V1, 0)

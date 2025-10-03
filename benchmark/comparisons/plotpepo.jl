@@ -57,32 +57,39 @@ for j in 1:3
         Dphys = dims[j][3][i]
         Denv = dims[j][4][i]
 
-        p = boxplot(data_tensorkit[:, i]; label="TensorKit.jl", markersize=M)
+        p = boxplot(data_tensorkit[:, i]; label = "TensorKit.jl", markersize = M)
         !isnothing(data_itensors) &&
-            boxplot!(p, data_itensors[:, i]; label="ITensors.jl", markersize=M)
+            boxplot!(p, data_itensors[:, i]; label = "ITensors.jl", markersize = M)
         !isnothing(data_tenpy) &&
-            boxplot!(p, data_tenpy[:, i]; label="Tenpy", markersize=M)
+            boxplot!(p, data_tenpy[:, i]; label = "Tenpy", markersize = M)
         !isnothing(data_tensornetwork) &&
-            boxplot!(p, data_tensornetwork[:, i]; label="TensorNetwork", markersize=M)
-        plot!(p; yscale=:log10, yminorticks=true, xticks=[], xgrid=false, xshowaxis=false,
-              ylim=(ymin, ymax))
+            boxplot!(p, data_tensornetwork[:, i]; label = "TensorNetwork", markersize = M)
+        plot!(
+            p; yscale = :log10, yminorticks = true, xticks = [], xgrid = false, xshowaxis = false,
+            ylim = (ymin, ymax)
+        )
         if i == 1
-            plot!(p; title="(D, M, d, χ) = ($Dpeps, $Dpepo, $Dphys, $Denv)",
-                  titlefontsize=10)
-            plot!(p; yguide=name[j], yguide_position=:left, yguidefontsize=10,
-                  ytickfontsize=8, left_margin=6mm)
+            plot!(
+                p; title = "(D, M, d, χ) = ($Dpeps, $Dpepo, $Dphys, $Denv)",
+                titlefontsize = 10
+            )
+            plot!(
+                p; yguide = name[j], yguide_position = :left, yguidefontsize = 10,
+                ytickfontsize = 8, left_margin = 6mm
+            )
         else
-            plot!(p; title="($Dpeps, $Dpepo, $Dphys, $Denv)", titlefontsize=10)
-            plot!(p; left_margin=-5mm, yformatter=_ -> "", yshowaxis=false)
+            plot!(p; title = "($Dpeps, $Dpepo, $Dphys, $Denv)", titlefontsize = 10)
+            plot!(p; left_margin = -5mm, yformatter = _ -> "", yshowaxis = false)
         end
         if i == numplots && j == 3
-            plot!(p; legendfontsize=10, legend=:bottomright)
+            plot!(p; legendfontsize = 10, legend = :bottomright)
         else
-            plot!(p; legend=false)
+            plot!(p; legend = false)
         end
         pepoplots[i, j] = p
     end
 end
-plotgrid = plot(pepoplots...; layout=grid(3, numplots), link=:y, thickness_scaling=1,
-                size=(1500, 800))
+plotgrid = plot(
+    pepoplots...; layout = grid(3, numplots), link = :y, thickness_scaling = 1, size = (1500, 800)
+)
 savefig(plotgrid, "peporesults.pdf")

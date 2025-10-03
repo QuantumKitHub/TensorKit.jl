@@ -4,15 +4,15 @@ spacelist = try
         if Sys.iswindows()
             (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂)
         elseif Sys.isapple()
-            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VfU₁, VfSU₂, VSU₂U₁)#, VSU₃)
+            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VfU₁, VfSU₂, VSU₂U₁) #, VSU₃)
         else
-            (Vtr, Vℤ₂, Vfℤ₂, VU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁)#, VSU₃)
+            (Vtr, Vℤ₂, Vfℤ₂, VU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁) #, VSU₃)
         end
     else
-        (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁)#, VSU₃)
+        (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁) #, VSU₃)
     end
 catch
-    (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁)#, VSU₃)
+    (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁) #, VSU₃)
 end
 
 for V in spacelist
@@ -33,7 +33,7 @@ for V in spacelist
                 @test codomain(t) == W
                 @test space(t) == (W ← one(W))
                 @test domain(t) == one(W)
-                @test typeof(t) == TensorMap{T,spacetype(t),5,0,Vector{T}}
+                @test typeof(t) == TensorMap{T, spacetype(t), 5, 0, Vector{T}}
                 # blocks
                 bs = @constinferred blocks(t)
                 (c, b1), state = @constinferred Nothing iterate(bs)
@@ -41,7 +41,7 @@ for V in spacelist
                 next = @constinferred Nothing iterate(bs, state)
                 b2 = @constinferred block(t, first(blocksectors(t)))
                 @test b1 == b2
-                @test eltype(bs) === Pair{typeof(c),typeof(b1)}
+                @test eltype(bs) === Pair{typeof(c), typeof(b1)}
                 @test typeof(b1) === TensorKit.blocktype(t)
                 @test typeof(c) === sectortype(t)
             end
@@ -103,7 +103,7 @@ for V in spacelist
                 next = @constinferred Nothing iterate(bs, state)
                 b2 = @constinferred block(t', first(blocksectors(t')))
                 @test b1 == b2
-                @test eltype(bs) === Pair{typeof(c),typeof(b1)}
+                @test eltype(bs) === Pair{typeof(c), typeof(b1)}
                 @test typeof(b1) === TensorKit.blocktype(t')
                 @test typeof(c) === sectortype(t)
                 # linear algebra
@@ -130,8 +130,7 @@ for V in spacelist
                 @test i1 * i2 == @constinferred(id(T, V1 ⊗ V2))
                 @test i2 * i1 == @constinferred(id(Vector{T}, V2 ⊗ V1))
 
-                w = @constinferred(isometry(T, V1 ⊗ (oneunit(V1) ⊕ oneunit(V1)),
-                                            V1))
+                w = @constinferred(isometry(T, V1 ⊗ (oneunit(V1) ⊕ oneunit(V1)), V1))
                 @test dim(w) == 2 * dim(V1 ← V1)
                 @test w' * w == id(Vector{T}, V1)
                 @test w * w' == (w * w')^2
@@ -148,20 +147,20 @@ for V in spacelist
                 @test scalartype(t2) === T
                 @test t.data === t2.data
                 @test @constinferred(removeunit(t2, $(numind(t2)))) == t
-                t3 = @constinferred insertleftunit(t; copy=true)
-                @test t3 == @constinferred insertrightunit(t; copy=true)
+                t3 = @constinferred insertleftunit(t; copy = true)
+                @test t3 == @constinferred insertrightunit(t; copy = true)
                 @test t.data !== t3.data
                 for (c, b) in blocks(t)
                     @test b == block(t3, c)
                 end
                 @test @constinferred(removeunit(t3, $(numind(t3)))) == t
-                t4 = @constinferred insertrightunit(t, 3; dual=true)
+                t4 = @constinferred insertrightunit(t, 3; dual = true)
                 @test numin(t4) == numin(t) && numout(t4) == numout(t) + 1
                 for (c, b) in blocks(t)
                     @test b == block(t4, c)
                 end
                 @test @constinferred(removeunit(t4, 4)) == t
-                t5 = @constinferred insertleftunit(t, 4; dual=true)
+                t5 = @constinferred insertleftunit(t, 4; dual = true)
                 @test numin(t5) == numin(t) + 1 && numout(t5) == numout(t)
                 for (c, b) in blocks(t)
                     @test b == block(t5, c)
@@ -229,8 +228,7 @@ for V in spacelist
                     @test dot(t2′, t2) ≈ dot(t′, t) ≈ dot(transpose(t2′), transpose(t2))
                 end
 
-                t3 = VERSION < v"1.7" ? repartition(t, k) :
-                     @constinferred repartition(t, $k)
+                t3 = VERSION < v"1.7" ? repartition(t, k) : @constinferred repartition(t, $k)
                 @test norm(t3) ≈ norm(t)
                 t3′ = @constinferred repartition!(similar(t3), t′)
                 @test norm(t3′) ≈ norm(t′)
@@ -250,14 +248,14 @@ for V in spacelist
                         a2 = convert(Array, t2)
                         @test a2 ≈ permutedims(a, (p1..., p2...))
                         @test convert(Array, transpose(t2)) ≈
-                              permutedims(a2, (5, 4, 3, 2, 1))
+                            permutedims(a2, (5, 4, 3, 2, 1))
                     end
 
                     t3 = repartition(t, k)
                     a3 = convert(Array, t3)
-                    @test a3 ≈ permutedims(a,
-                                           (ntuple(identity, k)...,
-                                            reverse(ntuple(i -> i + k, 5 - k))...))
+                    @test a3 ≈ permutedims(
+                        a, (ntuple(identity, k)..., reverse(ntuple(i -> i + k, 5 - k))...)
+                    )
                 end
             end
         end
@@ -310,14 +308,11 @@ for V in spacelist
                 rhoR = randn(ComplexF64, V5, V5)' # test adjoint tensor
                 H = randn(ComplexF64, V2 * V4, V2 * V4)
                 @tensor HrA12[a, s1, s2, c] := rhoL[a, a'] * conj(A1[a', t1, b]) *
-                                               A2[b, t2, c'] * rhoR[c', c] *
-                                               H[s1, s2, t1, t2]
+                    A2[b, t2, c'] * rhoR[c', c] * H[s1, s2, t1, t2]
 
                 @tensor HrA12array[a, s1, s2, c] := convert(Array, rhoL)[a, a'] *
-                                                    conj(convert(Array, A1)[a', t1, b]) *
-                                                    convert(Array, A2)[b, t2, c'] *
-                                                    convert(Array, rhoR)[c', c] *
-                                                    convert(Array, H)[s1, s2, t1, t2]
+                    conj(convert(Array, A1)[a', t1, b]) * convert(Array, A2)[b, t2, c'] *
+                    convert(Array, rhoR)[c', c] * convert(Array, H)[s1, s2, t1, t2]
 
                 @test HrA12array ≈ convert(Array, HrA12)
             end
@@ -325,8 +320,8 @@ for V in spacelist
         @timedtestset "Index flipping: test flipping inverse" begin
             t = rand(ComplexF64, V1 ⊗ V1' ← V1' ⊗ V1)
             for i in 1:4
-                @test t ≈ flip(flip(t, i), i; inv=true)
-                @test t ≈ flip(flip(t, i; inv=true), i)
+                @test t ≈ flip(flip(t, i), i; inv = true)
+                @test t ≈ flip(flip(t, i; inv = true), i)
             end
         end
         @timedtestset "Index flipping: test via explicit flip" begin
@@ -348,13 +343,10 @@ for V in spacelist
             @tensor ta[a, b] := t1[x, y, a, z] * t2[y, b, z, x]
             @tensor tb[a, b] := flip(t1, 1)[x, y, a, z] * flip(t2, 4)[y, b, z, x]
             @test ta ≈ tb
-            @tensor tb[a, b] := flip(t1, (2, 4))[x, y, a, z] *
-                                flip(t2, (1, 3))[y, b, z, x]
+            @tensor tb[a, b] := flip(t1, (2, 4))[x, y, a, z] * flip(t2, (1, 3))[y, b, z, x]
             @test ta ≈ tb
-            @tensor tb[a, b] := flip(t1, (1, 2, 4))[x, y, a, z] *
-                                flip(t2, (1, 3, 4))[y, b, z, x]
-            @tensor tb[a, b] := flip(t1, (1, 3))[x, y, a, z] *
-                                flip(t2, (2, 4))[y, b, z, x]
+            @tensor tb[a, b] := flip(t1, (1, 2, 4))[x, y, a, z] * flip(t2, (1, 3, 4))[y, b, z, x]
+            @tensor tb[a, b] := flip(t1, (1, 3))[x, y, a, z] * flip(t2, (2, 4))[y, b, z, x]
             @test flip(ta, (1, 2)) ≈ tb
         end
         @timedtestset "Multiplication of isometries: test properties" begin
@@ -440,15 +432,15 @@ for V in spacelist
                     s = dim(W)
                     expt = @constinferred exp(t)
                     @test reshape(convert(Array, expt), (s, s)) ≈
-                          exp(reshape(convert(Array, t), (s, s)))
+                        exp(reshape(convert(Array, t), (s, s)))
 
                     @test (@constinferred sqrt(t))^2 ≈ t
                     @test reshape(convert(Array, sqrt(t^2)), (s, s)) ≈
-                          sqrt(reshape(convert(Array, t^2), (s, s)))
+                        sqrt(reshape(convert(Array, t^2), (s, s)))
 
                     @test exp(@constinferred log(expt)) ≈ expt
                     @test reshape(convert(Array, log(expt)), (s, s)) ≈
-                          log(reshape(convert(Array, expt), (s, s)))
+                        log(reshape(convert(Array, expt), (s, s)))
 
                     @test (@constinferred cos(t))^2 + (@constinferred sin(t))^2 ≈ id(W)
                     @test (@constinferred tan(t)) ≈ sin(t) / cos(t)
@@ -475,8 +467,10 @@ for V in spacelist
                     @test coth(@constinferred acoth(t8)) ≈ t8
                     t = randn(T, W, V1) # not square
                     for f in
-                        (cos, sin, tan, cot, cosh, sinh, tanh, coth, atan, acot, asinh,
-                         sqrt, log, asin, acos, acosh, atanh, acoth)
+                        (
+                            cos, sin, tan, cot, cosh, sinh, tanh, coth, atan, acot, asinh,
+                            sqrt, log, asin, acos, acosh, atanh, acoth,
+                        )
                         @test_throws SpaceMismatch f(t)
                     end
                 end
@@ -493,7 +487,7 @@ for V in spacelist
                 @test codomain(t) == V1 ⊗ V3
                 @test domain(t) == V2 ⊗ V4
                 @test norm(tA * t + t * tB + tC) <
-                      (norm(tA) + norm(tB) + norm(tC)) * eps(real(T))^(2 / 3)
+                    (norm(tA) + norm(tB) + norm(tC)) * eps(real(T))^(2 / 3)
                 if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
                     matrix(x) = reshape(convert(Array, x), dim(codomain(x)), dim(domain(x)))
                     @test matrix(t) ≈ sylvester(matrix(tA), matrix(tB), matrix(tC))
@@ -520,8 +514,8 @@ for V in spacelist
                     d4 = dim(domain(t2))
                     At = convert(Array, t)
                     @test reshape(At, (d1, d2, d3, d4)) ≈
-                          reshape(convert(Array, t1), (d1, 1, d3, 1)) .*
-                          reshape(convert(Array, t2), (1, d2, 1, d4))
+                        reshape(convert(Array, t1), (d1, 1, d3, 1)) .*
+                        reshape(convert(Array, t2), (1, d2, 1, d4))
                 end
             end
         end
@@ -573,8 +567,8 @@ end
             d4 = dim(domain(t2))
             At = convert(Array, t)
             @test reshape(At, (d1, d2, d3, d4)) ≈
-                  reshape(convert(Array, t1), (d1, 1, d3, 1)) .*
-                  reshape(convert(Array, t2), (1, d2, 1, d4))
+                reshape(convert(Array, t1), (d1, 1, d3, 1)) .*
+                reshape(convert(Array, t2), (1, d2, 1, d4))
         end
     end
 end

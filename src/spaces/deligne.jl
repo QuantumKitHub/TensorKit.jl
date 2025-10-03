@@ -19,57 +19,61 @@ end
 
 # define deligne products with empty tensor product: just add a trivial sector of the type
 # of the empty space to each of the sectors in the non-empty space
-function ⊠(V::GradedSpace, P₀::ProductSpace{<:ElementarySpace,0})
+function ⊠(V::GradedSpace, P₀::ProductSpace{<:ElementarySpace, 0})
     field(V) == field(P₀) || throw_incompatible_fields(V, P₀)
     I₁ = sectortype(V)
     I₂ = sectortype(P₀)
-    return Vect[I₁ ⊠ I₂](ifelse(isdual(V), dual(c), c) ⊠ one(I₂) => dim(V, c)
-                         for c in sectors(V); dual=isdual(V))
+    return Vect[I₁ ⊠ I₂](
+        ifelse(isdual(V), dual(c), c) ⊠ one(I₂) => dim(V, c)
+            for c in sectors(V); dual = isdual(V)
+    )
 end
 
-function ⊠(P₀::ProductSpace{<:ElementarySpace,0}, V::GradedSpace)
+function ⊠(P₀::ProductSpace{<:ElementarySpace, 0}, V::GradedSpace)
     field(P₀) == field(V) || throw_incompatible_fields(P₀, V)
     I₁ = sectortype(P₀)
     I₂ = sectortype(V)
-    return Vect[I₁ ⊠ I₂](one(I₁) ⊠ ifelse(isdual(V), dual(c), c) => dim(V, c)
-                         for c in sectors(V); dual=isdual(V))
+    return Vect[I₁ ⊠ I₂](
+        one(I₁) ⊠ ifelse(isdual(V), dual(c), c) => dim(V, c)
+            for c in sectors(V); dual = isdual(V)
+    )
 end
 
-function ⊠(V::ComplexSpace, P₀::ProductSpace{<:ElementarySpace,0})
+function ⊠(V::ComplexSpace, P₀::ProductSpace{<:ElementarySpace, 0})
     field(V) == field(P₀) || throw_incompatible_fields(V, P₀)
     I₂ = sectortype(P₀)
-    return Vect[I₂](one(I₂) => dim(V); dual=isdual(V))
+    return Vect[I₂](one(I₂) => dim(V); dual = isdual(V))
 end
 
-function ⊠(P₀::ProductSpace{<:ElementarySpace,0}, V::ComplexSpace)
+function ⊠(P₀::ProductSpace{<:ElementarySpace, 0}, V::ComplexSpace)
     field(P₀) == field(V) || throw_incompatible_fields(P₀, V)
     I₁ = sectortype(P₀)
-    return Vect[I₁](one(I₁) => dim(V); dual=isdual(V))
+    return Vect[I₁](one(I₁) => dim(V); dual = isdual(V))
 end
 
-function ⊠(P::ProductSpace{<:ElementarySpace,0}, P₀::ProductSpace{<:ElementarySpace,0})
+function ⊠(P::ProductSpace{<:ElementarySpace, 0}, P₀::ProductSpace{<:ElementarySpace, 0})
     field(P) == field(P₀) || throw_incompatible_fields(P, P₀)
     I₁ = sectortype(P)
     I₂ = sectortype(P₀)
     return one(Vect[I₁ ⊠ I₂])
 end
 
-function ⊠(P::ProductSpace{<:ElementarySpace}, P₀::ProductSpace{<:ElementarySpace,0})
+function ⊠(P::ProductSpace{<:ElementarySpace}, P₀::ProductSpace{<:ElementarySpace, 0})
     field(P) == field(P₀) || throw_incompatible_fields(P, P₀)
     I₁ = sectortype(P)
     I₂ = sectortype(P₀)
     S = Vect[I₁ ⊠ I₂]
     N = length(P)
-    return ProductSpace{S,N}(map(V -> V ⊠ P₀, tuple(P...)))
+    return ProductSpace{S, N}(map(V -> V ⊠ P₀, tuple(P...)))
 end
 
-function ⊠(P₀::ProductSpace{<:ElementarySpace,0}, P::ProductSpace{<:ElementarySpace})
+function ⊠(P₀::ProductSpace{<:ElementarySpace, 0}, P::ProductSpace{<:ElementarySpace})
     field(P₀) == field(P) || throw_incompatible_fields(P₀, P)
     I₁ = sectortype(P₀)
     I₂ = sectortype(P)
     S = Vect[I₁ ⊠ I₂]
     N = length(P)
-    return ProductSpace{S,N}(map(V -> P₀ ⊠ V, tuple(P...)))
+    return ProductSpace{S, N}(map(V -> P₀ ⊠ V, tuple(P...)))
 end
 
 @noinline function throw_incompatible_fields(P₁, P₂)

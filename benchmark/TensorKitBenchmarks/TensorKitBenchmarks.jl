@@ -11,13 +11,15 @@ BenchmarkTools.DEFAULT_PARAMETERS.memory_tolerance = 0.01
 
 const PARAMS_PATH = joinpath(@__DIR__, "etc", "params.json")
 const SUITE = BenchmarkGroup()
-const MODULES = Dict("linalg" => :LinalgBenchmarks,
-                     "indexmanipulations" => :IndexManipulationBenchmarks,
-                     "tensornetworks" => :TensorNetworkBenchmarks)
+const MODULES = Dict(
+    "linalg" => :LinalgBenchmarks,
+    "indexmanipulations" => :IndexManipulationBenchmarks,
+    "tensornetworks" => :TensorNetworkBenchmarks
+)
 
 load!(id::AbstractString; kwargs...) = load!(SUITE, id; kwargs...)
 
-function load!(group::BenchmarkGroup, id::AbstractString; tune::Bool=false)
+function load!(group::BenchmarkGroup, id::AbstractString; tune::Bool = false)
     modsym = MODULES[id]
     modpath = joinpath(dirname(@__FILE__), id, "$(modsym).jl")
     Core.eval(@__MODULE__, :(include($modpath)))
@@ -33,14 +35,14 @@ end
 
 loadall!(; kwargs...) = loadall!(SUITE; kwargs...)
 
-function loadall!(group::BenchmarkGroup; verbose::Bool=true, tune::Bool=false)
+function loadall!(group::BenchmarkGroup; verbose::Bool = true, tune::Bool = false)
     for id in keys(MODULES)
         if verbose
             print("loading group $(repr(id))... ")
-            time = @elapsed load!(group, id, tune=false)
+            time = @elapsed load!(group, id, tune = false)
             println("done (took $time seconds)")
         else
-            load!(group, id; tune=false)
+            load!(group, id; tune = false)
         end
     end
     if tune

@@ -28,7 +28,7 @@ function benchmark_mul!(benchgroup, params::Dict)
     return nothing
 end
 
-function benchmark_mul!(bench; sigmas=nothing, T="Float64", I="Trivial", dims)
+function benchmark_mul!(bench; sigmas = nothing, T = "Float64", I = "Trivial", dims)
     T_ = parse_type(T)
     I_ = parse_type(I)
 
@@ -62,7 +62,7 @@ function benchmark_svd!(benchgroup, params::Dict)
     end
     return nothing
 end
-function benchmark_svd!(bench; sigmas=nothing, T="Float64", I="Trivial", dims)
+function benchmark_svd!(bench; sigmas = nothing, T = "Float64", I = "Trivial", dims)
     T_ = parse_type(T)
     I_ = parse_type(I)
     Vs = generate_space.(I_, dims, sigmas)

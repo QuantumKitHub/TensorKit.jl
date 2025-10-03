@@ -13,48 +13,62 @@ function force_planar(V::GradedSpace)
     return GradedSpace((c ⊠ PlanarTrivial() => dim(V, c) for c in sectors(V))..., isdual(V))
 end
 force_planar(V::ProductSpace) = mapreduce(force_planar, ⊗, V)
-function force_planar(tsrc::TensorMap{<:Any,ComplexSpace})
-    tdst = TensorMap{scalartype(tsrc)}(undef,
-                                       force_planar(codomain(tsrc)) ←
-                                       force_planar(domain(tsrc)))
+function force_planar(tsrc::TensorMap{<:Any, ComplexSpace})
+    tdst = TensorMap{scalartype(tsrc)}(
+        undef,
+        force_planar(codomain(tsrc)) ←
+            force_planar(domain(tsrc))
+    )
     copyto!(block(tdst, PlanarTrivial()), block(tsrc, Trivial()))
     return tdst
 end
-function force_planar(tsrc::TensorMap{<:Any,<:GradedSpace})
-    tdst = TensorMap{scalartype(tsrc)}(undef,
-                                       force_planar(codomain(tsrc)) ←
-                                       force_planar(domain(tsrc)))
+function force_planar(tsrc::TensorMap{<:Any, <:GradedSpace})
+    tdst = TensorMap{scalartype(tsrc)}(
+        undef,
+        force_planar(codomain(tsrc)) ←
+            force_planar(domain(tsrc))
+    )
     for (c, b) in blocks(tsrc)
         copyto!(block(tdst, c ⊠ PlanarTrivial()), b)
     end
     return tdst
 end
 
-Vtr = (ℂ^3,
-       (ℂ^2)',
-       ℂ^5,
-       ℂ^6,
-       (ℂ^7)')
-VU₁ = (ℂ[U1Irrep](0 => 1, 1 => 2, -1 => 2),
-       ℂ[U1Irrep](0 => 3, 1 => 1, -1 => 1),
-       ℂ[U1Irrep](0 => 2, 1 => 2, -1 => 1)',
-       ℂ[U1Irrep](0 => 1, 1 => 2, -1 => 3),
-       ℂ[U1Irrep](0 => 1, 1 => 3, -1 => 3)')
-VfU₁ = (ℂ[FermionNumber](0 => 1, 1 => 2, -1 => 2),
-        ℂ[FermionNumber](0 => 3, 1 => 1, -1 => 1),
-        ℂ[FermionNumber](0 => 2, 1 => 2, -1 => 1)',
-        ℂ[FermionNumber](0 => 1, 1 => 2, -1 => 3),
-        ℂ[FermionNumber](0 => 1, 1 => 3, -1 => 3)')
-VfSU₂ = (ℂ[FermionSpin](0 => 3, 1 // 2 => 1),
-         ℂ[FermionSpin](0 => 2, 1 => 1),
-         ℂ[FermionSpin](1 // 2 => 1, 1 => 1)',
-         ℂ[FermionSpin](0 => 2, 1 // 2 => 2),
-         ℂ[FermionSpin](0 => 1, 1 // 2 => 1, 3 // 2 => 1)')
-Vfib = (Vect[FibonacciAnyon](:I => 1, :τ => 2),
-        Vect[FibonacciAnyon](:I => 2, :τ => 1),
-        Vect[FibonacciAnyon](:I => 1, :τ => 1),
-        Vect[FibonacciAnyon](:I => 1, :τ => 1),
-        Vect[FibonacciAnyon](:I => 1, :τ => 1))
+Vtr = (
+    ℂ^3,
+    (ℂ^2)',
+    ℂ^5,
+    ℂ^6,
+    (ℂ^7)',
+)
+VU₁ = (
+    Vect[U1Irrep](0 => 1, 1 => 2, -1 => 2),
+    Vect[U1Irrep](0 => 3, 1 => 1, -1 => 1),
+    Vect[U1Irrep](0 => 2, 1 => 2, -1 => 1)',
+    Vect[U1Irrep](0 => 1, 1 => 2, -1 => 3),
+    Vect[U1Irrep](0 => 1, 1 => 3, -1 => 3)',
+)
+VfU₁ = (
+    Vect[FermionNumber](0 => 1, 1 => 2, -1 => 2),
+    Vect[FermionNumber](0 => 3, 1 => 1, -1 => 1),
+    Vect[FermionNumber](0 => 2, 1 => 2, -1 => 1)',
+    Vect[FermionNumber](0 => 1, 1 => 2, -1 => 3),
+    Vect[FermionNumber](0 => 1, 1 => 3, -1 => 3)',
+)
+VfSU₂ = (
+    Vect[FermionSpin](0 => 3, 1 // 2 => 1),
+    Vect[FermionSpin](0 => 2, 1 => 1),
+    Vect[FermionSpin](1 // 2 => 1, 1 => 1)',
+    Vect[FermionSpin](0 => 2, 1 // 2 => 2),
+    Vect[FermionSpin](0 => 1, 1 // 2 => 1, 3 // 2 => 1)',
+)
+Vfib = (
+    Vect[FibonacciAnyon](:I => 1, :τ => 2),
+    Vect[FibonacciAnyon](:I => 2, :τ => 1),
+    Vect[FibonacciAnyon](:I => 1, :τ => 1),
+    Vect[FibonacciAnyon](:I => 1, :τ => 1),
+    Vect[FibonacciAnyon](:I => 1, :τ => 1),
+)
 @testset "Braiding tensor" begin
     for V in (Vtr, VU₁, VfU₁, VfSU₂, Vfib)
         W = V[1] ⊗ V[2] ← V[2] ⊗ V[1]
@@ -96,7 +110,7 @@ end
         p = ((4, 3), (5, 2, 1))
 
         @test force_planar(tensoradd!(C, A, p, false, true, true)) ≈
-              planaradd!(C′, A′, p, true, true)
+            planaradd!(C′, A′, p, true, true)
     end
 
     @testset "planartrace" begin
@@ -108,7 +122,7 @@ end
         q = ((1,), (3,))
 
         @test force_planar(tensortrace!(C, A, p, q, false, true, true)) ≈
-              planartrace!(C′, A′, p, q, true, true)
+            planartrace!(C′, A′, p, q, true, true)
     end
 
     @testset "planarcontract" begin
@@ -125,7 +139,7 @@ end
         pAB = ((3, 2, 1), (4, 5))
 
         @test force_planar(tensorcontract!(C, A, pA, false, B, pB, false, pAB, true, true)) ≈
-              planarcontract!(C′, A′, pA, B′, pB, pAB, true, true)
+            planarcontract!(C′, A′, pA, B′, pB, pAB, true, true)
     end
 end
 
@@ -174,9 +188,9 @@ end
         for alloc in
             (TensorOperations.DefaultAllocator(), TensorOperations.ManualAllocator())
             @tensor allocator = alloc y[-1 -2; -3] := GL[-1 2; 1] * x[1 3; 4] *
-                                                      O[2 -2; 3 5] * GR[4 5; -3]
+                O[2 -2; 3 5] * GR[4 5; -3]
             @planar allocator = alloc y′[-1 -2; -3] := GL′[-1 2; 1] * x′[1 3; 4] *
-                                                       O′[2 -2; 3 5] * GR′[4 5; -3]
+                O′[2 -2; 3 5] * GR′[4 5; -3]
             @test force_planar(y) ≈ y′
         end
 
@@ -185,10 +199,10 @@ end
         x2 = randn(T, Vmps ⊗ P ← Vmps ⊗ P')
         x2′ = force_planar(x2)
         @tensor contractcheck = true y2[-1 -2; -3 -4] := GL[-1 7; 6] * x2[6 5; 1 3] *
-                                                         O[7 -2; 5 4] * O[4 -4; 3 2] *
-                                                         GR[1 2; -3]
+            O[7 -2; 5 4] * O[4 -4; 3 2] *
+            GR[1 2; -3]
         @planar y2′[-1 -2; -3 -4] := GL′[-1 7; 6] * x2′[6 5; 1 3] * O′[7 -2; 5 4] *
-                                     O′[4 -4; 3 2] * GR′[1 2; -3]
+            O′[4 -4; 3 2] * GR′[1 2; -3]
         @test force_planar(y2) ≈ y2′
 
         # transfer matrix
@@ -202,7 +216,7 @@ end
         @tensor ρ2[-1 -2; -3] := GL[1 -2; 3] * x[3 2; -3] * conj(x[1 2; -1])
         @plansor ρ3[-1 -2; -3] := GL[1 2; 4] * x[4 5; -3] * τ[2 3; 5 -2] * conj(x[1 3; -1])
         @planar ρ2′[-1 -2; -3] := GL′[1 2; 4] * x′[4 5; -3] * τ[2 3; 5 -2] *
-                                  conj(x′[1 3; -1])
+            conj(x′[1 3; -1])
         @test force_planar(ρ2) ≈ ρ2′
         @test ρ2 ≈ ρ3
 
@@ -213,13 +227,13 @@ end
         f1′ = force_planar(f1)
         f2′ = force_planar(f2)
         @tensor O_periodic1[-1 -2; -3 -4] := O[1 -2; -3 2] * f1[-1; 1 3 4] *
-                                             conj(f2[-4; 2 3 4])
+            conj(f2[-4; 2 3 4])
         @plansor O_periodic2[-1 -2; -3 -4] := O[1 2; -3 6] * f1[-1; 1 3 5] *
-                                              conj(f2[-4; 6 7 8]) * τ[2 3; 7 4] *
-                                              τ[4 5; 8 -2]
+            conj(f2[-4; 6 7 8]) * τ[2 3; 7 4] *
+            τ[4 5; 8 -2]
         @planar O_periodic′[-1 -2; -3 -4] := O′[1 2; -3 6] * f1′[-1; 1 3 5] *
-                                             conj(f2′[-4; 6 7 8]) * τ[2 3; 7 4] *
-                                             τ[4 5; 8 -2]
+            conj(f2′[-4; 6 7 8]) * τ[2 3; 7 4] *
+            τ[4 5; 8 -2]
         @test O_periodic1 ≈ O_periodic2
         @test force_planar(O_periodic1) ≈ O_periodic′
     end
@@ -240,18 +254,38 @@ end
         for alloc in
             (TensorOperations.DefaultAllocator(), TensorOperations.ManualAllocator())
             @tensor allocator = alloc begin
-                C = (((((((h[9 3 4; 5 1 2] * u[1 2; 7 12]) * conj(u[3 4; 11 13])) *
-                         (u[8 5; 15 6] * w[6 7; 19])) *
-                        (conj(u[8 9; 17 10]) * conj(w[10 11; 22]))) *
-                       ((w[12 14; 20] * conj(w[13 14; 23])) * ρ[18 19 20; 21 22 23])) *
-                      w[16 15; 18]) * conj(w[16 17; 21]))
+                C = (
+                    (
+                        (
+                            (
+                                (
+                                    ((h[9 3 4; 5 1 2] * u[1 2; 7 12]) * conj(u[3 4; 11 13])) *
+                                        (u[8 5; 15 6] * w[6 7; 19])
+                                ) *
+                                    (conj(u[8 9; 17 10]) * conj(w[10 11; 22]))
+                            ) *
+                                ((w[12 14; 20] * conj(w[13 14; 23])) * ρ[18 19 20; 21 22 23])
+                        ) *
+                            w[16 15; 18]
+                    ) * conj(w[16 17; 21])
+                )
             end
             @planar allocator = alloc begin
-                C′ = (((((((h′[9 3 4; 5 1 2] * u′[1 2; 7 12]) * conj(u′[3 4; 11 13])) *
-                          (u′[8 5; 15 6] * w′[6 7; 19])) *
-                         (conj(u′[8 9; 17 10]) * conj(w′[10 11; 22]))) *
-                        ((w′[12 14; 20] * conj(w′[13 14; 23])) * ρ′[18 19 20; 21 22 23])) *
-                       w′[16 15; 18]) * conj(w′[16 17; 21]))
+                C′ = (
+                    (
+                        (
+                            (
+                                (
+                                    ((h′[9 3 4; 5 1 2] * u′[1 2; 7 12]) * conj(u′[3 4; 11 13])) *
+                                        (u′[8 5; 15 6] * w′[6 7; 19])
+                                ) *
+                                    (conj(u′[8 9; 17 10]) * conj(w′[10 11; 22]))
+                            ) *
+                                ((w′[12 14; 20] * conj(w′[13 14; 23])) * ρ′[18 19 20; 21 22 23])
+                        ) *
+                            w′[16 15; 18]
+                    ) * conj(w′[16 17; 21])
+                )
             end
             @test C ≈ C′
         end
