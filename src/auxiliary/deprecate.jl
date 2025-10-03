@@ -132,7 +132,7 @@ function rightnull(t::AbstractTensorMap, p::Index2Tuple; kwargs...)
     return rightnull!(permutedcopy_oftype(t, factorisation_scalartype(rightnull, t), p); kwargs...)
 end
 function leftnull!(t::AbstractTensorMap; kwargs...)
-    Base.depwarn("`left_null!` is deprecated, use `left_null!` instead", :leftnull!)
+    Base.depwarn("`leftnull!` is deprecated, use `left_null!` instead", :leftnull!)
     haskey(kwargs, :alg) || return left_null!(t; kwargs...)
     alg = kwargs[:alg]
     kind = _kindof(alg)
