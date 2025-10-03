@@ -38,6 +38,49 @@ A Julia package for large-scale tensor computations, with a hint of category the
 [aqua-img]: https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg
 [aqua-url]: https://github.com/JuliaTesting/Aqua.jl
 
+## Release notes for v0.15
+
+TensorKit v0.15 consists of a (mostly internal) rewrite of the tensor factorizations to make
+use of [MatrixAlgebraKit.jl](https://github.com/QuantumKitHub/MatrixAlgebraKit.jl). This
+comes with a number of performance improvements, but also some breaking changes:
+
+1. The full interface of `MatrixAlgebraKit` decompositions is now supported, such that we
+   now also support truncated eigenvalue decompositions via `eig_trunc` and `eigh_trunc`,
+   and have dedicated functions for `qr_compact`/`lq_compact`, `qr_full`/`lq_full`,
+   `qr_null`/`lq_null` and `left_polar`/`right_polar`.
+
+2. The previous factorization interface is now deprecated, and users should migrate from the
+   deprecated functions to their MatrixAlgebraKit counterparts:
+  - `leftorth`/`rightorth` -> `left_orth`/`right_orth`
+  - `leftnull`/`rightnull` -> `left_null`/`right_null`
+  - `tsvd` -> `svd_compact`, `svd_full` and `svd_trunc`
+  - `eig` -> `eig_full` and `eig_trunc`
+  - `eigh` -> `eigh_full` and `eigh_trunc`
+
+3. The truncation interface has some improvements, in particular by having support for both
+   absolute and relative tolerances, as well as a new `truncfilter` strategy to pass a
+   filter function. `trunctol`, `truncrank` and `truncerror` replace the old `truncbelow`,
+   `truncdim` and `truncerr`.
+
+4. The factorizations pullbacks have been simplified, with a lot of boilerplate code removed
+   and out-sourced to MatrixAlgebraKit.jl
+
+## Release notes for v0.14
+
+TensorKit v0.14 adds the `DiagonalTensorMap` type and provides some extra index functionality:
+
+1. The `DiagonalTensorMap` is used to represent tensors that only contain diagonal entries,
+   and map a single input `ElementarySpace` to the same output `ElementarySpace`. This is
+   also the default output type for the matrix of singular and eigenvalues.
+
+2. `flip(t, i)` changes the duality flag of the `i`th index of `t`, in such a way that
+   flipping a pair of contracted indices in an `@tensor` contraction does not alter the
+   result
+
+3. `insertleftunit(t, i)` and `insertrightunit(t, i)` can be used to insert a trivial unit
+   space to the left or right of an index `i`, whereas `removeunit(t, i)` undoes that
+   operation.
+
 ## Release notes for v0.13
 
 TensorKit v0.13 brings a number of performance improvements, but also comes with a number of
