@@ -32,6 +32,7 @@ This version introduces [MatrixAlgebraKit](https://github.com/QuantumKitHub/Matr
 - Truncation strategies now use MatrixAlgebraKit names: `truncrank` (replaces `truncdim`), `truncbelow` (replaces `trunctol`)
 - `left_orth` and `right_orth` now always output tensors with a single connecting space
 - `left_orth` and `right_orth` now always have connecting space with `isdual=false`
+- code formatter is now [Runic.jl](https://github.com/fredrikekre/Runic.jl)
 
 #### Removed
 - `OrthogonalFactorization` structs (constructors deprecated to return equivalent MatrixAlgebraKit algorithm structs)
