@@ -28,8 +28,8 @@ This version introduces [MatrixAlgebraKit](https://github.com/QuantumKitHub/Matr
 - Backend selection for factorizations - swap algorithms or implementations
 
 #### Changed
-- Factorization functions `leftorth`, `rightorth`, `tsvd`, `eig`, `eigh` deprecated in favor of MatrixAlgebraKit variants (`left_orth`, `right_orth`, `tsvd`, `eig`, `eigh`)
-- Truncation strategies now use MatrixAlgebraKit names: `truncrank` (replaces `truncdim`), `truncbelow` (replaces `trunctol`)
+- Factorization functions `leftorth`, `rightorth`, `tsvd`, `eig`, `eigh` deprecated in favor of MatrixAlgebraKit variants (`left_orth`, `right_orth`, `svd_compact`, `eig_full`, `eigh_full`)
+- Truncation strategies now use MatrixAlgebraKit names: `truncrank` (replaces `truncdim`) and `trunctol` (replaces `truncbelow`)
 - `left_orth` and `right_orth` now always output tensors with a single connecting space
 - `left_orth` and `right_orth` now always have connecting space with `isdual=false`
 - code formatter is now [Runic.jl](https://github.com/fredrikekre/Runic.jl)
