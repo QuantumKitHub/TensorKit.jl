@@ -8,18 +8,18 @@ Represents the linear space of morphisms with codomain of type `P1` and domain o
 Note that HomSpace is not a subtype of VectorSpace, i.e. we restrict the latter to denote
 certain categories and their objects, and keep HomSpace distinct.
 """
-struct HomSpace{S<:ElementarySpace,P1<:CompositeSpace{S},P2<:CompositeSpace{S}}
+struct HomSpace{S <: ElementarySpace, P1 <: CompositeSpace{S}, P2 <: CompositeSpace{S}}
     codomain::P1
     domain::P2
 end
 
-function HomSpace(codomain::S, domain::CompositeSpace{S}) where {S<:ElementarySpace}
+function HomSpace(codomain::S, domain::CompositeSpace{S}) where {S <: ElementarySpace}
     return HomSpace(⊗(codomain), domain)
 end
-function HomSpace(codomain::CompositeSpace{S}, domain::S) where {S<:ElementarySpace}
+function HomSpace(codomain::CompositeSpace{S}, domain::S) where {S <: ElementarySpace}
     return HomSpace(codomain, ⊗(domain))
 end
-function HomSpace(codomain::S, domain::S) where {S<:ElementarySpace}
+function HomSpace(codomain::S, domain::S) where {S <: ElementarySpace}
     return HomSpace(⊗(codomain), ⊗(domain))
 end
 HomSpace(codomain::VectorSpace) = HomSpace(codomain, zero(codomain))
@@ -45,18 +45,20 @@ numout(W::HomSpace) = length(codomain(W))
 numin(W::HomSpace) = length(domain(W))
 numind(W::HomSpace) = numin(W) + numout(W)
 
-const TensorSpace{S<:ElementarySpace} = Union{S,ProductSpace{S}}
-const TensorMapSpace{S<:ElementarySpace,N₁,N₂} = HomSpace{S,ProductSpace{S,N₁},
-                                                          ProductSpace{S,N₂}}
+const TensorSpace{S <: ElementarySpace} = Union{S, ProductSpace{S}}
+const TensorMapSpace{S <: ElementarySpace, N₁, N₂} = HomSpace{
+    S, ProductSpace{S, N₁},
+    ProductSpace{S, N₂},
+}
 
-function Base.getindex(W::TensorMapSpace{<:IndexSpace,N₁,N₂}, i) where {N₁,N₂}
+function Base.getindex(W::TensorMapSpace{<:IndexSpace, N₁, N₂}, i) where {N₁, N₂}
     return i <= N₁ ? codomain(W)[i] : dual(domain(W)[i - N₁])
 end
 
-function ←(codom::ProductSpace{S}, dom::ProductSpace{S}) where {S<:ElementarySpace}
+function ←(codom::ProductSpace{S}, dom::ProductSpace{S}) where {S <: ElementarySpace}
     return HomSpace(codom, dom)
 end
-function ←(codom::S, dom::S) where {S<:ElementarySpace}
+function ←(codom::S, dom::S) where {S <: ElementarySpace}
     return HomSpace(ProductSpace(codom), ProductSpace(dom))
 end
 ←(codom::VectorSpace, dom::VectorSpace) = ←(promote(codom, dom)...)
@@ -69,7 +71,7 @@ function Base.show(io::IO, W::HomSpace)
         print(io, W.codomain)
     end
     print(io, " ← ")
-    if length(W.domain) == 1
+    return if length(W.domain) == 1
         print(io, W.domain[1])
     else
         print(io, W.domain)
@@ -140,7 +142,7 @@ fusiontrees(W::HomSpace) = fusionblockstructure(W).fusiontreelist
 Return the `HomSpace` obtained by permuting the indices of the domain and codomain of `W`
 according to the permutation `p₁` and `p₂` respectively.
 """
-function permute(W::HomSpace{S}, (p₁, p₂)::Index2Tuple{N₁,N₂}) where {S,N₁,N₂}
+function permute(W::HomSpace{S}, (p₁, p₂)::Index2Tuple{N₁, N₂}) where {S, N₁, N₂}
     p = (p₁..., p₂...)
     TupleTools.isperm(p) && length(p) == numind(W) ||
         throw(ArgumentError("$((p₁, p₂)) is not a valid permutation for $(W)"))
@@ -153,9 +155,9 @@ end
 Return the `HomSpace` obtained by a selection from the domain and codomain of `W` according
 to the indices in `p₁` and `p₂` respectively.
 """
-function select(W::HomSpace{S}, (p₁, p₂)::Index2Tuple{N₁,N₂}) where {S,N₁,N₂}
-    cod = ProductSpace{S,N₁}(map(n -> W[n], p₁))
-    dom = ProductSpace{S,N₂}(map(n -> dual(W[n]), p₂))
+function select(W::HomSpace{S}, (p₁, p₂)::Index2Tuple{N₁, N₂}) where {S, N₁, N₂}
+    cod = ProductSpace{S, N₁}(map(n -> W[n], p₁))
+    dom = ProductSpace{S, N₂}(map(n -> dual(W[n]), p₂))
     return cod ← dom
 end
 
@@ -196,8 +198,9 @@ More specifically, adds a left monoidal unit or its dual.
 See also [`insertrightunit`](@ref insertrightunit(::HomSpace, ::Val{i}) where {i}),
 [`removeunit`](@ref removeunit(::HomSpace, ::Val{i}) where {i}).
 """
-function insertleftunit(W::HomSpace, ::Val{i}=Val(numind(W) + 1);
-                        conj::Bool=false, dual::Bool=false) where {i}
+function insertleftunit(
+        W::HomSpace, ::Val{i} = Val(numind(W) + 1); conj::Bool = false, dual::Bool = false
+    ) where {i}
     if i ≤ numout(W)
         return insertleftunit(codomain(W), Val(i); conj, dual) ← domain(W)
     else
@@ -215,8 +218,9 @@ More specifically, adds a right monoidal unit or its dual.
 See also [`insertleftunit`](@ref insertleftunit(::HomSpace, ::Val{i}) where {i}),
 [`removeunit`](@ref removeunit(::HomSpace, ::Val{i}) where {i}).
 """
-function insertrightunit(W::HomSpace, ::Val{i}=Val(numind(W));
-                         conj::Bool=false, dual::Bool=false) where {i}
+function insertrightunit(
+        W::HomSpace, ::Val{i} = Val(numind(W)); conj::Bool = false, dual::Bool = false
+    ) where {i}
     if i ≤ numout(W)
         return insertrightunit(codomain(W), Val(i); conj, dual) ← domain(W)
     else
@@ -246,14 +250,14 @@ end
 #--------------------------------------------------------------------------
 
 # sizes, strides, offset
-const StridedStructure{N} = Tuple{NTuple{N,Int},NTuple{N,Int},Int}
+const StridedStructure{N} = Tuple{NTuple{N, Int}, NTuple{N, Int}, Int}
 
-struct FusionBlockStructure{I,N,F₁,F₂}
+struct FusionBlockStructure{I, N, F₁, F₂}
     totaldim::Int
-    blockstructure::SectorDict{I,Tuple{Tuple{Int,Int},UnitRange{Int}}}
-    fusiontreelist::Vector{Tuple{F₁,F₂}}
+    blockstructure::SectorDict{I, Tuple{Tuple{Int, Int}, UnitRange{Int}}}
+    fusiontreelist::Vector{Tuple{F₁, F₂}}
     fusiontreestructure::Vector{StridedStructure{N}}
-    fusiontreeindices::FusionTreeDict{Tuple{F₁,F₂},Int}
+    fusiontreeindices::FusionTreeDict{Tuple{F₁, F₂}, Int}
 end
 
 function fusionblockstructuretype(W::HomSpace)
@@ -263,7 +267,7 @@ function fusionblockstructuretype(W::HomSpace)
     I = sectortype(W)
     F₁ = fusiontreetype(I, N₁)
     F₂ = fusiontreetype(I, N₂)
-    return FusionBlockStructure{I,N,F₁,F₂}
+    return FusionBlockStructure{I, N, F₁, F₂}
 end
 
 @cached function fusionblockstructure(W::HomSpace)::fusionblockstructuretype(W)
@@ -276,13 +280,13 @@ end
     F₂ = fusiontreetype(I, N₂)
 
     # output structure
-    blockstructure = SectorDict{I,Tuple{Tuple{Int,Int},UnitRange{Int}}}() # size, range
-    fusiontreelist = Vector{Tuple{F₁,F₂}}()
-    fusiontreestructure = Vector{Tuple{NTuple{N₁ + N₂,Int},NTuple{N₁ + N₂,Int},Int}}() # size, strides, offset
+    blockstructure = SectorDict{I, Tuple{Tuple{Int, Int}, UnitRange{Int}}}() # size, range
+    fusiontreelist = Vector{Tuple{F₁, F₂}}()
+    fusiontreestructure = Vector{Tuple{NTuple{N₁ + N₂, Int}, NTuple{N₁ + N₂, Int}, Int}}() # size, strides, offset
 
     # temporary data structures
     splittingtrees = Vector{F₁}()
-    splittingstructure = Vector{Tuple{Int,Int}}()
+    splittingstructure = Vector{Tuple{Int, Int}}()
 
     # main computational routine
     blockoffset = 0
@@ -322,15 +326,16 @@ end
         blockstructure[c] = (blocksize, blockrange)
     end
 
-    fusiontreeindices = sizehint!(FusionTreeDict{Tuple{F₁,F₂},Int}(),
-                                  length(fusiontreelist))
+    fusiontreeindices = sizehint!(
+        FusionTreeDict{Tuple{F₁, F₂}, Int}(), length(fusiontreelist)
+    )
     for (i, f₁₂) in enumerate(fusiontreelist)
         fusiontreeindices[f₁₂] = i
     end
     totaldim = blockoffset
-    structure = FusionBlockStructure(totaldim, blockstructure,
-                                     fusiontreelist, fusiontreestructure,
-                                     fusiontreeindices)
+    structure = FusionBlockStructure(
+        totaldim, blockstructure, fusiontreelist, fusiontreestructure, fusiontreeindices
+    )
     return structure
 end
 
@@ -352,7 +357,7 @@ end
 function diagonalblockstructure(W::HomSpace)
     ((numin(W) == numout(W) == 1) && domain(W) == codomain(W)) ||
         throw(SpaceMismatch("Diagonal only support on V←V with a single space V"))
-    structure = SectorDict{sectortype(W),UnitRange{Int}}() # range
+    structure = SectorDict{sectortype(W), UnitRange{Int}}() # range
     offset = 0
     dom = domain(W)[1]
     for c in blocksectors(W)

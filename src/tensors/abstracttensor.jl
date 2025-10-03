@@ -9,7 +9,7 @@ Abstract supertype of all tensor maps, i.e. linear maps between tensor products 
 spaces of type `S<:IndexSpace`, with element type `T`. An `AbstractTensorMap` maps from an
 input space of type `ProductSpace{S, N₂}` to an output space of type `ProductSpace{S, N₁}`.
 """
-abstract type AbstractTensorMap{T<:Number,S<:IndexSpace,N₁,N₂} end
+abstract type AbstractTensorMap{T <: Number, S <: IndexSpace, N₁, N₂} end
 
 """
     AbstractTensor{T,S,N} = AbstractTensorMap{T,S,N,0}
@@ -20,7 +20,7 @@ Abstract supertype of all tensors, i.e. elements in the tensor product space of 
 An `AbstractTensor{T, S, N}` is actually a special case `AbstractTensorMap{T, S, N, 0}`,
 i.e. a tensor map with only non-trivial output spaces.
 """
-const AbstractTensor{T,S,N} = AbstractTensorMap{T,S,N,0}
+const AbstractTensor{T, S, N} = AbstractTensorMap{T, S, N, 0}
 
 # tensor characteristics: type information
 #------------------------------------------
@@ -32,9 +32,9 @@ Return the scalar or element type `T` of a tensor.
 """
 Base.eltype(::Type{<:AbstractTensorMap{T}}) where {T} = T
 
-spacetype(::Type{<:AbstractTensorMap{<:Any,S}}) where {S} = S
+spacetype(::Type{<:AbstractTensorMap{<:Any, S}}) where {S} = S
 
-function InnerProductStyle(::Type{TT}) where {TT<:AbstractTensorMap}
+function InnerProductStyle(::Type{TT}) where {TT <: AbstractTensorMap}
     return InnerProductStyle(spacetype(TT))
 end
 
@@ -48,7 +48,7 @@ Return the type of vector that stores the data of a tensor.
 similarstoragetype(TT::Type{<:AbstractTensorMap}) = similarstoragetype(TT, scalartype(TT))
 
 function similarstoragetype(TT::Type{<:AbstractTensorMap}, ::Type{T}) where {T}
-    return Core.Compiler.return_type(similar, Tuple{storagetype(TT),Type{T}})
+    return Core.Compiler.return_type(similar, Tuple{storagetype(TT), Type{T}})
 end
 
 # tensor characteristics: space and index information
@@ -96,7 +96,7 @@ Return the number of output spaces of a tensor. This is equivalent to the number
 
 See also [`numin`](@ref) and [`numind`](@ref).
 """
-numout(::Type{<:AbstractTensorMap{T,S,N₁}}) where {T,S,N₁} = N₁
+numout(::Type{<:AbstractTensorMap{T, S, N₁}}) where {T, S, N₁} = N₁
 
 """
     numin(::Union{TT,Type{TT}}) where {TT<:AbstractTensorMap} -> Int
@@ -105,7 +105,7 @@ Return the number of input spaces of a tensor. This is equivalent to the number 
 
 See also [`numout`](@ref) and [`numind`](@ref).
 """
-numin(::Type{<:AbstractTensorMap{T,S,N₁,N₂}}) where {T,S,N₁,N₂} = N₂
+numin(::Type{<:AbstractTensorMap{T, S, N₁, N₂}}) where {T, S, N₁, N₂} = N₂
 
 """
     numind(::Union{T,Type{T}}) where {T<:AbstractTensorMap} -> Int
@@ -115,7 +115,7 @@ total number of spaces in the domain and codomain of that tensor.
 
 See also [`numout`](@ref) and [`numin`](@ref).
 """
-numind(::Type{TT}) where {TT<:AbstractTensorMap} = numin(TT) + numout(TT)
+numind(::Type{TT}) where {TT <: AbstractTensorMap} = numin(TT) + numout(TT)
 const order = numind
 
 """
@@ -125,7 +125,7 @@ Return all indices of the codomain of a tensor.
 
 See also [`domainind`](@ref) and [`allind`](@ref).
 """
-function codomainind(::Type{TT}) where {TT<:AbstractTensorMap}
+function codomainind(::Type{TT}) where {TT <: AbstractTensorMap}
     return ntuple(identity, numout(TT))
 end
 codomainind(t::AbstractTensorMap) = codomainind(typeof(t))
@@ -137,7 +137,7 @@ Return all indices of the domain of a tensor.
 
 See also [`codomainind`](@ref) and [`allind`](@ref).
 """
-function domainind(::Type{TT}) where {TT<:AbstractTensorMap}
+function domainind(::Type{TT}) where {TT <: AbstractTensorMap}
     return ntuple(n -> numout(TT) + n, numin(TT))
 end
 domainind(t::AbstractTensorMap) = domainind(typeof(t))
@@ -149,7 +149,7 @@ Return all indices of a tensor, i.e. the indices of its domain and codomain.
 
 See also [`codomainind`](@ref) and [`domainind`](@ref).
 """
-function allind(::Type{TT}) where {TT<:AbstractTensorMap}
+function allind(::Type{TT}) where {TT <: AbstractTensorMap}
     return ntuple(identity, numind(TT))
 end
 allind(t::AbstractTensorMap) = allind(typeof(t))
@@ -171,7 +171,7 @@ end
 InnerProductStyle(t::AbstractTensorMap) = InnerProductStyle(typeof(t))
 storagetype(t::AbstractTensorMap) = storagetype(typeof(t))
 blocktype(t::AbstractTensorMap) = blocktype(typeof(t))
-similarstoragetype(t::AbstractTensorMap, T=scalartype(t)) = similarstoragetype(typeof(t), T)
+similarstoragetype(t::AbstractTensorMap, T = scalartype(t)) = similarstoragetype(typeof(t), T)
 
 numout(t::AbstractTensorMap) = numout(typeof(t))
 numin(t::AbstractTensorMap) = numin(typeof(t))
@@ -236,7 +236,7 @@ hasblock(t::AbstractTensorMap, c::Sector) = c ∈ blocksectors(t)
 # """
 #     blockrange(t::AbstractTensorMap, c::Sector) -> UnitRange{Int}
 
-# Return the range at which to find the matrix block of a tensor corresponding to a 
+# Return the range at which to find the matrix block of a tensor corresponding to a
 # coupled sector `c`, within the total data vector of length `dim(t)`.
 # """
 # function blockrange(t::AbstractTensorMap, c::Sector)
@@ -291,8 +291,8 @@ See also [`blocks`](@ref), [`blocksectors`](@ref), [`blockdim`](@ref) and [`hasb
 
 Return the type of the matrix blocks of a tensor.
 """ blocktype
-function blocktype(::Type{T}) where {T<:AbstractTensorMap}
-    return Core.Compiler.return_type(block, Tuple{T,sectortype(T)})
+function blocktype(::Type{T}) where {T <: AbstractTensorMap}
+    return Core.Compiler.return_type(block, Tuple{T, sectortype(T)})
 end
 
 # Derived indexing behavior for tensors with trivial symmetry
@@ -362,13 +362,15 @@ By default, this will result in `TensorMap{T}(undef, V)` when custom objects do 
 specialize this method.
 """ Base.similar(::AbstractTensorMap, args...)
 
-function Base.similar(t::AbstractTensorMap, ::Type{T}, codomain::TensorSpace{S},
-                      domain::TensorSpace{S}) where {T,S}
+function Base.similar(
+        t::AbstractTensorMap, ::Type{T}, codomain::TensorSpace{S}, domain::TensorSpace{S}
+    ) where {T, S}
     return similar(t, T, codomain ← domain)
 end
 # 3 arguments
-function Base.similar(t::AbstractTensorMap, codomain::TensorSpace{S},
-                      domain::TensorSpace{S}) where {S}
+function Base.similar(
+        t::AbstractTensorMap, codomain::TensorSpace{S}, domain::TensorSpace{S}
+    ) where {S}
     return similar(t, similarstoragetype(t), codomain ← domain)
 end
 function Base.similar(t::AbstractTensorMap, ::Type{T}, codomain::TensorSpace) where {T}
@@ -384,8 +386,7 @@ Base.similar(t::AbstractTensorMap, ::Type{T}) where {T} = similar(t, T, space(t)
 Base.similar(t::AbstractTensorMap) = similar(t, similarstoragetype(t), space(t))
 
 # generic implementation for AbstractTensorMap -> returns `TensorMap`
-function Base.similar(t::AbstractTensorMap, ::Type{TorA},
-                      P::TensorMapSpace{S}) where {TorA,S}
+function Base.similar(t::AbstractTensorMap, ::Type{TorA}, P::TensorMapSpace{S}) where {TorA, S}
     if TorA <: Number
         T = TorA
         A = similarstoragetype(t, T)
@@ -398,15 +399,16 @@ function Base.similar(t::AbstractTensorMap, ::Type{TorA},
 
     N₁ = length(codomain(P))
     N₂ = length(domain(P))
-    return TensorMap{T,S,N₁,N₂,A}(undef, P)
+    return TensorMap{T, S, N₁, N₂, A}(undef, P)
 end
 
 # implementation in type-domain
-function Base.similar(::Type{TT}, P::TensorMapSpace) where {TT<:AbstractTensorMap}
+function Base.similar(::Type{TT}, P::TensorMapSpace) where {TT <: AbstractTensorMap}
     return TensorMap{scalartype(TT)}(undef, P)
 end
-function Base.similar(::Type{TT}, cod::TensorSpace{S},
-                      dom::TensorSpace{S}) where {TT<:AbstractTensorMap,S}
+function Base.similar(
+        ::Type{TT}, cod::TensorSpace{S}, dom::TensorSpace{S}
+    ) where {TT <: AbstractTensorMap, S}
     return TensorMap{scalartype(TT)}(undef, cod, dom)
 end
 
@@ -428,9 +430,10 @@ function Base.hash(t::AbstractTensorMap, h::UInt)
     return h
 end
 
-function Base.isapprox(t1::AbstractTensorMap, t2::AbstractTensorMap;
-                       atol::Real=0,
-                       rtol::Real=Base.rtoldefault(scalartype(t1), scalartype(t2), atol))
+function Base.isapprox(
+        t1::AbstractTensorMap, t2::AbstractTensorMap;
+        atol::Real = 0, rtol::Real = Base.rtoldefault(scalartype(t1), scalartype(t2), atol)
+    )
     d = norm(t1 - t2)
     if isfinite(d)
         return d <= max(atol, rtol * max(norm(t1), norm(t2)))

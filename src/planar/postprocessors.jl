@@ -5,8 +5,8 @@
 # to correct for this by adding the `istemp = true` flag.
 function _annotate_temporaries(ex, temporaries)
     if isexpr(ex, :(=)) && isexpr(ex.args[2], :call) &&
-       ex.args[2].args[1] ∈
-       (GlobalRef(TO, :tensoralloc_add), GlobalRef(TO, :tensoralloc_contract))
+            ex.args[2].args[1] ∈
+            (GlobalRef(TO, :tensoralloc_add), GlobalRef(TO, :tensoralloc_contract))
         lhs = ex.args[1]
         i = findfirst(==(lhs), temporaries)
         if i !== nothing
@@ -59,22 +59,30 @@ function _insert_planar_operations(ex)
         if ex.args[1] == GlobalRef(TensorOperations, :tensoradd!)
             conjA = popat!(ex.args, 5)
             @assert !conjA "conj flag should be disabled"
-            return Expr(ex.head, GlobalRef(TensorKit, Symbol(:planaradd!)),
-                        map(_insert_planar_operations, ex.args[2:end])...)
+            return Expr(
+                ex.head, GlobalRef(TensorKit, Symbol(:planaradd!)),
+                map(_insert_planar_operations, ex.args[2:end])...
+            )
         elseif ex.args[1] == GlobalRef(TensorOperations, :tensorcontract!)
             conjB = popat!(ex.args, 8)
             conjA = popat!(ex.args, 5)
             @assert !conjA && !conjB "conj flags should be disabled ($conjA), ($conjB)"
-            return Expr(ex.head, GlobalRef(TensorKit, Symbol(:planarcontract!)),
-                        map(_insert_planar_operations, ex.args[2:end])...)
+            return Expr(
+                ex.head, GlobalRef(TensorKit, Symbol(:planarcontract!)),
+                map(_insert_planar_operations, ex.args[2:end])...
+            )
         elseif ex.args[1] == GlobalRef(TensorOperations, :tensortrace!)
             conjA = popat!(ex.args, 6)
             @assert !conjA "conj flag should be disabled"
-            return Expr(ex.head, GlobalRef(TensorKit, Symbol(:planartrace!)),
-                        map(_insert_planar_operations, ex.args[2:end])...)
+            return Expr(
+                ex.head, GlobalRef(TensorKit, Symbol(:planartrace!)),
+                map(_insert_planar_operations, ex.args[2:end])...
+            )
         elseif ex.args[1] in TensorOperations.tensoroperationsfunctions
-            return Expr(ex.head, GlobalRef(TensorOperations, ex.args[1]),
-                        map(_insert_planar_operations, ex.args[2:end])...)
+            return Expr(
+                ex.head, GlobalRef(TensorOperations, ex.args[1]),
+                map(_insert_planar_operations, ex.args[2:end])...
+            )
         end
     elseif isa(ex, Expr)
         return Expr(ex.head, (_insert_planar_operations(e) for e in ex.args)...)

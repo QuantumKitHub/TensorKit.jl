@@ -8,10 +8,10 @@ vector space that is implicitly assumed in most of matrix algebra.
 struct CartesianSpace <: ElementarySpace
     d::Int
 end
-CartesianSpace(d::Integer=0; dual=false) = CartesianSpace(Int(d))
-function CartesianSpace(dim::Pair; dual=false)
+CartesianSpace(d::Integer = 0; dual = false) = CartesianSpace(Int(d))
+function CartesianSpace(dim::Pair; dual = false)
     if dim.first === Trivial()
-        return CartesianSpace(dim.second; dual=dual)
+        return CartesianSpace(dim.second; dual = dual)
     else
         msg = "$(dim) is not a valid dimension for CartesianSpace"
         throw(SectorMismatch(msg))
@@ -41,8 +41,8 @@ Base.:^(::RealNumbers, d::Int) = CartesianSpace(d)
 
 # Corresponding methods:
 #------------------------
-dim(V::CartesianSpace, ::Trivial=Trivial()) = V.d
-Base.axes(V::CartesianSpace, ::Trivial=Trivial()) = Base.OneTo(dim(V))
+dim(V::CartesianSpace, ::Trivial = Trivial()) = V.d
+Base.axes(V::CartesianSpace, ::Trivial = Trivial()) = Base.OneTo(dim(V))
 hassector(V::CartesianSpace, ::Trivial) = dim(V) != 0
 sectors(V::CartesianSpace) = OneOrNoneIterator(dim(V) != 0, Trivial())
 sectortype(::Type{CartesianSpace}) = Trivial

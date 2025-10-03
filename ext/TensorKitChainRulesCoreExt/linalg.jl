@@ -34,9 +34,10 @@ function ChainRulesCore.rrule(::typeof(⊗), A::AbstractTensorMap, B::AbstractTe
         # TODO: this rule is probably better written in terms of inner products,
         # using planarcontract and adjoint tensormaps would remove the twists.
         ΔC = unthunk(ΔC_)
-        pΔC = ((codomainind(A)..., (domainind(A) .+ numout(B))...),
-               ((codomainind(B) .+ numout(A))...,
-                (domainind(B) .+ (numin(A) + numout(A)))...))
+        pΔC = (
+            (codomainind(A)..., (domainind(A) .+ numout(B))...),
+            ((codomainind(B) .+ numout(A))..., (domainind(B) .+ (numin(A) + numout(A)))...),
+        )
         dA_ = @thunk let
             ipA = (codomainind(A), domainind(A))
             pB = (allind(B), ())
@@ -58,13 +59,14 @@ function ChainRulesCore.rrule(::typeof(⊗), A::AbstractTensorMap, B::AbstractTe
     return C, otimes_pullback
 end
 
-function ChainRulesCore.rrule(::typeof(permute), tsrc::AbstractTensorMap, p::Index2Tuple;
-                              copy::Bool=false)
+function ChainRulesCore.rrule(
+        ::typeof(permute), tsrc::AbstractTensorMap, p::Index2Tuple; copy::Bool = false
+    )
     function permute_pullback(Δtdst)
         invp = TensorKit._canonicalize(TupleTools.invperm(linearize(p)), tsrc)
-        return NoTangent(), permute(unthunk(Δtdst), invp; copy=true), NoTangent()
+        return NoTangent(), permute(unthunk(Δtdst), invp; copy = true), NoTangent()
     end
-    return permute(tsrc, p; copy=true), permute_pullback
+    return permute(tsrc, p; copy = true), permute_pullback
 end
 
 function ChainRulesCore.rrule(::typeof(tr), A::AbstractTensorMap)
@@ -77,15 +79,15 @@ function ChainRulesCore.rrule(::typeof(adjoint), A::AbstractTensorMap)
     return adjoint(A), adjoint_pullback
 end
 
-function ChainRulesCore.rrule(::typeof(twist), A::AbstractTensorMap, is; inv::Bool=false)
+function ChainRulesCore.rrule(::typeof(twist), A::AbstractTensorMap, is; inv::Bool = false)
     tA = twist(A, is; inv)
-    twist_pullback(ΔA) = NoTangent(), twist(unthunk(ΔA), is; inv=!inv), NoTangent()
+    twist_pullback(ΔA) = NoTangent(), twist(unthunk(ΔA), is; inv = !inv), NoTangent()
     return tA, twist_pullback
 end
 
-function ChainRulesCore.rrule(::typeof(flip), A::AbstractTensorMap, is; inv::Bool=false)
+function ChainRulesCore.rrule(::typeof(flip), A::AbstractTensorMap, is; inv::Bool = false)
     tA = flip(A, is; inv)
-    flip_pullback(ΔA) = NoTangent(), flip(unthunk(ΔA), is; inv=!inv), NoTangent()
+    flip_pullback(ΔA) = NoTangent(), flip(unthunk(ΔA), is; inv = !inv), NoTangent()
     return tA, flip_pullback
 end
 
@@ -94,7 +96,7 @@ function ChainRulesCore.rrule(::typeof(dot), a::AbstractTensorMap, b::AbstractTe
     return dot(a, b), dot_pullback
 end
 
-function ChainRulesCore.rrule(::typeof(norm), a::AbstractTensorMap, p::Real=2)
+function ChainRulesCore.rrule(::typeof(norm), a::AbstractTensorMap, p::Real = 2)
     p == 2 || error("currently only implemented for p = 2")
     n = norm(a, p)
     function norm_pullback(Δn)
@@ -122,13 +124,14 @@ function ChainRulesCore.rrule(::typeof(imag), a::AbstractTensorMap)
     function imag_pullback(Δa)
         Δa′ = unthunk(Δa)
         return NoTangent(),
-               eltype(a) <: Real ? ZeroTangent() : complex(zerovector(Δa′), Δa′)
+            eltype(a) <: Real ? ZeroTangent() : complex(zerovector(Δa′), Δa′)
     end
     return a_imag, imag_pullback
 end
 
-function ChainRulesCore.rrule(cfg::RuleConfig{>:HasReverseMode}, ::typeof(exp),
-                              A::AbstractTensorMap)
+function ChainRulesCore.rrule(
+        cfg::RuleConfig{>:HasReverseMode}, ::typeof(exp), A::AbstractTensorMap
+    )
     domain(A) == codomain(A) ||
         error("Exponential of a tensor only exist when domain == codomain.")
     P_A = ProjectTo(A)
@@ -151,11 +154,14 @@ end
 
 # define rrules for matrix functions for DiagonalTensorMap, since they access data directly.
 for f in
-    (:exp, :cos, :sin, :tan, :cot, :cosh, :sinh, :tanh, :coth, :atan, :acot, :asinh, :sqrt,
-     :log, :asin, :acos, :acosh, :atanh, :acoth)
+    (
+        :exp, :cos, :sin, :tan, :cot, :cosh, :sinh, :tanh, :coth, :atan, :acot, :asinh, :sqrt,
+        :log, :asin, :acos, :acosh, :atanh, :acoth,
+    )
     f_pullback = Symbol(f, :_pullback)
-    @eval function ChainRulesCore.rrule(cfg::RuleConfig{>:HasReverseMode}, ::typeof($f),
-                                        t::DiagonalTensorMap)
+    @eval function ChainRulesCore.rrule(
+            cfg::RuleConfig{>:HasReverseMode}, ::typeof($f), t::DiagonalTensorMap
+        )
         P = ProjectTo(t) # unsure if this is necessary, should already be in pullback
         d, pullback = rrule_via_ad(cfg, broadcast, $f, t.data)
         function $f_pullback(Δd_)

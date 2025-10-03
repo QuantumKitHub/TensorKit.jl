@@ -3,7 +3,7 @@ struct OneOrNoneIterator{T}
     first::T
 end
 
-function Base.iterate(it::OneOrNoneIterator, state=true)
+function Base.iterate(it::OneOrNoneIterator, state = true)
     if state && it.cond
         return (it.first, false)
     else

@@ -1,5 +1,6 @@
-function linearizepermutation(p1::NTuple{N₁,Int}, p2::NTuple{N₂},
-                              n₁::Int, n₂::Int) where {N₁,N₂}
+function linearizepermutation(
+        p1::NTuple{N₁, Int}, p2::NTuple{N₂}, n₁::Int, n₂::Int
+    ) where {N₁, N₂}
     p1′ = ntuple(Val(N₁)) do n
         return p1[n] > n₁ ? n₂ + 2n₁ + 1 - p1[n] : p1[n]
     end
@@ -44,7 +45,7 @@ end
 @noinline _boundserror(P, i) = throw(BoundsError(P, i))
 @noinline _nontrivialspaceerror(P, i) = throw(ArgumentError(lazy"Attempting to remove a non-trivial space $(P[i])"))
 
-const VecOrNumber{T<:Number} = Union{DenseVector{T},T}
+const VecOrNumber{T <: Number} = Union{DenseVector{T}, T}
 
 """
     _interleave(a::NTuple{N}, b::NTuple{N}) -> NTuple{2N}
@@ -58,7 +59,7 @@ end
 
 # Low-overhead implementation of `copyto!` for specific case of `stride(B, 1) < stride(B, 2)`
 # used in indexmanipulations: avoids the overhead of Strided.jl
-function _copyto!(A::StridedView{<:Any,1}, B::StridedView{<:Any,2})
+function _copyto!(A::StridedView{<:Any, 1}, B::StridedView{<:Any, 2})
     length(A) == length(B) || throw(DimensionMismatch())
 
     Adata = parent(A)

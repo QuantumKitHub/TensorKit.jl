@@ -29,8 +29,10 @@ for V in spacelist
 
         @testset "QR decomposition" begin
             for T in eltypes,
-                t in (rand(T, W, W), rand(T, W, W)', rand(T, W, V1), rand(T, V1, W)',
-                      DiagonalTensorMap(rand(T, reduceddim(V1)), V1))
+                    t in (
+                        rand(T, W, W), rand(T, W, W)', rand(T, W, V1), rand(T, V1, W)',
+                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                    )
 
                 Q, R = @constinferred qr_full(t)
                 @test Q * R ≈ t
@@ -40,7 +42,7 @@ for V in spacelist
                 @test Q * R ≈ t
                 @test isisometry(Q)
 
-                Q, R = @constinferred left_orth(t; kind=:qr)
+                Q, R = @constinferred left_orth(t; kind = :qr)
                 @test Q * R ≈ t
                 @test isisometry(Q)
 
@@ -48,7 +50,7 @@ for V in spacelist
                 @test isisometry(N)
                 @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
 
-                N = @constinferred left_null(t; kind=:qr)
+                N = @constinferred left_null(t; kind = :qr)
                 @test isisometry(N)
                 @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
             end
@@ -67,7 +69,7 @@ for V in spacelist
                 @test isisometry(Q)
                 @test dim(Q) == dim(R) == dim(t)
 
-                Q, R = @constinferred left_orth(t; kind=:qr)
+                Q, R = @constinferred left_orth(t; kind = :qr)
                 @test Q * R ≈ t
                 @test isisometry(Q)
                 @test dim(Q) == dim(R) == dim(t)
@@ -80,8 +82,10 @@ for V in spacelist
 
         @testset "LQ decomposition" begin
             for T in eltypes,
-                t in (rand(T, W, W), rand(T, W, W)', rand(T, W, V1), rand(T, V1, W)',
-                      DiagonalTensorMap(rand(T, reduceddim(V1)), V1))
+                    t in (
+                        rand(T, W, W), rand(T, W, W)', rand(T, W, V1), rand(T, V1, W)',
+                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                    )
 
                 L, Q = @constinferred lq_full(t)
                 @test L * Q ≈ t
@@ -89,14 +93,14 @@ for V in spacelist
 
                 L, Q = @constinferred lq_compact(t)
                 @test L * Q ≈ t
-                @test isisometry(Q; side=:right)
+                @test isisometry(Q; side = :right)
 
-                L, Q = @constinferred right_orth(t; kind=:lq)
+                L, Q = @constinferred right_orth(t; kind = :lq)
                 @test L * Q ≈ t
-                @test isisometry(Q; side=:right)
+                @test isisometry(Q; side = :right)
 
                 Nᴴ = @constinferred lq_null(t)
-                @test isisometry(Nᴴ; side=:right)
+                @test isisometry(Nᴴ; side = :right)
                 @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
             end
 
@@ -111,12 +115,12 @@ for V in spacelist
 
                 L, Q = @constinferred lq_compact(t)
                 @test L * Q ≈ t
-                @test isisometry(Q; side=:right)
+                @test isisometry(Q; side = :right)
                 @test dim(Q) == dim(L) == dim(t)
 
-                L, Q = @constinferred right_orth(t; kind=:lq)
+                L, Q = @constinferred right_orth(t; kind = :lq)
                 @test L * Q ≈ t
-                @test isisometry(Q; side=:right)
+                @test isisometry(Q; side = :right)
                 @test dim(Q) == dim(L) == dim(t)
 
                 Nᴴ = @constinferred lq_null(t)
@@ -127,8 +131,10 @@ for V in spacelist
 
         @testset "Polar decomposition" begin
             for T in eltypes,
-                t in (rand(T, W, W), rand(T, W, W)', rand(T, W, V1), rand(T, V1, W)',
-                      DiagonalTensorMap(rand(T, reduceddim(V1)), V1))
+                    t in (
+                        rand(T, W, W), rand(T, W, W)', rand(T, W, V1), rand(T, V1, W)',
+                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                    )
 
                 @assert domain(t) ≾ codomain(t)
                 w, p = @constinferred left_polar(t)
@@ -136,32 +142,34 @@ for V in spacelist
                 @test isisometry(w)
                 @test isposdef(p)
 
-                w, p = @constinferred left_orth(t; kind=:polar)
+                w, p = @constinferred left_orth(t; kind = :polar)
                 @test w * p ≈ t
                 @test isisometry(w)
             end
 
             for T in eltypes,
-                t in (rand(T, W, W), rand(T, W, W)', rand(T, V1, W), rand(T, W, V1)')
+                    t in (rand(T, W, W), rand(T, W, W)', rand(T, V1, W), rand(T, W, V1)')
 
                 @assert codomain(t) ≾ domain(t)
                 p, wᴴ = @constinferred right_polar(t)
                 @test p * wᴴ ≈ t
-                @test isisometry(wᴴ; side=:right)
+                @test isisometry(wᴴ; side = :right)
                 @test isposdef(p)
 
-                p, wᴴ = @constinferred right_orth(t; kind=:polar)
+                p, wᴴ = @constinferred right_orth(t; kind = :polar)
                 @test p * wᴴ ≈ t
-                @test isisometry(wᴴ; side=:right)
+                @test isisometry(wᴴ; side = :right)
             end
         end
 
         @testset "SVD" begin
             for T in eltypes,
-                t in (rand(T, W, W), rand(T, W, W)',
-                      rand(T, W, V1), rand(T, V1, W),
-                      rand(T, W, V1)', rand(T, V1, W)',
-                      DiagonalTensorMap(rand(T, reduceddim(V1)), V1))
+                    t in (
+                        rand(T, W, W), rand(T, W, W)',
+                        rand(T, W, V1), rand(T, V1, W),
+                        rand(T, W, V1)', rand(T, V1, W)',
+                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                    )
 
                 u, s, vᴴ = @constinferred svd_full(t)
                 @test u * s * vᴴ ≈ t
@@ -172,23 +180,23 @@ for V in spacelist
                 @test u * s * vᴴ ≈ t
                 @test isisometry(u)
                 @test isposdef(s)
-                @test isisometry(vᴴ; side=:right)
+                @test isisometry(vᴴ; side = :right)
 
                 s′ = LinearAlgebra.diag(s)
                 for (c, b) in LinearAlgebra.svdvals(t)
                     @test b ≈ s′[c]
                 end
 
-                v, c = @constinferred left_orth(t; kind=:svd)
+                v, c = @constinferred left_orth(t; kind = :svd)
                 @test v * c ≈ t
                 @test isisometry(v)
 
-                N = @constinferred left_null(t; kind=:svd)
+                N = @constinferred left_null(t; kind = :svd)
                 @test isisometry(N)
                 @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
 
-                Nᴴ = @constinferred right_null(t; kind=:svd)
-                @test isisometry(Nᴴ; side=:right)
+                Nᴴ = @constinferred right_null(t; kind = :svd)
+                @test isisometry(Nᴴ; side = :right)
                 @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
             end
 
@@ -207,31 +215,33 @@ for V in spacelist
 
         @testset "truncated SVD" begin
             for T in eltypes,
-                t in (randn(T, W, W), randn(T, W, W)',
-                      randn(T, W, V1), randn(T, V1, W),
-                      randn(T, W, V1)', randn(T, V1, W)',
-                      DiagonalTensorMap(randn(T, reduceddim(V1)), V1))
+                    t in (
+                        randn(T, W, W), randn(T, W, W)',
+                        randn(T, W, V1), randn(T, V1, W),
+                        randn(T, W, V1)', randn(T, V1, W)',
+                        DiagonalTensorMap(randn(T, reduceddim(V1)), V1),
+                    )
 
                 @constinferred normalize!(t)
 
-                U, S, Vᴴ = @constinferred svd_trunc(t; trunc=notrunc())
+                U, S, Vᴴ = @constinferred svd_trunc(t; trunc = notrunc())
                 @test U * S * Vᴴ ≈ t
                 @test isisometry(U)
-                @test isisometry(Vᴴ; side=:right)
+                @test isisometry(Vᴴ; side = :right)
 
                 trunc = truncrank(dim(domain(S)) ÷ 2)
                 U1, S1, Vᴴ1 = @constinferred svd_trunc(t; trunc)
                 @test t * Vᴴ1' ≈ U1 * S1
                 @test isisometry(U1)
-                @test isisometry(Vᴴ1; side=:right)
+                @test isisometry(Vᴴ1; side = :right)
                 @test dim(domain(S1)) <= trunc.howmany
 
                 λ = minimum(minimum, values(LinearAlgebra.diag(S1)))
-                trunc = trunctol(; atol=λ - 10eps(λ))
+                trunc = trunctol(; atol = λ - 10eps(λ))
                 U2, S2, Vᴴ2 = @constinferred svd_trunc(t; trunc)
                 @test t * Vᴴ2' ≈ U2 * S2
                 @test isisometry(U2)
-                @test isisometry(Vᴴ2; side=:right)
+                @test isisometry(Vᴴ2; side = :right)
                 @test minimum(minimum, values(LinearAlgebra.diag(S1))) >= λ
                 @test U2 ≈ U1
                 @test S2 ≈ S1
@@ -241,29 +251,31 @@ for V in spacelist
                 U3, S3, Vᴴ3 = @constinferred svd_trunc(t; trunc)
                 @test t * Vᴴ3' ≈ U3 * S3
                 @test isisometry(U3)
-                @test isisometry(Vᴴ3; side=:right)
+                @test isisometry(Vᴴ3; side = :right)
                 @test space(S3, 1) ≾ space(S2, 1)
 
-                trunc = truncerror(; atol=0.5)
+                trunc = truncerror(; atol = 0.5)
                 U4, S4, Vᴴ4 = @constinferred svd_trunc(t; trunc)
                 @test t * Vᴴ4' ≈ U4 * S4
                 @test isisometry(U4)
-                @test isisometry(Vᴴ4; side=:right)
+                @test isisometry(Vᴴ4; side = :right)
                 @test norm(t - U4 * S4 * Vᴴ4) <= 0.5
             end
         end
 
         @testset "Eigenvalue decomposition" begin
             for T in eltypes,
-                t in (rand(T, V1, V1), rand(T, W, W), rand(T, W, W)',
-                      DiagonalTensorMap(rand(T, reduceddim(V1)), V1))
+                    t in (
+                        rand(T, V1, V1), rand(T, W, W), rand(T, W, W)',
+                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                    )
 
                 d, v = @constinferred eig_full(t)
                 @test t * v ≈ v * d
 
                 d′ = LinearAlgebra.diag(d)
                 for (c, b) in LinearAlgebra.eigvals(t)
-                    @test sort(b; by=abs) ≈ sort(d′[c]; by=abs)
+                    @test sort(b; by = abs) ≈ sort(d′[c]; by = abs)
                 end
 
                 vdv = v' * v
@@ -271,7 +283,7 @@ for V in spacelist
                 @test @constinferred isposdef(vdv)
                 t isa DiagonalTensorMap || @test !isposdef(t) # unlikely for non-hermitian map
 
-                d, v = @constinferred eig_trunc(t; trunc=truncrank(dim(domain(t)) ÷ 2))
+                d, v = @constinferred eig_trunc(t; trunc = truncrank(dim(domain(t)) ÷ 2))
                 @test t * v ≈ v * d
                 @test dim(domain(d)) ≤ dim(domain(t)) ÷ 2
 
@@ -281,8 +293,10 @@ for V in spacelist
                 D̃, Ṽ = @constinferred eigh_full(t2)
                 @test D ≈ D̃
                 @test V ≈ Ṽ
-                λ = minimum(minimum(real(LinearAlgebra.diag(b)))
-                            for (c, b) in blocks(D))
+                λ = minimum(
+                    minimum(real(LinearAlgebra.diag(b)))
+                        for (c, b) in blocks(D)
+                )
                 @test cond(Ṽ) ≈ one(real(T))
                 @test isposdef(t2) == isposdef(λ)
                 @test isposdef(t2 - λ * one(t2) + 0.1 * one(t2))
@@ -300,7 +314,7 @@ for V in spacelist
                 @test isposdef(t - λ * one(t) + 0.1 * one(t))
                 @test !isposdef(t - λ * one(t) - 0.1 * one(t))
 
-                d, v = @constinferred eigh_trunc(t; trunc=truncrank(dim(domain(t)) ÷ 2))
+                d, v = @constinferred eigh_trunc(t; trunc = truncrank(dim(domain(t)) ÷ 2))
                 @test t * v ≈ v * d
                 @test dim(domain(d)) ≤ dim(domain(t)) ÷ 2
             end
@@ -308,10 +322,12 @@ for V in spacelist
 
         @testset "Condition number and rank" begin
             for T in eltypes,
-                t in (rand(T, W, W), rand(T, W, W)',
-                      rand(T, W, V1), rand(T, V1, W),
-                      rand(T, W, V1)', rand(T, V1, W)',
-                      DiagonalTensorMap(rand(T, reduceddim(V1)), V1))
+                    t in (
+                        rand(T, W, W), rand(T, W, W)',
+                        rand(T, W, V1), rand(T, V1, W),
+                        rand(T, W, V1)', rand(T, V1, W)',
+                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                    )
 
                 d1, d2 = dim(codomain(t)), dim(domain(t))
                 @test rank(t) == min(d1, d2)

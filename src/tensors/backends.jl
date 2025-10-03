@@ -1,6 +1,6 @@
 # Scheduler implementation
 # ------------------------
-function select_scheduler(scheduler=OhMyThreads.Implementation.NotGiven(); kwargs...)
+function select_scheduler(scheduler = OhMyThreads.Implementation.NotGiven(); kwargs...)
     return if scheduler == OhMyThreads.Implementation.NotGiven() && isempty(kwargs)
         Threads.nthreads() == 1 ? SerialScheduler() : DynamicScheduler()
     else
@@ -22,11 +22,12 @@ const blockscheduler = ScopedValue{Scheduler}(SerialScheduler())
 
 Run `f` in a scope where the `blockscheduler` is determined by `scheduler' and `kwargs...`.
 """
-@inline function with_blockscheduler(f, scheduler=OhMyThreads.Implementation.NotGiven();
-                                     kwargs...)
-    @with blockscheduler => select_scheduler(scheduler; kwargs...) f()
+@inline function with_blockscheduler(
+        f, scheduler = OhMyThreads.Implementation.NotGiven(); kwargs...
+    )
+    return @with blockscheduler => select_scheduler(scheduler; kwargs...) f()
 end
 
 # TODO: disable for trivial symmetry or small tensors?
 default_blockscheduler(t::AbstractTensorMap) = default_blockscheduler(typeof(t))
-default_blockscheduler(::Type{T}) where {T<:AbstractTensorMap} = blockscheduler[]
+default_blockscheduler(::Type{T}) where {T <: AbstractTensorMap} = blockscheduler[]

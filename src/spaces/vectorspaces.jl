@@ -117,7 +117,7 @@ Return the degeneracy dimension corresponding to the sector `s` of the vector sp
 
 Return the sum of all degeneracy dimensions of the vector space `V`.
 """
-reduceddim(V::ElementarySpace) = sum(Base.Fix1(dim, V), sectors(V); init=0)
+reduceddim(V::ElementarySpace) = sum(Base.Fix1(dim, V), sectors(V); init = 0)
 
 """
     oneunit(V::S) where {S<:ElementarySpace} -> S
@@ -157,7 +157,7 @@ const oplus = ⊕
 Return a space that is equivalent to the orthogonal complement of `W` in `V`,
 i.e. an instance `X::ElementarySpace` such that `V = W ⊕ X`.
 """
-⊖(V₁::S, V₂::S) where {S<:ElementarySpace}
+⊖(V₁::S, V₂::S) where {S <: ElementarySpace}
 ⊖(V₁::VectorSpace, V₂::VectorSpace) = ⊖(promote(V₁, V₂)...)
 const ominus = ⊖
 
@@ -260,7 +260,7 @@ defined. Also works in type domain.
 """
 sectortype(x) = sectortype(typeof(x))
 sectortype(::Type{T}) where {T} = sectortype(spacetype(T))
-sectortype(::Type{S}) where {S<:Sector} = S
+sectortype(::Type{S}) where {S <: Sector} = S
 
 """
     hassector(V::VectorSpace, a::Sector) -> Bool
@@ -285,7 +285,7 @@ function sectors end
 Abstract type for composite spaces that are defined in terms of a number of elementary
 vector spaces of a homogeneous type `S<:ElementarySpace`.
 """
-abstract type CompositeSpace{S<:ElementarySpace} <: VectorSpace end
+abstract type CompositeSpace{S <: ElementarySpace} <: VectorSpace end
 
 InnerProductStyle(::Type{<:CompositeSpace{S}}) where {S} = InnerProductStyle(S)
 
@@ -300,8 +300,8 @@ spacetype(x) = spacetype(typeof(x))
 function spacetype(::Type{T}) where {T}
     throw(MethodError(spacetype, (T,)))
 end
-spacetype(::Type{E}) where {E<:ElementarySpace} = E
-spacetype(::Type{S}) where {E,S<:CompositeSpace{E}} = E
+spacetype(::Type{E}) where {E <: ElementarySpace} = E
+spacetype(::Type{S}) where {E, S <: CompositeSpace{E}} = E
 
 # make ElementarySpace instances behave similar to ProductSpace instances
 blocksectors(V::ElementarySpace) = collect(sectors(V))
@@ -403,7 +403,7 @@ such that `V ≾ V₁`, `V ≾ V₂`, ... and no other `W ≻ V` has this proper
 that all arguments have the same value of `isdual( )`, and also the return value `V` will
 have the same value.
 """
-infimum(V₁::S, V₂::S, V₃::S...) where {S<:ElementarySpace} = infimum(infimum(V₁, V₂), V₃...)
+infimum(V₁::S, V₂::S, V₃::S...) where {S <: ElementarySpace} = infimum(infimum(V₁, V₂), V₃...)
 
 """
     supremum(V₁::ElementarySpace, V₂::ElementarySpace, V₃::ElementarySpace...)
@@ -413,6 +413,6 @@ such that `V ≿ V₁`, `V ≿ V₂`, ... and no other `W ≺ V` has this proper
 that all arguments have the same value of `isdual( )`, and also the return value `V` will
 have the same value.
 """
-function supremum(V₁::S, V₂::S, V₃::S...) where {S<:ElementarySpace}
+function supremum(V₁::S, V₂::S, V₃::S...) where {S <: ElementarySpace}
     return supremum(supremum(V₁, V₂), V₃...)
 end

@@ -13,7 +13,7 @@ Return a new tensor that is isomorphic to `t` but where the arrows on the indice
     general. To obtain the original tensor, one can use the `inv` keyword, i.e. it holds that
     `flip(flip(t, I), I; inv=true) == t`.
 """
-function flip(t::AbstractTensorMap, I; inv::Bool=false)
+function flip(t::AbstractTensorMap, I; inv::Bool = false)
     P = flip(space(t), I)
     t′ = similar(t, P)
     for (f₁, f₂) in fusiontrees(t)
@@ -32,9 +32,9 @@ The codomain and domain of `tdst` correspond to the indices in `p₁` and `p₂`
                 
 See [`permute`](@ref) for creating a new tensor and [`add_permute!`](@ref) for a more general version.
 """
-@propagate_inbounds function Base.permute!(tdst::AbstractTensorMap,
-                                           tsrc::AbstractTensorMap,
-                                           p::Index2Tuple)
+@propagate_inbounds function Base.permute!(
+        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple
+    )
     return add_permute!(tdst, tsrc, p, One(), Zero())
 end
 
@@ -50,8 +50,9 @@ If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwis
 
 To permute into an existing destination, see [permute!](@ref) and [`add_permute!`](@ref)
 """
-function permute(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple{N₁,N₂};
-                 copy::Bool=false) where {N₁,N₂}
+function permute(
+        t::AbstractTensorMap, (p₁, p₂)::Index2Tuple{N₁, N₂}; copy::Bool = false
+    ) where {N₁, N₂}
     space′ = permute(space(t), (p₁, p₂))
     # share data if possible
     if !copy && p₁ === codomainind(t) && p₂ === domainind(t)
@@ -62,7 +63,7 @@ function permute(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple{N₁,N₂};
         return permute!(similar(t, space′), t, (p₁, p₂))
     end
 end
-function permute(t::TensorMap, (p₁, p₂)::Index2Tuple{N₁,N₂}; copy::Bool=false) where {N₁,N₂}
+function permute(t::TensorMap, (p₁, p₂)::Index2Tuple{N₁, N₂}; copy::Bool = false) where {N₁, N₂}
     space′ = permute(space(t), (p₁, p₂))
     # share data if possible
     if !copy
@@ -77,12 +78,12 @@ function permute(t::TensorMap, (p₁, p₂)::Index2Tuple{N₁,N₂}; copy::Bool=
         return permute!(similar(t, space′), t, (p₁, p₂))
     end
 end
-function permute(t::AdjointTensorMap, (p₁, p₂)::Index2Tuple; copy::Bool=false)
+function permute(t::AdjointTensorMap, (p₁, p₂)::Index2Tuple; copy::Bool = false)
     p₁′ = adjointtensorindices(t, p₂)
     p₂′ = adjointtensorindices(t, p₁)
     return adjoint(permute(adjoint(t), (p₁′, p₂′); copy))
 end
-function permute(t::AbstractTensorMap, p::IndexTuple; copy::Bool=false)
+function permute(t::AbstractTensorMap, p::IndexTuple; copy::Bool = false)
     return permute(t, (p, ()); copy)
 end
 
@@ -121,10 +122,9 @@ which determines whether they will braid over or under any other index with whic
 
 See [`braid`](@ref) for creating a new tensor and [`add_braid!`](@ref) for a more general version.
 """
-@propagate_inbounds function braid!(tdst::AbstractTensorMap,
-                                    tsrc::AbstractTensorMap,
-                                    p::Index2Tuple,
-                                    levels::IndexTuple)
+@propagate_inbounds function braid!(
+        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, levels::IndexTuple
+    )
     return add_braid!(tdst, tsrc, p, levels, One(), Zero())
 end
 
@@ -142,11 +142,12 @@ If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwis
 
 To braid into an existing destination, see [braid!](@ref) and [`add_braid!`](@ref)
 """
-function braid(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple, levels::IndexTuple;
-               copy::Bool=false)
+function braid(
+        t::AbstractTensorMap, (p₁, p₂)::Index2Tuple, levels::IndexTuple; copy::Bool = false
+    )
     @assert length(levels) == numind(t)
     if BraidingStyle(sectortype(t)) isa SymmetricBraiding
-        return permute(t, (p₁, p₂); copy=copy)
+        return permute(t, (p₁, p₂); copy = copy)
     end
     if !copy && p₁ == codomainind(t) && p₂ == domainind(t)
         return t
@@ -174,9 +175,9 @@ the permutation `(p₁..., reverse(p₂)...)` should constitute a cyclic permuta
 
 See [`transpose`](@ref) for creating a new tensor and [`add_transpose!`](@ref) for a more general version.
 """
-function LinearAlgebra.transpose!(tdst::AbstractTensorMap,
-                                  tsrc::AbstractTensorMap,
-                                  (p₁, p₂)::Index2Tuple=_transpose_indices(t))
+function LinearAlgebra.transpose!(
+        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, (p₁, p₂)::Index2Tuple = _transpose_indices(t)
+    )
     return add_transpose!(tdst, tsrc, (p₁, p₂), One(), Zero())
 end
 
@@ -194,11 +195,12 @@ If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwis
 
 To permute into an existing destination, see [permute!](@ref) and [`add_permute!`](@ref)
 """
-function LinearAlgebra.transpose(t::AbstractTensorMap,
-                                 (p₁, p₂)::Index2Tuple=_transpose_indices(t);
-                                 copy::Bool=false)
+function LinearAlgebra.transpose(
+        t::AbstractTensorMap, (p₁, p₂)::Index2Tuple = _transpose_indices(t);
+        copy::Bool = false
+    )
     if sectortype(t) === Trivial
-        return permute(t, (p₁, p₂); copy=copy)
+        return permute(t, (p₁, p₂); copy = copy)
     end
     if !copy && p₁ == codomainind(t) && p₂ == domainind(t)
         return t
@@ -210,12 +212,13 @@ function LinearAlgebra.transpose(t::AbstractTensorMap,
     end
 end
 
-function LinearAlgebra.transpose(t::AdjointTensorMap,
-                                 (p₁, p₂)::Index2Tuple=_transpose_indices(t);
-                                 copy::Bool=false)
+function LinearAlgebra.transpose(
+        t::AdjointTensorMap, (p₁, p₂)::Index2Tuple = _transpose_indices(t);
+        copy::Bool = false
+    )
     p₁′ = map(n -> adjointtensorindex(t, n), p₂)
     p₂′ = map(n -> adjointtensorindex(t, n), p₁)
-    return adjoint(transpose(adjoint(t), (p₁′, p₂′); copy=copy))
+    return adjoint(transpose(adjoint(t), (p₁′, p₂′); copy = copy))
 end
 
 """
@@ -247,9 +250,9 @@ If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwis
 
 To repartition into an existing destination, see [repartition!](@ref).
 """
-@constprop :aggressive function repartition(t::AbstractTensorMap, N₁::Int,
-                                            N₂::Int=numind(t) - N₁;
-                                            copy::Bool=false)
+@constprop :aggressive function repartition(
+        t::AbstractTensorMap, N₁::Int, N₂::Int = numind(t) - N₁; copy::Bool = false
+    )
     N₁ + N₂ == numind(t) ||
         throw(ArgumentError("Invalid repartition: $(numind(t)) to ($N₁, $N₂)"))
     all_inds = (codomainind(t)..., reverse(domainind(t))...)
@@ -268,7 +271,7 @@ If `inv=true`, use the inverse twist.
 
 See [`twist`](@ref) for creating a new tensor.
 """
-function twist!(t::AbstractTensorMap, is; inv::Bool=false)
+function twist!(t::AbstractTensorMap, is; inv::Bool = false)
     if !all(in(allind(t)), is)
         msg = "Can't twist indices $is of a tensor with only $(numind(t)) indices."
         throw(ArgumentError(msg))
@@ -299,7 +302,7 @@ If `inv=true`, use the inverse twist.
 
 See [`twist!`](@ref) for storing the result in place.
 """
-twist(t::AbstractTensorMap, i; inv::Bool=false) = twist!(copy(t), i; inv)
+twist(t::AbstractTensorMap, i; inv::Bool = false) = twist!(copy(t), i; inv)
 
 # Methods which change the number of indices, implement using `Val(i)` for type inference
 """
@@ -315,8 +318,10 @@ If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwis
 See also [`insertrightunit`](@ref insertrightunit(::AbstractTensorMap, ::Val{i}) where {i}),
 [`removeunit`](@ref removeunit(::AbstractTensorMap, ::Val{i}) where {i}).
 """
-function insertleftunit(t::AbstractTensorMap, ::Val{i}=Val(numind(t) + 1);
-                        copy::Bool=false, conj::Bool=false, dual::Bool=false) where {i}
+function insertleftunit(
+        t::AbstractTensorMap, ::Val{i} = Val(numind(t) + 1);
+        copy::Bool = false, conj::Bool = false, dual::Bool = false
+    ) where {i}
     W = insertleftunit(space(t), Val(i); conj, dual)
     if t isa TensorMap
         return TensorMap{scalartype(t)}(copy ? Base.copy(t.data) : t.data, W)
@@ -342,8 +347,10 @@ If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwis
 See also [`insertleftunit`](@ref insertleftunit(::AbstractTensorMap, ::Val{i}) where {i}),
 [`removeunit`](@ref removeunit(::AbstractTensorMap, ::Val{i}) where {i}).
 """
-function insertrightunit(t::AbstractTensorMap, ::Val{i}=Val(numind(t));
-                         copy::Bool=false, conj::Bool=false, dual::Bool=false) where {i}
+function insertrightunit(
+        t::AbstractTensorMap, ::Val{i} = Val(numind(t));
+        copy::Bool = false, conj::Bool = false, dual::Bool = false
+    ) where {i}
     W = insertrightunit(space(t), Val(i); conj, dual)
     if t isa TensorMap
         return TensorMap{scalartype(t)}(copy ? Base.copy(t.data) : t.data, W)
@@ -368,7 +375,7 @@ If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwis
 This operation undoes the work of [`insertleftunit`](@ref insertleftunit(::AbstractTensorMap, ::Val{i}) where {i}) 
 and [`insertrightunit`](@ref insertrightunit(::AbstractTensorMap, ::Val{i}) where {i}).
 """
-function removeunit(t::AbstractTensorMap, ::Val{i}; copy::Bool=false) where {i}
+function removeunit(t::AbstractTensorMap, ::Val{i}; copy::Bool = false) where {i}
     W = removeunit(space(t), Val(i))
     if t isa TensorMap
         return TensorMap{scalartype(t)}(copy ? Base.copy(t.data) : t.data, W)
@@ -396,12 +403,10 @@ the indices of `tsrc` according to `(p₁, p₂)`.
 
 See also [`permute`](@ref), [`permute!`](@ref), [`add_braid!`](@ref), [`add_transpose!`](@ref).
 """
-@propagate_inbounds function add_permute!(tdst::AbstractTensorMap,
-                                          tsrc::AbstractTensorMap,
-                                          p::Index2Tuple,
-                                          α::Number,
-                                          β::Number,
-                                          backend::AbstractBackend...)
+@propagate_inbounds function add_permute!(
+        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple,
+        α::Number, β::Number, backend::AbstractBackend...
+    )
     transformer = treepermuter(tdst, tsrc, p)
     return add_transform!(tdst, tsrc, p, transformer, α, β, backend...)
 end
@@ -415,13 +420,10 @@ the indices of `tsrc` according to `(p₁, p₂)` and `levels`.
 
 See also [`braid`](@ref), [`braid!`](@ref), [`add_permute!`](@ref), [`add_transpose!`](@ref).
 """
-@propagate_inbounds function add_braid!(tdst::AbstractTensorMap,
-                                        tsrc::AbstractTensorMap,
-                                        p::Index2Tuple,
-                                        levels::IndexTuple,
-                                        α::Number,
-                                        β::Number,
-                                        backend::AbstractBackend...)
+@propagate_inbounds function add_braid!(
+        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, levels::IndexTuple,
+        α::Number, β::Number, backend::AbstractBackend...
+    )
     length(levels) == numind(tsrc) ||
         throw(ArgumentError("incorrect levels $levels for tensor map $(codomain(tsrc)) ← $(domain(tsrc))"))
 
@@ -441,23 +443,18 @@ the indices of `tsrc` according to `(p₁, p₂)`.
 
 See also [`transpose`](@ref), [`transpose!`](@ref), [`add_permute!`](@ref), [`add_braid!`](@ref).
 """
-@propagate_inbounds function add_transpose!(tdst::AbstractTensorMap,
-                                            tsrc::AbstractTensorMap,
-                                            p::Index2Tuple,
-                                            α::Number,
-                                            β::Number,
-                                            backend::AbstractBackend...)
+@propagate_inbounds function add_transpose!(
+        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple,
+        α::Number, β::Number, backend::AbstractBackend...
+    )
     transformer = treetransposer(tdst, tsrc, p)
     return add_transform!(tdst, tsrc, p, transformer, α, β, backend...)
 end
 
-function add_transform!(tdst::AbstractTensorMap,
-                        tsrc::AbstractTensorMap,
-                        p::Index2Tuple,
-                        transformer,
-                        α::Number,
-                        β::Number,
-                        backend::AbstractBackend...)
+function add_transform!(
+        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, transformer,
+        α::Number, β::Number, backend::AbstractBackend...
+    )
     @boundscheck begin
         permute(space(tsrc), p) == space(tdst) ||
             throw(SpaceMismatch("source = $(codomain(tsrc))←$(domain(tsrc)),
@@ -474,15 +471,17 @@ function add_transform!(tdst::AbstractTensorMap,
             if use_threaded_transform(tdst, transformer)
                 _add_abelian_kernel_threaded!(tdst, tsrc, p, transformer, α, β, backend...)
             else
-                _add_abelian_kernel_nonthreaded!(tdst, tsrc, p, transformer, α, β,
-                                                 backend...)
+                _add_abelian_kernel_nonthreaded!(
+                    tdst, tsrc, p, transformer, α, β, backend...
+                )
             end
         else
             if use_threaded_transform(tdst, transformer)
                 _add_general_kernel_threaded!(tdst, tsrc, p, transformer, α, β, backend...)
             else
-                _add_general_kernel_nonthreaded!(tdst, tsrc, p, transformer, α, β,
-                                                 backend...)
+                _add_general_kernel_nonthreaded!(
+                    tdst, tsrc, p, transformer, α, β, backend...
+                )
             end
         end
     end
@@ -506,18 +505,20 @@ end
 
 # Abelian implementations
 # -----------------------
-function _add_abelian_kernel_nonthreaded!(tdst, tsrc, p,
-                                          transformer::AbelianTreeTransformer,
-                                          α, β, backend...)
+function _add_abelian_kernel_nonthreaded!(
+        tdst, tsrc, p, transformer::AbelianTreeTransformer, α, β, backend...
+    )
     for subtransformer in transformer.data
         _add_transform_single!(tdst, tsrc, p, subtransformer, α, β, backend...)
     end
     return nothing
 end
 
-function _add_abelian_kernel_threaded!(tdst, tsrc, p, transformer::AbelianTreeTransformer,
-                                       α, β, backend...;
-                                       ntasks::Int=get_num_transformer_threads())
+function _add_abelian_kernel_threaded!(
+        tdst, tsrc, p, transformer::AbelianTreeTransformer,
+        α, β, backend...;
+        ntasks::Int = get_num_transformer_threads()
+    )
     nblocks = length(transformer.data)
     counter = Threads.Atomic{Int}(1)
     Threads.@sync for _ in 1:min(ntasks, nblocks)
@@ -533,9 +534,10 @@ function _add_abelian_kernel_threaded!(tdst, tsrc, p, transformer::AbelianTreeTr
     return nothing
 end
 
-function _add_transform_single!(tdst, tsrc, p,
-                                (coeff, struct_dst, struct_src)::_AbelianTransformerData,
-                                α, β, backend...)
+function _add_transform_single!(
+        tdst, tsrc, p, (coeff, struct_dst, struct_src)::_AbelianTransformerData,
+        α, β, backend...
+    )
     subblock_dst = StridedView(tdst.data, struct_dst...)
     subblock_src = StridedView(tsrc.data, struct_src...)
     TO.tensoradd!(subblock_dst, subblock_src, p, false, α * coeff, β, backend...)
@@ -551,24 +553,22 @@ end
 
 function _add_abelian_kernel_threaded!(tdst, tsrc, p, transformer, α, β, backend...)
     Threads.@sync for (f₁, f₂) in fusiontrees(tsrc)
-        Threads.@spawn _add_abelian_block!(tdst, tsrc, p, transformer, f₁, f₂, α, β,
-                                           backend...)
+        Threads.@spawn _add_abelian_block!(tdst, tsrc, p, transformer, f₁, f₂, α, β, backend...)
     end
     return nothing
 end
 
 function _add_abelian_block!(tdst, tsrc, p, transformer, f₁, f₂, α, β, backend...)
     (f₁′, f₂′), coeff = first(transformer(f₁, f₂))
-    @inbounds TO.tensoradd!(tdst[f₁′, f₂′], tsrc[f₁, f₂], p, false, α * coeff, β,
-                            backend...)
+    @inbounds TO.tensoradd!(tdst[f₁′, f₂′], tsrc[f₁, f₂], p, false, α * coeff, β, backend...)
     return nothing
 end
 
 # Non-abelian implementations
 # ---------------------------
-function _add_general_kernel_nonthreaded!(tdst, tsrc, p,
-                                          transformer::GenericTreeTransformer,
-                                          α, β, backend...)
+function _add_general_kernel_nonthreaded!(
+        tdst, tsrc, p, transformer::GenericTreeTransformer, α, β, backend...
+    )
     # preallocate buffers
     buffers = allocate_buffers(tdst, tsrc, transformer)
 
@@ -583,9 +583,10 @@ function _add_general_kernel_nonthreaded!(tdst, tsrc, p,
     return nothing
 end
 
-function _add_general_kernel_threaded!(tdst, tsrc, p, transformer::GenericTreeTransformer,
-                                       α, β, backend...;
-                                       ntasks::Int=get_num_transformer_threads())
+function _add_general_kernel_threaded!(
+        tdst, tsrc, p, transformer::GenericTreeTransformer, α, β, backend...;
+        ntasks::Int = get_num_transformer_threads()
+    )
     nblocks = length(transformer.data)
 
     counter = Threads.Atomic{Int}(1)
@@ -601,8 +602,7 @@ function _add_general_kernel_threaded!(tdst, tsrc, p, transformer::GenericTreeTr
                 if length(subtransformer[1]) == 1
                     _add_transform_single!(tdst, tsrc, p, subtransformer, α, β, backend...)
                 else
-                    _add_transform_multi!(tdst, tsrc, p, subtransformer, buffers,
-                                          α, β, backend...)
+                    _add_transform_multi!(tdst, tsrc, p, subtransformer, buffers, α, β, backend...)
                 end
             end
         end
@@ -619,17 +619,16 @@ function _add_general_kernel_nonthreaded!(tdst, tsrc, p, transformer, α, β, ba
     end
     for (f₁, f₂) in fusiontrees(tsrc)
         for ((f₁′, f₂′), coeff) in transformer(f₁, f₂)
-            @inbounds TO.tensoradd!(tdst[f₁′, f₂′], tsrc[f₁, f₂], p, false, α * coeff,
-                                    One(), backend...)
+            @inbounds TO.tensoradd!(tdst[f₁′, f₂′], tsrc[f₁, f₂], p, false, α * coeff, One(), backend...)
         end
     end
     return nothing
 end
 
-function _add_transform_single!(tdst, tsrc, p,
-                                (basistransform, structs_dst,
-                                 structs_src)::_GenericTransformerData,
-                                α, β, backend...)
+function _add_transform_single!(
+        tdst, tsrc, p, (basistransform, structs_dst, structs_src)::_GenericTransformerData,
+        α, β, backend...
+    )
     struct_dst = (structs_dst[1], only(structs_dst[2])...)
     struct_src = (structs_src[1], only(structs_src[2])...)
     coeff = only(basistransform)
@@ -637,14 +636,16 @@ function _add_transform_single!(tdst, tsrc, p,
     return nothing
 end
 
-function _add_transform_multi!(tdst, tsrc, p,
-                               (basistransform, (sz_dst, structs_dst),
-                                (sz_src, structs_src)),
-                               (buffer1, buffer2), α, β, backend...)
+function _add_transform_multi!(
+        tdst, tsrc, p, (basistransform, (sz_dst, structs_dst), (sz_src, structs_src)),
+        (buffer1, buffer2), α, β, backend...
+    )
     rows, cols = size(basistransform)
     blocksize = prod(sz_src)
-    matsize = (prod(TupleTools.getindices(sz_src, codomainind(tsrc))),
-               prod(TupleTools.getindices(sz_src, domainind(tsrc))))
+    matsize = (
+        prod(TupleTools.getindices(sz_src, codomainind(tsrc))),
+        prod(TupleTools.getindices(sz_src, domainind(tsrc))),
+    )
 
     # Filling up a buffer with contiguous data
     buffer_src = StridedView(buffer2, (blocksize, cols), (1, blocksize), 0)
@@ -674,8 +675,7 @@ function _add_general_kernel_threaded!(tdst, tsrc, p, transformer, α, β, backe
         tdst = scale!(tdst, β)
     end
     Threads.@sync for s₁ in sectors(codomain(tsrc)), s₂ in sectors(domain(tsrc))
-        Threads.@spawn _add_nonabelian_sector!(tdst, tsrc, p, transformer, s₁, s₂, α,
-                                               backend...)
+        Threads.@spawn _add_nonabelian_sector!(tdst, tsrc, p, transformer, s₁, s₂, α, backend...)
     end
     return nothing
 end
@@ -684,8 +684,7 @@ function _add_nonabelian_sector!(tdst, tsrc, p, fusiontreetransform, s₁, s₂,
     for (f₁, f₂) in fusiontrees(tsrc)
         (f₁.uncoupled == s₁ && f₂.uncoupled == s₂) || continue
         for ((f₁′, f₂′), coeff) in fusiontreetransform(f₁, f₂)
-            @inbounds TO.tensoradd!(tdst[f₁′, f₂′], tsrc[f₁, f₂], p, false, α * coeff,
-                                    One(), backend...)
+            @inbounds TO.tensoradd!(tdst[f₁′, f₂′], tsrc[f₁, f₂], p, false, α * coeff, One(), backend...)
         end
     end
     return nothing

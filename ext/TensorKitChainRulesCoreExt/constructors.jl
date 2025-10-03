@@ -16,8 +16,7 @@ end
 # -- as a result, requires quantum dimensions to keep inner product the same:
 #   ⟨Δdata, ∂data⟩ = ⟨Δtensor, ∂tensor⟩ = ∑_c d_c ⟨Δtensor_c, ∂tensor_c⟩
 #   ⟹ Δdata = d_c Δtensor_c
-function ChainRulesCore.rrule(::Type{TensorMap{T}}, data::DenseVector,
-                              V::TensorMapSpace) where {T}
+function ChainRulesCore.rrule(::Type{TensorMap{T}}, data::DenseVector, V::TensorMapSpace) where {T}
     t = TensorMap{T}(data, V)
     P = ProjectTo(data)
     function TensorMap_pullback(Δt_)
@@ -31,8 +30,7 @@ function ChainRulesCore.rrule(::Type{TensorMap{T}}, data::DenseVector,
     return t, TensorMap_pullback
 end
 
-function ChainRulesCore.rrule(::Type{<:DiagonalTensorMap}, data::DenseVector, args...;
-                              kwargs...)
+function ChainRulesCore.rrule(::Type{<:DiagonalTensorMap}, data::DenseVector, args...; kwargs...)
     D = DiagonalTensorMap(data, args...; kwargs...)
     P = ProjectTo(data)
     function DiagonalTensorMap_pullback(Δt_)
@@ -77,8 +75,7 @@ function ChainRulesCore.rrule(::typeof(Base.getproperty), t::TensorMap, prop::Sy
     end
 end
 
-function ChainRulesCore.rrule(::typeof(Base.getproperty), t::DiagonalTensorMap,
-                              prop::Symbol)
+function ChainRulesCore.rrule(::typeof(Base.getproperty), t::DiagonalTensorMap, prop::Symbol)
     if prop === :data
         function getdata_pullback(Δdata)
             # unclear if we're allowed to modify/take ownership of the input
@@ -101,30 +98,31 @@ function ChainRulesCore.rrule(::typeof(Base.copy), t::AbstractTensorMap)
     return copy(t), copy_pullback
 end
 
-function ChainRulesCore.rrule(::typeof(TensorKit.copy_oftype), t::AbstractTensorMap,
-                              T::Type{<:Number})
+function ChainRulesCore.rrule(
+        ::typeof(TensorKit.copy_oftype), t::AbstractTensorMap, T::Type{<:Number}
+    )
     project = ProjectTo(t)
     copy_oftype_pullback(Δt) = NoTangent(), project(unthunk(Δt)), NoTangent()
     return TensorKit.copy_oftype(t, T), copy_oftype_pullback
 end
 
-function ChainRulesCore.rrule(::typeof(TensorKit.permutedcopy_oftype), t::AbstractTensorMap,
-                              T::Type{<:Number}, p::Index2Tuple)
+function ChainRulesCore.rrule(
+        ::typeof(TensorKit.permutedcopy_oftype), t::AbstractTensorMap, T::Type{<:Number}, p::Index2Tuple
+    )
     project = ProjectTo(t)
     function permutedcopy_oftype_pullback(Δt)
         invp = TensorKit._canonicalize(TupleTools.invperm(linearize(p)), t)
         return NoTangent(), project(TensorKit.permute(unthunk(Δt), invp)), NoTangent(),
-               NoTangent()
+            NoTangent()
     end
     return TensorKit.permutedcopy_oftype(t, T, p), permutedcopy_oftype_pullback
 end
 
-function ChainRulesCore.rrule(::typeof(Base.convert), T::Type{<:Array},
-                              t::AbstractTensorMap)
+function ChainRulesCore.rrule(::typeof(Base.convert), T::Type{<:Array}, t::AbstractTensorMap)
     A = convert(T, t)
     function convert_pullback(ΔA)
         # use constructor to (unconditionally) project back onto symmetric subspace
-        ∂t = TensorMap(unthunk(ΔA), codomain(t), domain(t); tol=Inf)
+        ∂t = TensorMap(unthunk(ΔA), codomain(t), domain(t); tol = Inf)
         return NoTangent(), NoTangent(), ∂t
     end
     return A, convert_pullback
@@ -145,8 +143,7 @@ function ChainRulesCore.rrule(::typeof(Base.convert), ::Type{Dict}, t::AbstractT
     end
     return out, convert_pullback
 end
-function ChainRulesCore.rrule(::typeof(Base.convert), ::Type{TensorMap},
-                              t::Dict{Symbol,Any})
+function ChainRulesCore.rrule(::typeof(Base.convert), ::Type{TensorMap}, t::Dict{Symbol, Any})
     return convert(TensorMap, t), v -> (NoTangent(), NoTangent(), convert(Dict, v))
 end
 
