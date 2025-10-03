@@ -212,28 +212,6 @@ function MAK.check_input(::typeof(eig_full!), t::AbstractTensorMap, DV, ::Abstra
     return nothing
 end
 
-function MAK.check_input(::typeof(eig_full!), t::DiagonalTensorMap, DV, ::AbstractAlgorithm)
-    domain(t) == codomain(t) ||
-        throw(ArgumentError("Eigenvalue decomposition requires square input tensor"))
-
-    D, V = DV
-
-    # type checks
-    @assert D isa DiagonalTensorMap
-    @assert V isa AbstractTensorMap
-
-    # scalartype checks
-    @check_scalar D t
-    @check_scalar V t
-
-    # space checks
-    V_D = fuse(domain(t))
-    @check_space(D, V_D ← V_D)
-    @check_space(V, codomain(t) ← V_D)
-
-    return nothing
-end
-
 function MAK.check_input(::typeof(eigh_vals!), t::AbstractTensorMap, D, ::AbstractAlgorithm)
     @check_scalar D t real
     @assert D isa DiagonalTensorMap

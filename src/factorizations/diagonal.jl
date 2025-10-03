@@ -127,7 +127,7 @@ for f! in (:eig_vals!, :eigh_vals!, :svd_vals!)
     end
 end
 
-function MAK.check_input(::typeof(eig_full!), t::DiagonalTensorMap, DV, ::DiagonalAlgorithm)
+function MAK.check_input(::typeof(eig_full!), t::AbstractTensorMap, DV, ::DiagonalAlgorithm)
     domain(t) == codomain(t) ||
         throw(ArgumentError("Eigenvalue decomposition requires square input tensor"))
 
@@ -147,7 +147,7 @@ function MAK.check_input(::typeof(eig_full!), t::DiagonalTensorMap, DV, ::Diagon
     return nothing
 end
 
-function MAK.check_input(::typeof(eigh_full!), t::DiagonalTensorMap, DV,
+function MAK.check_input(::typeof(eigh_full!), t::AbstractTensorMap, DV,
                          ::DiagonalAlgorithm)
     domain(t) == codomain(t) ||
         throw(ArgumentError("Eigenvalue decomposition requires square input tensor"))
