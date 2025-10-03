@@ -53,7 +53,7 @@ function truncate_diagonal!(Ddst::DiagonalTensorMap, Dsrc::DiagonalTensorMap, in
     for (c, b) in blocks(Ddst)
         I = get(inds, c, nothing)
         @assert !isnothing(I)
-        copy!(diagview(b), @view(diagview(block(Dsrc, c))[I]))
+        copy!(diagview(b), view(diagview(block(Dsrc, c)), I))
     end
     return Ddst
 end
