@@ -165,14 +165,13 @@ function MAK.findtruncated_svd(values::SectorDict, strategy::TruncationByOrder)
     I = keytype(values)
     truncdim = SectorDict{I, Int}(c => length(d) for (c, d) in values)
     totaldim = sum(dim(c) * d for (c, d) in truncdim; init = 0)
-    while true
+    while totaldim > strategy.howmany
         next = _findnexttruncvalue(values, truncdim; strategy.by, strategy.rev)
         isnothing(next) && break
         _, cmin = next
         truncdim[cmin] -= 1
         totaldim -= dim(cmin)
         truncdim[cmin] == 0 && delete!(truncdim, cmin)
-        totaldim <= strategy.howmany && break
     end
     return SectorDict(c => Base.OneTo(d) for (c, d) in truncdim)
 end
