@@ -29,11 +29,11 @@ function MAK.right_null!(t::AdjointTensorMap, N, alg::AbstractAlgorithm)
     return N
 end
 
-function MAK.is_left_isometry(t::AdjointTensorMap; kwargs...)
-    return is_right_isometry(adjoint(t); kwargs...)
+function MAK.is_left_isometric(t::AdjointTensorMap; kwargs...)
+    return is_right_isometric(adjoint(t); kwargs...)
 end
-function MAK.is_right_isometry(t::AdjointTensorMap; kwargs...)
-    return is_left_isometry(adjoint(t); kwargs...)
+function MAK.is_right_isometric(t::AdjointTensorMap; kwargs...)
+    return is_left_isometric(adjoint(t); kwargs...)
 end
 
 # 2-arg functions
