@@ -45,6 +45,13 @@ end
 Return the type of vector that stores the data of a tensor.
 """ storagetype
 
+@doc """
+    matrixtype(t::AbstractTensorMap) -> Type{A<:AbstractVector}
+    matrixtype(T::Type{<:AbstractTensorMap}) -> Type{A<:AbstractVector}
+
+Return the type of **matrix** that stores the data of a tensor.
+""" matrixtype
+
 similarstoragetype(TT::Type{<:AbstractTensorMap}) = similarstoragetype(TT, scalartype(TT))
 
 function similarstoragetype(TT::Type{<:AbstractTensorMap}, ::Type{T}) where {T}
@@ -174,6 +181,7 @@ end
 #------------------------------------------------------------
 InnerProductStyle(t::AbstractTensorMap) = InnerProductStyle(typeof(t))
 storagetype(t::AbstractTensorMap) = storagetype(typeof(t))
+matrixtype(t::AbstractTensorMap) = matrixtype(typeof(t))
 blocktype(t::AbstractTensorMap) = blocktype(typeof(t))
 similarstoragetype(t::AbstractTensorMap, T = scalartype(t)) = similarstoragetype(typeof(t), T)
 

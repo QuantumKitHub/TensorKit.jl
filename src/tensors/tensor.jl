@@ -66,6 +66,12 @@ space(t::TensorMap) = t.space
 Return the type of the storage `A` of the tensor map.
 """
 storagetype(::Type{<:TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A <: DenseVector{T}} = A
+"""
+    matrixtype(::Union{T,Type{T}}) where {T<:TensorMap} -> Type{A<:Vector}
+
+Return the type of the storage `A` of the tensor map.
+"""
+matrixtype(::Type{<:TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A <: Vector{T}} = Matrix{T}
 
 dim(t::TensorMap) = length(t.data)
 
@@ -426,12 +432,12 @@ function Base.convert(::Type{Dict}, t::AbstractTensorMap)
     d[:domain] = repr(domain(t))
     data = Dict{String, Any}()
     for (c, b) in blocks(t)
-        data[repr(c)] = Array(b)
+        data[repr(c)] = matrixtype(t)(b)
     end
     d[:data] = data
     return d
 end
-function Base.convert(::Type{TensorMap}, d::Dict{Symbol, Any})
+function Base.convert(::Type{<:TensorMap}, d::Dict{Symbol, Any})
     try
         codomain = eval(Meta.parse(d[:codomain]))
         domain = eval(Meta.parse(d[:domain]))
