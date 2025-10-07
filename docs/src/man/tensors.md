@@ -1265,8 +1265,155 @@ Some examples:
 
 ## Fermionic tensor contractions
 
-TODO
+When working with fermionic tensors, i.e., tensors with `BraidingStyle(sectortype(tensor)) isa Fermionic`,
+the non-trivial braiding statistics of fermionic particles must be accounted for in tensor
+contractions. Unlike bosonic tensors where the order of operations doesn't matter (up to 
+trivial permutations), fermionic tensors require careful tracking of how tensor factors are
+reordered and how indices are permuted.
+
+### The `@planar` macro
+
+For fermionic tensors, use the `@planar` macro instead of `@tensor`. The `@planar` macro
+correctly handles the signs that arise from reordering fermionic indices:
+
+```julia
+# Example with fermionic tensors
+V = Vect[FermionParity](0 => 2, 1 => 2)  # Fermionic vector space
+A = randn(V ⊗ V ← V)
+B = randn(V ← V ⊗ V)
+
+# Use @planar for fermionic contractions
+@planar C[i; j] := A[i k; l] * B[l; k j]
+```
+
+The key difference from `@tensor` is that `@planar` uses planar operations (`planaradd!`,
+`planarcontract!`, `planartrace!`) that respect the fermionic braiding when permuting indices.
+These operations automatically insert the appropriate signs (``-1`` raised to the appropriate
+power) when indices with odd fermion parity are exchanged.
+
+### Braiding tensors
+
+The braiding of fermionic indices can be made explicit using braiding tensors, denoted by `τ`.
+A braiding tensor `τ[a b; c d]` represents the operation that permutes indices, inserting
+the appropriate fermionic signs:
+
+```julia
+# Explicit braiding in a contraction
+@planar C[i; j] := A[i k; l] * τ[k m; n l] * B[n; m j]
+```
+
+The braiding tensor `τ` is special: TensorKit.jl automatically constructs it based on the
+spaces of the indices it connects. You don't need to define it yourself; simply use the
+symbol `τ` in your `@planar` expressions.
+
+### Key differences from bosonic contractions
+
+1. **Order matters**: In `@tensor`, the order of factors doesn't affect the result (modulo
+   permutations). In `@planar`, reordering factors can introduce minus signs.
+
+2. **Index permutations**: When indices are permuted, `@planar` automatically accounts for
+   the fermionic statistics, inserting signs when odd-parity indices are exchanged.
+
+3. **Performance**: `@planar` has some overhead compared to `@tensor` due to the additional
+   bookkeeping required for braiding. For bosonic tensors, stick to `@tensor`.
+
+For more details on the mathematical framework underlying fermionic tensor contractions,
+see the paper [arXiv:2404.14611](https://arxiv.org/abs/2404.14611), which describes the
+implementation of fermionic tensor networks in TensorKit.jl.
 
 ## Anyonic tensor contractions
 
-TODO
+Anyonic tensors arise in the study of quantum systems with anyonic excitations, such as
+fractional quantum Hall systems or topological quantum computing. In these systems, the
+braiding of anyonic particles is described by a non-trivial braiding (or R-matrix), and
+the tensor contractions must respect this braiding structure.
+
+### Using `@planar` for anyonic tensors
+
+Just like fermionic tensors, anyonic tensors require the use of `@planar` instead of `@tensor`:
+
+```julia
+# Example with Fibonacci anyons
+V = Vect[FibonacciAnyon](:I => 2, :τ => 2)
+A = randn(V ⊗ V ← V)
+B = randn(V ← V ⊗ V)
+
+# Use @planar for anyonic contractions
+@planar C[i; j] := A[i k; l] * B[l; k j]
+```
+
+For anyonic systems, the braiding is even more general than for fermions: instead of just
+signs, the braiding tensors can have non-trivial matrix elements that depend on the
+fusion-splitting structure of the anyons. The `@planar` macro handles all of this
+automatically through the braiding tensor `τ`.
+
+### Anyonic braiding tensors
+
+The braiding tensors for anyons encode the non-trivial R-matrices (or F-matrices for the
+fusion structure) of the anyonic theory:
+
+```julia
+# Explicit braiding in anyonic contractions
+@planar C[i; j] := A[i k; l] * τ[k m; n l] * B[n; m j]
+```
+
+The matrix elements of `τ` are determined by the specific anyonic theory (e.g., Fibonacci,
+Ising, etc.) and are computed automatically by TensorKit.jl based on the sector type.
+
+### Differences from bosonic and fermionic contractions
+
+1. **General braiding**: Anyonic braiding is the most general case, with fermionic being
+   a special case (ℤ₂-graded braiding) and bosonic being the trivial case.
+
+2. **Fusion rules**: Anyonic tensors have more complex fusion rules than fermions or bosons,
+   which affects how tensor contractions are computed.
+
+3. **Computational cost**: Anyonic tensor contractions can be more expensive than fermionic
+   or bosonic contractions due to the more complex braiding structure.
+
+## Using `@plansor` for generic code
+
+When writing generic code that should work for bosonic, fermionic, and anyonic tensors,
+use the `@plansor` macro. This macro automatically dispatches to the appropriate
+implementation based on the `BraidingStyle` of the tensors:
+
+```julia
+function generic_contraction(A::AbstractTensorMap, B::AbstractTensorMap)
+    @plansor C[i; j] := A[i; k] * B[k; j]
+    return C
+end
+
+# Works correctly for all three cases:
+# 1. Bosonic tensors: dispatches to @tensor (fast)
+V_bosonic = ℂ^2
+A_bosonic = randn(V_bosonic ⊗ V_bosonic ← V_bosonic)
+B_bosonic = randn(V_bosonic ← V_bosonic ⊗ V_bosonic)
+C_bosonic = generic_contraction(A_bosonic, B_bosonic)
+
+# 2. Fermionic tensors: dispatches to @planar (correct signs)
+V_fermionic = Vect[FermionParity](0 => 2, 1 => 2)
+A_fermionic = randn(V_fermionic ⊗ V_fermionic ← V_fermionic)
+B_fermionic = randn(V_fermionic ← V_fermionic ⊗ V_fermionic)
+C_fermionic = generic_contraction(A_fermionic, B_fermionic)
+
+# 3. Anyonic tensors: dispatches to @planar (correct braiding)
+V_anyonic = Vect[FibonacciAnyon](:I => 2, :τ => 2)
+A_anyonic = randn(V_anyonic ⊗ V_anyonic ← V_anyonic)
+B_anyonic = randn(V_anyonic ← V_anyonic ⊗ V_anyonic)
+C_anyonic = generic_contraction(A_anyonic, B_anyonic)
+```
+
+The `@plansor` macro incurs a small runtime overhead for bosonic tensors due to the dispatch,
+but ensures correctness for all braiding types.
+
+## Summary: `@tensor` vs `@planar` vs `@plansor`
+
+| Macro | Use case | Braiding handling | Performance |
+|-------|----------|-------------------|-------------|
+| `@tensor` | Bosonic tensors (no symmetries or abelian symmetries) | Ignores braiding (assumes trivial) | Fastest |
+| `@planar` | Fermionic or anyonic tensors | Correctly handles non-trivial braiding | Slower due to braiding |
+| `@plansor` | Generic code (unknown braiding type) | Runtime dispatch based on `BraidingStyle` | Small dispatch overhead |
+
+**Recommendation**: Use `@tensor` for bosonic tensors in performance-critical code,
+`@planar` for fermionic/anyonic tensors, and `@plansor` for generic library code or when
+the braiding type is not known at compile time.

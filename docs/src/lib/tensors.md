@@ -212,6 +212,17 @@ contract!
 ⊗(::AbstractTensorMap, ::AbstractTensorMap)
 ```
 
+### Planar tensor contractions
+
+For fermionic and anyonic tensors, planar contractions are needed to correctly handle
+non-trivial braiding statistics. See the manual section on
+[Fermionic tensor contractions](@ref) and [Anyonic tensor contractions](@ref) for
+detailed information and examples.
+
+The `@planar` macro performs planar tensor contractions that respect non-trivial braiding,
+while `@plansor` automatically dispatches between standard and planar contractions based
+on the `BraidingStyle` of the tensors.
+
 ## `TensorMap` factorizations
 
 The factorisation methods are powered by [MatrixAlgebraKit.jl](https://github.com/QuantumKitHub/MatrixAlgebraKit.jl)
