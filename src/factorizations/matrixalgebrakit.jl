@@ -144,14 +144,16 @@ end
 function MAK.initialize_output(::typeof(svd_compact!), t::AbstractTensorMap, ::AbstractAlgorithm)
     V_cod = V_dom = infimum(fuse(codomain(t)), fuse(domain(t)))
     U = similar(t, codomain(t) ← V_cod)
-    S = DiagonalTensorMap{real(scalartype(t))}(undef, V_cod)
+    output_type = similarstoragetype(t, real(scalartype(t)))
+    S = DiagonalTensorMap{real(scalartype(t)), typeof(V_cod), output_type}(undef, V_cod)
     Vᴴ = similar(t, V_dom ← domain(t))
     return U, S, Vᴴ
 end
 
 function MAK.initialize_output(::typeof(svd_vals!), t::AbstractTensorMap, alg::AbstractAlgorithm)
     V_cod = infimum(fuse(codomain(t)), fuse(domain(t)))
-    return DiagonalTensorMap{real(scalartype(t))}(undef, V_cod)
+    output_storage_type = similarstoragetype(t, real(scalartype(t)))
+    return DiagonalTensorMap{real(scalartype(t)), typeof(V_cod), output_storage_type}(undef, V_cod)
 end
 
 # Eigenvalue decomposition
@@ -219,7 +221,7 @@ end
 function MAK.initialize_output(::typeof(eigh_full!), t::AbstractTensorMap, ::AbstractAlgorithm)
     V_D = fuse(domain(t))
     T = real(scalartype(t))
-    D = DiagonalTensorMap{T}(undef, V_D)
+    D = DiagonalTensorMap{T, typeof(V_D), similarstoragetype(t, T)}(undef, V_D)
     V = similar(t, codomain(t) ← V_D)
     return D, V
 end
@@ -227,7 +229,7 @@ end
 function MAK.initialize_output(::typeof(eig_full!), t::AbstractTensorMap, ::AbstractAlgorithm)
     V_D = fuse(domain(t))
     Tc = complex(scalartype(t))
-    D = DiagonalTensorMap{Tc}(undef, V_D)
+    D = DiagonalTensorMap{Tc, typeof(V_D), similarstoragetype(t, Tc)}(undef, V_D)
     V = similar(t, Tc, codomain(t) ← V_D)
     return D, V
 end
@@ -235,13 +237,13 @@ end
 function MAK.initialize_output(::typeof(eigh_vals!), t::AbstractTensorMap, alg::AbstractAlgorithm)
     V_D = fuse(domain(t))
     T = real(scalartype(t))
-    return D = DiagonalTensorMap{Tc}(undef, V_D)
+    return D = DiagonalTensorMap{Tc, typeof(V_D), storagetype(t)}(undef, V_D)
 end
 
 function MAK.initialize_output(::typeof(eig_vals!), t::AbstractTensorMap, alg::AbstractAlgorithm)
     V_D = fuse(domain(t))
     Tc = complex(scalartype(t))
-    return D = DiagonalTensorMap{Tc}(undef, V_D)
+    return D = DiagonalTensorMap{Tc, typeof(V_D), similarstoragetype(t, Tc)}(undef, V_D)
 end
 
 # QR decomposition

@@ -6,7 +6,7 @@ module Factorizations
 export copy_oftype, factorisation_scalartype, one!, truncspace
 
 using ..TensorKit
-using ..TensorKit: AdjointTensorMap, SectorDict, blocktype, foreachblock, one!
+using ..TensorKit: AdjointTensorMap, SectorDict, blocktype, foreachblock, one!, similarstoragetype
 
 using LinearAlgebra: LinearAlgebra, BlasFloat, Diagonal, svdvals, svdvals!, eigen, eigen!,
     isposdef, isposdef!, ishermitian
@@ -28,7 +28,6 @@ include("diagonal.jl")
 include("pullbacks.jl")
 
 TensorKit.one!(A::AbstractMatrix) = MatrixAlgebraKit.one!(A)
-
 #------------------------------#
 # LinearAlgebra overloads
 #------------------------------#
