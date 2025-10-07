@@ -139,7 +139,7 @@ function TensorMap(
         datac = data[c]
         size(datac) == size(b) ||
             throw(DimensionMismatch("wrong size of block for sector $c"))
-        copy!(b, datac)
+        copyto!(b, datac)
     end
     for (c, b) in data
         c ∈ blocksectors(t) || isempty(b) ||

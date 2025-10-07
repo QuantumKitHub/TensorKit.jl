@@ -272,7 +272,7 @@ function _norm(blockiter, p::Real, init::Real)
         end
     elseif p == 2
         n² = mapreduce(+, blockiter; init = init) do (c, b)
-            return isempty(b) ? init : oftype(init, dim(c) * LinearAlgebra.norm2(b)^2)
+            return isempty(b) ? init : oftype(init, dim(c) * LinearAlgebra.norm(b, 2)^2)
         end
         return sqrt(n²)
     elseif p == 1
@@ -299,7 +299,7 @@ function LinearAlgebra.rank(
     r = dim(one(sectortype(t))) * 0
     dim(t) == 0 && return r
     S = LinearAlgebra.svdvals(t)
-    tol = max(atol, rtol * maximum(first, values(S)))
+    tol = max(atol, rtol * mapreduce(maximum, max, values(S)))
     for (c, b) in S
         if !isempty(b)
             r += dim(c) * count(>(tol), b)
@@ -317,8 +317,8 @@ function LinearAlgebra.cond(t::AbstractTensorMap, p::Real = 2)
             return zero(real(float(scalartype(t))))
         end
         S = LinearAlgebra.svdvals(t)
-        maxS = maximum(first, values(S))
-        minS = minimum(last, values(S))
+        maxS = mapreduce(maximum, max, values(S))
+        minS = mapreduce(minimum, min, values(S))
         return iszero(maxS) ? oftype(maxS, Inf) : (maxS / minS)
     else
         throw(ArgumentError("cond currently only defined for p=2"))
@@ -587,8 +587,8 @@ function ⊗(t1::AbstractTensorMap, t2::AbstractTensorMap)
                             d4 = dim(dom2, f2r.uncoupled)
                             m1 = sreshape(t1[f1l, f1r], (d1, 1, d3, 1))
                             m2 = sreshape(t2[f2l, f2r], (1, d2, 1, d4))
-                            m = sreshape(t[fl, fr], (d1, d2, d3, d4))
-                            m .+= coeff1 .* conj(coeff2) .* m1 .* m2
+                            m  = sreshape(t[fl, fr], (d1, d2, d3, d4))
+                            m .+= coeff1 .* conj.(coeff2) .* m1 .* m2
                         end
                     end
                 end
