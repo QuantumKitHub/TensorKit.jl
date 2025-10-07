@@ -357,7 +357,7 @@ function TensorMap(
     ) where {S}
     return TensorMap(data, codom ← dom; kwargs...)
 end
-function Tensor(data::AbstractArray, codom::TensorSpace, ; kwargs...)
+function Tensor(data::AbstractArray, codom::TensorSpace; kwargs...)
     return TensorMap(data, codom ← one(codom); kwargs...)
 end
 
