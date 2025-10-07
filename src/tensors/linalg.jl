@@ -270,20 +270,11 @@ function _norm(blockiter, p::Real, init::Real)
         return mapreduce(max, blockiter; init = init) do (c, b)
             return isempty(b) ? init : oftype(init, LinearAlgebra.normInf(b))
         end
-    elseif p == 2
-        n² = mapreduce(+, blockiter; init = init) do (c, b)
-            return isempty(b) ? init : oftype(init, dim(c) * LinearAlgebra.norm2(b)^2)
+    elseif p > 0 # finite positive p
+        np = sum(blockiter; init) do (c, b)
+            return oftype(init, dim(c) * norm(b, p)^p)
         end
-        return sqrt(n²)
-    elseif p == 1
-        return mapreduce(+, blockiter; init = init) do (c, b)
-            return isempty(b) ? init : oftype(init, dim(c) * sum(abs, b))
-        end
-    elseif p > 0
-        nᵖ = mapreduce(+, blockiter; init = init) do (c, b)
-            return isempty(b) ? init : oftype(init, dim(c) * LinearAlgebra.normp(b, p)^p)
-        end
-        return (nᵖ)^inv(oftype(nᵖ, p))
+        return np^(inv(oftype(np, p)))
     else
         msg = "Norm with non-positive p is not defined for `AbstractTensorMap`"
         throw(ArgumentError(msg))
@@ -299,7 +290,7 @@ function LinearAlgebra.rank(
     r = 0 * dim(first(allunits(sectortype(t))))
     dim(t) == 0 && return r
     S = LinearAlgebra.svdvals(t)
-    tol = max(atol, rtol * maximum(first, values(S)))
+    tol = max(atol, rtol * maximum(parent(S)))
     for (c, b) in pairs(S)
         if !isempty(b)
             r += dim(c) * count(>(tol), b)
@@ -317,8 +308,8 @@ function LinearAlgebra.cond(t::AbstractTensorMap, p::Real = 2)
             return zero(real(float(scalartype(t))))
         end
         S = LinearAlgebra.svdvals(t)
-        maxS = maximum(first, values(S))
-        minS = minimum(last, values(S))
+        maxS = maximum(parent(S))
+        minS = minimum(parent(S))
         return iszero(maxS) ? oftype(maxS, Inf) : (maxS / minS)
     else
         throw(ArgumentError("cond currently only defined for p=2"))

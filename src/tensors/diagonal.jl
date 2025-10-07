@@ -78,12 +78,10 @@ function DiagonalTensorMap(t::AbstractTensorMap{T, S, 1, 1}) where {T, S}
     return d
 end
 
-Base.similar(d::DiagonalTensorMap) = similar_diagonal(d)
-Base.similar(d::DiagonalTensorMap, ::Type{T}) where {T} = similar_diagonal(d, T)
-
-similar_diagonal(d::DiagonalTensorMap) = DiagonalTensorMap(similar(d.data), d.domain)
-similar_diagonal(d::DiagonalTensorMap, ::Type{T}) where {T <: Number} =
-    DiagonalTensorMap(similar(d.data, T), d.domain)
+Base.similar(d::DiagonalTensorMap) = DiagonalTensorMap(similar(d.data), d.domain)
+function Base.similar(d::DiagonalTensorMap, ::Type{T}) where {T <: Number}
+    return DiagonalTensorMap(similar(d.data, T), d.domain)
+end
 
 # TODO: more constructors needed?
 
