@@ -27,7 +27,7 @@ using .TestSetup
     @constinferred Nothing iterate(it, s)
     @test f == @constinferred first(it)
     @testset "Fusion tree $Istr: printing" begin
-        @test eval(Meta.parse(sprint(show, f))) == f
+        @test eval(Meta.parse(sprint(show, f; context = (:module => @__MODULE__)))) == f
     end
     @testset "Fusion tree $Istr: constructor properties" begin
         u = unit(I)

@@ -4,11 +4,13 @@ using TensorKit
 @isdefined(TestSetup) || include("../setup.jl")
 using .TestSetup
 
+parse_show(x) = Meta.parse(sprint(show, x; context = (:module => @__MODULE__)))
+
 @timedtestset "Fields" begin
     @test isa(ℝ, Field)
     @test isa(ℂ, Field)
-    @test eval(Meta.parse(sprint(show, ℝ))) == ℝ
-    @test eval(Meta.parse(sprint(show, ℂ))) == ℂ
+    @test eval(parse_show(ℝ)) == ℝ
+    @test eval(parse_show(ℂ)) == ℂ
     @test ℝ ⊆ ℝ
     @test ℝ ⊆ ℂ
     @test ℂ ⊆ ℂ
@@ -49,8 +51,8 @@ end
 @timedtestset "ElementarySpace: CartesianSpace" begin
     d = 2
     V = ℝ^d
-    @test eval(Meta.parse(sprint(show, V))) == V
-    @test eval(Meta.parse(sprint(show, typeof(V)))) == typeof(V)
+    @test eval(parse_show(V)) == V
+    @test eval(parse_show(typeof(V))) == typeof(V)
     @test isa(V, VectorSpace)
     @test isa(V, ElementarySpace)
     @test isa(InnerProductStyle(V), HasInnerProduct)
@@ -93,9 +95,9 @@ end
 @timedtestset "ElementarySpace: ComplexSpace" begin
     d = 2
     V = ℂ^d
-    @test eval(Meta.parse(sprint(show, V))) == V
-    @test eval(Meta.parse(sprint(show, V'))) == V'
-    @test eval(Meta.parse(sprint(show, typeof(V)))) == typeof(V)
+    @test eval(parse_show(V)) == V
+    @test eval(parse_show(V')) == V'
+    @test eval(parse_show(typeof(V))) == typeof(V)
     @test isa(V, VectorSpace)
     @test isa(V, ElementarySpace)
     @test isa(InnerProductStyle(V), HasInnerProduct)
@@ -145,10 +147,10 @@ end
 @timedtestset "ElementarySpace: GeneralSpace" begin
     d = 2
     V = GeneralSpace{ℂ}(d)
-    @test eval(Meta.parse(sprint(show, V))) == V
-    @test eval(Meta.parse(sprint(show, dual(V)))) == dual(V)
-    @test eval(Meta.parse(sprint(show, conj(V)))) == conj(V)
-    @test eval(Meta.parse(sprint(show, typeof(V)))) == typeof(V)
+    @test eval(parse_show(V)) == V
+    @test eval(parse_show(dual(V))) == dual(V)
+    @test eval(parse_show(conj(V))) == conj(V)
+    @test eval(parse_show(typeof(V))) == typeof(V)
     @test !isdual(V)
     @test isdual(V')
     @test !isdual(conj(V))
@@ -179,8 +181,8 @@ end
     end
     V = GradedSpace(gen)
     @test eval(Meta.parse(TensorKit.type_repr(typeof(V)))) == typeof(V)
-    @test eval(Meta.parse(sprint(show, V))) == V
-    @test eval(Meta.parse(sprint(show, V'))) == V'
+    @test eval(parse_show(V)) == V
+    @test eval(parse_show(V')) == V'
     @test V' == GradedSpace(gen; dual = true)
     @test V == @constinferred GradedSpace(gen...)
     @test V' == @constinferred GradedSpace(gen...; dual = true)
@@ -201,8 +203,8 @@ end
     end
     @test @constinferred(hash(V)) == hash(deepcopy(V)) != hash(V')
     @test V == GradedSpace(reverse(collect(gen))...)
-    @test eval(Meta.parse(sprint(show, V))) == V
-    @test eval(Meta.parse(sprint(show, typeof(V)))) == typeof(V)
+    @test eval(parse_show(V)) == V
+    @test eval(parse_show(typeof(V))) == typeof(V)
     # space with no sectors
     @test dim(@constinferred(zerospace(V))) == 0
     # space with a single sector
@@ -212,7 +214,7 @@ end
     @test @constinferred(zerospace(V)) == GradedSpace(unit(I) => 0)
     # randsector never returns trivial sector, so this cannot error
     @test_throws ArgumentError GradedSpace(unit(I) => 1, randsector(I) => 0, unit(I) => 3)
-    @test eval(Meta.parse(sprint(show, W))) == W
+    @test eval(parse_show(W)) == W
     @test isa(V, VectorSpace)
     @test isa(V, ElementarySpace)
     @test isa(InnerProductStyle(V), HasInnerProduct)
@@ -257,8 +259,8 @@ end
 @timedtestset "ProductSpace{ℂ}" begin
     V1, V2, V3, V4 = ℂ^1, ℂ^2, ℂ^3, ℂ^4
     P = @constinferred ProductSpace(V1, V2, V3, V4)
-    @test eval(Meta.parse(sprint(show, P))) == P
-    @test eval(Meta.parse(sprint(show, typeof(P)))) == typeof(P)
+    @test eval(parse_show(P)) == P
+    @test eval(parse_show(typeof(P))) == typeof(P)
     @test isa(P, VectorSpace)
     @test isa(P, CompositeSpace)
     @test spacetype(P) == ComplexSpace
@@ -285,11 +287,11 @@ end
     @test fuse(flip(V1), V2, flip(V3)) ≅ V1 ⊗ V2 ⊗ V3
     @test @constinferred(⊗(P)) == P
     @test @constinferred(⊗(V1)) == ProductSpace(V1)
-    @test eval(Meta.parse(sprint(show, ⊗(V1)))) == ⊗(V1)
+    @test eval(parse_show(⊗(V1))) == ⊗(V1)
     @test @constinferred(one(V1)) == @constinferred(one(typeof(V1))) ==
         @constinferred(one(P)) == @constinferred(one(typeof(P))) ==
         ProductSpace{ComplexSpace}(())
-    @test eval(Meta.parse(sprint(show, one(P)))) == one(P)
+    @test eval(parse_show(one(P))) == one(P)
     @test @constinferred(⊗(one(P), P)) == P
     @test @constinferred(⊗(P, one(P))) == P
     @test @constinferred(⊗(one(P), one(P))) == one(P)
@@ -324,8 +326,8 @@ end
     V1, V2, V3 = SU₂Space(0 => 3, 1 // 2 => 1), SU₂Space(0 => 2, 1 => 1),
         SU₂Space(1 // 2 => 1, 1 => 1)'
     P = @constinferred ProductSpace(V1, V2, V3)
-    @test eval(Meta.parse(sprint(show, P))) == P
-    @test eval(Meta.parse(sprint(show, typeof(P)))) == typeof(P)
+    @test eval(parse_show(P)) == P
+    @test eval(parse_show(typeof(P))) == typeof(P)
     @test isa(P, VectorSpace)
     @test isa(P, CompositeSpace)
     @test spacetype(P) == SU₂Space
@@ -403,8 +405,8 @@ end
         @test W == (V3 ⊗ V4 ⊗ V5 → V1 ⊗ V2)
         @test W == (V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5)
         @test W' == (V1 ⊗ V2 → V3 ⊗ V4 ⊗ V5)
-        @test eval(Meta.parse(sprint(show, W))) == W
-        @test eval(Meta.parse(sprint(show, typeof(W)))) == typeof(W)
+        @test eval(parse_show(W)) == W
+        @test eval(parse_show(typeof(W))) == typeof(W)
         @test spacetype(W) == typeof(V1)
         @test sectortype(W) == sectortype(V1)
         @test W[1] == V1
