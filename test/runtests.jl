@@ -54,6 +54,13 @@ istestfile(fn) = endswith(fn, ".jl") && !contains(fn, "setup")
         continue
     end
 
+    # somehow AD tests are unreasonably slow on Apple CI
+    # and ChainRulesTestUtils doesn't like prereleases
+    if group == "autodiff"
+        Sys.isapple() && get(ENV, "CI", "false") == "true" && continue
+        isempty(VERSION.prerelease) || continue
+    end
+
     grouppath = joinpath(@__DIR__, group)
     @time for file in filter(istestfile, readdir(grouppath))
         @info "Running test file: $file"
