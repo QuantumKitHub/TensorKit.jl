@@ -51,14 +51,17 @@ dispatch to the appropriate implementation based on the braiding style.
 ```julia
 # Fermionic tensors
 V = Vect[FermionParity](0 => 2, 1 => 2)
-A = randn(V ⊗ V ← V)
-B = randn(V ← V ⊗ V)
+A = randn(V ← V)
+B = randn(V ← V')
+C = randn(V' ← V)
 
 # Correct handling of fermionic statistics
-@planar C[i; j] := A[i k; l] * B[l; k j]
+@planar D[i; j] := A[i; j] + B[i; k] * C[k; j]
 
 # With explicit braiding tensor
-@planar C[i; j] := A[i k; l] * τ[k m; n l] * B[n; m j]
+A2 = randn(V ← V ⊗ V)
+B2 = randn(V ⊗ V ← V)
+@planar C2[i; j] := A2[i; k l] * τ[k l; m n] * B2[m n; j]
 ```
 
 See also: [`@plansor`](@ref), [`@tensor`](@ref)
@@ -212,14 +215,14 @@ end
 
 # Bosonic case (uses @tensor internally)
 V_bosonic = ℂ^2
-A_bosonic = randn(V_bosonic ⊗ V_bosonic ← V_bosonic)
-B_bosonic = randn(V_bosonic ← V_bosonic ⊗ V_bosonic)
+A_bosonic = randn(V_bosonic ← V_bosonic)
+B_bosonic = randn(V_bosonic ← V_bosonic)
 C_bosonic = my_contraction(A_bosonic, B_bosonic)
 
 # Fermionic case (uses @planar internally)
 V_fermionic = Vect[FermionParity](0 => 2, 1 => 2)
-A_fermionic = randn(V_fermionic ⊗ V_fermionic ← V_fermionic)
-B_fermionic = randn(V_fermionic ← V_fermionic ⊗ V_fermionic)
+A_fermionic = randn(V_fermionic ← V_fermionic)
+B_fermionic = randn(V_fermionic ← V_fermionic)
 C_fermionic = my_contraction(A_fermionic, B_fermionic)
 ```
 

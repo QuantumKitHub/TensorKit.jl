@@ -1279,11 +1279,12 @@ correctly handles the signs that arise from reordering fermionic indices:
 ```julia
 # Example with fermionic tensors
 V = Vect[FermionParity](0 => 2, 1 => 2)  # Fermionic vector space
-A = randn(V ⊗ V ← V)
-B = randn(V ← V ⊗ V)
+A = randn(V ← V)
+B = randn(V ← V')
+C = randn(V' ← V)
 
 # Use @planar for fermionic contractions
-@planar C[i; j] := A[i k; l] * B[l; k j]
+@planar D[i; j] := A[i; j] + B[i; k] * C[k; j]
 ```
 
 The key difference from `@tensor` is that `@planar` uses planar operations (`planaradd!`,
@@ -1295,11 +1296,15 @@ power) when indices with odd fermion parity are exchanged.
 
 The braiding of fermionic indices can be made explicit using braiding tensors, denoted by `τ`.
 A braiding tensor `τ[a b; c d]` represents the operation that permutes indices, inserting
-the appropriate fermionic signs:
+the appropriate fermionic signs. The braiding tensor must always have exactly 2 input and 2 output indices.
 
 ```julia
-# Explicit braiding in a contraction
-@planar C[i; j] := A[i k; l] * τ[k m; n l] * B[n; m j]
+# Example with explicit braiding (from test suite)
+V = ℂ^2  # Works with any vector space
+t1 = randn(V ← V)
+t2 = randn(V ← V)
+# The braiding tensors permute indices while inserting appropriate signs
+@planar opt = true result := t1[d; a] * t2[b; c] * τ[c b; a d] / 2
 ```
 
 The braiding tensor `τ` is special: TensorKit.jl automatically constructs it based on the
@@ -1335,11 +1340,12 @@ Just like fermionic tensors, anyonic tensors require the use of `@planar` instea
 ```julia
 # Example with Fibonacci anyons
 V = Vect[FibonacciAnyon](:I => 2, :τ => 2)
-A = randn(V ⊗ V ← V)
-B = randn(V ← V ⊗ V)
+A = randn(V ← V)
+B = randn(V ← V')
+C = randn(V' ← V)
 
 # Use @planar for anyonic contractions
-@planar C[i; j] := A[i k; l] * B[l; k j]
+@planar D[i; j] := A[i; j] + B[i; k] * C[k; j]
 ```
 
 For anyonic systems, the braiding is even more general than for fermions: instead of just
@@ -1350,11 +1356,16 @@ automatically through the braiding tensor `τ`.
 ### Anyonic braiding tensors
 
 The braiding tensors for anyons encode the non-trivial R-matrices (or F-matrices for the
-fusion structure) of the anyonic theory:
+fusion structure) of the anyonic theory. Similar to the fermionic case, these can be used
+explicitly:
 
 ```julia
 # Explicit braiding in anyonic contractions
-@planar C[i; j] := A[i k; l] * τ[k m; n l] * B[n; m j]
+V = Vect[FibonacciAnyon](:I => 2, :τ => 2)
+A = randn(V ← V ⊗ V)
+B = randn(V ⊗ V ← V)
+# Using braiding tensor to permute indices
+@planar C[i; j] := A[i; k l] * τ[k l; m n] * B[m n; j]
 ```
 
 The matrix elements of `τ` are determined by the specific anyonic theory (e.g., Fibonacci,
@@ -1386,20 +1397,20 @@ end
 # Works correctly for all three cases:
 # 1. Bosonic tensors: dispatches to @tensor (fast)
 V_bosonic = ℂ^2
-A_bosonic = randn(V_bosonic ⊗ V_bosonic ← V_bosonic)
-B_bosonic = randn(V_bosonic ← V_bosonic ⊗ V_bosonic)
+A_bosonic = randn(V_bosonic ← V_bosonic)
+B_bosonic = randn(V_bosonic ← V_bosonic)
 C_bosonic = generic_contraction(A_bosonic, B_bosonic)
 
 # 2. Fermionic tensors: dispatches to @planar (correct signs)
 V_fermionic = Vect[FermionParity](0 => 2, 1 => 2)
-A_fermionic = randn(V_fermionic ⊗ V_fermionic ← V_fermionic)
-B_fermionic = randn(V_fermionic ← V_fermionic ⊗ V_fermionic)
+A_fermionic = randn(V_fermionic ← V_fermionic)
+B_fermionic = randn(V_fermionic ← V_fermionic)
 C_fermionic = generic_contraction(A_fermionic, B_fermionic)
 
 # 3. Anyonic tensors: dispatches to @planar (correct braiding)
 V_anyonic = Vect[FibonacciAnyon](:I => 2, :τ => 2)
-A_anyonic = randn(V_anyonic ⊗ V_anyonic ← V_anyonic)
-B_anyonic = randn(V_anyonic ← V_anyonic ⊗ V_anyonic)
+A_anyonic = randn(V_anyonic ← V_anyonic)
+B_anyonic = randn(V_anyonic ← V_anyonic)
 C_anyonic = generic_contraction(A_anyonic, B_anyonic)
 ```
 
