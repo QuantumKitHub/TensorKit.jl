@@ -4,6 +4,9 @@ import TensorKit as TK
 using Random: randperm
 using TensorOperations
 
+# TODO: remove this once type_repr works for all included types
+using TensorKitSectors
+
 @isdefined(TestSetup) || include("../setup.jl")
 using .TestSetup
 

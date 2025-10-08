@@ -1,6 +1,9 @@
 using Test, TestExtras
 using TensorKit
 
+# TODO: remove this once type_repr works for all included types
+using TensorKitSectors
+
 @isdefined(TestSetup) || include("../setup.jl")
 using .TestSetup
 
