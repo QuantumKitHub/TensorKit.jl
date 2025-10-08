@@ -1298,18 +1298,10 @@ The braiding of fermionic indices can be made explicit using braiding tensors, d
 A braiding tensor `τ[a b; c d]` represents the operation that permutes indices, inserting
 the appropriate fermionic signs. The braiding tensor must always have exactly 2 input and 2 output indices.
 
-```julia
-# Example with explicit braiding (from test suite)
-V = ℂ^2  # Works with any vector space
-t1 = randn(V ← V)
-t2 = randn(V ← V)
-# The braiding tensors permute indices while inserting appropriate signs
-@planar opt = true result := t1[d; a] * t2[b; c] * τ[c b; a d] / 2
-```
-
 The braiding tensor `τ` is special: TensorKit.jl automatically constructs it based on the
 spaces of the indices it connects. You don't need to define it yourself; simply use the
-symbol `τ` in your `@planar` expressions.
+symbol `τ` in your `@planar` expressions. For examples of using braiding tensors, see the
+test suite in `test/planar.jl`.
 
 ### Key differences from bosonic contractions
 
