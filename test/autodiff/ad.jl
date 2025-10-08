@@ -1,3 +1,6 @@
+using Test, TestExtras
+using TensorKit
+using TensorOperations
 using ChainRulesCore
 using ChainRulesTestUtils
 using FiniteDifferences: FiniteDifferences, central_fdm, forward_fdm

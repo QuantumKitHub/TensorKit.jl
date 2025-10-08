@@ -1,5 +1,13 @@
+using Test, TestExtras
+using TensorKit
+using Combinatorics: permutations
+using LinearAlgebra: LinearAlgebra
+
+@isdefined(TestSetup) || include("../setup.jl")
+using .TestSetup
+
 spacelist = try
-    if ENV["CI"] == "true"
+    if get(ENV, "CI", "false") == "true"
         println("Detected running on CI")
         if Sys.iswindows()
             (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂)

@@ -1,9 +1,13 @@
-println("------------------------------------")
-println("Fusion Trees")
-println("------------------------------------")
-ti = time()
-@timedtestset "Fusion trees for $(TensorKit.type_repr(I))" verbose = true for I in
-    sectorlist
+using Test, TestExtras
+using TensorKit
+import TensorKit as TK
+using Random: randperm
+using TensorOperations
+
+@isdefined(TestSetup) || include("../setup.jl")
+using .TestSetup
+
+@timedtestset "Fusion trees for $(TensorKit.type_repr(I))" verbose = true for I in sectorlist
     Istr = TensorKit.type_repr(I)
     N = 5
     out = ntuple(n -> randsector(I), N)
@@ -592,10 +596,3 @@ ti = time()
     end
     TensorKit.empty_globalcaches!()
 end
-tf = time()
-printstyled(
-    "Finished fusion tree tests in ",
-    string(round(tf - ti; sigdigits = 3)),
-    " seconds."; bold = true, color = Base.info_color()
-)
-println()
