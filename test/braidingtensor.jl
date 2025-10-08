@@ -1,4 +1,5 @@
 # TODO: Make into proper tests and integrate in testset
+# note: this is not part of the testsuite!
 
 import TensorKit: BraidingTensor
 
