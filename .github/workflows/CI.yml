@@ -1,68 +1,71 @@
 name: CI
+
 on:
   push:
     branches:
-      - 'master'
       - 'main'
       - 'release-'
+
     tags: '*'
+
+    paths-ignore:
+      - 'docs/**'
   pull_request:
   workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Cancel intermediate builds: only if it is a pull request build.
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 
 jobs:
   test:
-    name: Julia ${{ matrix.version }} - ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         version:
-          - '1'
           - 'lts'
+          - '1'
+        group:
+          - symmetries
+          - tensors
+          - other
+          - autodiff
         os:
           - ubuntu-latest
           - macOS-latest
           - windows-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: ${{ matrix.version }}
-      - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@latest
-      - uses: julia-actions/julia-runtest@latest
-        env:
-          JULIA_NUM_THREADS: 4
-      - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v5
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        with:
-          files: lcov.info
+    uses: "QuantumKitHub/QuantumKitHubActions/.github/workflows/Tests.yml@main"
+    with:
+      group: "${{ matrix.group }}"
+      julia-version: "${{ matrix.version }}"
+      os: "${{ matrix.os }}"
+      nthreads: 4
+      timeout-minutes: 120
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
   test-nightly:
     needs: test
-    name: Julia nightly - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         version:
           - 'nightly'
+        group:
+          - symmetries
+          - tensors
+          - other
+          - autodiff
         os:
           - ubuntu-latest
           - macOS-latest
           - windows-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v5
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: ${{ matrix.version }}
-      - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@latest
-      - uses: julia-actions/julia-runtest@latest
-        env:
-          JULIA_NUM_THREADS: 4
+    uses: "QuantumKitHub/QuantumKitHubActions/.github/workflows/Tests.yml@main"
+    with:
+      group: "${{ matrix.group }}"
+      julia-version: "${{ matrix.version }}"
+      os: "${{ matrix.os }}"
+      nthreads: 4
+      timeout-minutes: 120
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
