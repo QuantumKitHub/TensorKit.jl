@@ -1,74 +1,12 @@
-using TensorKit, TensorOperations, Test
-using TensorKit: BraidingTensor
+using Test, TestExtras
+using TensorKit
 using TensorKit: planaradd!, planartrace!, planarcontract!
 using TensorKit: PlanarTrivial, ℙ
+using TensorOperations
 
-"""
-    force_planar(obj)
+@isdefined(TestSetup) || include("../setup.jl")
+using .TestSetup
 
-Replace an object with a planar equivalent -- i.e. one that disallows braiding.
-"""
-force_planar(V::ComplexSpace) = isdual(V) ? (ℙ^dim(V))' : ℙ^dim(V)
-function force_planar(V::GradedSpace)
-    return GradedSpace((c ⊠ PlanarTrivial() => dim(V, c) for c in sectors(V))..., isdual(V))
-end
-force_planar(V::ProductSpace) = mapreduce(force_planar, ⊗, V)
-function force_planar(tsrc::TensorMap{<:Any, ComplexSpace})
-    tdst = TensorMap{scalartype(tsrc)}(
-        undef,
-        force_planar(codomain(tsrc)) ←
-            force_planar(domain(tsrc))
-    )
-    copyto!(block(tdst, PlanarTrivial()), block(tsrc, Trivial()))
-    return tdst
-end
-function force_planar(tsrc::TensorMap{<:Any, <:GradedSpace})
-    tdst = TensorMap{scalartype(tsrc)}(
-        undef,
-        force_planar(codomain(tsrc)) ←
-            force_planar(domain(tsrc))
-    )
-    for (c, b) in blocks(tsrc)
-        copyto!(block(tdst, c ⊠ PlanarTrivial()), b)
-    end
-    return tdst
-end
-
-Vtr = (
-    ℂ^3,
-    (ℂ^2)',
-    ℂ^5,
-    ℂ^6,
-    (ℂ^7)',
-)
-VU₁ = (
-    Vect[U1Irrep](0 => 1, 1 => 2, -1 => 2),
-    Vect[U1Irrep](0 => 3, 1 => 1, -1 => 1),
-    Vect[U1Irrep](0 => 2, 1 => 2, -1 => 1)',
-    Vect[U1Irrep](0 => 1, 1 => 2, -1 => 3),
-    Vect[U1Irrep](0 => 1, 1 => 3, -1 => 3)',
-)
-VfU₁ = (
-    Vect[FermionNumber](0 => 1, 1 => 2, -1 => 2),
-    Vect[FermionNumber](0 => 3, 1 => 1, -1 => 1),
-    Vect[FermionNumber](0 => 2, 1 => 2, -1 => 1)',
-    Vect[FermionNumber](0 => 1, 1 => 2, -1 => 3),
-    Vect[FermionNumber](0 => 1, 1 => 3, -1 => 3)',
-)
-VfSU₂ = (
-    Vect[FermionSpin](0 => 3, 1 // 2 => 1),
-    Vect[FermionSpin](0 => 2, 1 => 1),
-    Vect[FermionSpin](1 // 2 => 1, 1 => 1)',
-    Vect[FermionSpin](0 => 2, 1 // 2 => 2),
-    Vect[FermionSpin](0 => 1, 1 // 2 => 1, 3 // 2 => 1)',
-)
-Vfib = (
-    Vect[FibonacciAnyon](:I => 1, :τ => 2),
-    Vect[FibonacciAnyon](:I => 2, :τ => 1),
-    Vect[FibonacciAnyon](:I => 1, :τ => 1),
-    Vect[FibonacciAnyon](:I => 1, :τ => 1),
-    Vect[FibonacciAnyon](:I => 1, :τ => 1),
-)
 @testset "Braiding tensor" begin
     for V in (Vtr, VU₁, VfU₁, VfSU₂, Vfib)
         W = V[1] ⊗ V[2] ← V[2] ⊗ V[1]
