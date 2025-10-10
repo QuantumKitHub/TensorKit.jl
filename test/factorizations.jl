@@ -260,6 +260,14 @@ for V in spacelist
                 @test isisometry(U4)
                 @test isisometry(Vᴴ4; side = :right)
                 @test norm(t - U4 * S4 * Vᴴ4) <= 0.5
+
+                trunc = truncrank(dim(domain(S)) ÷ 2) & trunctol(; atol = λ - 10eps(λ))
+                U5, S5, Vᴴ5 = @constinferred svd_trunc(t; trunc)
+                @test t * Vᴴ5' ≈ U5 * S5
+                @test isisometry(U5)
+                @test isisometry(Vᴴ5; side = :right)
+                @test minimum(minimum, values(LinearAlgebra.diag(S5))) >= λ
+                @test dim(domain(S5)) ≤ dim(domain(S)) ÷ 2
             end
         end
 
