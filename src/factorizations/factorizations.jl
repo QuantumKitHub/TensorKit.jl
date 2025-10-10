@@ -30,9 +30,9 @@ include("pullbacks.jl")
 
 TensorKit.one!(A::AbstractMatrix) = MatrixAlgebraKit.one!(A)
 
-function MatrixAlgebraKit.isisometry(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple)
+function MatrixAlgebraKit.isisometric(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple)
     t = permute(t, (p₁, p₂); copy = false)
-    return isisometry(t)
+    return isisometric(t)
 end
 
 #------------------------------#
@@ -84,14 +84,14 @@ function LinearAlgebra.isposdef!(t::AbstractTensorMap)
 end
 
 # TODO: tolerances are per-block, not global or weighted - does that matter?
-function MatrixAlgebraKit.is_left_isometry(t::AbstractTensorMap; kwargs...)
+function MatrixAlgebraKit.is_left_isometric(t::AbstractTensorMap; kwargs...)
     domain(t) ≾ codomain(t) || return false
-    f((c, b)) = MatrixAlgebraKit.is_left_isometry(b; kwargs...)
+    f((c, b)) = MatrixAlgebraKit.is_left_isometric(b; kwargs...)
     return all(f, blocks(t))
 end
-function MatrixAlgebraKit.is_right_isometry(t::AbstractTensorMap; kwargs...)
+function MatrixAlgebraKit.is_right_isometric(t::AbstractTensorMap; kwargs...)
     domain(t) ≿ codomain(t) || return false
-    f((c, b)) = MatrixAlgebraKit.is_right_isometry(b; kwargs...)
+    f((c, b)) = MatrixAlgebraKit.is_right_isometric(b; kwargs...)
     return all(f, blocks(t))
 end
 

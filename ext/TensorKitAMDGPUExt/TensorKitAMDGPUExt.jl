@@ -1,6 +1,6 @@
 module TensorKitAMDGPUExt
 
-using AMDGPU, AMDGPU.CUBLAS, LinearAlgebra
+using AMDGPU, AMDGPU.rocBLAS, LinearAlgebra
 using AMDGPU: @allowscalar
 import AMDGPU: rand as rocrand, rand! as rocrand!, randn as rocrandn, randn! as rocrandn!
 
@@ -16,7 +16,7 @@ using Random
 
 include("roctensormap.jl")
 
-const ROCDiagonalTensorMap{T, S} = DiagonalTensorMap{T, S, ROCVector{T, AMDGPU.DeviceMemory}}
+const ROCDiagonalTensorMap{T, S} = DiagonalTensorMap{T, S, ROCVector{T, AMDGPU.Mem.HIPBuffer}}
 
 """
     ROCDiagonalTensorMap{T}(undef, domain::S) where {T,S<:IndexSpace}
@@ -42,6 +42,10 @@ ROCDiagonalTensorMap(::UndefInitializer, V::IndexSpace) = ROCDiagonalTensorMap{F
 
 function ROCDiagonalTensorMap(data::ROCVector{T}, V::S) where {T, S}
     return ROCDiagonalTensorMap{T, S}(data, V)
+end
+
+function ROCDiagonalTensorMap(data::Vector{T}, V::S) where {T, S}
+    return ROCDiagonalTensorMap{T, S}(ROCVector{T}(data), V)
 end
 
 function TensorKit.Factorizations.MAK.initialize_output(::typeof(svd_full!), t::ROCDiagonalTensorMap, alg::DiagonalAlgorithm)

@@ -1,11 +1,11 @@
-const ROCTensorMap{T,S,N₁,N₂} = TensorMap{T,S,N₁,N₂, ROCVector{T,AMDGPU.DeviceMemory}}
+const ROCTensorMap{T,S,N₁,N₂} = TensorMap{T,S,N₁,N₂, ROCVector{T,AMDGPU.Mem.HIPBuffer}}
 const ROCTensor{T, S, N} = ROCTensorMap{T, S, N, 0}
 
 const AdjointROCTensorMap{T,S,N₁,N₂} = AdjointTensorMap{T,S,N₁,N₂,ROCTensorMap{T,S,N₁,N₂}}
 
 function TensorKit.tensormaptype(S::Type{<:IndexSpace}, N₁, N₂, TorA::Type{<:StridedROCArray})
     if TorA <: ROCArray
-        return TensorMap{eltype(TorA),S,N₁,N₂,ROCVector{eltype(TorA), AMDGPU.DeviceMemory}}
+        return TensorMap{eltype(TorA),S,N₁,N₂,ROCVector{eltype(TorA), AMDGPU.Mem.HIPBuffer}}
     else
         throw(ArgumentError("argument $TorA should specify a scalar type (`<:Number`) or a storage type `<:ROCVector{<:Number}`"))
     end
@@ -68,6 +68,10 @@ function ROCTensorMap(data::AbstractDict{<:Sector,<:ROCMatrix}, codom::TensorSpa
     return ROCTensorMap(data, codom ← dom)
 end
 
+function ROCTensorMap(ts::TensorMap{T, S, N₁, N₂, A}) where {T, S, N₁, N₂, A}
+    return ROCTensorMap{T, S, N₁, N₂}(ROCArray(ts.data), ts.space)
+end
+
 for (fname, felt) in ((:zeros, :zero), (:ones, :one))
     @eval begin
         function AMDGPU.$fname(codomain::TensorSpace{S},
@@ -87,7 +91,7 @@ for (fname, felt) in ((:zeros, :zero), (:ones, :one))
     end
 end
 
-for randfun in (:curand, :curandn)
+for randfun in (:rocrand, :rocrandn)
     randfun! = Symbol(randfun, :!)
     @eval begin
         # converting `codomain` and `domain` into `HomSpace`
@@ -171,7 +175,7 @@ vi_scalartype(::Type{<:ROCTensorMap{T}}) where {T} = T
 vi_scalartype(::Type{<:ROCArray{T}}) where {T} = T
 
 function TensorKit.similarstoragetype(TT::Type{<:ROCTensorMap{TTT,S,N₁,N₂}}, ::Type{T}) where {TTT,T,S,N₁,N₂}
-    return ROCVector{T, AMDGPU.DeviceMemory}
+    return ROCVector{T, AMDGPU.Mem.HIPBuffer}
 end
 
 function Base.convert(TT::Type{ROCTensorMap{T,S,N₁,N₂}},
