@@ -564,49 +564,44 @@ Compute the tensor product between two `AbstractTensorMap` instances, which resu
 new `TensorMap` instance whose codomain is `codomain(t1) ⊗ codomain(t2)` and whose domain
 is `domain(t1) ⊗ domain(t2)`.
 """
-function ⊗(t1::AbstractTensorMap, t2::AbstractTensorMap)
-    (S = spacetype(t1)) === spacetype(t2) ||
-        throw(SpaceMismatch("spacetype(t1) ≠ spacetype(t2)"))
-    cod1, cod2 = codomain(t1), codomain(t2)
-    dom1, dom2 = domain(t1), domain(t2)
-    p12 = (
-        (codomainind(t1)..., (codomainind(t2) .+ numind(t1))...),
-        (domainind(t1)..., (domainind(t2) .+ numind(t1))...),
-    )
+function ⊗(A::AbstractTensorMap, B::AbstractTensorMap)
+    (S = spacetype(A)) === spacetype(B) || throw(SpaceMismatch("incompatible space types"))
 
-    T = promote_type(scalartype(t1), scalartype(t2))
-    TC = promote_type(sectorscalartype(sectortype(t1)), T)
-    t = TO.tensoralloc_contract(
-        TC,
-        t1, ((codomainind(t1)..., domainind(t1)...), ()), false,
-        t2, ((), (codomainind(t2)..., domainind(t2)...)), false,
-        p12, Val(false)
+    # allocate destination with correct scalartype
+    pA = ((codomainind(A)..., domainind(A)...), ())
+    pB = ((), (codomainind(B)..., domainind(B)...))
+    NA = numind(A)
+    pAB = (
+        (codomainind(A)..., (codomainind(B) .+ NA)...),
+        (domainind(A)..., (domainind(B) .+ NA)...),
     )
+    TC = TO.promote_contract(scalartype(A), scalartype(B))
+    C = TO.tensoralloc_contract(TC, A, pA, false, B, pB, false, pAB, Val(false))
+    zerovector!(C)
 
-    zerovector!(t)
-    for (f1l, f1r) in fusiontrees(t1)
-        for (f2l, f2r) in fusiontrees(t2)
+    # implement tensor product
+    for (f1l, f1r) in fusiontrees(A)
+        @inbounds a = A[f1l, f1r]
+        for (f2l, f2r) in fusiontrees(B)
+            @inbounds b = B[f2l, f2r]
             c1 = f1l.coupled # = f1r.coupled
             c2 = f2l.coupled # = f2r.coupled
-            for c in c1 ⊗ c2
-                for μ in 1:Nsymbol(c1, c2, c)
-                    for (fl, coeff1) in merge(f1l, f2l, c, μ)
-                        for (fr, coeff2) in merge(f1r, f2r, c, μ)
-                            d1 = dim(cod1, f1l.uncoupled)
-                            d2 = dim(cod2, f2l.uncoupled)
-                            d3 = dim(dom1, f1r.uncoupled)
-                            d4 = dim(dom2, f2r.uncoupled)
-                            m1 = sreshape(t1[f1l, f1r], (d1, 1, d3, 1))
-                            m2 = sreshape(t2[f2l, f2r], (1, d2, 1, d4))
-                            m = sreshape(t[fl, fr], (d1, d2, d3, d4))
-                            m .+= coeff1 .* conj(coeff2) .* m1 .* m2
-                        end
+            for c in c1 ⊗ c2, μ in 1:Nsymbol(c1, c2, c)
+                for (fl, coeff1) in merge(f1l, f2l, c, μ)
+                    for (fr, coeff2) in merge(f1r, f2r, c, μ)
+                        TO.tensorcontract!(
+                            C[fl, fr],
+                            A[f1l, f1r], pA, false,
+                            B[f2l, f2r], pB, false,
+                            pAB,
+                            coeff1 * conj(coeff2), One()
+                        )
                     end
                 end
             end
         end
     end
-    return t
+    return C
 end
 
 # deligne product of tensors
