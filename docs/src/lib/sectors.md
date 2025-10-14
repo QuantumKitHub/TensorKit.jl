@@ -31,15 +31,15 @@ Irrep
 
 ## Methods for defining and characterizing `Sector` subtypes
 ```@docs
-Base.one(::Sector)
-dual(::Sector)
+unit(::Sector)
+dual
 Nsymbol
 ⊗
 Fsymbol
 Rsymbol
 Bsymbol
 dim(::Sector)
-frobeniusschur
+frobenius_schur_phase
 twist(::Sector)
 Base.isreal(::Type{<:Sector})
 TensorKitSectors.sectorscalartype

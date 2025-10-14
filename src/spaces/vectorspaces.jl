@@ -66,13 +66,12 @@ function space end
 Return the total dimension of the vector space `V` as an Int.
 """ dim(::VectorSpace)
 
-"""
+@doc """
     dual(V::VectorSpace) -> VectorSpace
 
 Return the dual space of `V`; also obtained via `V'`. This should satisfy
 `dual(dual(V)) == V`. It is assumed that `typeof(V) == typeof(V')`.
-"""
-function dual end
+""" dual(::VectorSpace)
 
 # convenience definitions:
 Base.adjoint(V::VectorSpace) = dual(V)
