@@ -246,7 +246,7 @@ function flip(f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}, i::Int; inv:
     @assert 0 < i ≤ N₁ + N₂
     if i ≤ N₁
         a = f₁.uncoupled[i]
-        χₐ = frobeniusschur(a)
+        χₐ = frobenius_schur_phase(a)
         θₐ = twist(a)
         if !inv
             factor = f₁.isdual[i] ? χₐ * θₐ : one(θₐ)
@@ -259,7 +259,7 @@ function flip(f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}, i::Int; inv:
     else
         i -= N₁
         a = f₂.uncoupled[i]
-        χₐ = frobeniusschur(a)
+        χₐ = frobenius_schur_phase(a)
         θₐ = twist(a)
         if !inv
             factor = f₂.isdual[i] ? χₐ * one(θₐ) : θₐ
@@ -302,7 +302,7 @@ function bendright(f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}) where {
 
     coeff₀ = sqrtdim(c) * invsqrtdim(a)
     if f₁.isdual[N₁]
-        coeff₀ *= conj(frobeniusschur(dual(b)))
+        coeff₀ *= conj(frobenius_schur_phase(dual(b)))
     end
     if FusionStyle(I) isa MultiplicityFreeFusion
         coeff = coeff₀ * Bsymbol(a, b, c)
@@ -343,7 +343,7 @@ function foldright(f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}) where {
     isduala = f₁.isdual[1]
     factor = sqrtdim(a)
     if !isduala
-        factor *= conj(frobeniusschur(a))
+        factor *= conj(frobenius_schur_phase(a))
     end
     c1 = dual(a)
     c2 = f₁.coupled
@@ -767,7 +767,7 @@ function elementary_trace(f::FusionTree{I, N}, i) where {I <: Sector, N}
             end
         end
         if f.isdual[i]
-            coeff *= frobeniusschur(b)
+            coeff *= frobenius_schur_phase(b)
         end
         push!(newtrees, f′ => coeff)
         return newtrees
@@ -777,7 +777,7 @@ function elementary_trace(f::FusionTree{I, N}, i) where {I <: Sector, N}
             f′ = FusionTree{I}((), unit, (), (), ())
             coeff = sqrtdim(b)
             if !(f.isdual[N])
-                coeff *= conj(frobeniusschur(b))
+                coeff *= conj(frobenius_schur_phase(b))
             end
             push!(newtrees, f′ => coeff)
             return newtrees
@@ -798,7 +798,7 @@ function elementary_trace(f::FusionTree{I, N}, i) where {I <: Sector, N}
             f′ = FusionTree(uncoupled′, unit, isdual′, inner′, vertices′)
             coeff *= sqrtdim(b)
             if !(f.isdual[N])
-                coeff *= conj(frobeniusschur(b))
+                coeff *= conj(frobenius_schur_phase(b))
             end
             newtrees[f′] = get(newtrees, f′, zero(coeff)) + coeff
         end
