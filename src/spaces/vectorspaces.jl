@@ -129,7 +129,7 @@ that this is different from `one(V::S)`, which returns the empty product space
 """
 unitspace(V::ElementarySpace) = unitspace(typeof(V))
 Base.oneunit(V::ElementarySpace) = unitspace(V)
-Base.oneunit(::Type{V}) where {V<:ElementarySpace} = unitspace(V)
+Base.oneunit(::Type{V}) where {V <: ElementarySpace} = unitspace(V)
 
 """
     zerospace(V::S) where {S<:ElementarySpace} -> S
@@ -140,7 +140,7 @@ This is, with a slight abuse of notation, the zero element of the direct sum of 
 """
 zerospace(V::ElementarySpace) = zerospace(typeof(V))
 Base.zero(V::ElementarySpace) = zerospace(V)
-Base.zero(::Type{V}) where {V<:ElementarySpace} = zerospace(V)
+Base.zero(::Type{V}) where {V <: ElementarySpace} = zerospace(V)
 
 """
     ⊕(V₁::S, V₂::S, V₃::S...) where {S<:ElementarySpace} -> S

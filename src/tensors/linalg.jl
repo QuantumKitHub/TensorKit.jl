@@ -569,15 +569,19 @@ function ⊗(t1::AbstractTensorMap, t2::AbstractTensorMap)
         throw(SpaceMismatch("spacetype(t1) ≠ spacetype(t2)"))
     cod1, cod2 = codomain(t1), codomain(t2)
     dom1, dom2 = domain(t1), domain(t2)
-    p12 = ((codomainind(t1)..., (codomainind(t2) .+ numind(t1))...),
-           (domainind(t1)..., (domainind(t2) .+ numind(t1))...))
+    p12 = (
+        (codomainind(t1)..., (codomainind(t2) .+ numind(t1))...),
+        (domainind(t1)..., (domainind(t2) .+ numind(t1))...),
+    )
 
     T = promote_type(scalartype(t1), scalartype(t2))
     TC = promote_type(sectorscalartype(sectortype(t1)), T)
-    t = TO.tensoralloc_contract(TC,
-                                t1, ((codomainind(t1)..., domainind(t1)...), ()), false,
-                                t2, ((), (codomainind(t2)..., domainind(t2)...)), false,
-                                p12, Val(false))
+    t = TO.tensoralloc_contract(
+        TC,
+        t1, ((codomainind(t1)..., domainind(t1)...), ()), false,
+        t2, ((), (codomainind(t2)..., domainind(t2)...)), false,
+        p12, Val(false)
+    )
 
     zerovector!(t)
     for (f1l, f1r) in fusiontrees(t1)

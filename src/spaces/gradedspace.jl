@@ -134,8 +134,8 @@ function Base.axes(V::GradedSpace{I}, c::I) where {I <: Sector}
     return (offset + 1):(offset + dim(c) * dim(V, c))
 end
 
-unitspace(S::Type{<:GradedSpace{I}}) where {I<:Sector} = S(unit(I) => 1)
-zerospace(S::Type{<:GradedSpace{I}}) where {I<:Sector} = S(unit(I) => 0)
+unitspace(S::Type{<:GradedSpace{I}}) where {I <: Sector} = S(unit(I) => 1)
+zerospace(S::Type{<:GradedSpace{I}}) where {I <: Sector} = S(unit(I) => 0)
 
 # TODO: the following methods can probably be implemented more efficiently for
 # `FiniteGradedSpace`, but we don't expect them to be used often in hot loops, so
