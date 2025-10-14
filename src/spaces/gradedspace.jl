@@ -197,23 +197,77 @@ function supremum(V₁::GradedSpace{I}, V₂::GradedSpace{I}) where {I <: Sector
     )
 end
 
-function Base.show(io::IO, V::GradedSpace{I}) where {I <: Sector}
-    print(io, type_repr(typeof(V)), "(")
-    separator = ""
-    comma = ", "
-    io2 = IOContext(io, :typeinfo => I)
-    for c in sectors(V)
-        if isdual(V)
-            print(io2, separator, dual(c), "=>", dim(V, c))
-        else
-            print(io2, separator, c, "=>", dim(V, c))
-        end
-        separator = comma
-    end
-    print(io, ")")
-    V.dual && print(io, "'")
+function Base.summary(io::IO, V::GradedSpace)
+    print(io, dim(V), "-dimensional ")
+    isdual(V) && print(io, "dual ")
+    print(io, type_repr(typeof(V)))
     return nothing
 end
+
+function Base.show(io::IO, V::GradedSpace)
+    pre = (get(io, :typeinfo, Any)::DataType == typeof(V) ? "" : type_repr(typeof(V)))
+
+    io = IOContext(io, :typeinfo => Pair{sectortype(V), Int})
+
+    pre *= "("
+    post = isdual(V) ? ")'" : ")"
+    hdots = "  \u2026  "
+    sep = ", "
+    sepsize = length(sep)
+
+    limited = get(io, :limit, false)::Bool
+    screenwidth = limited ? displaysize(io)[2] : typemax(Int)
+    screenwidth -= length(pre) + length(post)
+
+    cs = reshape(collect([(isdual(V) ? dual(c) : c) => dim(V, c) for c in sectors(V)]), 1, :)
+    ncols = length(cs)
+
+    maxpossiblecols = screenwidth ÷ (1 + sepsize)
+    if ncols > maxpossiblecols
+        cols = [1:(maxpossiblecols - 1); (ncols - maxpossiblecols + 1):ncols]
+    else
+        cols = collect(1:ncols)
+    end
+
+    A = Base.alignment(io, cs, [1], cols, screenwidth, screenwidth, sepsize, ncols)
+
+    if ncols <= length(A) # fits on screen
+        print(io, pre)
+        Base.print_matrix_row(io, cs, A, 1, cols, sep, ncols)
+        print(io, post)
+    else # doesn't fit on screen
+        half = (screenwidth - length(hdots) + 1) ÷ 2 + 1
+        Ralign = reverse(Base.alignment(io, cs, [1], reverse(cols), half, half, sepsize, ncols))
+        half = screenwidth - sum(map(sum, Ralign)) - (length(Ralign) - 1) * sepsize - length(hdots)
+        Lalign = Base.alignment(io, cs, [1], cols, half, half, sepsize, ncols)
+        print(io, pre)
+        Base.print_matrix_row(io, cs, Lalign, 1, cols[1:length(Lalign)], sep, ncols)
+        print(io, hdots)
+        Base.print_matrix_row(io, cs, Ralign, 1, (length(cs) - length(Ralign)) .+ cols, sep, length(cs))
+        print(io, post)
+    end
+
+    return nothing
+end
+
+function Base.show(io::IO, ::MIME"text/plain", V::GradedSpace)
+    summary(io, V)
+    iszero(dim(V)) && return nothing
+    print(io, ":")
+
+    # early bail if not enough space
+    if get(io, :limit, false)::Bool && displaysize(io)[1] - 4 <= 0
+        return print(io, " …")
+    else
+        println(io)
+    end
+
+    io2 = IOContext(io, :typeinfo => Pair{sectortype(V), Int})
+    data = [(isdual(V) ? dual(c) : c) => dim(V, c) for c in sectors(V)]
+    Base.print_matrix(io2, data)
+    return nothing
+end
+
 
 struct SpaceTable end
 """
