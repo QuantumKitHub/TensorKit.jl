@@ -4,6 +4,7 @@ using Random
 using TensorKit
 using Combinatorics
 using TensorKit: ProductSector, fusiontensor
+using TensorKitSectors: TensorKitSectors
 using TensorOperations
 using Base.Iterators: take, product
 # using SUNRepresentations: SUNIrrep
