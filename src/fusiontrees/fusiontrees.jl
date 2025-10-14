@@ -193,25 +193,21 @@ function Base.convert(A::Type{<:AbstractArray}, f::FusionTree{I, 2}) where {I}
 end
 
 function Base.convert(A::Type{<:AbstractArray}, f::FusionTree{I, N}) where {I, N}
-    tailout = (f.innerlines[1], TupleTools.tail2(f.uncoupled)...)
-    isdualout = (false, TupleTools.tail2(f.isdual)...)
-    ftail = FusionTree(tailout, f.coupled, isdualout, Base.tail(f.innerlines), Base.tail(f.vertices))
-    Ctail = convert(A, ftail)
-    f₁ = FusionTree(
-        (f.uncoupled[1], f.uncoupled[2]), f.innerlines[1],
-        (f.isdual[1], f.isdual[2]), (), (f.vertices[1],)
-    )
-    C1 = convert(A, f₁)
-    dtail = size(Ctail)
-    d1 = size(C1)
-    X = similar(C1, (d1[1], d1[2], Base.tail(dtail)...))
-    trivialtuple = ntuple(identity, Val(N))
-    return TO.tensorcontract!(
-        X,
-        C1, ((1, 2), (3,)), false,
-        Ctail, ((1,), Base.tail(trivialtuple)), false,
-        ((trivialtuple..., N + 1), ())
-    )
+    trivalent_trees = foldl(1:length(f.innerlines); init = (f,)) do fs, _
+        return Base.front(fs)..., split(last(fs), 2)...
+    end
+    CGCs = map(Base.Fix1(convert, A), trivalent_trees)
+    return contract_maximally_unbalanced_tree(CGCs...)::A
+end
+
+@generated function contract_maximally_unbalanced_tree(CGCs::Vararg{AbstractArray{T, 3}, N}) where {T, N}
+    f1 = :(CGCs[1][-1 -2 1])
+    fs = map(2:(N - 1)) do i
+        return :(CGCs[$i][$(i - 1) $(-i - 1) $i])
+    end
+    fn = :(CGCs[$N][$(N - 1) $(-N - 1) $(-N - 2)])
+    A = :(A[$(ntuple(i -> -i, N + 2)...)])
+    return macroexpand(@__MODULE__, :(@tensor $A := *($f1, $(fs...), $fn)))
 end
 
 # TODO: is this piracy?
