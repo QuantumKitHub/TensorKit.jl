@@ -16,10 +16,6 @@ const TK = TensorKit
 
 Random.seed!(1234)
 
-# don't run all tests on GPU, only the GPU
-# specific ones
-is_buildkite = get(ENV, "BUILDKITE", "false") == "true"
-
 smallset(::Type{I}) where {I <: Sector} = take(values(I), 5)
 function smallset(::Type{ProductSector{Tuple{I1, I2}}}) where {I1, I2}
     iter = product(smallset(I1), smallset(I2))
@@ -137,6 +133,9 @@ Vfib = (
     Vect[FibonacciAnyon](:I => 2, :τ => 2),
 )
 
+# don't run all tests on GPU, only the GPU
+# specific ones
+is_buildkite = get(ENV, "BUILDKITE", "false") == "true"
 if !is_buildkite
     Ti = time()
     @time include("fusiontrees.jl")
@@ -162,12 +161,18 @@ if !is_buildkite
     end
 else
     Ti = time()
-    #=using CUDA
+    println("---- BEGINNING GPU TESTS ----")
+    flush(stdout)
+    using CUDA, cuTENSOR
     if CUDA.functional()
+        @time include("cuda/tensors.jl")
+        @time include("cuda/factorizations.jl")
     end
     using AMDGPU
     if AMDGPU.functional()
-    end=#
+        @time include("amd/tensors.jl")
+        @time include("amd/factorizations.jl")
+    end
     Tf = time()
     printstyled(
         "Finished all GPU tests in ",

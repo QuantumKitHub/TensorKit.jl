@@ -139,7 +139,7 @@ function TensorMap(
         datac = data[c]
         size(datac) == size(b) ||
             throw(DimensionMismatch("wrong size of block for sector $c"))
-        copy!(b, datac)
+        copyto!(b, datac)
     end
     for (c, b) in data
         c ∈ blocksectors(t) || isempty(b) ||
@@ -357,7 +357,7 @@ function TensorMap(
     ) where {S}
     return TensorMap(data, codom ← dom; kwargs...)
 end
-function Tensor(data::AbstractArray, codom::TensorSpace, ; kwargs...)
+function Tensor(data::AbstractArray, codom::TensorSpace; kwargs...)
     return TensorMap(data, codom ← one(codom); kwargs...)
 end
 
