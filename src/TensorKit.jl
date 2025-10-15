@@ -16,10 +16,8 @@ export Trivial, Z2Irrep, Z3Irrep, Z4Irrep, ZNIrrep, U1Irrep, SU2Irrep, CU1Irrep
 export ProductSector
 export FermionParity, FermionNumber, FermionSpin
 export FibonacciAnyon, IsingAnyon
-export unit, rightunit, leftunit, allunits, isunit
 
 export VectorSpace, Field, ElementarySpace # abstract vector spaces
-export unitspace, zerospace
 export InnerProductStyle, NoInnerProduct, HasInnerProduct, EuclideanInnerProduct
 export ComplexSpace, CartesianSpace, GeneralSpace, GradedSpace # concrete spaces
 export ZNSpace, Z2Space, Z3Space, Z4Space, U1Space, CU1Space, SU2Space
@@ -33,13 +31,15 @@ export TruncationScheme
 export SpaceMismatch, SectorMismatch, IndexError # error types
 
 # general vector space methods
-export space, field, dual, dim, reduceddim, dims, fuse, flip, isdual, oplus, ominus,
-    insertleftunit, insertrightunit, removeunit
+export space, field, dual, dim, reduceddim, dims, fuse, flip, isdual
+export unitspace, zerospace, oplus, ominus,
+export insertleftunit, insertrightunit, removeunit
 
 # partial order for vector spaces
 export infimum, supremum, isisomorphic, ismonomorphic, isepimorphic
 
 # methods for sectors and properties thereof
+export unit, rightunit, leftunit, allunits, isunit
 export sectortype, sectors, hassector, Nsymbol, Fsymbol, Rsymbol, Bsymbol,
     frobeniusschur, frobenius_schur_phase, frobenius_schur_indicator,
     twist, otimes, sectorscalartype, deligneproduct
