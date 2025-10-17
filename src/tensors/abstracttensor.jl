@@ -480,6 +480,10 @@ end
 
 # Conversion to Array:
 #----------------------
+Base.ndims(t::AbstractTensorMap) = numind(t)
+Base.size(t::AbstractTensorMap) = ntuple(Base.Fix1(size, t), numind(t))
+Base.size(t::AbstractTensorMap, i) = dim(space(t, i))
+
 # probably not optimized for speed, only for checking purposes
 function Base.convert(::Type{Array}, t::AbstractTensorMap)
     I = sectortype(t)
