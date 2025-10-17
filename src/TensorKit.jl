@@ -57,7 +57,7 @@ export ℤ₂Space, ℤ₃Space, ℤ₄Space, U₁Space, CU₁Space, SU₂Space
 # Export tensor map methods
 export domain, codomain, numind, numout, numin, domainind, codomainind, allind
 export spacetype, storagetype, scalartype, tensormaptype
-export blocksectors, blockdim, block, blocks
+export blocksectors, blockdim, block, blocks, subblocks, subblock
 
 # random methods for constructor
 export randisometry, randisometry!, rand, rand!, randn, randn!
@@ -127,6 +127,7 @@ using Base: @boundscheck, @propagate_inbounds, @constprop,
     tuple_type_head, tuple_type_tail, tuple_type_cons,
     SizeUnknown, HasLength, HasShape, IsInfinite, EltypeUnknown, HasEltype
 using Base.Iterators: product, filter
+using Printf: @sprintf
 
 using LinearAlgebra: LinearAlgebra, BlasFloat
 using LinearAlgebra: norm, dot, normalize, normalize!, tr,

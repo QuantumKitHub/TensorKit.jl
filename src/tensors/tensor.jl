@@ -464,26 +464,10 @@ function Base.getindex(iter::BlockIterator{<:TensorMap}, c::Sector)
     return reshape(view(iter.t.data, r), (d₁, d₂))
 end
 
-# Indexing and getting and setting the data at the subblock level
-#-----------------------------------------------------------------
-"""
-    Base.getindex(t::TensorMap{T,S,N₁,N₂,I},
-                  f₁::FusionTree{I,N₁},
-                  f₂::FusionTree{I,N₂}) where {T,SN₁,N₂,I<:Sector}
-        -> StridedViews.StridedView
-    t[f₁, f₂]
-
-Return a view into the data slice of `t` corresponding to the splitting - fusion tree pair
-`(f₁, f₂)`. In particular, if `f₁.coupled == f₂.coupled == c`, then a
-`StridedViews.StridedView` of size
-`(dims(codomain(t), f₁.uncoupled)..., dims(domain(t), f₂.uncoupled))` is returned which
-represents the slice of `block(t, c)` whose row indices correspond to `f₁.uncoupled` and
-column indices correspond to `f₂.uncoupled`.
-
-See also [`Base.setindex!(::TensorMap{T,S,N₁,N₂}, ::Any, ::FusionTree{I,N₁}, ::FusionTree{I,N₂}) where {T,S,N₁,N₂,I<:Sector}`](@ref)
-"""
-@inline function Base.getindex(
-        t::TensorMap{T, S, N₁, N₂}, f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}
+# Getting and setting the data at the subblock level
+# --------------------------------------------------
+function subblock(
+        t::TensorMap{T, S, N₁, N₂}, (f₁, f₂)::Tuple{FusionTree{I, N₁}, FusionTree{I, N₂}}
     ) where {T, S, N₁, N₂, I <: Sector}
     structure = fusionblockstructure(t)
     @boundscheck begin
@@ -495,9 +479,10 @@ See also [`Base.setindex!(::TensorMap{T,S,N₁,N₂}, ::Any, ::FusionTree{I,N₁
         return StridedView(t.data, sz, str, offset)
     end
 end
+
 # The following is probably worth special casing for trivial tensors
-@inline function Base.getindex(
-        t::TensorMap{T, S, N₁, N₂}, f₁::FusionTree{Trivial, N₁}, f₂::FusionTree{Trivial, N₂}
+@inline function subblock(
+        t::TensorMap{T, S, N₁, N₂}, (f₁, f₂)::Tuple{FusionTree{Trivial, N₁}, FusionTree{Trivial, N₂}}
     ) where {T, S, N₁, N₂}
     @boundscheck begin
         sectortype(t) == Trivial || throw(SectorMismatch())
@@ -505,94 +490,20 @@ end
     return sreshape(StridedView(t.data), (dims(codomain(t))..., dims(domain(t))...))
 end
 
-"""
-    Base.setindex!(t::TensorMap{T,S,N₁,N₂,I},
-                   v,
-                   f₁::FusionTree{I,N₁},
-                   f₂::FusionTree{I,N₂}) where {T,S,N₁,N₂,I<:Sector}
-    t[f₁, f₂] = v
-
-Copies `v` into the  data slice of `t` corresponding to the splitting - fusion tree pair
-`(f₁, f₂)`. Here, `v` can be any object that can be copied into a `StridedViews.StridedView`
-of size `(dims(codomain(t), f₁.uncoupled)..., dims(domain(t), f₂.uncoupled))` using
-`Base.copy!`.
-
-See also [`Base.getindex(::TensorMap{T,S,N₁,N₂}, ::FusionTree{I,N₁}, ::FusionTree{I,N₂}) where {T,S,N₁,N₂,I<:Sector}`](@ref)
-"""
-@propagate_inbounds function Base.setindex!(
-        t::TensorMap{T, S, N₁, N₂}, v, f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}
-    ) where {T, S, N₁, N₂, I <: Sector}
-    return copy!(getindex(t, f₁, f₂), v)
-end
-
-"""
-    Base.getindex(t::TensorMap
-                  sectors::NTuple{N₁+N₂,I}) where {N₁,N₂,I<:Sector} 
-        -> StridedViews.StridedView
-    t[sectors]
-
-Return a view into the data slice of `t` corresponding to the splitting - fusion tree pair
-with combined uncoupled charges `sectors`. In particular, if `sectors == (s₁..., s₂...)`
-where `s₁` and `s₂` correspond to the uncoupled charges in the codomain and domain
-respectively, then a `StridedViews.StridedView` of size
-`(dims(codomain(t), s₁)..., dims(domain(t), s₂))` is returned.
-
-This method is only available for the case where `FusionStyle(I) isa UniqueFusion`,
-since it assumes a  uniquely defined coupled charge.
-"""
-@inline function Base.getindex(t::TensorMap, sectors::Tuple{I, Vararg{I}}) where {I <: Sector}
-    I === sectortype(t) || throw(SectorMismatch("Not a valid sectortype for this tensor."))
-    FusionStyle(I) isa UniqueFusion ||
-        throw(SectorMismatch("Indexing with sectors only possible if unique fusion"))
-    length(sectors) == numind(t) ||
-        throw(ArgumentError("Number of sectors does not match."))
-    s₁ = TupleTools.getindices(sectors, codomainind(t))
-    s₂ = map(dual, TupleTools.getindices(sectors, domainind(t)))
-    c1 = length(s₁) == 0 ? unit(I) : (length(s₁) == 1 ? s₁[1] : first(⊗(s₁...)))
-    @boundscheck begin
-        c2 = length(s₂) == 0 ? unit(I) : (length(s₂) == 1 ? s₂[1] : first(⊗(s₂...)))
-        c2 == c1 || throw(SectorMismatch("Not a valid sector for this tensor"))
-        hassector(codomain(t), s₁) && hassector(domain(t), s₂)
-    end
-    f₁ = FusionTree(s₁, c1, map(isdual, tuple(codomain(t)...)))
-    f₂ = FusionTree(s₂, c1, map(isdual, tuple(domain(t)...)))
-    @inbounds begin
-        return t[f₁, f₂]
-    end
-end
-@propagate_inbounds function Base.getindex(t::TensorMap, sectors::Tuple)
-    return t[map(sectortype(t), sectors)]
-end
-
 # Show
 #------
-function Base.summary(io::IO, t::TensorMap)
-    return print(io, "TensorMap(", space(t), ")")
+function type_repr(::Type{TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A}
+    return "TensorMap{$T, $(type_repr(S)), $N₁, $N₂, $A}"
 end
-function Base.show(io::IO, t::TensorMap)
-    if get(io, :compact, false)
-        print(io, "TensorMap(", space(t), ")")
-        return
-    end
-    println(io, "TensorMap(", space(t), "):")
-    if sectortype(t) == Trivial
-        Base.print_array(io, t[])
-        println(io)
-    elseif FusionStyle(sectortype(t)) isa UniqueFusion
-        for (f₁, f₂) in fusiontrees(t)
-            println(io, "* Data for sector ", f₁.uncoupled, " ← ", f₂.uncoupled, ":")
-            Base.print_array(io, t[f₁, f₂])
-            println(io)
-        end
-    else
-        for (f₁, f₂) in fusiontrees(t)
-            println(io, "* Data for fusiontree ", f₁, " ← ", f₂, ":")
-            Base.print_array(io, t[f₁, f₂])
-            println(io)
-        end
-    end
+
+function Base.showarg(io::IO, t::TensorMap, toplevel::Bool)
+    !toplevel && print(io, "::")
+    print(io, type_repr(typeof(t)))
     return nothing
 end
+
+Base.show(io::IO, t::TensorMap) =
+    print(io, type_repr(typeof(t)), "(", t.data, ", ", space(t), ")")
 
 # Complex, real and imaginary parts
 #-----------------------------------
