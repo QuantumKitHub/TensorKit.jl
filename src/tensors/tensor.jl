@@ -490,10 +490,6 @@ end
     return sreshape(StridedView(t.data), (dims(codomain(t))..., dims(domain(t))...))
 end
 
-@propagate_inbounds function Base.getindex(t::TensorMap, sectors::Tuple)
-    return t[map(sectortype(t), sectors)]
-end
-
 # Show
 #------
 function type_repr(::Type{TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A}
