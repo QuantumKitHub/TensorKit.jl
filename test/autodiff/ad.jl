@@ -1,5 +1,6 @@
 using Test, TestExtras
 using TensorKit
+using TensorKit: type_repr, SectorDict
 using TensorOperations
 using ChainRulesCore
 using ChainRulesTestUtils
@@ -36,7 +37,7 @@ function ChainRulesTestUtils.test_approx(
 end
 
 # make sure that norms are computed correctly:
-function FiniteDifferences.to_vec(t::TK.SectorDict)
+function FiniteDifferences.to_vec(t::SectorDict)
     T = scalartype(valtype(t))
     vec = mapreduce(vcat, t; init = T[]) do (c, b)
         return reshape(b, :) .* sqrt(dim(c))
@@ -46,7 +47,7 @@ function FiniteDifferences.to_vec(t::TK.SectorDict)
     function from_vec(x_real)
         x = T <: Real ? x_real : reinterpret(T, x_real)
         ctr = 0
-        return TK.SectorDict(
+        return SectorDict(
             c => (
                     n = length(b);
                     b′ = reshape(view(x, ctr .+ (1:n)), size(b)) ./ sqrt(dim(c));
@@ -200,7 +201,7 @@ spacelist = (
 
 for V in spacelist
     I = sectortype(eltype(V))
-    Istr = TK.type_repr(I)
+    Istr = type_repr(I)
     eltypes = isreal(sectortype(eltype(V))) ? (Float64, ComplexF64) : (ComplexF64,)
     symmetricbraiding = BraidingStyle(sectortype(eltype(V))) isa SymmetricBraiding
     println("---------------------------------------")
