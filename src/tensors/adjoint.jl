@@ -57,30 +57,9 @@ end
 
 # Show
 #------
-function Base.summary(io::IO, t::AdjointTensorMap)
-    return print(io, "AdjointTensorMap(", codomain(t), " ← ", domain(t), ")")
-end
-function Base.show(io::IO, t::AdjointTensorMap)
-    if get(io, :compact, false)
-        print(io, "AdjointTensorMap(", codomain(t), " ← ", domain(t), ")")
-        return
-    end
-    println(io, "AdjointTensorMap(", codomain(t), " ← ", domain(t), "):")
-    if sectortype(t) === Trivial
-        Base.print_array(io, t[])
-        println(io)
-    elseif FusionStyle(sectortype(t)) isa UniqueFusion
-        for (f₁, f₂) in fusiontrees(t)
-            println(io, "* Data for sector ", f₁.uncoupled, " ← ", f₂.uncoupled, ":")
-            Base.print_array(io, t[f₁, f₂])
-            println(io)
-        end
-    else
-        for (f₁, f₂) in fusiontrees(t)
-            println(io, "* Data for fusiontree ", f₁, " ← ", f₂, ":")
-            Base.print_array(io, t[f₁, f₂])
-            println(io)
-        end
-    end
+function Base.showarg(io::IO, t::AdjointTensorMap, toplevel::Bool)
+    print(io, "adjoint(")
+    Base.showarg(io, parent(t), false)
+    print(io, ")")
     return nothing
 end
