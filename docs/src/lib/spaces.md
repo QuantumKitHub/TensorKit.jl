@@ -85,14 +85,15 @@ space
 The following methods act specifically on `ElementarySpace` spaces:
 
 ```@docs
-isdual
 dual(::VectorSpace)
 conj
+isconj
+isdual
 flip
-⊕
-⊖
 zerospace
 unitspace
+⊕
+⊖
 supremum
 infimum
 ```
@@ -100,8 +101,8 @@ infimum
 while the following also work on both `ElementarySpace` and `ProductSpace`
 
 ```@docs
-one(::VectorSpace)
 fuse
+one(::VectorSpace)
 ⊗(::VectorSpace, ::VectorSpace)
 ⊠(::VectorSpace, ::VectorSpace)
 ismonomorphic
