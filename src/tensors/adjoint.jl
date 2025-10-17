@@ -42,17 +42,10 @@ function Base.getindex(iter::BlockIterator{<:AdjointTensorMap}, c::Sector)
     return adjoint(Base.getindex(iter.structure, c))
 end
 
-function Base.getindex(
-        t::AdjointTensorMap{T, S, N₁, N₂}, f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}
-    ) where {T, S, N₁, N₂, I}
+Base.@propagate_inbounds function subblock(t::AdjointTensorMap, (f₁, f₂)::Tuple{FusionTree, FusionTree})
     tp = parent(t)
-    subblock = getindex(tp, f₂, f₁)
-    return permutedims(conj(subblock), (domainind(tp)..., codomainind(tp)...))
-end
-function Base.setindex!(
-        t::AdjointTensorMap{T, S, N₁, N₂}, v, f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}
-    ) where {T, S, N₁, N₂, I}
-    return copy!(getindex(t, f₁, f₂), v)
+    data = subblock(tp, (f₂, f₁))
+    return permutedims(conj(data), (domainind(tp)..., codomainind(tp)...))
 end
 
 # Show
