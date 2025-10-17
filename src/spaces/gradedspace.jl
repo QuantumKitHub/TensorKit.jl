@@ -250,25 +250,6 @@ function Base.show(io::IO, V::GradedSpace)
     return nothing
 end
 
-function Base.show(io::IO, ::MIME"text/plain", V::GradedSpace)
-    summary(io, V)
-    iszero(dim(V)) && return nothing
-    print(io, ":")
-
-    # early bail if not enough space
-    if get(io, :limit, false)::Bool && displaysize(io)[1] - 4 <= 0
-        return print(io, " …")
-    else
-        println(io)
-    end
-
-    io2 = IOContext(io, :typeinfo => Pair{sectortype(V), Int})
-    data = [(isdual(V) ? dual(c) : c) => dim(V, c) for c in sectors(V)]
-    Base.print_matrix(io2, data)
-    return nothing
-end
-
-
 struct SpaceTable end
 """
     const Vect
