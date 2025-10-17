@@ -1,3 +1,10 @@
+using Test, TestExtras
+using TensorKit
+using LinearAlgebra: LinearAlgebra
+
+@isdefined(TestSetup) || include("../setup.jl")
+using .TestSetup
+
 spacelist = try
     if ENV["CI"] == "true"
         println("Detected running on CI")

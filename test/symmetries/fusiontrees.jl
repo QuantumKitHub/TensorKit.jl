@@ -1,10 +1,17 @@
-println("------------------------------------")
-println("Fusion Trees")
-println("------------------------------------")
-ti = time()
-@timedtestset "Fusion trees for $(TK.type_repr(I))" verbose = true for I in
-    sectorlist
-    Istr = TK.type_repr(I)
+using Test, TestExtras
+using TensorKit
+import TensorKit as TK
+using Random: randperm
+using TensorOperations
+
+# TODO: remove this once type_repr works for all included types
+using TensorKitSectors
+
+@isdefined(TestSetup) || include("../setup.jl")
+using .TestSetup
+
+@timedtestset "Fusion trees for $(TensorKit.type_repr(I))" verbose = true for I in sectorlist
+    Istr = TensorKit.type_repr(I)
     N = 5
     out = ntuple(n -> randsector(I), N)
     isdual = ntuple(n -> rand(Bool), N)
@@ -23,7 +30,7 @@ ti = time()
     @constinferred Nothing iterate(it, s)
     @test f == @constinferred first(it)
     @testset "Fusion tree $Istr: printing" begin
-        @test eval(Meta.parse(sprint(show, f))) == f
+        @test eval(Meta.parse(sprint(show, f; context = (:module => @__MODULE__)))) == f
     end
     @testset "Fusion tree $Istr: constructor properties" begin
         u = unit(I)
@@ -592,10 +599,3 @@ ti = time()
     end
     TK.empty_globalcaches!()
 end
-tf = time()
-printstyled(
-    "Finished fusion tree tests in ",
-    string(round(tf - ti; sigdigits = 3)),
-    " seconds."; bold = true, color = Base.info_color()
-)
-println()

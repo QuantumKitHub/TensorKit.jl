@@ -1,7 +1,12 @@
+using Test, TestExtras
+using TensorKit
+
 diagspacelist = (
-    (ℂ^4)', Vect[Z2Irrep](0 => 2, 1 => 3),
+    (ℂ^4)',
+    Vect[Z2Irrep](0 => 2, 1 => 3),
     Vect[FermionNumber](0 => 2, 1 => 2, -1 => 1),
-    Vect[SU2Irrep](0 => 2, 1 => 1)', Vect[FibonacciAnyon](:I => 2, :τ => 2),
+    Vect[SU2Irrep](0 => 2, 1 => 1)',
+    Vect[FibonacciAnyon](:I => 2, :τ => 2),
 )
 
 @testset "DiagonalTensor with domain $V" for V in diagspacelist
@@ -32,7 +37,7 @@ diagspacelist = (
             b2 = @constinferred block(t, first(blocksectors(t)))
             @test b1 == b2
             @test eltype(bs) === Pair{typeof(c), typeof(b1)}
-            @test typeof(b1) === TK.blocktype(t)
+            @test typeof(b1) === TensorKit.blocktype(t)
             # basic linear algebra
             @test isa(@constinferred(norm(t)), real(T))
             @test norm(t)^2 ≈ dot(t, t)

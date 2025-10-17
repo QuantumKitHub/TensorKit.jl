@@ -1,3 +1,7 @@
+using Test, TestExtras
+using TensorKit
+using TensorKit: type_repr, SectorDict
+using TensorOperations
 using ChainRulesCore
 using ChainRulesTestUtils
 using FiniteDifferences: FiniteDifferences, central_fdm, forward_fdm
@@ -33,7 +37,7 @@ function ChainRulesTestUtils.test_approx(
 end
 
 # make sure that norms are computed correctly:
-function FiniteDifferences.to_vec(t::TK.SectorDict)
+function FiniteDifferences.to_vec(t::SectorDict)
     T = scalartype(valtype(t))
     vec = mapreduce(vcat, t; init = T[]) do (c, b)
         return reshape(b, :) .* sqrt(dim(c))
@@ -43,7 +47,7 @@ function FiniteDifferences.to_vec(t::TK.SectorDict)
     function from_vec(x_real)
         x = T <: Real ? x_real : reinterpret(T, x_real)
         ctr = 0
-        return TK.SectorDict(
+        return SectorDict(
             c => (
                     n = length(b);
                     b′ = reshape(view(x, ctr .+ (1:n)), size(b)) ./ sqrt(dim(c));
@@ -187,7 +191,7 @@ spacelist = (
         Vect[SU2Irrep](0 => 1, 1 // 2 => 1, 3 // 2 => 1)',
     ),
     (
-        Vect[FibonacciAnyon](:I => 1, :τ => 1),
+        Vect[FibonacciAnyon](:I => 2, :τ => 1),
         Vect[FibonacciAnyon](:I => 1, :τ => 2)',
         Vect[FibonacciAnyon](:I => 2, :τ => 2)',
         Vect[FibonacciAnyon](:I => 2, :τ => 3),
@@ -197,7 +201,7 @@ spacelist = (
 
 for V in spacelist
     I = sectortype(eltype(V))
-    Istr = TK.type_repr(I)
+    Istr = type_repr(I)
     eltypes = isreal(sectortype(eltype(V))) ? (Float64, ComplexF64) : (ComplexF64,)
     symmetricbraiding = BraidingStyle(sectortype(eltype(V))) isa SymmetricBraiding
     println("---------------------------------------")
@@ -593,7 +597,7 @@ for V in spacelist
                     # TODO: I'm not sure how to properly test with spaces that might change
                     # with the finite-difference methods, as then the jacobian is ill-defined.
 
-                    trunc = truncrank(round(Int, min(dim(domain(t)), dim(codomain(t))) ÷ 2))
+                    trunc = truncrank(round(Int, min(dim(domain(t)), dim(codomain(t))) * (3 / 4)))
                     USVᴴ_trunc = svd_trunc(t; trunc)
                     ΔUSVᴴ_trunc = rand_tangent.(USVᴴ_trunc)
                     remove_svdgauge_dependence!(
