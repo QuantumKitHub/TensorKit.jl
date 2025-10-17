@@ -357,6 +357,14 @@ end
 Base.@propagate_inbounds function subblock(t::AbstractTensorMap, sectors::Tuple)
     return subblock(t, map(Base.Fix1(convert, sectortype(t)), sectors))
 end
+# attempt to provide better error messages
+function subblock(t::AbstractTensorMap, (f₁, f₂)::Tuple{FusionTree, FusionTree})
+    (sectortype(t)) == sectortype(f₁) == sectortype(f₂) ||
+        throw(SectorMismatch("Not a valid sectortype for this tensor."))
+    numout(t) == length(f₁) && numin(t) == length(f₂) ||
+        throw(DimensionMismatch("Invalid number of fusiontree legs for this tensor."))
+    throw(MethodError(subblock, (t, (f₁, f₂))))
+end
 
 @doc """
     subblocktype(t)
