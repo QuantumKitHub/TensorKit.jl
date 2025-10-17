@@ -1,8 +1,12 @@
 """
     struct CartesianSpace <: ElementarySpace
+    CartesianSpace(d::Integer = 0; dual = false)
+    ℝ^d
 
-A real Euclidean space `ℝ^d`, which is therefore self-dual. `CartesianSpace` has no
-additonal structure and is completely characterised by its dimension `d`. This is the
+A real Euclidean space ``ℝ^d``. `CartesianSpace` has no additonal structure and
+is completely characterised by its dimension `d`. A `dual` keyword argument is
+accepted for compatibility with other space constructors, but is ignored
+since the dual of a Cartesian space is isomorphic to itself. This is the
 vector space that is implicitly assumed in most of matrix algebra.
 """
 struct CartesianSpace <: ElementarySpace
@@ -29,23 +33,23 @@ function CartesianSpace(dims::AbstractDict; kwargs...)
 end
 CartesianSpace(g::Base.Generator; kwargs...) = CartesianSpace(g...; kwargs...)
 
-field(::Type{CartesianSpace}) = ℝ
-InnerProductStyle(::Type{CartesianSpace}) = EuclideanInnerProduct()
-
-Base.conj(V::CartesianSpace) = V
-isdual(V::CartesianSpace) = false
-
 # convenience constructor
 Base.getindex(::RealNumbers) = CartesianSpace
 Base.:^(::RealNumbers, d::Int) = CartesianSpace(d)
 
 # Corresponding methods:
 #------------------------
+field(::Type{CartesianSpace}) = ℝ
+InnerProductStyle(::Type{CartesianSpace}) = EuclideanInnerProduct()
+
 dim(V::CartesianSpace, ::Trivial = Trivial()) = V.d
 Base.axes(V::CartesianSpace, ::Trivial = Trivial()) = Base.OneTo(dim(V))
-hassector(V::CartesianSpace, ::Trivial) = dim(V) != 0
-sectors(V::CartesianSpace) = OneOrNoneIterator(dim(V) != 0, Trivial())
-sectortype(::Type{CartesianSpace}) = Trivial
+
+dual(V::CartesianSpace) = V
+Base.conj(V::CartesianSpace) = dual(V)
+isdual(V::CartesianSpace) = false
+isconj(V::CartesianSpace) = false
+flip(V::CartesianSpace) = V
 
 unitspace(::Type{CartesianSpace}) = CartesianSpace(1)
 zerospace(::Type{CartesianSpace}) = CartesianSpace(0)
@@ -56,9 +60,12 @@ function ⊖(V::CartesianSpace, W::CartesianSpace)
 end
 
 fuse(V₁::CartesianSpace, V₂::CartesianSpace) = CartesianSpace(V₁.d * V₂.d)
-flip(V::CartesianSpace) = V
 
 infimum(V₁::CartesianSpace, V₂::CartesianSpace) = CartesianSpace(min(V₁.d, V₂.d))
 supremum(V₁::CartesianSpace, V₂::CartesianSpace) = CartesianSpace(max(V₁.d, V₂.d))
+
+hassector(V::CartesianSpace, ::Trivial) = dim(V) != 0
+sectors(V::CartesianSpace) = OneOrNoneIterator(dim(V) != 0, Trivial())
+sectortype(::Type{CartesianSpace}) = Trivial
 
 Base.show(io::IO, V::CartesianSpace) = print(io, "ℝ^$(V.d)")

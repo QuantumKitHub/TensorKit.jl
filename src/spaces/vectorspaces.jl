@@ -73,26 +73,41 @@ Return the dual space of `V`; also obtained via `V'`. This should satisfy
 `dual(dual(V)) == V`. It is assumed that `typeof(V) == typeof(V')`.
 """ dual(::VectorSpace)
 
+@doc """
+    conj(V::VectorSpace) -> VectorSpace
+
+Return the conjugate space of `V`. This should satisfy `conj(conj(V)) == V`.
+For vector spaces over the real numbers, it must hold that `conj(V) == V`.
+For vector spaces with a Euclidean inner product, it must hold that `conj(V) == dual(V)`.
+""" conj(::VectorSpace)
+
+
 # convenience definitions:
 Base.adjoint(V::VectorSpace) = dual(V)
 
-"""
+@doc """
     isdual(V::ElementarySpace) -> Bool
 
-Return whether an ElementarySpace `V` is normal or rather a dual space. Always returns
-`false` for spaces where `V == dual(V)`.
-"""
-function isdual end
+Return whether an ElementarySpace `V` is normal or rather a dual space.
+Always returns `false` for spaces where `V == dual(V)`.
+""" isdual(::ElementarySpace)
+
+@doc """
+    isconj(V::ElementarySpace) -> Bool
+
+Return whether an ElementarySpace `V` is normal or rather the conjugated space.
+Always returns `false` for spaces where `V == conj(V)`, i.e. vector spaces over `ℝ`.
+""" isconj(::ElementarySpace)
 
 # Hierarchy of elementary vector spaces
 #---------------------------------------
 """
-    abstract type ElementarySpace <: VectorSpace end
+    abstract type ElementarySpace <: VectorSpace
 
 Elementary finite-dimensional vector space over a field that can be used as the index
 space corresponding to the indices of a tensor. ElementarySpace is a supertype for all
 vector spaces (objects) that can be associated with the individual indices of a tensor,
-as hinted to by its alias IndexSpace.
+as hinted to by its alias `IndexSpace``.
 
 Every elementary vector space should respond to the methods [`conj`](@ref) and
 [`dual`](@ref), returning the complex conjugate space and the dual space respectively. The
@@ -103,15 +118,13 @@ of a homogeneous tensor product of these spaces.
 abstract type ElementarySpace <: VectorSpace end
 const IndexSpace = ElementarySpace
 
-# field(::Type{<:ElementarySpace{𝕜}}) where {𝕜} = 𝕜
-
 @doc """
     dim(V::ElementarySpace, s::Sector) -> Int
 
 Return the degeneracy dimension corresponding to the sector `s` of the vector space `V`.
 """ dim(::ElementarySpace, ::Sector)
 
-@doc """
+"""
     reduceddim(V::ElementarySpace) -> Int
 
 Return the sum of all degeneracy dimensions of the vector space `V`.
@@ -122,8 +135,10 @@ reduceddim(V::ElementarySpace) = sum(Base.Fix1(dim, V), sectors(V); init = 0)
     unitspace(V::S) where {S<:ElementarySpace} -> S
 
 Return the corresponding vector space of type `S` that represents the trivial
-one-dimensional space, i.e. the space that is isomorphic to the corresponding field. Note
-that this is different from `one(V::S)`, which returns the empty product space
+one-dimensional space, i.e. the space that is isomorphic to the corresponding field.
+
+!!! note
+`unitspace(V)`is different from `one(V)`. The latter returns the empty product space
 `ProductSpace{S,0}(())`. `Base.oneunit` falls back to `unitspace`.
 """
 unitspace(V::ElementarySpace) = unitspace(typeof(V))
@@ -134,7 +149,7 @@ Base.oneunit(::Type{V}) where {V <: ElementarySpace} = unitspace(V)
     zerospace(V::S) where {S<:ElementarySpace} -> S
 
 Return the corresponding vector space of type `S` that represents the zero-dimensional or empty space.
-This is, with a slight abuse of notation, the zero element of the direct sum of vector spaces.
+This is the zero element of the direct sum of vector spaces.
 `Base.zero` falls back to `zerospace`.
 """
 zerospace(V::ElementarySpace) = zerospace(typeof(V))
