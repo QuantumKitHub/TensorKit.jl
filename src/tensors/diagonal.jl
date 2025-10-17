@@ -335,23 +335,13 @@ end
 
 # Show
 #------
-function Base.summary(io::IO, t::DiagonalTensorMap)
-    return print(io, "DiagonalTensorMap(", space(t), ")")
+function type_repr(::Type{DiagonalTensorMap{T, S, A}}) where {T, S, A}
+    return "DiagonalTensorMap{$T, $(type_repr(S)), $A}"
 end
-function Base.show(io::IO, t::DiagonalTensorMap)
-    summary(io, t)
-    get(io, :compact, false) && return nothing
-    println(io, ":")
-
-    if sectortype(t) == Trivial
-        Base.print_array(io, Diagonal(t.data))
-        println(io)
-    else
-        for (c, b) in blocks(t)
-            println(io, "* Data for sector ", c, ":")
-            Base.print_array(io, b)
-            println(io)
-        end
-    end
+function Base.showarg(io::IO, t::DiagonalTensorMap, toplevel::Bool)
+    !toplevel && print(io, "::")
+    print(io, type_repr(typeof(t)))
     return nothing
 end
+Base.show(io::IO, t::DiagonalTensorMap) =
+    print(io, type_repr(typeof(t)), "(", t.data, ", ", space(t, 1), ")")
