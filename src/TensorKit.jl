@@ -56,8 +56,8 @@ export ℤ₂Space, ℤ₃Space, ℤ₄Space, U₁Space, CU₁Space, SU₂Space
 
 # Export tensor map methods
 export domain, codomain, numind, numout, numin, domainind, codomainind, allind
-export spacetype, storagetype, scalartype, tensormaptype
-export blocksectors, blockdim, block, blocks
+export spacetype, sectortype, storagetype, scalartype, tensormaptype
+export blocksectors, blockdim, block, blocks, subblocks, subblock
 
 # random methods for constructor
 export randisometry, randisometry!, rand, rand!, randn, randn!

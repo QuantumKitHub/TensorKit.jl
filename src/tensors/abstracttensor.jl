@@ -250,6 +250,12 @@ Return an iterator over all splitting - fusion tree pairs of a tensor.
 """
 fusiontrees(t::AbstractTensorMap) = fusionblockstructure(t).fusiontreelist
 
+fusiontreetype(t::AbstractTensorMap) = fusiontreetype(typeof(t))
+function fusiontreetype(::Type{T}) where {T <: AbstractTensorMap}
+    I = sectortype(T)
+    return Tuple{fusiontreetype(I, numout(T)), fusiontreetype(I, numin(T))}
+end
+
 # auxiliary function
 @inline function trivial_fusiontree(t::AbstractTensorMap)
     sectortype(t) === Trivial ||
@@ -294,6 +300,137 @@ Return the type of the matrix blocks of a tensor.
 function blocktype(::Type{T}) where {T <: AbstractTensorMap}
     return Core.Compiler.return_type(block, Tuple{T, sectortype(T)})
 end
+
+# tensor data: subblock access
+# ----------------------------
+@doc """
+    subblocks(t::AbstractTensorMap)
+
+Return an iterator over all subblocks of a tensor, i.e. all fusiontrees and their
+corresponding tensor subblocks.
+
+See also [`subblock`](@ref), [`fusiontrees`](@ref), and [`hassubblock`](@ref).
+"""
+subblocks(t::AbstractTensorMap) = SubblockIterator(t, fusiontrees(t))
+
+const _doc_subblock = """
+Return a view into the data of `t` corresponding to the splitting - fusion tree pair
+`(f₁, f₂)`. In particular, this is an `AbstractArray{T}` with `T = scalartype(t)`, of size
+`(dims(codomain(t), f₁.uncoupled)..., dims(codomain(t), f₂.uncoupled)...)`.
+
+Whenever `FusionStyle(sectortype(t))`, it is also possible to provide only the external
+`sectors`, in which case the fusion tree pair will be constructed automatically.
+"""
+
+@doc """
+    subblock(t::AbstractTensorMap, (f₁, f₂)::Tuple{FusionTree,FusionTree})
+    subblock(t::AbstractTensorMap, sectors::Tuple{Vararg{Sector}})
+
+$_doc_subblock
+
+In general, new tensor types should provide an implementation of this function for the
+fusion tree signature.
+
+See also [`subblocks`](@ref) and [`fusiontrees`](@ref).
+""" subblock
+
+Base.@propagate_inbounds function subblock(t::AbstractTensorMap, sectors::Tuple{I, Vararg{I}}) where {I <: Sector}
+    # input checking
+    I === sectortype(t) || throw(SectorMismatch("Not a valid sectortype for this tensor."))
+    FusionStyle(I) isa UniqueFusion ||
+        throw(SectorMismatch("Indexing with sectors is only possible for unique fusion styles."))
+    length(sectors) == numind(t) || throw(ArgumentError("invalid number of sectors"))
+
+    # convert to fusiontrees
+    s₁ = TupleTools.getindices(sectors, codomainind(t))
+    s₂ = map(dual, TupleTools.getindices(sectors, domainind(t)))
+    c1 = length(s₁) == 0 ? unit(I) : (length(s₁) == 1 ? s₁[1] : first(⊗(s₁...)))
+    @boundscheck begin
+        hassector(codomain(t), s₁) && hassector(domain(t), s₂) || throw(BoundsError(t, sectors))
+        c2 = length(s₂) == 0 ? unit(I) : (length(s₂) == 1 ? s₂[1] : first(⊗(s₂...)))
+        c2 == c1 || throw(SectorMismatch("Not a valid fusion channel for this tensor"))
+    end
+    f₁ = FusionTree(s₁, c1, map(isdual, tuple(codomain(t)...)))
+    f₂ = FusionTree(s₂, c1, map(isdual, tuple(domain(t)...)))
+    return @inbounds subblock(t, (f₁, f₂))
+end
+Base.@propagate_inbounds function subblock(t::AbstractTensorMap, sectors::Tuple)
+    return subblock(t, map(Base.Fix1(convert, sectortype(t)), sectors))
+end
+
+@doc """
+    subblocktype(t)
+    subblocktype(::Type{T})
+
+Return the type of the tensor subblocks of a tensor.
+""" subblocktype
+
+function subblocktype(::Type{T}) where {T <: AbstractTensorMap}
+    return Core.Compiler.return_type(subblock, Tuple{T, fusiontreetype(T)})
+end
+subblocktype(t) = subblocktype(typeof(t))
+subblocktype(T::Type) = throw(MethodError(subblocktype, (T,)))
+
+# Indexing behavior
+# -----------------
+@doc """
+    Base.view(t::AbstractTensorMap, sectors::Tuple{Vararg{Sector}})
+    Base.view(t::AbstractTensorMap, f₁::FusionTree, f₂::FusionTree)
+
+$_doc_subblock
+
+!!! note
+    Contrary to Julia's array types, the default indexing behavior is to return a view
+    into the tensor data. As a result, `getindex` and `view` have the same behavior.
+
+See also [`subblock`](@ref), [`subblocks`](@ref) and [`fusiontrees`](@ref).
+""" Base.view(::AbstractTensorMap, ::Tuple{I, Vararg{I}}) where {I <: Sector},
+    Base.view(::AbstractTensorMap, ::FusionTree, ::FusionTree)
+
+@inline Base.view(t::AbstractTensorMap, sectors::Tuple{I, Vararg{I}}) where {I <: Sector} =
+    subblock(t, sectors)
+@inline Base.view(t::AbstractTensorMap, f₁::FusionTree, f₂::FusionTree) =
+    subblock(t, (f₁, f₂))
+
+# by default getindex returns views
+@doc """
+    Base.getindex(t::AbstractTensorMap, sectors::Tuple{Vararg{Sector}})
+    t[sectors]
+    Base.getindex(t::AbstractTensorMap, f₁::FusionTree, f₂::FusionTree)
+    t[f₁, f₂]
+
+$_doc_subblock
+
+!!! warning
+    Contrary to Julia's array types, the default behavior is to return a view into the tensor data.
+    As a result, modifying the view will modify the data in the tensor.
+
+See also [`subblock`](@ref), [`subblocks`](@ref) and [`fusiontrees`](@ref).
+""" Base.getindex(::AbstractTensorMap, ::Tuple{I, Vararg{I}}) where {I <: Sector},
+    Base.getindex(::AbstractTensorMap, ::FusionTree, ::FusionTree)
+
+@inline Base.getindex(t::AbstractTensorMap, sectors::Tuple{I, Vararg{I}}) where {I <: Sector} =
+    view(t, sectors)
+@inline Base.getindex(t::AbstractTensorMap, f₁::FusionTree, f₂::FusionTree) =
+    view(t, f₁, f₂)
+
+@doc """
+    Base.setindex!(t::AbstractTensorMap, v, sectors::Tuple{Vararg{Sector}})
+    t[sectors] = v
+    Base.setindex!(t::AbstractTensorMap, v, f₁::FusionTree, f₂::FusionTree)
+    t[f₁, f₂] = v
+
+Copies `v` into the data slice of `t` corresponding to the splitting - fusion tree pair `(f₁, f₂)`.
+By default, `v` can be any object that can be copied into the view associated with `t[f₁, f₂]`.
+
+See also [`subblock`](@ref), [`subblocks`](@ref) and [`fusiontrees`](@ref).
+""" Base.setindex!(::AbstractTensorMap, ::Any, ::Tuple{I, Vararg{I}}) where {I <: Sector},
+    Base.setindex!(::AbstractTensorMap, ::Any, ::FusionTree, ::FusionTree)
+
+@inline Base.setindex!(t::AbstractTensorMap, v, sectors::Tuple{I, Vararg{I}}) where {I <: Sector} =
+    copy!(view(t, sectors), v)
+@inline Base.setindex!(t::AbstractTensorMap, v, f₁::FusionTree, f₂::FusionTree) =
+    copy!(view(t, (f₁, f₂)), v)
 
 # Derived indexing behavior for tensors with trivial symmetry
 #-------------------------------------------------------------
