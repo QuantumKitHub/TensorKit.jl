@@ -198,7 +198,9 @@ function supremum(V₁::GradedSpace{I}, V₂::GradedSpace{I}) where {I <: Sector
 end
 
 function Base.summary(io::IO, V::GradedSpace)
-    print(io, dim(V), "-dimensional ")
+    d = dim(V)
+    dstr = d isa Int ? string(d) : @sprintf "%.2f" d
+    print(io, dstr, "-dimensional ")
     isdual(V) && print(io, "dual ")
     print(io, type_repr(typeof(V)))
     return nothing
@@ -249,6 +251,17 @@ function Base.show(io::IO, V::GradedSpace)
 
     return nothing
 end
+
+function Base.show(io::IO, ::MIME"text/plain", V::GradedSpace)
+    summary(io, V)
+    iszero(dim(V)) && return nothing
+    println(io, ":")
+    print(io, " ")
+    ioc = IOContext(io, :typeinfo => typeof(V))
+    show(ioc, V)
+    return nothing
+end
+
 
 struct SpaceTable end
 """
