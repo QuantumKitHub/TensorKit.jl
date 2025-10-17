@@ -566,41 +566,18 @@ end
 
 # Show
 #------
-function Base.summary(io::IO, t::TensorMap)
-    return print(io, "TensorMap(", space(t), ")")
+function type_repr(::Type{TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A}
+    return "TensorMap{$T, $(type_repr(S)), $N₁, $N₂, $A}"
 end
-Base.show(io::IO, t::TensorMap) = summary(io, t)
 
-function Base.show(io::IO, ::MIME"text/plain", t::TensorMap)
-    if get(io, :compact, false)
-        print(io, "TensorMap(", space(t), ")")
-        return
-    end
-    println(io, "TensorMap(", space(t), "):")
-
-    for (c, b) in blocks(t)
-        print(io, "* block for charge ", c, ":")
-        summary(io, b)
-        println(io)
-    end
-    # if sectortype(t) == Trivial
-    #     Base.print_array(io, t[])
-    #     println(io)
-    # elseif FusionStyle(sectortype(t)) isa UniqueFusion
-    #     for (f₁, f₂) in fusiontrees(t)
-    #         println(io, "* Data for sector ", f₁.uncoupled, " ← ", f₂.uncoupled, ":")
-    #         Base.print_array(io, t[f₁, f₂])
-    #         println(io)
-    #     end
-    # else
-    #     for (f₁, f₂) in fusiontrees(t)
-    #         println(io, "* Data for fusiontree ", f₁, " ← ", f₂, ":")
-    #         Base.print_array(io, t[f₁, f₂])
-    #         println(io)
-    #     end
-    # end
+function Base.showarg(io::IO, t::TensorMap, toplevel::Bool)
+    !toplevel && print(io, "::")
+    print(io, type_repr(typeof(t)))
     return nothing
 end
+
+Base.show(io::IO, t::TensorMap) =
+    print(io, type_repr(typeof(t)), "(", t.data, ", ", space(t), ")")
 
 # Complex, real and imaginary parts
 #-----------------------------------
