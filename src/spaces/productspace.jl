@@ -65,8 +65,8 @@ Base.axes(P::ProductSpace, n::Int) = axes(P.spaces[n])
 
 dual(P::ProductSpace{<:ElementarySpace, 0}) = P
 dual(P::ProductSpace) = ProductSpace(map(dual, reverse(P.spaces)))
-
-# Base.conj(P::ProductSpace) = ProductSpace(map(conj, P.spaces))
+Base.conj(P::ProductSpace{<:ElementarySpace, 0}) = P
+Base.conj(P::ProductSpace) = ProductSpace(map(conj, P.spaces))
 
 function Base.show(io::IO, P::ProductSpace{S}) where {S <: ElementarySpace}
     spaces = P.spaces
