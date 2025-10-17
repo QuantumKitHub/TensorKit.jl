@@ -127,6 +127,7 @@ using Base: @boundscheck, @propagate_inbounds, @constprop,
     tuple_type_head, tuple_type_tail, tuple_type_cons,
     SizeUnknown, HasLength, HasShape, IsInfinite, EltypeUnknown, HasEltype
 using Base.Iterators: product, filter
+using Printf: @sprintf
 
 using LinearAlgebra: LinearAlgebra, BlasFloat
 using LinearAlgebra: norm, dot, normalize, normalize!, tr,
