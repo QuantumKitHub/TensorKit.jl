@@ -81,23 +81,8 @@ For vector spaces over the real numbers, it must hold that `conj(V) == V`.
 For vector spaces with a Euclidean inner product, it must hold that `conj(V) == dual(V)`.
 """ conj(::VectorSpace)
 
-
 # convenience definitions:
 Base.adjoint(V::VectorSpace) = dual(V)
-
-@doc """
-    isdual(V::ElementarySpace) -> Bool
-
-Return whether an ElementarySpace `V` is normal or rather a dual space.
-Always returns `false` for spaces where `V == dual(V)`.
-""" isdual(::ElementarySpace)
-
-@doc """
-    isconj(V::ElementarySpace) -> Bool
-
-Return whether an ElementarySpace `V` is normal or rather the conjugated space.
-Always returns `false` for spaces where `V == conj(V)`, i.e. vector spaces over `ℝ`.
-""" isconj(::ElementarySpace)
 
 # Hierarchy of elementary vector spaces
 #---------------------------------------
@@ -130,6 +115,20 @@ Return the degeneracy dimension corresponding to the sector `s` of the vector sp
 Return the sum of all degeneracy dimensions of the vector space `V`.
 """
 reduceddim(V::ElementarySpace) = sum(Base.Fix1(dim, V), sectors(V); init = 0)
+
+@doc """
+    isdual(V::ElementarySpace) -> Bool
+
+Return whether an ElementarySpace `V` is normal or rather a dual space.
+Always returns `false` for spaces where `V == dual(V)`.
+""" isdual(::ElementarySpace)
+
+@doc """
+    isconj(V::ElementarySpace) -> Bool
+
+Return whether an ElementarySpace `V` is normal or rather the conjugated space.
+Always returns `false` for spaces where `V == conj(V)`, i.e. vector spaces over `ℝ`.
+""" isconj(::ElementarySpace)
 
 """
     unitspace(V::S) where {S<:ElementarySpace} -> S
@@ -164,7 +163,7 @@ Return the corresponding vector space of type `S` that represents the direct sum
 spaces `V₁`, `V₂`, ... Note that all the individual spaces should have the same value for
 [`isdual`](@ref), as otherwise the direct sum is not defined.
 """
-function ⊕ end
+⊕(V₁::S, V₂::S) where {S <: ElementarySpace}
 ⊕(V₁::ElementarySpace, V₂::ElementarySpace) = ⊕(promote(V₁, V₂)...)
 ⊕(V::Vararg{ElementarySpace}) = foldl(⊕, V)
 const oplus = ⊕
@@ -266,9 +265,6 @@ InnerProductStyle(::Type{<:VectorSpace}) = NoInnerProduct()
 @noinline function throw_invalid_innerproduct(fname)
     throw(ArgumentError("$fname requires Euclidean inner product"))
 end
-
-dual(V::VectorSpace) = dual(InnerProductStyle(V), V)
-dual(::EuclideanInnerProduct, V::VectorSpace) = conj(V)
 
 """
     sectortype(a) -> Type{<:Sector}
