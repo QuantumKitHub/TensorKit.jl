@@ -166,19 +166,12 @@ end
 
 # Indexing and getting and setting the data at the subblock level
 #-----------------------------------------------------------------
-@inline function Base.getindex(
-        d::DiagonalTensorMap, f₁::FusionTree{I, 1}, f₂::FusionTree{I, 1}
+Base.@propagate_inbounds function subblock(
+        d::DiagonalTensorMap, (f₁, f₂)::Tuple{FusionTree{I, 1}, FusionTree{I, 1}}
     ) where {I <: Sector}
     s = f₁.uncoupled[1]
     s == f₁.coupled == f₂.uncoupled[1] == f₂.coupled || throw(SectorMismatch())
     return block(d, s)
-    # TODO: do we want a StridedView here? Then we need to allocate a new matrix.
-end
-
-function Base.setindex!(
-        d::DiagonalTensorMap, v, f₁::FusionTree{I, 1}, f₂::FusionTree{I, 1}
-    ) where {I <: Sector}
-    return copy!(getindex(d, f₁, f₂), v)
 end
 
 function Base.getindex(d::DiagonalTensorMap)
