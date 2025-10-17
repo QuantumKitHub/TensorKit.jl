@@ -62,3 +62,17 @@ function show_blocks(io, iter)
     print(io, ")")
     return nothing
 end
+
+function Base.summary(io::IO, b::BlockIterator)
+    print(io, "blocks(")
+    Base.showarg(io, b.t, false)
+    print(io, ")")
+    return nothing
+end
+
+function Base.show(io::IO, mime::MIME"text/plain", b::BlockIterator)
+    summary(io, b)
+    println(io, ":")
+    show_blocks(io, mime, b)
+    return nothing
+end
