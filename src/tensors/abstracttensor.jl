@@ -503,3 +503,33 @@ function Base.convert(::Type{Array}, t::AbstractTensorMap)
         return A
     end
 end
+
+# Show and friends
+# ----------------
+Base.dims2string(V::HomSpace) = join(dim.(codomain(V)), '×') * "←" * join(dim.(domain(V)), '×')
+
+Base.summary(io::IO, t::AbstractTensorMap) = tensor_summary(io, t, space(t))
+
+function tensor_summary(io::IO, t, V)
+    print(io, Base.dims2string(V), " ")
+    Base.showarg(io, t, true)
+    return nothing
+end
+
+# Human-readable:
+function Base.show(io::IO, ::MIME"text/plain", t::AbstractTensorMap)
+    # 1) show summary: typically d₁×d₂×… ← d₃×d₄×… $(typeof(t)):
+    summary(io, t)
+    println(io, ":")
+
+    # 2) show spaces
+    # println(io, " space(t):")
+    print(io, "  ", space(t))
+
+    # 3) [optional]: show data
+    get(io, :compact, true) && return nothing
+    ioc = IOContext(io, :typeinfo => sectortype(t))
+    println(io, "\n\n blocks(t):")
+    show_blocks(io, MIME"text/plain"(), blocks(t))
+    return nothing
+end

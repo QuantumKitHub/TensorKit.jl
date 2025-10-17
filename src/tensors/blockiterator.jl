@@ -44,3 +44,21 @@ function foreachblock(f, t::AbstractTensorMap; scheduler = nothing)
     end
     return nothing
 end
+
+function show_blocks(io, mime::MIME"text/plain", iter)
+    first = true
+    for (c, b) in iter
+        first || print(io, "\n\n")
+        print(io, " * ", c, " => ")
+        show(io, mime, b)
+        first = false
+    end
+    return nothing
+end
+
+function show_blocks(io, iter)
+    print(io, "(")
+    join(io, iter, ", ")
+    print(io, ")")
+    return nothing
+end
