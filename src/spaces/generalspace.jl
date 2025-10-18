@@ -35,7 +35,7 @@ Base.axes(V::GeneralSpace, ::Trivial = Trivial()) = Base.OneTo(dim(V))
 dual(V::GeneralSpace{𝔽}) where {𝔽} = GeneralSpace{𝔽}(dim(V), !isdual(V), isconj(V))
 Base.conj(V::GeneralSpace{𝔽}) where {𝔽} = 𝔽 == ℝ ? V : GeneralSpace{𝔽}(dim(V), isdual(V), !isconj(V))
 isdual(V::GeneralSpace) = V.dual
-isconj(V::GeneralSpace) = 𝔽 == ℝ ? false : V.conj
+isconj(V::GeneralSpace{𝔽}) where {𝔽} = 𝔽 == ℝ ? false : V.conj
 
 unitspace(::Type{GeneralSpace{𝔽}}) where {𝔽} = GeneralSpace{𝔽}(1, false, false)
 zerospace(::Type{GeneralSpace{𝔽}}) where {𝔽} = GeneralSpace{𝔽}(0, false, false)
