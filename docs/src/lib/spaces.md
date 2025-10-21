@@ -1,4 +1,4 @@
-# Vector spaces
+# [Vector spaces](@id s_libvectorspaces)
 
 ```@meta
 CurrentModule = TensorKit
@@ -21,7 +21,7 @@ ProductSpace
 HomSpace
 ```
 
-together with the following specific types for encoding the inner product structure of
+together with the following specific type for encoding the inner product structure of
 a space:
 
 ```@docs

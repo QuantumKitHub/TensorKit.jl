@@ -6,7 +6,7 @@ using TensorKit
 
 From the [Introduction](@ref s_intro), it should be clear that an important aspect in the
 definition of a tensor (map) is specifying the vector spaces and their structure in the
-domain and codomain of the map. The starting point is an abstract type `VectorSpace`
+domain and codomain of the map. The starting point is an abstract type [`VectorSpace`](@ref)
 ```julia
 abstract type VectorSpace end
 ```
@@ -22,16 +22,16 @@ const IndexSpace = ElementarySpace
 
 abstract type CompositeSpace{S<:ElementarySpace} <: VectorSpace end
 ```
-Here, `ElementarySpace` is a super type for all vector spaces (objects) that can be
+Here, [`ElementarySpace`](@ref) is a super type for all vector spaces (objects) that can be
 associated with the individual indices of a tensor, as hinted to by its alias `IndexSpace`.
 
-On the other hand, subtypes of `CompositeSpace{S}` where `S<:ElementarySpace` are composed
+On the other hand, subtypes of [`CompositeSpace{S}`](@ref) where `S<:ElementarySpace` are composed
 of a number of elementary spaces of type `S`. So far, there is a single concrete type
-`ProductSpace{S,N}` that represents the tensor product of `N` vector spaces of a homogeneous
+[`ProductSpace{S,N}`](@ref) that represents the tensor product of `N` vector spaces of a homogeneous
 type `S`. Its properties are discussed in the section on [Composite spaces](@ref ss_compositespaces),
 together with possible extensions for the future.
 
-Throughout TensorKit.jl, the function `spacetype` returns the type of `ElementarySpace`
+Throughout TensorKit.jl, the function [`spacetype`](@ref) returns the type of `ElementarySpace`
 associated with e.g. a composite space or a tensor. It works both on instances and in the
 type domain. Its use will be illustrated below.
 
@@ -63,7 +63,7 @@ ComplexF64 ⊆ ℂ
 ```
 and furthermore —probably more usefully— `ℝ^n` and `ℂ^n` create specific elementary vector
 spaces as described in the next section. The underlying field of a vector space or tensor
-`a` can be obtained with `field(a)`:
+`a` can be obtained with [`field(a)`](@ref):
 
 ```@docs; canonical=false
 field
@@ -79,32 +79,21 @@ are objects of the same concrete type (i.e. with the same type parameters in cas
 parametric type). In particular, every `ElementarySpace` should implement the following
 methods
 
-*   `dim(::ElementarySpace)` returns the dimension of the space
-
-*   `field(::ElementarySpace)` returns the field `𝔽` over which the vector space is defined
-
-*   `dual(::S) where {S<:ElementarySpace} -> ::S` returns the
-    [dual space](http://en.wikipedia.org/wiki/Dual_space) `dual(V)`, using an instance of
-    the same concrete type (i.e. not via type parameters); this should satisfy
-    `dual(dual(V)) == V`
-
-*   `conj(::S) where {S<:ElementarySpace} -> ::S` returns the
-    [complex conjugate space](http://en.wikipedia.org/wiki/Complex_conjugate_vector_space)
-    `conj(V)`, using an instance of the same concrete type (i.e. not via type parameters);
-    this should satisfy `conj(conj(V)) == V` and we automatically have
-    `conj(V::ElementarySpace{ℝ}) = V`.
+```@docs; canonical=false
+dim(::ElementarySpace)
+field(::ElementarySpace)
+dual(::S) where {S<:ElementarySpace}
+conj(::S) where {S<:ElementarySpace}
+```
 
 For convenience, the dual of a space `V` can also be obtained as `V'`. Furthermore, it is
 sometimes necessary to test whether a space is a dual or conjugate space, for which the
 methods [`isdual(::ElementarySpace)`](@ref) and [`isconj(::ElementarySpace)`](@ref) should
 be implemented.
 
-We furthermore define the trait types
-```julia
-abstract type InnerProductStyle end
-struct NoInnerProduct <: InnerProductStyle end
-abstract type HasInnerProduct <: InnerProductStyle end
-struct EuclideanInnerProduct <: HasInnerProduct end
+We furthermore define a trait type
+```@docs; canonical=false
+InnerProductStyle
 ```
 to denote for a vector space `V` whether it has an inner product and thus a canonical
 mapping from `dual(V)` to `V` (for real fields `𝔽 ⊆ ℝ`) or from `dual(V)` to `conj(V)`
@@ -179,15 +168,77 @@ InnerProductStyle(ℂ^5)
     to work nonetheless.
 
 One more important concrete implementation of `ElementarySpace` with a `EuclideanInnerProduct()`
-is the `GradedSpace`, which is used to represent a graded complex vector space, where the grading
-is provided by the irreducible representations of a group, or more generally, the simple
-objects of a unitary fusion category. We refer to the subsection on [graded spaces](@ref ss_rep)
+is the [`GradedSpace`](@ref) type, which is used to represent a graded complex vector space,
+where the grading is provided by the irreducible representations of a group, or more generally,
+the simple objects of a unitary fusion category. We refer to the subsection on [graded spaces](@ref ss_rep)
 on the [next page](@ref s_sectorsrepfusion) for further information about `GradedSpace`.
 
 ## Operations with elementary spaces
 
-Instances of `ElementarySpace` support a number of useful operations. 
+Instances of `ElementarySpace` support a number of useful operations. Firstly, we define the direct
+sum of two vector spaces `V1` and `V2` of the same `spacetype` (and with the same value of `isdual`)
+as [`V1 ⊕ V2`](@ref), where `⊕` is obtained by typing `\oplus`+TAB. [`zerospace(V)`](@ref) corresponds
+to the identity or zero element with respect to this direct sum operation, i.e. it corresponds to
+a zero-dimensional space. Furthermore, [`unitspace(V)`] (@ref) applied to an elementary space returns a
+one-dimensional space, that is isomorphic to the scalar field underlying the space itself. Finally,
+we have also introduced the non-standard convention `V1 ⊖ V2` (obtained by typing `\ominus`+TAB.)
+in order to obtain a space that is isomorphic to the quotient space of `V1` by `V2`, or thus,
+a particular choice of complement of `V2` in `V1` such that `V1 == V2 ⊕ (V1 ⊖ V2)` is satisfied. 
 
+Some examples illustrate this better.
+```@repl tensorkit
+ℝ^5 ⊕ ℝ^3
+ℂ^5 ⊕ ℂ^3
+ℂ^5 ⊕ (ℂ^3)'
+zerospace(ℂ^3)
+unitspace(ℝ^3)
+ℂ^5 ⊕ unitspace(ComplexSpace)
+unitspace((ℂ^3)')
+(ℂ^5) ⊕ unitspace((ℂ^5))
+(ℂ^5)' ⊕ unitspace((ℂ^5)')
+(ℝ^5) ⊖ (ℝ^3)
+(ℂ^5) ⊖ (ℂ^3)
+(ℂ^5)' ⊖ (ℂ^3)'
+ℂ^5 == ((ℂ^5) ⊖ (ℂ^3)) ⊕ (ℂ^3) == (ℂ^3) ⊕ ((ℂ^5) ⊖ (ℂ^3))
+```
+
+Note, finally, that we have defined `oplus` and `ominus` as ASCII alternatives for `⊕` and `⊖` respectively.
+
+A second type of operation with elementary spaces is the function [`flip(V::ElementarySpace)`](@ref),
+which returns a space that is isomorphic to `V` but has `isdual(flip(V)) == isdual(V')`, i.e., if `V`
+is a normal space, then `flip(V)` is a dual space. `flip(V)` is different from `dual(V)` in the case
+of [`GradedSpace`](@ref). It is useful to flip a tensor index from a ket to a bra (or vice versa),
+by contracting that index with a unitary map from `V1` to `flip(V1)`.
+
+While we provide some trivial examples here, we refer to the section on [graded spaces](@ref ss_rep)
+for examples where `flip` acts non-trivially and produces results that are different than `dual`.
+```@repl tensorkit
+flip(ℂ^4)
+flip(ℂ^4) ≅ ℂ^4
+flip(ℂ^4) == ℂ^4
+```
+
+Finally, we provide two methods [`infimum(V1, V2)`](@ref) and [`supremum(V1, V2)`](@ref) for
+elementary spaces `V1` and `V2` with the same `spacetype` and value of `isdual`. The former
+returns the "largest" elementary space `V::ElementarySpace` with the same value of `isdual`
+such that we can construct surjective morphisms from both `V1` and `V2` to `V`. Similarly,
+the latter returns the "smallest" elementary space `W::ElementarySpace` with the same value
+of `isdual` such that we can construct injective morphisms from both `V1` and `V2` to `W`.
+For `CartesianSpace` and `ComplexSpace`, this simply amounts to the space with minimal or maximal
+dimension, but it is again more interesting in the case of [`GradedSpace`](@ref), as discussed
+on the [next page](@ref ss_). It is that case where `infimum(V1, V2)` might be different from either
+`V1` or `V2`, and similar for `supremum(V1, V2)`, which justifies the choice of these names
+over simply `min` and `max`. Also note that these methods are a direct consequence of the
+partial order that we can define between vector spaces of the same `spacetype` more generally,
+as discussed below in the subsection ["More operations with vector spaces"](@ref ss_spaceops).
+
+Some examples:
+```@repl tensorkit
+infimum(ℝ^5, ℝ^3)
+supremum(ℂ^5, ℂ^3)
+supremum(ℂ^5, (ℂ^3)')
+supremum((ℂ^5)', (ℂ^3)')
+```
 
 ## [Composite spaces](@id ss_compositespaces)
 
@@ -226,10 +277,11 @@ Following Julia's Base library, the function `one` applied to an instance of `Pr
 or of `S<:ElementarySpace` itself returns the multiplicative identity for these objects.
 Similar to Julia Base, `one` also works in the type domain. The multiplicative identity for
 vector spaces corresponds to the (monoidal) unit, which is represented as `ProductSpace{S,0}(())`
-and simply printed as `one(S)` for the specific type `S`. Note, however, that for `V::S`,
-`V ⊗ one(V)` will yield `ProductSpace{S,1}(V)` and not `V` itself. However, even though
-`V ⊗ one(V)` is not strictly equal to `V`, the object `ProductSpace(V)`, which can also be
-created as `⊗(V)`, does mathematically encapsulate the same vector space as `V`.
+and simply printed as `one(S)` for the specific type `S`. Note, however, that `one(S)` is
+strictly speaking only the multiplicative identity when multiplied with `ProductSpace{S,N}`
+instances. For elementary spaces `V::S`, `V ⊗ one(V)` will yield `ProductSpace{S,1}(V)` and not
+`V` itself. However, even though `V ⊗ one(V)` is not strictly equal to `V`, the object `ProductSpace(V)`,
+which can also be created as `⊗(V)`, does mathematically encapsulate the same vector space as `V`.
 
 ```@repl tensorkit
 one(V1)
@@ -247,11 +299,10 @@ of an `N`-particle quantum system in first quantization would require the introd
 `SymmetricSpace{S,N}` or a `AntiSymmetricSpace{S,N}` for bosons or fermions respectively,
 which correspond to the symmetric (permutation invariant) or antisymmetric subspace of
 `V^N`, where `V::S` represents the Hilbert space of the single particle system. Other
-domains, like general relativity, might also benefit from tensors living in a subspace with
-certain symmetries under specific index permutations.
+scientific fields, like general relativity, might also benefit from tensors living in
+subspace with certain symmetries under specific index permutations.
 
-
-## Operations on and relations between vector spaces
+## [More operations with vector spaces](@id ss_spaceops)
 
 Vector spaces of the same `spacetype` can be given a partial order, based on whether there
 exist injective morphisms (a.k.a *monomorphisms*) or surjective morphisms (a.k.a.
@@ -283,60 +334,12 @@ corresponding spaces, but in general none of those will be canonical.
 
 There are also a number of convenience functions to create isomorphic spaces. The function
 `fuse(V1, V2, ...)` or `fuse(V1 ⊗ V2 ⊗ ...)` returns an elementary space that is isomorphic
-to `V1 ⊗ V2 ⊗ ...`. The function `flip(V::ElementarySpace)` returns a space that is
-isomorphic to `V` but has `isdual(flip(V)) == isdual(V')`, i.e., if `V` is a normal space,
-then `flip(V)` is a dual space. `flip(V)` is different from `dual(V)` in the case of
-[`GradedSpace`](@ref). It is useful to flip a tensor index from a ket to a bra (or
-vice versa), by contracting that index with a unitary map from `V1` to `flip(V1)`. We refer
-to the reference on [vector space methods](@ref s_spacemethods) for further information.
-Some examples:
-```@repl tensorkit
-ℝ^3 ≾ ℝ^5
-ℂ^3 ≾ (ℂ^5)'
-(ℂ^5) ≅ (ℂ^5)'
-fuse(ℝ^5, ℝ^3)
-fuse(ℂ^3, (ℂ^5)' ⊗ ℂ^2)
-fuse(ℂ^3, (ℂ^5)') ⊗ ℂ^2 ≅ fuse(ℂ^3, (ℂ^5)', ℂ^2) ≅ ℂ^3 ⊗ (ℂ^5)' ⊗ ℂ^2
-flip(ℂ^4)
-flip(ℂ^4) ≅ ℂ^4
-flip(ℂ^4) == ℂ^4
-```
-
-We also define the direct sum `V1` and `V2` as `V1 ⊕ V2`, where `⊕` is obtained by typing
-`\oplus`+TAB. This is possible only if `isdual(V1) == isdual(V2)`. `unitspace` applied to an elementary space 
-(in the value or type domain) returns the one-dimensional space, which is isomorphic to the 
-scalar field of the space itself. Some examples illustrate this better.
-```@repl tensorkit
-ℝ^5 ⊕ ℝ^3
-ℂ^5 ⊕ ℂ^3
-ℂ^5 ⊕ (ℂ^3)'
-unitspace(ℝ^3)
-ℂ^5 ⊕ unitspace(ComplexSpace)
-unitspace((ℂ^3)')
-(ℂ^5) ⊕ unitspace((ℂ^5))
-(ℂ^5)' ⊕ unitspace((ℂ^5)')
-```
-
-Finally, while spaces have a partial order, there is no unique infimum or supremum of a two
-or more spaces. However, if `V1` and `V2` are two `ElementarySpace` instances with
-`isdual(V1) == isdual(V2)`, then we can define a unique infimum `V::ElementarySpace` with
-the same value of `isdual` that satisfies `V ≾ V1` and `V ≾ V2`, as well as a unique
-supremum `W::ElementarySpace` with the same value of `isdual` that satisfies `W ≿ V1`
-and `W ≿ V2`. For `CartesianSpace` and `ComplexSpace`, this simply amounts to the
-space with minimal or maximal dimension, i.e.
-```@repl tensorkit
-infimum(ℝ^5, ℝ^3)
-supremum(ℂ^5, ℂ^3)
-supremum(ℂ^5, (ℂ^3)')
-```
-The names `infimum` and `supremum` are especially suited in the case of
-[`GradedSpace`](@ref), as the infimum of two spaces might be different from either
-of those two spaces, and similar for the supremum.
+to `V1 ⊗ V2 ⊗ ...`.
 
 ## [Space of morphisms](@id ss_homspaces)
-As mentioned in the introduction, we will define tensor maps as linear maps from
-a `ProductSpace` domain to a `ProductSpace` codomain. All tensor maps with a fixed
-domain and codomain form a vector space, which we represent with the `HomSpace` type.
+As mentioned in the introduction, we define tensor maps as linear maps from
+a `ProductSpace` domain to a `ProductSpace` codomain. The set of all tensor maps with a fixed
+domain and codomain constitutes a vector space, which we represent with the `HomSpace` type.
 ```julia
 struct HomSpace{S<:ElementarySpace, P1<:CompositeSpace{S}, P2<:CompositeSpace{S}}
     codomain::P1
@@ -352,12 +355,16 @@ reason for first listing the codomain and than the domain will become clear in t
 Note that `HomSpace` is not a subtype of `VectorSpace`, i.e. we restrict the latter to
 encode all spaces and generalizations thereof (i.e. objects in linear monoidal categories)
 that are associated with the indices and the domain and codomain of a tensor map. Even when
-these genearalizations are no longer strictly vector spaces and have unconventional properties
+these generalizations are no longer strictly vector spaces and have unconventional properties
 (such as non-integer dimensions), the space of tensor maps (homomorphisms) between a given
-domain and codomain is always a vector space in the strict mathematical sense. Furthermore,
-on these `HomSpace` instances, we define a number of useful methods that are a predecessor
-to the corresponidng methods that we will define to manipulate the actual tensors, as we
-illustrate in the following example:
+domain and codomain, represented by a `HomSpace` instance, is always a vector space in the
+strict mathematical sense (with in particular an integer dimension). Because `HomSpace` and
+the different subtypes of `VectorSpace` represent very different mathematical concepts that do
+not directly interact, we have chosen to keep them separate in the type hierarchy.
+
+Furthermore, on these `HomSpace` instances, we define a number of useful methods that are a
+precursor to the corresponding methods that we will define to manipulate the actual tensors,
+as illustrated in the following example:
 ```@repl tensorkit
 W = ℂ^2 ⊗ ℂ^3 → ℂ^3 ⊗ dual(ℂ^4)
 field(W)
@@ -383,11 +390,14 @@ insertrightunit(W, 2)
 removeunit(insertrightunit(W, 2), 3)
 TensorKit.compose(W, adjoint(W))
 ```
-Note that indexing `W` yields first the spaces in the codomain, followed by the dual of the
-spaces in the domain. This particular convention is useful in combination with the
-instances of type [`TensorMap`](@ref), which represent morphisms living in such a
-`HomSpace`. Also note that `dim(W)` is here given by the product of the dimensions of the
-individual spaces, but that this is no longer true once symmetries are involved. At any
-time will `dim(::HomSpace)` represent the number of linearly independent morphisms in this
-space, or thus, the number of independent components that a corresponding `TensorMap`
-object will have.
+Note that indexing `W` follows an order that first targets the spaces in the codomain,
+followed by the dual of the spaces in the domain. This particular convention is useful
+in combination with the instances of type [`TensorMap`](@ref), which represent the actual
+morphisms living in such a `HomSpace`. Also note that `dim(W)` is here given by the product
+of the dimensions of the individual spaces, but that this is no longer true once symmetries
+are involved. At any time will `dim(::HomSpace)` represent the number of linearly independent
+morphisms in this space, or thus, the number of independent components that a corresponding
+`TensorMap` object will have.
+
+A complete list of methods defined on `HomSpace` instances together with the corresponding
+documentation is provided in the [library section on Vector spaces](@ref s_libvectorspaces).

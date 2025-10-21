@@ -36,8 +36,7 @@ Base.issubset(::ComplexNumbers, ::ComplexNumbers) = true
     abstract type VectorSpace end
 
 Abstract type at the top of the type hierarchy for denoting vector spaces, or, more
-accurately, 𝕜-linear categories. All instances of subtypes of VectorSpace will
-represent objects in 𝕜-linear monoidal categories.
+generally, objects in linear monoidal categories.
 """
 abstract type VectorSpace end
 
@@ -46,7 +45,7 @@ abstract type VectorSpace end
     field(::Type{T}) -> Type{𝔽<:Field}
 
 Return the type of field over which object `a` (e.g. a vector space or a tensor) is defined.
-Also works in type domain.
+This also works in type domain.
 """
 field(x) = field(typeof(x))
 field(::Type{T}) where {T} = field(spacetype(T))
