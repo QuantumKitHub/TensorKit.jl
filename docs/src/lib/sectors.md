@@ -1,38 +1,98 @@
-# Symmetry sectors and fusion trees
+# Symmetry sectors
 
 ```@meta
 CurrentModule = TensorKit
 ```
 
 ## Type hierarchy
+
+The fundamental abstract supertype for symmetry sectors is `Sector`:
+
 ```@docs
 Sector
-SectorValues
-FusionStyle
-BraidingStyle
-AbstractIrrep
+```
+
+Various concrete subtypes of `Sector` are provided within the TensorKitSectors library:
+
+```@docs
 Trivial
+AbstractIrrep
 ZNIrrep
+DNIrrep
 U1Irrep
 SU2Irrep
 CU1Irrep
-ProductSector
+AbstractGroupElement
+ZNElement
 FermionParity
 FermionNumber
 FermionSpin
 FibonacciAnyon
 IsingAnyon
+PlanarTrivial
+IsingBimodule
+TimeReversed
+ProductSector
+```
+
+Several more concrete sector types can be found in other packages such as
+[SUNRepresentations.jl](https://github.com/QuantumKitHub/SUNRepresentations.jl),
+[CategoryData.jl](https://github.com/lkdvos/CategoryData.jl),
+[QWignerSymbols.jl](https://github.com/lkdvos/QWignerSymbols.jl), ...:
+
+Some of these types are parameterized by a type parameter that represents a group.
+We therefore also provide a number of types to represent groups:
+
+```@docs
+TensorKitSectors.Group
+TensorKitSectors.AbelianGroup
+TensorKitSectors.Cyclic
+TensorKitSectors.U₁
+TensorKitSectors.CU₁
+TensorKitSectors.SU
+TensorKitSectors.Dihedral
+TensorKitSectors.ProductGroup
+```
+
+The following types are used to characterise different properties of the different types
+of sectors:
+
+```@docs
+FusionStyle
+BraidingStyle
+UnitStyle
+```
+
+Finally, the following auxiliary types are defined to facilitate the implementation
+of some of the methods on sectors:
+
+```@docs
+TensorKitSectors.SectorValues
+TensorKitSectors.SectorProductIterator
 ```
 
 ## Useful constants
+
+The following constants are defined to facilitate obtaining the type associated
+with the group elements or the irreducible representations of a given group:
+
 ```@docs
 Irrep
+GroupElement
 ```
 
-## Methods for defining and characterizing `Sector` subtypes
+## Methods for characterizing and manipulating `Sector` objects
+
+The following methods can be used to obtain properties such as topological data
+of sector objects, or to manipulate them or create related sectors:
+
 ```@docs
-unit(::Sector)
-dual
+unit
+isunit
+leftunit
+rightunit
+allunits
+dual(::Sector)
 Nsymbol
 ⊗
 Fsymbol
@@ -40,81 +100,37 @@ Rsymbol
 Bsymbol
 dim(::Sector)
 frobenius_schur_phase
+frobenius_schur_indicator
 twist(::Sector)
 Base.isreal(::Type{<:Sector})
 TensorKitSectors.sectorscalartype
 deligneproduct(::Sector, ::Sector)
 ```
 
-Compile all revelant methods for a sector:
+We have also the following methods that are specific to certain types of sectors
+and serve as accessors to their fields:
 
 ```@docs
-TensorKitSectors.precompile_sector
+charge
+modulus
 ```
 
-
-## Types and methods for groups
-
-Types and constants:
-
-```julia
-# TODO: add documentation for the following types
-Group
-TensorKitSectors.AbelianGroup
-U₁
-ℤ{N} where N
-SU{N} where N
-const SU₂ = SU{2}
-ProductGroup
-```
-
-Specific methods:
+Furthermore, we also have one specific method acting on groups, represented as types
 
 ```@docs
 ×
 ```
 
+Because we sometimes want to customize the string representation of our sector types,
+we also have the following method:
 
-## Methods for defining and generating fusion trees
 ```@docs
-FusionTree
-fusiontrees(uncoupled::NTuple{N,I}, coupled::I,
-                     isdual::NTuple{N,Bool}) where {N,I<:Sector}
+TensorKitSectors.type_repr
 ```
 
-## Methods for manipulating fusion trees
+Finally, we provide functionality to compile all revelant methods for a sector:
 
-For manipulating single fusion trees, the following internal methods are defined:
 ```@docs
-insertat
-split
-merge
-elementary_trace
-planar_trace(f::FusionTree{I,N}, q1::IndexTuple{N₃}, q2::IndexTuple{N₃}) where {I<:Sector,N,N₃}
-artin_braid
-braid(f::FusionTree{I,N}, levels::NTuple{N,Int}, p::NTuple{N,Int}) where {I<:Sector,N}
-permute(f::FusionTree{I,N}, p::NTuple{N,Int}) where {I<:Sector,N}
+TensorKitSectors.precompile_sector
 ```
 
-These can be composed to implement elementary manipulations of fusion-splitting tree pairs,
-according to the following methods
-
-```julia
-# TODO: add documentation for the following methods
-TensorKit.bendright
-TensorKit.bendleft
-TensorKit.foldright
-TensorKit.foldleft
-TensorKit.cycleclockwise
-TensorKit.cycleanticlockwise
-```
-
-Finally, these are used to define large manipulations of fusion-splitting tree pairs, which
-are then used in the index manipulation of `AbstractTensorMap` objects. The following methods
-defined on fusion splitting tree pairs have an associated definition for tensors.
-```@docs
-repartition(::FusionTree{I,N₁}, ::FusionTree{I,N₂}, ::Int) where {I<:Sector,N₁,N₂}
-transpose(::FusionTree{I}, ::FusionTree{I}, ::IndexTuple{N₁}, ::IndexTuple{N₂}) where {I<:Sector,N₁,N₂}
-braid(::FusionTree{I}, ::FusionTree{I}, ::IndexTuple, ::IndexTuple, ::IndexTuple{N₁}, ::IndexTuple{N₂}) where {I<:Sector,N₁,N₂}
-permute(::FusionTree{I}, ::FusionTree{I}, ::IndexTuple{N₁}, ::IndexTuple{N₂}) where {I<:Sector,N₁,N₂}
-```
