@@ -597,7 +597,7 @@ for V in spacelist
                     # TODO: I'm not sure how to properly test with spaces that might change
                     # with the finite-difference methods, as then the jacobian is ill-defined.
 
-                    trunc = truncrank(round(Int, min(dim(domain(t)), dim(codomain(t))) * (3 / 4)))
+                    trunc = truncrank(max(2, round(Int, min(dim(domain(t)), dim(codomain(t))) * (3 / 4))))
                     USVᴴ_trunc = svd_trunc(t; trunc)
                     ΔUSVᴴ_trunc = rand_tangent.(USVᴴ_trunc)
                     remove_svdgauge_dependence!(
