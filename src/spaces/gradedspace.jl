@@ -212,7 +212,12 @@ function Base.show(io::IO, V::GradedSpace)
     io = IOContext(io, :typeinfo => Pair{sectortype(V), Int})
 
     pre *= "("
-    post = isdual(V) ? ")'" : ")"
+    if isdual(V)
+        post = ")'"
+        V = dual(V)
+    else
+        post = ")"
+    end
     hdots = "  \u2026  "
     sep = ", "
     sepsize = length(sep)
@@ -221,7 +226,7 @@ function Base.show(io::IO, V::GradedSpace)
     screenwidth = limited ? displaysize(io)[2] : typemax(Int)
     screenwidth -= length(pre) + length(post)
 
-    cs = reshape(collect([(isdual(V) ? dual(c) : c) => dim(V, c) for c in sectors(V)]), 1, :)
+    cs = reshape(collect([c => dim(V, c) for c in sectors(V)]), 1, :)
     ncols = length(cs)
 
     maxpossiblecols = screenwidth ÷ (1 + sepsize)
