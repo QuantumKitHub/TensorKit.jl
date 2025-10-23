@@ -197,12 +197,18 @@ function supremum(V₁::GradedSpace{I}, V₂::GradedSpace{I}) where {I <: Sector
     )
 end
 
-function Base.summary(io::IO, V::GradedSpace)
-    d = dim(V)
-    dstr = d isa Int ? string(d) : @sprintf "%.2f" d
-    print(io, dstr, "-dimensional ")
-    isdual(V) && print(io, "dual ")
+function Base.showarg(io::IO, V::GradedSpace, toplevel::Bool)
+    isdual(V) && print(io, "dual(")
+    (!toplevel || isdual(V)) && print(io, "::")
     print(io, type_repr(typeof(V)))
+    isdual(V) && print(io, ")")
+    return nothing
+end
+
+function Base.summary(io::IO, V::GradedSpace)
+    d = reduceddim(V)
+    print(io, d, "-element ")
+    Base.showarg(io, V, true)
     return nothing
 end
 
