@@ -268,17 +268,18 @@ function type_repr(::Type{<:GradedSpace{ProductSector{T}}}) where
 end
 
 # Specific constructors for Z_N
-const ZNSpace{N} = GradedSpace{ZNIrrep{N}, NTuple{N, Int}}
-ZNSpace{N}(dims::NTuple{N, Int}; dual::Bool = false) where {N} = ZNSpace{N}(dims, dual)
-ZNSpace{N}(dims::Vararg{Int, N}; dual::Bool = false) where {N} = ZNSpace{N}(dims, dual)
-ZNSpace(dims::NTuple{N, Int}; dual::Bool = false) where {N} = ZNSpace{N}(dims, dual)
-ZNSpace(dims::Vararg{Int, N}; dual::Bool = false) where {N} = ZNSpace{N}(dims, dual)
+const ZNSpace{N, T} = GradedSpace{ZNIrrep{N, T}, NTuple{N, Int}}
+ZNSpace{N}(dims; dual::Bool = false) where {N} = Rep[ℤ{N}](dims; dual)
+ZNSpace{N, T}(dims::NTuple{N, Int}; dual::Bool = false) where {T, N} = ZNSpace{N, T}(dims, dual)
+ZNSpace{N, T}(dims::Vararg{Int, N}; dual::Bool = false) where {T, N} = ZNSpace{N, T}(dims, dual)
+ZNSpace(dims::NTuple{N, Int}; dual::Bool = false) where {N} = Rep[ℤ{N}](dims, dual)
+ZNSpace(dims::Vararg{Int, N}; dual::Bool = false) where {N} = Rep[ℤ{N}](dims, dual)
 
 # TODO: Do we still need all of those
 # ASCII type aliases
-const Z2Space = ZNSpace{2}
-const Z3Space = ZNSpace{3}
-const Z4Space = ZNSpace{4}
+const Z2Space = ZNSpace{2, UInt8}
+const Z3Space = ZNSpace{3, UInt8}
+const Z4Space = ZNSpace{4, UInt8}
 const U1Space = Rep[U₁]
 const CU1Space = Rep[CU₁]
 const SU2Space = Rep[SU₂]
