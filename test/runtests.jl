@@ -22,7 +22,7 @@ if isempty(settings[:groups])
     if haskey(ENV, "GROUP")
         groups = [ENV["GROUP"]]
     else
-        groups = filter(isdir, readdir(@__DIR__))
+        groups = filter(isdir ∘ Base.Fix1(joinpath, @__DIR__), readdir(@__DIR__))
     end
 else
     groups = settings[:groups]
@@ -31,6 +31,8 @@ end
 checktestgroup(group) = isdir(joinpath(@__DIR__, group)) ||
     throw(ArgumentError("Invalid group ($group), no such folder"))
 foreach(checktestgroup, groups)
+
+@info "Loaded test groups:" groups
 
 # don't run all tests on GPU, only the GPU specific ones
 is_buildkite = get(ENV, "BUILDKITE", "false") == "true"

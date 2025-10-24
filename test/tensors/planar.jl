@@ -1,7 +1,7 @@
 using Test, TestExtras
 using TensorKit
-using TensorKit: planaradd!, planartrace!, planarcontract!
 using TensorKit: PlanarTrivial, ℙ
+using TensorKit: planaradd!, planartrace!, planarcontract!
 using TensorOperations
 
 @isdefined(TestSetup) || include("../setup.jl")

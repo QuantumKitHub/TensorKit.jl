@@ -4,16 +4,10 @@ export smallset, randsector, hasfusiontensor, force_planar
 export sectorlist
 export Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, Vfib
 
-using Test
-using TestExtras
 using Random
 using TensorKit
-using Combinatorics
-using TensorKit: ProductSector, fusiontensor, pentagon_equation, hexagon_equation
 using TensorKit: ℙ, PlanarTrivial
-using TensorOperations
 using Base.Iterators: take, product
-using LinearAlgebra: LinearAlgebra
 
 Random.seed!(1234)
 
@@ -38,7 +32,7 @@ function randsector(::Type{I}) where {I <: Sector}
 end
 function hasfusiontensor(I::Type{<:Sector})
     try
-        fusiontensor(one(I), one(I), one(I))
+        TensorKit.fusiontensor(one(I), one(I), one(I))
         return true
     catch e
         if e isa MethodError
