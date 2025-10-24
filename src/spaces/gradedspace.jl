@@ -197,20 +197,7 @@ function supremum(V₁::GradedSpace{I}, V₂::GradedSpace{I}) where {I <: Sector
     )
 end
 
-function Base.showarg(io::IO, V::GradedSpace, toplevel::Bool)
-    isdual(V) && print(io, "dual(")
-    (!toplevel || isdual(V)) && print(io, "::")
-    print(io, type_repr(typeof(V)))
-    isdual(V) && print(io, ")")
-    return nothing
-end
-
-function Base.summary(io::IO, V::GradedSpace)
-    d = reduceddim(V)
-    print(io, d, "-element ")
-    Base.showarg(io, V, true)
-    return nothing
-end
+Base.summary(io::IO, V::GradedSpace) = print(io, type_repr(typeof(V)))
 
 function Base.show(io::IO, V::GradedSpace)
     pre = (get(io, :typeinfo, Any)::DataType == typeof(V) ? "" : type_repr(typeof(V)))
@@ -264,15 +251,23 @@ function Base.show(io::IO, V::GradedSpace)
 end
 
 function Base.show(io::IO, ::MIME"text/plain", V::GradedSpace)
-    summary(io, V)
-    iszero(dim(V)) && return nothing
-    println(io, ":")
-    print(io, " ")
+    # print small summary, e.g.
+    # d-element Vect[I] or d-element dual(Vect[I])
+    d = reduceddim(V)
+    print(io, d, "-element ")
+    isdual(V) && print(io, "dual(")
+    print(io, type_repr(typeof(V)))
+    isdual(V) && print(io, ")")
+
+    compact = get(io, :compact, false)::Bool
+    (iszero(d) || compact) && return nothing
+
+    # print detailed sector information
+    print(io, ":\n ")
     ioc = IOContext(io, :typeinfo => typeof(V))
     show(ioc, V)
     return nothing
 end
-
 
 struct SpaceTable end
 """
