@@ -318,8 +318,8 @@ Return a view into the data of `t` corresponding to the splitting - fusion tree 
 `(f₁, f₂)`. In particular, this is an `AbstractArray{T}` with `T = scalartype(t)`, of size
 `(dims(codomain(t), f₁.uncoupled)..., dims(codomain(t), f₂.uncoupled)...)`.
 
-Whenever `FusionStyle(sectortype(t))`, it is also possible to provide only the external
-`sectors`, in which case the fusion tree pair will be constructed automatically.
+Whenever `FusionStyle(sectortype(t)) isa UniqueFusion` , it is also possible to provide only
+the external `sectors`, in which case the fusion tree pair will be constructed automatically.
 """
 
 @doc """
@@ -651,11 +651,15 @@ end
 
 # Show and friends
 # ----------------
-Base.dims2string(V::HomSpace) = join(dim.(codomain(V)), '×') * "←" * join(dim.(domain(V)), '×')
 
-Base.summary(io::IO, t::AbstractTensorMap) = tensor_summary(io, t, space(t))
+function Base.dims2string(V::HomSpace)
+    str_cod = numout(V) == 0 ? "()" : join(dim.(codomain(V)), '×')
+    str_dom = numin(V) == 0 ? "()" : join(dim.(domain(V)), '×')
+    return str_cod * "←" * str_dom
+end
 
-function tensor_summary(io::IO, t, V)
+function Base.summary(io::IO, t::AbstractTensorMap)
+    V = space(t)
     print(io, Base.dims2string(V), " ")
     Base.showarg(io, t, true)
     return nothing
@@ -669,7 +673,8 @@ function Base.show(io::IO, ::MIME"text/plain", t::AbstractTensorMap)
 
     # 2) show spaces
     # println(io, " space(t):")
-    print(io, "  ", space(t))
+    println(io, " codomain: ", codomain(t))
+    println(io, " domain: ", domain(t))
 
     # 3) [optional]: show data
     get(io, :compact, true) && return nothing
