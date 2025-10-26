@@ -302,9 +302,9 @@ If `inv=true`, use the inverse twist.
 
 See [`twist!`](@ref) for storing the result in place.
 """
-function twist(t::AbstractTensorMap, i; inv::Bool = false)
+function twist(t::AbstractTensorMap, is; inv::Bool = false)
     (BraidingStyle(sectortype(t)) == Bosonic() || isempty(is)) && return t
-    return twist!(copy(t), i; inv)
+    return twist!(copy(t), is; inv)
 end
 
 # Methods which change the number of indices, implement using `Val(i)` for type inference
