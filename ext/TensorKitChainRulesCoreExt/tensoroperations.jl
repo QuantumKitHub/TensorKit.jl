@@ -191,7 +191,7 @@ end
 
 # temporary function to avoid copies when not needed
 # TODO: remove once `twist(t; copy=false)` is defined
-function _twist_nocopy(t, inds)
+function _twist_nocopy(t, inds; kwargs...)
     (BraidingStyle(sectortype(t)) isa Fermionic && !isempty(inds)) || return t
-    return twist(t, inds)
+    return twist(t, inds; kwargs...)
 end
