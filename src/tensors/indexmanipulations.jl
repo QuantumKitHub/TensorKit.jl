@@ -262,40 +262,48 @@ To repartition into an existing destination, see [repartition!](@ref).
 end
 
 # Twist
+function has_shared_twist(t, inds)
+    I = sectortype(t)
+    if BraidingStyle(I) == NoBraiding()
+        for i in inds
+            cs = sectors(space(t, i))
+            all(isone, cs) || throw(SectorMismatch(lazy"Cannot twist sectors $cs"))
+        end
+        return true
+    elseif BraidingStyle(I) == Bosonic()
+        return true
+    else
+        return isempty(inds)
+    end
+end
+
 """
     twist!(t::AbstractTensorMap, i::Int; inv::Bool=false) -> t
-    twist!(t::AbstractTensorMap, is; inv::Bool=false) -> t
+    twist!(t::AbstractTensorMap, inds; inv::Bool=false) -> t
 
-Apply a twist to the `i`th index of `t`, or all indices in `is`, storing the result in `t`.
+Apply a twist to the `i`th index of `t`, or all indices in `inds`, storing the result in `t`.
 If `inv=true`, use the inverse twist.
 
 See [`twist`](@ref) for creating a new tensor.
 """
-function twist!(t::AbstractTensorMap, is; inv::Bool = false)
-    if !all(in(allind(t)), is)
-        msg = "Can't twist indices $is of a tensor with only $(numind(t)) indices."
+function twist!(t::AbstractTensorMap, inds; inv::Bool = false)
+    if !all(in(allind(t)), inds)
+        msg = "Can't twist indices $inds of a tensor with only $(numind(t)) indices."
         throw(ArgumentError(msg))
     end
-    (BraidingStyle(sectortype(t)) == Bosonic() || isempty(is)) && return t
-    if BraidingStyle(sectortype(t)) == NoBraiding()
-        for i in is
-            cs = sectors(space(t, i))
-            all(isone, cs) || throw(SectorMismatch(lazy"Cannot twist sectors $cs"))
-        end
-        return t
-    end
+    has_shared_twist(t, inds) && return t
     N₁ = numout(t)
     for (f₁, f₂) in fusiontrees(t)
-        θ = prod(i -> i <= N₁ ? twist(f₁.uncoupled[i]) : twist(f₂.uncoupled[i - N₁]), is)
+        θ = prod(i -> i <= N₁ ? twist(f₁.uncoupled[i]) : twist(f₂.uncoupled[i - N₁]), inds)
         inv && (θ = θ')
-        rmul!(t[f₁, f₂], θ)
+        scale!(t[f₁, f₂], θ)
     end
     return t
 end
 
 """
     twist(tsrc::AbstractTensorMap, i::Int; inv::Bool = false, copy::Bool = false) -> tdst
-    twist(tsrc::AbstractTensorMap, is; inv::Bool = false, copy::Bool = false) -> tdst
+    twist(tsrc::AbstractTensorMap, inds; inv::Bool = false, copy::Bool = false) -> tdst
 
 Apply a twist to the `i`th index of `tsrc` and return the result as a new tensor.
 If `inv = true`, use the inverse twist.
@@ -303,8 +311,8 @@ If `copy = false`, `tdst` might share data with `tsrc` whenever possible. Otherw
 
 See [`twist!`](@ref) for storing the result in place.
 """
-function twist(t::AbstractTensorMap, is; inv::Bool = false, copy::Bool = false)
-    !copy && (BraidingStyle(sectortype(t)) == Bosonic() || isempty(is)) && return t
+function twist(t::AbstractTensorMap, inds; inv::Bool = false, copy::Bool = false)
+    !copy && has_shared_twist(t, inds) && return t
     return twist!(copy(t), is; inv)
 end
 
