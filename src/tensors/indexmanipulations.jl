@@ -294,16 +294,17 @@ function twist!(t::AbstractTensorMap, is; inv::Bool = false)
 end
 
 """
-    twist(tsrc::AbstractTensorMap, i::Int; inv::Bool=false) -> tdst
-    twist(tsrc::AbstractTensorMap, is; inv::Bool=false) -> tdst
+    twist(tsrc::AbstractTensorMap, i::Int; inv::Bool = false, copy::Bool = false) -> tdst
+    twist(tsrc::AbstractTensorMap, is; inv::Bool = false, copy::Bool = false) -> tdst
 
 Apply a twist to the `i`th index of `tsrc` and return the result as a new tensor.
-If `inv=true`, use the inverse twist.
+If `inv = true`, use the inverse twist.
+If `copy = false`, `tdst` might share data with `tsrc` whenever possible. Otherwise, a copy is always made.
 
 See [`twist!`](@ref) for storing the result in place.
 """
-function twist(t::AbstractTensorMap, is; inv::Bool = false)
-    (BraidingStyle(sectortype(t)) == Bosonic() || isempty(is)) && return t
+function twist(t::AbstractTensorMap, is; inv::Bool = false, copy::Bool = false)
+    !copy && (BraidingStyle(sectortype(t)) == Bosonic() || isempty(is)) && return t
     return twist!(copy(t), is; inv)
 end
 
