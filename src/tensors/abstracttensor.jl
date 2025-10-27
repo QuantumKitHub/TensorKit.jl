@@ -381,26 +381,7 @@ subblocktype(T::Type) = throw(MethodError(subblocktype, (T,)))
 
 # Indexing behavior
 # -----------------
-@doc """
-    Base.view(t::AbstractTensorMap, sectors::Tuple{Vararg{Sector}})
-    Base.view(t::AbstractTensorMap, f₁::FusionTree, f₂::FusionTree)
-
-$_doc_subblock
-
-!!! note
-    Contrary to Julia's array types, the default indexing behavior is to return a view
-    into the tensor data. As a result, `getindex` and `view` have the same behavior.
-
-See also [`subblock`](@ref), [`subblocks`](@ref) and [`fusiontrees`](@ref).
-""" Base.view(::AbstractTensorMap, ::Tuple{I, Vararg{I}}) where {I <: Sector},
-    Base.view(::AbstractTensorMap, ::FusionTree, ::FusionTree)
-
-@inline Base.view(t::AbstractTensorMap, sectors::Tuple{I, Vararg{I}}) where {I <: Sector} =
-    subblock(t, sectors)
-@inline Base.view(t::AbstractTensorMap, f₁::FusionTree, f₂::FusionTree) =
-    subblock(t, (f₁, f₂))
-
-# by default getindex returns views
+# by default getindex returns views!
 @doc """
     Base.getindex(t::AbstractTensorMap, sectors::Tuple{Vararg{Sector}})
     t[sectors]
@@ -418,9 +399,9 @@ See also [`subblock`](@ref), [`subblocks`](@ref) and [`fusiontrees`](@ref).
     Base.getindex(::AbstractTensorMap, ::FusionTree, ::FusionTree)
 
 @inline Base.getindex(t::AbstractTensorMap, sectors::Tuple{I, Vararg{I}}) where {I <: Sector} =
-    view(t, sectors)
+    subblock(t, sectors)
 @inline Base.getindex(t::AbstractTensorMap, f₁::FusionTree, f₂::FusionTree) =
-    view(t, f₁, f₂)
+    subblock(t, (f₁, f₂))
 
 @doc """
     Base.setindex!(t::AbstractTensorMap, v, sectors::Tuple{Vararg{Sector}})
@@ -436,9 +417,9 @@ See also [`subblock`](@ref), [`subblocks`](@ref) and [`fusiontrees`](@ref).
     Base.setindex!(::AbstractTensorMap, ::Any, ::FusionTree, ::FusionTree)
 
 @inline Base.setindex!(t::AbstractTensorMap, v, sectors::Tuple{I, Vararg{I}}) where {I <: Sector} =
-    copy!(view(t, sectors), v)
+    copy!(subblock(t, sectors), v)
 @inline Base.setindex!(t::AbstractTensorMap, v, f₁::FusionTree, f₂::FusionTree) =
-    copy!(view(t, (f₁, f₂)), v)
+    copy!(subblock(t, (f₁, f₂)), v)
 
 # Derived indexing behavior for tensors with trivial symmetry
 #-------------------------------------------------------------
@@ -625,10 +606,6 @@ end
 
 # Conversion to Array:
 #----------------------
-Base.ndims(t::AbstractTensorMap) = numind(t)
-Base.size(t::AbstractTensorMap) = ntuple(Base.Fix1(size, t), numind(t))
-Base.size(t::AbstractTensorMap, i) = dim(space(t, i))
-
 # probably not optimized for speed, only for checking purposes
 function Base.convert(::Type{Array}, t::AbstractTensorMap)
     I = sectortype(t)
