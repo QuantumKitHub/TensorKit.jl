@@ -61,14 +61,17 @@ LinearAlgebra.svdvals!(t::AbstractTensorMap) = diagview(svd_vals!(t))
 #--------------------------------------------------#
 # Checks for hermiticity and positive definiteness #
 #--------------------------------------------------#
-function LinearAlgebra.ishermitian(t::AbstractTensorMap)
-    domain(t) == codomain(t) || return false
-    InnerProductStyle(t) === EuclideanInnerProduct() || return false # hermiticity only defined for euclidean
-    for (c, b) in blocks(t)
-        ishermitian(b) || return false
-    end
-    return true
+function MAK.ishermitian(t::AbstractTensorMap; kwargs...)
+    return InnerProductStyle(t) === EuclideanInnerProduct() &&
+        domain(t) == codomain(t) &&
+        all(cb -> MatrixAlgebraKit.ishermitian(cb[2]; kwargs...), blocks(t))
 end
+function MAK.isantihermitian(t::AbstractTensorMap; kwargs...)
+    return InnerProductStyle(t) === EuclideanInnerProduct() &&
+        domain(t) == codomain(t) &&
+        all(cb -> MatrixAlgebraKit.isantihermitian(cb[2]; kwargs...), blocks(t))
+end
+LinearAlgebra.ishermitian(t::AbstractTensorMap) = MAK.ishermitian(t)
 
 function LinearAlgebra.isposdef(t::AbstractTensorMap)
     return isposdef!(copy_oftype(t, factorisation_scalartype(isposdef, t)))
