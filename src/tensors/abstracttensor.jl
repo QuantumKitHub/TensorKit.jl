@@ -656,7 +656,7 @@ function Base.show(io::IO, ::MIME"text/plain", t::AbstractTensorMap)
     # 3) [optional]: show data
     get(io, :compact, true) && return nothing
     ioc = IOContext(io, :typeinfo => sectortype(t))
-    println(io, "\n\n blocks(t):")
+    println(io, "\n\n blocks: ")
     show_blocks(io, MIME"text/plain"(), blocks(t))
     return nothing
 end
