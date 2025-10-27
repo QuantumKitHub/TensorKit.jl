@@ -28,7 +28,7 @@ function ChainRulesCore.rrule(
             # for non-symmetric tensors this might be more efficient like this,
             # but for symmetric tensors an intermediate object will anyways be created
             # and then it might be more efficient to use an addition and inner product
-            tΔC = twist(ΔC, filter(x -> isdual(space(ΔC, x)), allind(ΔC)))
+            tΔC = _twist_nocopy(ΔC, filter(x -> isdual(space(ΔC, x)), allind(ΔC)))
             _dα = tensorscalar(
                 tensorcontract(
                     A, ((), linearize(pA)), !conjA,
@@ -74,7 +74,7 @@ function ChainRulesCore.rrule(
             conjB′ = conjA ? conjB : !conjB
             TA = promote_contract(scalartype(ΔC), scalartype(B), scalartype(α))
             # TODO: allocator
-            tB = twist(
+            tB = _twist_nocopy(
                 B,
                 TupleTools.vcat(
                     filter(x -> !isdual(space(B, x)), pB[1]),
@@ -99,7 +99,7 @@ function ChainRulesCore.rrule(
             conjA′ = conjB ? conjA : !conjA
             TB = promote_contract(scalartype(ΔC), scalartype(A), scalartype(α))
             # TODO: allocator
-            tA = twist(
+            tA = _twist_nocopy(
                 A,
                 TupleTools.vcat(
                     filter(x -> isdual(space(A, x)), pA[1]),
@@ -187,4 +187,11 @@ function ChainRulesCore.rrule(::typeof(TensorKit.scalar), t::AbstractTensorMap)
         return NoTangent(), dt
     end
     return val, scalar_pullback
+end
+
+# temporary function to avoid copies when not needed
+# TODO: remove once `twist(t; copy=false)` is defined
+function _twist_nocopy(t, inds)
+    (BraidingStyle(sectortype(t)) isa Fermionic && !isempty(inds)) || return t
+    return twist(t, inds)
 end
