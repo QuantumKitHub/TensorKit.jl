@@ -5,6 +5,7 @@ for f in
         :svd_compact, :svd_full, :svd_trunc, :svd_vals, :qr_compact, :qr_full, :qr_null,
         :lq_compact, :lq_full, :lq_null, :eig_full, :eig_trunc, :eig_vals, :eigh_full,
         :eigh_trunc, :eigh_vals, :left_polar, :right_polar,
+        :project_hermitian, :project_antihermitian, :project_isometric,
     ]
     f! = Symbol(f, :!)
     @eval function MAK.default_algorithm(::typeof($f!), ::Type{T}; kwargs...) where {T <: AbstractTensorMap}
@@ -655,3 +656,17 @@ for (f!, f_svd!) in zip((:left_null!, :right_null!), (:left_null_svd!, :right_nu
         return $f!(t, N; alg_svd = alg)
     end
 end
+
+# Projections
+# -----------
+function MAK.check_input(::typeof(project_hermitian!), tsrc::AbstractTensorMap, tdst::AbstractTensorMap)
+    domain(tsrc) == codomain(tsrc) || throw(ArgumentError("Hermitian projection requires square input tensor"))
+    tsrc === tdst || @check_space(tdst, space(tsrc))
+    return nothing
+end
+
+MAK.check_input(::typeof(project_antihermitian!), tsrc::AbstractTensorMap, tdst::AbstractTensorMap) =
+    MAK.check_input(project_hermitian!, tsrc, tdst)
+
+MAK.initialize_output(::typeof(project_hermitian!), tsrc::AbstractTensorMap) = tsrc
+MAK.initialize_output(::typeof(project_antihermitian!), tsrc::AbstractTensorMap) = tsrc
