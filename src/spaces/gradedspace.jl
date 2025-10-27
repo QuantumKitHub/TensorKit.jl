@@ -200,72 +200,50 @@ end
 Base.summary(io::IO, V::GradedSpace) = print(io, type_repr(typeof(V)))
 
 function Base.show(io::IO, V::GradedSpace)
-    pre = (get(io, :typeinfo, Any)::DataType == typeof(V) ? "" : type_repr(typeof(V)))
-
-    io = IOContext(io, :typeinfo => Pair{sectortype(V), Int})
-
-    pre *= "("
+    opn = (get(io, :typeinfo, Any)::DataType == typeof(V) ? "" : type_repr(typeof(V)))
+    opn *= "("
     if isdual(V)
-        post = ")'"
+        cls = ")'"
         V = dual(V)
     else
-        post = ")"
+        cls = ")"
     end
-    hdots = "  \u2026  "
-    sep = ", "
-    sepsize = length(sep)
 
+    v = [c => dim(V, c) for c in sectors(V)]
+
+    # logic stolen from Base.show_vector
     limited = get(io, :limit, false)::Bool
-    screenwidth = limited ? displaysize(io)[2] : typemax(Int)
-    screenwidth -= length(pre) + length(post)
+    io = IOContext(io, :typeinfo => eltype(v))
 
-    cs = reshape(collect([c => dim(V, c) for c in sectors(V)]), 1, :)
-    ncols = length(cs)
-
-    maxpossiblecols = screenwidth ÷ (1 + sepsize)
-    if ncols > maxpossiblecols
-        cols = [1:(maxpossiblecols - 1); (ncols - maxpossiblecols + 1):ncols]
+    if limited && length(v) > 20
+        axs1 = axes(v, 1)
+        f, l = first(axs1), last(axs1)
+        Base.show_delim_array(io, v, opn, ",", "", false, f, f + 9)
+        print(io, "  …  ")
+        Base.show_delim_array(io, v, "", ",", cls, false, l - 9, l)
     else
-        cols = collect(1:ncols)
+        Base.show_delim_array(io, v, opn, ",", cls, false)
     end
-
-    A = Base.alignment(io, cs, [1], cols, screenwidth, screenwidth, sepsize, ncols)
-
-    if ncols <= length(A) # fits on screen
-        print(io, pre)
-        Base.print_matrix_row(io, cs, A, 1, cols, sep, ncols)
-        print(io, post)
-    else # doesn't fit on screen
-        half = (screenwidth - length(hdots) + 1) ÷ 2 + 1
-        Ralign = reverse(Base.alignment(io, cs, [1], reverse(cols), half, half, sepsize, ncols))
-        half = screenwidth - sum(map(sum, Ralign)) - (length(Ralign) - 1) * sepsize - length(hdots)
-        Lalign = Base.alignment(io, cs, [1], cols, half, half, sepsize, ncols)
-        print(io, pre)
-        Base.print_matrix_row(io, cs, Lalign, 1, cols[1:length(Lalign)], sep, ncols)
-        print(io, hdots)
-        Base.print_matrix_row(io, cs, Ralign, 1, (length(cs) - length(Ralign)) .+ cols, sep, length(cs))
-        print(io, post)
-    end
-
     return nothing
 end
 
 function Base.show(io::IO, ::MIME"text/plain", V::GradedSpace)
-    # print small summary, e.g.
-    # d-element Vect[I] or d-element dual(Vect[I])
-    d = reduceddim(V)
-    print(io, d, "-element ")
-    isdual(V) && print(io, "dual(")
-    print(io, type_repr(typeof(V)))
-    isdual(V) && print(io, ")")
+    # print small summary, e.g.: Vect[I](…) of dim d
+    d = dim(V)
+    print(io, type_repr(typeof(d)), "(…)")
+    isdual(V) && print(io, "'")
+    print(io, " of dim ", d)
 
     compact = get(io, :compact, false)::Bool
     (iszero(d) || compact) && return nothing
 
-    # print detailed sector information
-    print(io, ":\n ")
-    ioc = IOContext(io, :typeinfo => typeof(V))
-    show(ioc, V)
+    # print detailed sector information - hijack Base.Vector printing
+    print(io, ":\n")
+    isdual(V) && (V = dual(V))
+    print_data = [c => dim(V, c) for c in sectors(V)]
+    ioc = IOContext(io, :typeinfo => eltype(print_data))
+    Base.print_matrix(ioc, print_data)
+
     return nothing
 end
 
