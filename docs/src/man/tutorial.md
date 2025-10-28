@@ -136,7 +136,7 @@ constructor as well as a unicode alternative using the symbol `→` (obtained as
 
 ```@repl tutorial
 P = space(U)
-space(U) == HomSpace(ℝ^3 ⊗ ℝ^4, ℝ^2) == (ℝ^3 ⊗ ℝ^4 ← ℝ^2) == ℝ^2 → ℝ^3 ⊗ ℝ^4
+space(U) == HomSpace(ℝ^3 ⊗ ℝ^4, ℝ^2) == (ℝ^3 ⊗ ℝ^4 ← ℝ^2) == (ℝ^2 → ℝ^3 ⊗ ℝ^4)
 (codomain(P), domain(P))
 ```
 
@@ -281,7 +281,7 @@ It also makes clear the isomorphism between linear maps `ℂ^n → ℂ^m` and te
 
 ```@repl tutorial
 m = randn(ComplexF64, ℂ^3, ℂ^4)
-m2 = permute(m, (1,2), ())
+m2 = permute(m, ((1, 2), ()))
 codomain(m2)
 space(m, 1)
 space(m, 2)
