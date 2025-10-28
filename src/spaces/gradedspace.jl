@@ -197,21 +197,53 @@ function supremum(V₁::GradedSpace{I}, V₂::GradedSpace{I}) where {I <: Sector
     )
 end
 
-function Base.show(io::IO, V::GradedSpace{I}) where {I <: Sector}
-    print(io, type_repr(typeof(V)), "(")
-    separator = ""
-    comma = ", "
-    io2 = IOContext(io, :typeinfo => I)
-    for c in sectors(V)
-        if isdual(V)
-            print(io2, separator, dual(c), "=>", dim(V, c))
-        else
-            print(io2, separator, c, "=>", dim(V, c))
-        end
-        separator = comma
+Base.summary(io::IO, V::GradedSpace) = print(io, type_repr(typeof(V)))
+
+function Base.show(io::IO, V::GradedSpace)
+    opn = (get(io, :typeinfo, Any)::DataType == typeof(V) ? "" : type_repr(typeof(V)))
+    opn *= "("
+    if isdual(V)
+        cls = ")'"
+        V = dual(V)
+    else
+        cls = ")"
     end
-    print(io, ")")
-    V.dual && print(io, "'")
+
+    v = [c => dim(V, c) for c in sectors(V)]
+
+    # logic stolen from Base.show_vector
+    limited = get(io, :limit, false)::Bool
+    io = IOContext(io, :typeinfo => eltype(v))
+
+    if limited && length(v) > 20
+        axs1 = axes(v, 1)
+        f, l = first(axs1), last(axs1)
+        Base.show_delim_array(io, v, opn, ",", "", false, f, f + 9)
+        print(io, "  …  ")
+        Base.show_delim_array(io, v, "", ",", cls, false, l - 9, l)
+    else
+        Base.show_delim_array(io, v, opn, ",", cls, false)
+    end
+    return nothing
+end
+
+function Base.show(io::IO, ::MIME"text/plain", V::GradedSpace)
+    # print small summary, e.g.: Vect[I](…) of dim d
+    d = dim(V)
+    print(io, type_repr(typeof(d)), "(…)")
+    isdual(V) && print(io, "'")
+    print(io, " of dim ", d)
+
+    compact = get(io, :compact, false)::Bool
+    (iszero(d) || compact) && return nothing
+
+    # print detailed sector information - hijack Base.Vector printing
+    print(io, ":\n")
+    isdual(V) && (V = dual(V))
+    print_data = [c => dim(V, c) for c in sectors(V)]
+    ioc = IOContext(io, :typeinfo => eltype(print_data))
+    Base.print_matrix(ioc, print_data)
+
     return nothing
 end
 

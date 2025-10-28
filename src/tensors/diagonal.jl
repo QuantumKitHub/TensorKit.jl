@@ -166,19 +166,12 @@ end
 
 # Indexing and getting and setting the data at the subblock level
 #-----------------------------------------------------------------
-@inline function Base.getindex(
-        d::DiagonalTensorMap, f₁::FusionTree{I, 1}, f₂::FusionTree{I, 1}
+Base.@propagate_inbounds function subblock(
+        d::DiagonalTensorMap, (f₁, f₂)::Tuple{FusionTree{I, 1}, FusionTree{I, 1}}
     ) where {I <: Sector}
     s = f₁.uncoupled[1]
     s == f₁.coupled == f₂.uncoupled[1] == f₂.coupled || throw(SectorMismatch())
     return block(d, s)
-    # TODO: do we want a StridedView here? Then we need to allocate a new matrix.
-end
-
-function Base.setindex!(
-        d::DiagonalTensorMap, v, f₁::FusionTree{I, 1}, f₂::FusionTree{I, 1}
-    ) where {I <: Sector}
-    return copy!(getindex(d, f₁, f₂), v)
 end
 
 function Base.getindex(d::DiagonalTensorMap)
@@ -335,23 +328,13 @@ end
 
 # Show
 #------
-function Base.summary(io::IO, t::DiagonalTensorMap)
-    return print(io, "DiagonalTensorMap(", space(t), ")")
+function type_repr(::Type{DiagonalTensorMap{T, S, A}}) where {T, S, A}
+    return "DiagonalTensorMap{$T, $(type_repr(S)), $A}"
 end
-function Base.show(io::IO, t::DiagonalTensorMap)
-    summary(io, t)
-    get(io, :compact, false) && return nothing
-    println(io, ":")
-
-    if sectortype(t) == Trivial
-        Base.print_array(io, Diagonal(t.data))
-        println(io)
-    else
-        for (c, b) in blocks(t)
-            println(io, "* Data for sector ", c, ":")
-            Base.print_array(io, b)
-            println(io)
-        end
-    end
+function Base.showarg(io::IO, t::DiagonalTensorMap, toplevel::Bool)
+    !toplevel && print(io, "::")
+    print(io, type_repr(typeof(t)))
     return nothing
 end
+Base.show(io::IO, t::DiagonalTensorMap) =
+    print(io, type_repr(typeof(t)), "(", t.data, ", ", space(t, 1), ")")

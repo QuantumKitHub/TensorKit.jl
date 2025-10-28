@@ -250,6 +250,12 @@ Return an iterator over all splitting - fusion tree pairs of a tensor.
 """
 fusiontrees(t::AbstractTensorMap) = fusionblockstructure(t).fusiontreelist
 
+fusiontreetype(t::AbstractTensorMap) = fusiontreetype(typeof(t))
+function fusiontreetype(::Type{T}) where {T <: AbstractTensorMap}
+    I = sectortype(T)
+    return Tuple{fusiontreetype(I, numout(T)), fusiontreetype(I, numin(T))}
+end
+
 # auxiliary function
 @inline function trivial_fusiontree(t::AbstractTensorMap)
     sectortype(t) === Trivial ||
@@ -294,6 +300,126 @@ Return the type of the matrix blocks of a tensor.
 function blocktype(::Type{T}) where {T <: AbstractTensorMap}
     return Core.Compiler.return_type(block, Tuple{T, sectortype(T)})
 end
+
+# tensor data: subblock access
+# ----------------------------
+@doc """
+    subblocks(t::AbstractTensorMap)
+
+Return an iterator over all subblocks of a tensor, i.e. all fusiontrees and their
+corresponding tensor subblocks.
+
+See also [`subblock`](@ref), [`fusiontrees`](@ref), and [`hassubblock`](@ref).
+"""
+subblocks(t::AbstractTensorMap) = SubblockIterator(t, fusiontrees(t))
+
+const _doc_subblock = """
+Return a view into the data of `t` corresponding to the splitting - fusion tree pair
+`(f₁, f₂)`. In particular, this is an `AbstractArray{T}` with `T = scalartype(t)`, of size
+`(dims(codomain(t), f₁.uncoupled)..., dims(codomain(t), f₂.uncoupled)...)`.
+
+Whenever `FusionStyle(sectortype(t)) isa UniqueFusion` , it is also possible to provide only
+the external `sectors`, in which case the fusion tree pair will be constructed automatically.
+"""
+
+@doc """
+    subblock(t::AbstractTensorMap, (f₁, f₂)::Tuple{FusionTree,FusionTree})
+    subblock(t::AbstractTensorMap, sectors::Tuple{Vararg{Sector}})
+
+$_doc_subblock
+
+In general, new tensor types should provide an implementation of this function for the
+fusion tree signature.
+
+See also [`subblocks`](@ref) and [`fusiontrees`](@ref).
+""" subblock
+
+Base.@propagate_inbounds function subblock(t::AbstractTensorMap, sectors::Tuple{I, Vararg{I}}) where {I <: Sector}
+    # input checking
+    I === sectortype(t) || throw(SectorMismatch("Not a valid sectortype for this tensor."))
+    FusionStyle(I) isa UniqueFusion ||
+        throw(SectorMismatch("Indexing with sectors is only possible for unique fusion styles."))
+    length(sectors) == numind(t) || throw(ArgumentError("invalid number of sectors"))
+
+    # convert to fusiontrees
+    s₁ = TupleTools.getindices(sectors, codomainind(t))
+    s₂ = map(dual, TupleTools.getindices(sectors, domainind(t)))
+    c1 = length(s₁) == 0 ? unit(I) : (length(s₁) == 1 ? s₁[1] : first(⊗(s₁...)))
+    @boundscheck begin
+        hassector(codomain(t), s₁) && hassector(domain(t), s₂) || throw(BoundsError(t, sectors))
+        c2 = length(s₂) == 0 ? unit(I) : (length(s₂) == 1 ? s₂[1] : first(⊗(s₂...)))
+        c2 == c1 || throw(SectorMismatch("Not a valid fusion channel for this tensor"))
+    end
+    f₁ = FusionTree(s₁, c1, map(isdual, tuple(codomain(t)...)))
+    f₂ = FusionTree(s₂, c1, map(isdual, tuple(domain(t)...)))
+    return @inbounds subblock(t, (f₁, f₂))
+end
+Base.@propagate_inbounds function subblock(t::AbstractTensorMap, sectors::Tuple)
+    return subblock(t, map(Base.Fix1(convert, sectortype(t)), sectors))
+end
+# attempt to provide better error messages
+function subblock(t::AbstractTensorMap, (f₁, f₂)::Tuple{FusionTree, FusionTree})
+    (sectortype(t)) == sectortype(f₁) == sectortype(f₂) ||
+        throw(SectorMismatch("Not a valid sectortype for this tensor."))
+    numout(t) == length(f₁) && numin(t) == length(f₂) ||
+        throw(DimensionMismatch("Invalid number of fusiontree legs for this tensor."))
+    throw(MethodError(subblock, (t, (f₁, f₂))))
+end
+
+@doc """
+    subblocktype(t)
+    subblocktype(::Type{T})
+
+Return the type of the tensor subblocks of a tensor.
+""" subblocktype
+
+function subblocktype(::Type{T}) where {T <: AbstractTensorMap}
+    return Core.Compiler.return_type(subblock, Tuple{T, fusiontreetype(T)})
+end
+subblocktype(t) = subblocktype(typeof(t))
+subblocktype(T::Type) = throw(MethodError(subblocktype, (T,)))
+
+# Indexing behavior
+# -----------------
+# by default getindex returns views!
+@doc """
+    Base.getindex(t::AbstractTensorMap, sectors::Tuple{Vararg{Sector}})
+    t[sectors]
+    Base.getindex(t::AbstractTensorMap, f₁::FusionTree, f₂::FusionTree)
+    t[f₁, f₂]
+
+$_doc_subblock
+
+!!! warning
+    Contrary to Julia's array types, the default behavior is to return a view into the tensor data.
+    As a result, modifying the view will modify the data in the tensor.
+
+See also [`subblock`](@ref), [`subblocks`](@ref) and [`fusiontrees`](@ref).
+""" Base.getindex(::AbstractTensorMap, ::Tuple{I, Vararg{I}}) where {I <: Sector},
+    Base.getindex(::AbstractTensorMap, ::FusionTree, ::FusionTree)
+
+@inline Base.getindex(t::AbstractTensorMap, sectors::Tuple{I, Vararg{I}}) where {I <: Sector} =
+    subblock(t, sectors)
+@inline Base.getindex(t::AbstractTensorMap, f₁::FusionTree, f₂::FusionTree) =
+    subblock(t, (f₁, f₂))
+
+@doc """
+    Base.setindex!(t::AbstractTensorMap, v, sectors::Tuple{Vararg{Sector}})
+    t[sectors] = v
+    Base.setindex!(t::AbstractTensorMap, v, f₁::FusionTree, f₂::FusionTree)
+    t[f₁, f₂] = v
+
+Copies `v` into the data slice of `t` corresponding to the splitting - fusion tree pair `(f₁, f₂)`.
+By default, `v` can be any object that can be copied into the view associated with `t[f₁, f₂]`.
+
+See also [`subblock`](@ref), [`subblocks`](@ref) and [`fusiontrees`](@ref).
+""" Base.setindex!(::AbstractTensorMap, ::Any, ::Tuple{I, Vararg{I}}) where {I <: Sector},
+    Base.setindex!(::AbstractTensorMap, ::Any, ::FusionTree, ::FusionTree)
+
+@inline Base.setindex!(t::AbstractTensorMap, v, sectors::Tuple{I, Vararg{I}}) where {I <: Sector} =
+    copy!(subblock(t, sectors), v)
+@inline Base.setindex!(t::AbstractTensorMap, v, f₁::FusionTree, f₂::FusionTree) =
+    copy!(subblock(t, (f₁, f₂)), v)
 
 # Derived indexing behavior for tensors with trivial symmetry
 #-------------------------------------------------------------
@@ -498,4 +624,39 @@ function Base.convert(::Type{Array}, t::AbstractTensorMap)
         end
         return A
     end
+end
+
+# Show and friends
+# ----------------
+
+function Base.dims2string(V::HomSpace)
+    str_cod = numout(V) == 0 ? "()" : join(dim.(codomain(V)), '×')
+    str_dom = numin(V) == 0 ? "()" : join(dim.(domain(V)), '×')
+    return str_cod * "←" * str_dom
+end
+
+function Base.summary(io::IO, t::AbstractTensorMap)
+    V = space(t)
+    print(io, Base.dims2string(V), " ")
+    Base.showarg(io, t, true)
+    return nothing
+end
+
+# Human-readable:
+function Base.show(io::IO, ::MIME"text/plain", t::AbstractTensorMap)
+    # 1) show summary: typically d₁×d₂×… ← d₃×d₄×… $(typeof(t)):
+    summary(io, t)
+    println(io, ":")
+
+    # 2) show spaces
+    # println(io, " space(t):")
+    println(io, " codomain: ", codomain(t))
+    println(io, " domain: ", domain(t))
+
+    # 3) [optional]: show data
+    get(io, :compact, true) && return nothing
+    ioc = IOContext(io, :typeinfo => sectortype(t))
+    println(io, "\n\n blocks: ")
+    show_blocks(io, MIME"text/plain"(), blocks(t))
+    return nothing
 end
