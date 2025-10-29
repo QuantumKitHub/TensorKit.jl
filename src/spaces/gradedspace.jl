@@ -230,7 +230,7 @@ end
 function Base.show(io::IO, ::MIME"text/plain", V::GradedSpace)
     # print small summary, e.g.: Vect[I](…) of dim d
     d = dim(V)
-    print(io, type_repr(typeof(d)), "(…)")
+    print(io, type_repr(typeof(V)), "(…)")
     isdual(V) && print(io, "'")
     print(io, " of dim ", d)
 
