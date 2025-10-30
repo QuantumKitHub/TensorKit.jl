@@ -176,7 +176,7 @@ the permutation `(p₁..., reverse(p₂)...)` should constitute a cyclic permuta
 See [`transpose`](@ref) for creating a new tensor and [`add_transpose!`](@ref) for a more general version.
 """
 function LinearAlgebra.transpose!(
-        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, (p₁, p₂)::Index2Tuple = _transpose_indices(t)
+        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, (p₁, p₂)::Index2Tuple = _transpose_indices(tsrc)
     )
     return add_transpose!(tdst, tsrc, (p₁, p₂), One(), Zero())
 end
