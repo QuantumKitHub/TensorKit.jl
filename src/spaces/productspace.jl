@@ -71,10 +71,11 @@ dual(P::ProductSpace) = ProductSpace(map(dual, reverse(P.spaces)))
 function Base.show(io::IO, P::ProductSpace{S}) where {S <: ElementarySpace}
     spaces = P.spaces
     if length(spaces) == 0
-        print(io, "ProductSpace{", S, ", 0}")
+        print(io, "one(", type_repr(S), ")")
+        return nothing
     end
     if length(spaces) == 1
-        print(io, "ProductSpace")
+        print(io, "⊗")
     end
     print(io, "(")
     for i in 1:length(spaces)
