@@ -119,40 +119,40 @@ numind(::Type{TT}) where {TT <: AbstractTensorMap} = numin(TT) + numout(TT)
 const order = numind
 
 """
-    codomainind(::Union{TT,Type{TT}}) where {TT<:AbstractTensorMap} -> Tuple{Int}
+    codomainind(::Union{TT, Type{TT}}) where {TT <: Union{HomSpace, AbstractTensorMap}} -> Tuple{Int}
 
-Return all indices of the codomain of a tensor.
+Return all indices of the codomain of a tensor or tensor space.
 
 See also [`domainind`](@ref) and [`allind`](@ref).
 """
-function codomainind(::Type{TT}) where {TT <: AbstractTensorMap}
+function codomainind(::Type{TT}) where {TT <: Union{AbstractTensorMap, HomSpace}}
     return ntuple(identity, numout(TT))
 end
-codomainind(t::AbstractTensorMap) = codomainind(typeof(t))
+codomainind(t::Union{AbstractTensorMap, HomSpace}) = codomainind(typeof(t))
 
 """
     domainind(::Union{TT,Type{TT}}) where {TT<:AbstractTensorMap} -> Tuple{Int}
 
-Return all indices of the domain of a tensor.
+Return all indices of the domain of a tensor or tensor space.
 
 See also [`codomainind`](@ref) and [`allind`](@ref).
 """
-function domainind(::Type{TT}) where {TT <: AbstractTensorMap}
+function domainind(::Type{TT}) where {TT <: Union{HomSpace, AbstractTensorMap}}
     return ntuple(n -> numout(TT) + n, numin(TT))
 end
-domainind(t::AbstractTensorMap) = domainind(typeof(t))
+domainind(t::Union{AbstractTensorMap, HomSpace}) = domainind(typeof(t))
 
 """
     allind(::Union{TT,Type{TT}}) where {TT<:AbstractTensorMap} -> Tuple{Int}
 
-Return all indices of a tensor, i.e. the indices of its domain and codomain.
+Return all indices of a tensor or tensor space, i.e. the indices of its domain and codomain.
 
 See also [`codomainind`](@ref) and [`domainind`](@ref).
 """
-function allind(::Type{TT}) where {TT <: AbstractTensorMap}
+function allind(::Type{TT}) where {TT <: Union{HomSpace, AbstractTensorMap}}
     return ntuple(identity, numind(TT))
 end
-allind(t::AbstractTensorMap) = allind(typeof(t))
+allind(t::Union{HomSpace, AbstractTensorMap}) = allind(typeof(t))
 
 function adjointtensorindex(t::AbstractTensorMap, i)
     return ifelse(i <= numout(t), numin(t) + i, i - numout(t))
