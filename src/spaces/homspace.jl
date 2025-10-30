@@ -206,6 +206,30 @@ function compose(W::HomSpace{S}, V::HomSpace{S}) where {S}
     return HomSpace(codomain(W), domain(V))
 end
 
+function TensorOperations.tensorcontract(
+        A::HomSpace, pA::Index2Tuple, conjA::Bool,
+        B::HomSpace, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple
+    )
+    return if conjA && conjB
+        A′ = A'
+        pA′ = adjointtensorindices(A, pA)
+        B′ = B'
+        pB′ = adjointtensorindices(B, pB)
+        TensorOperations.tensorcontract(A′, pA′, false, B′, pB′, false, pAB)
+    elseif conjA
+        A′ = A'
+        pA′ = adjointtensorindices(A, pA)
+        TensorOperations.tensorcontract(A′, pA′, false, B, pB, false, pAB)
+    elseif conjB
+        B′ = B'
+        pB′ = adjointtensorindices(B, pB)
+        TensorOperations.tensorcontract(A, pA, false, B′, pB′, false, pAB)
+    else
+        return permute(compose(permute(A, pA), permute(B, pB)), pAB)
+    end
+end
+
 """
     insertleftunit(W::HomSpace, i=numind(W) + 1; conj=false, dual=false)
 
