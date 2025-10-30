@@ -250,13 +250,20 @@ abstract type HasInnerProduct <: InnerProductStyle end # inner product defined
 struct EuclideanInnerProduct <: HasInnerProduct end # euclidean inner product
 
 """
+    abstract type InnerProductStyle end
     InnerProductStyle(V::VectorSpace) -> ::InnerProductStyle
     InnerProductStyle(S::Type{<:VectorSpace}) -> ::InnerProductStyle
 
-Return the type of inner product for vector spaces, which can be either
-*   `NoInnerProduct()`: no mapping from `dual(V)` to `conj(V)`, i.e. no metric
-*   subtype of `HasInnerProduct`: a metric exists, but no further support is implemented.
-*   `EuclideanInnerProduct()`: the metric is the identity, such that dual and conjugate spaces are isomorphic.
+Trait to describe wether vector spaces exhibit an inner product structure, a.k.a. a unitary structure,
+which can take the following values:
+*   `EuclideanInnerProduct()`: the metric is the identity, making dual and conjugate spaces equivalent
+*   `NoInnerProduct()`: no metric and thus no relation between `dual(V)` or `conj(V)`
+
+Furthermore, `EuclideanInnerProduct` is a subtype of `HasInnerProduct`, indicating that an inner
+product exists, and an isomorphism between the dual space and the conjugate space can be constructed.
+New inner product styles can be defined that subtype `HasInnerProduct`, for example to work with
+vector spaces with non-trivial metrics. However, at the moment TensorKit does not provide built-in
+support for such non-standard inner products.
 """
 InnerProductStyle(V::VectorSpace) = InnerProductStyle(typeof(V))
 InnerProductStyle(::Type{<:VectorSpace}) = NoInnerProduct()
