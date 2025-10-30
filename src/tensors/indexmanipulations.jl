@@ -410,6 +410,38 @@ end
 #-------------------------------------
 # Full implementations based on `add`
 #-------------------------------------
+spacecheck_transform(f, tdst::AbstractTensorMap, tsrc::AbstractTensorMap, args...) =
+    spacecheck_transform(f, space(tdst), space(tsrc), args...)
+@noinline function spacecheck_transform(f, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple)
+    spacetype(Vdst) == spacetype(Vsrc) || throw(SectorMismatch("incompatible sector types"))
+    f(Vsrc, p) == Vdst ||
+        throw(
+        SpaceMismatch(
+            lazy"""
+            incompatible spaces for `$f(Vsrc, $p) -> Vdst`
+            Vsrc = $Vsrc
+            Vdst = $Vdst
+            """
+        )
+    )
+    return nothing
+end
+@noinline function spacecheck_transform(::typeof(braid), Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, lvls::IndexTuple)
+    spacetype(Vdst) == spacetype(Vsrc) || throw(SectorMismatch("incompatible sector types"))
+    braid(Vsrc, p, lvls) == Vdst ||
+        throw(
+        SpaceMismatch(
+            lazy"""
+            incompatible spaces for `braid(Vsrc, $p, $lvls) -> Vdst`
+            Vsrc = $Vsrc
+            Vdst = $Vdst
+            """
+        )
+    )
+    return nothing
+end
+
+
 """
     add_permute!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, (p₁, p₂)::Index2Tuple,
                  α::Number, β::Number, backend::AbstractBackend...)
@@ -423,8 +455,9 @@ See also [`permute`](@ref), [`permute!`](@ref), [`add_braid!`](@ref), [`add_tran
         tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple,
         α::Number, β::Number, backend::AbstractBackend...
     )
+    @boundscheck spacecheck_transform(permute, tdst, tsrc, p)
     transformer = treepermuter(tdst, tsrc, p)
-    return add_transform!(tdst, tsrc, p, transformer, α, β, backend...)
+    return @inbounds add_transform!(tdst, tsrc, p, transformer, α, β, backend...)
 end
 
 """
@@ -440,14 +473,12 @@ See also [`braid`](@ref), [`braid!`](@ref), [`add_permute!`](@ref), [`add_transp
         tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, levels::IndexTuple,
         α::Number, β::Number, backend::AbstractBackend...
     )
-    length(levels) == numind(tsrc) ||
-        throw(ArgumentError("incorrect levels $levels for tensor map $(codomain(tsrc)) ← $(domain(tsrc))"))
-
+    @boundscheck spacecheck_transform(braid, tdst, tsrc, p, levels)
     levels1 = TupleTools.getindices(levels, codomainind(tsrc))
     levels2 = TupleTools.getindices(levels, domainind(tsrc))
     # TODO: arg order for tensormaps is different than for fusiontrees
     transformer = treebraider(tdst, tsrc, p, (levels1, levels2))
-    return add_transform!(tdst, tsrc, p, transformer, α, β, backend...)
+    return @inbounds add_transform!(tdst, tsrc, p, transformer, α, β, backend...)
 end
 
 """
@@ -463,19 +494,16 @@ See also [`transpose`](@ref), [`transpose!`](@ref), [`add_permute!`](@ref), [`ad
         tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple,
         α::Number, β::Number, backend::AbstractBackend...
     )
+    @boundscheck spacecheck_transform(transpose, tdst, tsrc, p)
     transformer = treetransposer(tdst, tsrc, p)
-    return add_transform!(tdst, tsrc, p, transformer, α, β, backend...)
+    return @inbounds add_transform!(tdst, tsrc, p, transformer, α, β, backend...)
 end
 
 function add_transform!(
         tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, transformer,
         α::Number, β::Number, backend::AbstractBackend...
     )
-    @boundscheck begin
-        permute(space(tsrc), p) == space(tdst) ||
-            throw(SpaceMismatch("source = $(codomain(tsrc))←$(domain(tsrc)),
-            dest = $(codomain(tdst))←$(domain(tdst)), p₁ = $(p[1]), p₂ = $(p[2])"))
-    end
+    @boundscheck spacecheck_transform(permute, tdst, tsrc, p)
 
     if p[1] === codomainind(tsrc) && p[2] === domainind(tsrc)
         add!(tdst, tsrc, α, β)
