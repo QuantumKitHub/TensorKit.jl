@@ -127,6 +127,8 @@ function dim(W::HomSpace)
     return d
 end
 
+dims(W::HomSpace) = (dims(codomain(W))..., dims(domain(W))...)
+
 """
     fusiontrees(W::HomSpace)
 

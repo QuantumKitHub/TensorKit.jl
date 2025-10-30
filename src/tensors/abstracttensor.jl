@@ -195,6 +195,8 @@ symmetry. This is also the dimension of the `HomSpace` on which the `TensorMap` 
 """
 dim(t::AbstractTensorMap) = fusionblockstructure(t).totaldim
 
+dims(t::AbstractTensorMap) = dims(space(t))
+
 """
     blocksectors(t::AbstractTensorMap)
 
@@ -461,8 +463,7 @@ end
     Base.getindex(t::AbstractTensorMap)
     t[]
 
-Return a view into the data of `t` as a `StridedViews.StridedView` of size
-`(dims(codomain(t))..., dims(domain(t))...)`.
+Return a view into the data of `t` as a `StridedViews.StridedView` of size `dims(t)`.
 """
 @inline function Base.getindex(t::AbstractTensorMap)
     return t[trivial_fusiontree(t)...]
@@ -616,7 +617,7 @@ function Base.convert(::Type{Array}, t::AbstractTensorMap)
         dom = domain(t)
         T = sectorscalartype(I) <: Complex ? complex(scalartype(t)) :
             sectorscalartype(I) <: Integer ? scalartype(t) : float(scalartype(t))
-        A = zeros(T, dims(cod)..., dims(dom)...)
+        A = zeros(T, dims(t)...)
         for (f₁, f₂) in fusiontrees(t)
             F = convert(Array, (f₁, f₂))
             Aslice = StridedView(A)[axes(cod, f₁.uncoupled)..., axes(dom, f₂.uncoupled)...]

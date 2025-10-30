@@ -333,7 +333,7 @@ function TensorMap(
     # dimension check
     codom = codomain(V)
     dom = domain(V)
-    arraysize = (dims(codom)..., dims(dom)...)
+    arraysize = dims(V)
     matsize = (dim(codom), dim(dom))
 
     if !(size(data) == arraysize || size(data) == matsize)
@@ -487,7 +487,7 @@ end
     @boundscheck begin
         sectortype(t) == Trivial || throw(SectorMismatch())
     end
-    return sreshape(StridedView(t.data), (dims(codomain(t))..., dims(domain(t))...))
+    return sreshape(StridedView(t.data), dims(t))
 end
 
 # Show

@@ -48,11 +48,14 @@ end
 
 # Corresponding methods
 #-----------------------
-"""
+@doc """
     dims(::ProductSpace{S, N}) -> Dims{N} = NTuple{N, Int}
+    dims(V::HomSpace) -> Dims{length(V)}
+    dims(t::AbstractTensorMap) -> Dims{numind(t)}
 
-Return the dimensions of the spaces in the tensor product space as a tuple of integers.
-"""
+Return the dimensions of the spaces in the tensor product space(s) as a tuple of integers.
+""" dims
+
 dims(P::ProductSpace) = map(dim, P.spaces)
 dim(P::ProductSpace, n::Int) = dim(P.spaces[n])
 dim(P::ProductSpace) = prod(dims(P))
