@@ -154,15 +154,15 @@ function allind(::Type{TT}) where {TT <: Union{HomSpace, AbstractTensorMap}}
 end
 allind(t::Union{HomSpace, AbstractTensorMap}) = allind(typeof(t))
 
-function adjointtensorindex(t::AbstractTensorMap, i)
+function adjointtensorindex(t, i)
     return ifelse(i <= numout(t), numin(t) + i, i - numout(t))
 end
 
-function adjointtensorindices(t::AbstractTensorMap, indices::IndexTuple)
+function adjointtensorindices(t, indices::IndexTuple)
     return map(i -> adjointtensorindex(t, i), indices)
 end
 
-function adjointtensorindices(t::AbstractTensorMap, p::Index2Tuple)
+function adjointtensorindices(t, p::Index2Tuple)
     return (adjointtensorindices(t, p[1]), adjointtensorindices(t, p[2]))
 end
 
