@@ -15,6 +15,30 @@ Features that are planned to be implemented before the release of v1.0.0, in no 
 
 # Changelog
 
+## v0.15
+
+### MatrixAlgebraKit backend for factorizations
+
+This version introduces [MatrixAlgebraKit](https://github.com/QuantumKitHub/MatrixAlgebraKit.jl) as the new backend for tensor factorizations, replacing the previous internal `TensorKit.MatrixAlgebra` implementation. See [#230](https://github.com/QuantumKitHub/TensorKit.jl/pull/230) for details.
+
+#### Added
+- `foreachblock(f, t::AbstractTensorMap...)` - uniform interface to iterate through tensor blocks (prepares for future multithreading support)
+- `eig_trunc` and `eigh_trunc` - truncated eigenvalue decompositions
+- `ominus` (and unicode `⊖`) - compute orthogonal complement of a space
+- Backend selection for factorizations - swap algorithms or implementations
+
+#### Changed
+- Factorization functions `leftorth`, `rightorth`, `tsvd`, `eig`, `eigh` deprecated in favor of MatrixAlgebraKit variants (`left_orth`, `right_orth`, `svd_compact`, `eig_full`, `eigh_full`)
+- Truncation strategies now use MatrixAlgebraKit names: `truncrank` (replaces `truncdim`) and `trunctol` (replaces `truncbelow`)
+- `left_orth` and `right_orth` now always output tensors with a single connecting space
+- `left_orth` and `right_orth` now always have connecting space with `isdual=false`
+- code formatter is now [Runic.jl](https://github.com/fredrikekre/Runic.jl)
+
+#### Removed
+- `OrthogonalFactorization` structs (constructors deprecated to return equivalent MatrixAlgebraKit algorithm structs)
+- Direct permute-and-factorize operations (incompatible with `permute` vs `braid` distinction)
+- `Polar` decomposition behavior for `left_orth`/`right_orth` (use `left_polar`/`right_polar` instead for `isposdef` R factors)
+
 ## v0.14
 
 ### Use `DiagonalTensorMap` for singular values and eigenvalues

@@ -15,8 +15,8 @@ Base.:*(α::Number, t::AbstractTensorMap) = VectorInterface.scale(t, α)
 Base.:/(t::AbstractTensorMap, α::Number) = *(t, one(scalartype(t)) / α)
 Base.:\(α::Number, t::AbstractTensorMap) = *(t, one(scalartype(t)) / α)
 
-LinearAlgebra.normalize!(t::AbstractTensorMap, p::Real=2) = scale!(t, inv(norm(t, p)))
-LinearAlgebra.normalize(t::AbstractTensorMap, p::Real=2) = scale(t, inv(norm(t, p)))
+LinearAlgebra.normalize!(t::AbstractTensorMap, p::Real = 2) = scale!(t, inv(norm(t, p)))
+LinearAlgebra.normalize(t::AbstractTensorMap, p::Real = 2) = scale(t, inv(norm(t, p)))
 
 # destination allocation for matrix multiplication
 function compose_dest(A::AbstractTensorMap, B::AbstractTensorMap)
@@ -24,10 +24,12 @@ function compose_dest(A::AbstractTensorMap, B::AbstractTensorMap)
     pA = (codomainind(A), domainind(A))
     pB = (codomainind(B), domainind(B))
     pAB = (codomainind(A), ntuple(i -> i + numout(A), numin(B)))
-    return TO.tensoralloc_contract(TC,
-                                   A, pA, false,
-                                   B, pB, false,
-                                   pAB, Val(false))
+    return TO.tensoralloc_contract(
+        TC,
+        A, pA, false,
+        B, pB, false,
+        pAB, Val(false)
+    )
 end
 
 """
@@ -59,7 +61,7 @@ function one!(t::AbstractTensorMap)
     domain(t) == codomain(t) ||
         throw(SectorMismatch("no identity if domain and codomain are different"))
     for (c, b) in blocks(t)
-        MatrixAlgebra.one!(b)
+        one!(b)
     end
     return t
 end
@@ -106,7 +108,7 @@ function isomorphism!(t::AbstractTensorMap)
     domain(t) ≅ codomain(t) ||
         throw(SpaceMismatch(lazy"domain and codomain are not isomorphic: $(space(t))"))
     for (_, b) in blocks(t)
-        MatrixAlgebra.one!(b)
+        one!(b)
     end
     return t
 end
@@ -155,7 +157,7 @@ function isometry!(t::AbstractTensorMap)
     domain(t) ≾ codomain(t) ||
         throw(SpaceMismatch(lazy"domain and codomain are not isometrically embeddable: $(space(t))"))
     for (_, b) in blocks(t)
-        MatrixAlgebra.one!(b)
+        one!(b)
     end
     return t
 end
@@ -169,7 +171,7 @@ for morphism in (:isomorphism, :unitary, :isometry)
         function $morphism(A::Type, codomain::TensorSpace, domain::TensorSpace)
             return $morphism(A, codomain ← domain)
         end
-        function $morphism(A::Type, V::TensorMapSpace{S,N₁,N₂}) where {S,N₁,N₂}
+        function $morphism(A::Type, V::TensorMapSpace{S, N₁, N₂}) where {S, N₁, N₂}
             t = tensormaptype(S, N₁, N₂, A)(undef, V)
             return $morphism!(t)
         end
@@ -179,14 +181,16 @@ end
 
 # Diagonal tensors
 # ----------------
-# TODO: consider adding a specialised DiagonalTensorMap type
 function LinearAlgebra.diag(t::AbstractTensorMap)
     return SectorDict(c => LinearAlgebra.diag(b) for (c, b) in blocks(t))
 end
 function LinearAlgebra.diagm(codom::VectorSpace, dom::VectorSpace, v::SectorDict)
-    return TensorMap(SectorDict(c => LinearAlgebra.diagm(blockdim(codom, c),
-                                                         blockdim(dom, c), b)
-                                for (c, b) in v), codom ← dom)
+    return TensorMap(
+        SectorDict(
+            c => LinearAlgebra.diagm(blockdim(codom, c), blockdim(dom, c), b)
+                for (c, b) in v
+        ), codom ← dom
+    )
 end
 LinearAlgebra.isdiag(t::AbstractTensorMap) = all(LinearAlgebra.isdiag ∘ last, blocks(t))
 
@@ -218,8 +222,7 @@ function Base.fill!(t::TensorMap, value::Number)
     fill!(t.data, value)
     return t
 end
-function LinearAlgebra.adjoint!(tdst::AbstractTensorMap,
-                                tsrc::AbstractTensorMap)
+function LinearAlgebra.adjoint!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap)
     InnerProductStyle(tdst) === EuclideanInnerProduct() ||
         throw_invalid_innerproduct(:adjoint!)
     space(tdst) == adjoint(space(tsrc)) ||
@@ -249,34 +252,35 @@ end
 function LinearAlgebra.axpy!(α::Number, t1::AbstractTensorMap, t2::AbstractTensorMap)
     return VectorInterface.add!(t2, t1, α)
 end
-function LinearAlgebra.axpby!(α::Number, t1::AbstractTensorMap, β::Number,
-                              t2::AbstractTensorMap)
+function LinearAlgebra.axpby!(
+        α::Number, t1::AbstractTensorMap, β::Number, t2::AbstractTensorMap
+    )
     return VectorInterface.add!(t2, t1, α, β)
 end
 
 # inner product and norm only valid for spaces with Euclidean inner product
 LinearAlgebra.dot(t1::AbstractTensorMap, t2::AbstractTensorMap) = inner(t1, t2)
 
-function LinearAlgebra.norm(t::AbstractTensorMap, p::Real=2)
+function LinearAlgebra.norm(t::AbstractTensorMap, p::Real = 2)
     InnerProductStyle(t) === EuclideanInnerProduct() || throw_invalid_innerproduct(:norm)
     return _norm(blocks(t), p, float(zero(real(scalartype(t)))))
 end
 function _norm(blockiter, p::Real, init::Real)
     if p == Inf
-        return mapreduce(max, blockiter; init=init) do (c, b)
+        return mapreduce(max, blockiter; init = init) do (c, b)
             return isempty(b) ? init : oftype(init, LinearAlgebra.normInf(b))
         end
     elseif p == 2
-        n² = mapreduce(+, blockiter; init=init) do (c, b)
+        n² = mapreduce(+, blockiter; init = init) do (c, b)
             return isempty(b) ? init : oftype(init, dim(c) * LinearAlgebra.norm2(b)^2)
         end
         return sqrt(n²)
     elseif p == 1
-        return mapreduce(+, blockiter; init=init) do (c, b)
+        return mapreduce(+, blockiter; init = init) do (c, b)
             return isempty(b) ? init : oftype(init, dim(c) * sum(abs, b))
         end
     elseif p > 0
-        nᵖ = mapreduce(+, blockiter; init=init) do (c, b)
+        nᵖ = mapreduce(+, blockiter; init = init) do (c, b)
             return isempty(b) ? init : oftype(init, dim(c) * LinearAlgebra.normp(b, p)^p)
         end
         return (nᵖ)^inv(oftype(nᵖ, p))
@@ -288,15 +292,24 @@ end
 
 _default_rtol(t) = eps(real(float(scalartype(t)))) * min(dim(domain(t)), dim(codomain(t)))
 
-function LinearAlgebra.rank(t::AbstractTensorMap; atol::Real=0,
-                            rtol::Real=atol > 0 ? 0 : _default_rtol(t))
-    dim(t) == 0 && return 0
+function LinearAlgebra.rank(
+        t::AbstractTensorMap;
+        atol::Real = 0, rtol::Real = atol > 0 ? 0 : _default_rtol(t)
+    )
+    r = dim(one(sectortype(t))) * 0
+    dim(t) == 0 && return r
     S = LinearAlgebra.svdvals(t)
     tol = max(atol, rtol * maximum(first, values(S)))
-    return sum(cs -> dim(cs[1]) * count(>(tol), cs[2]), S)
+    for (c, b) in S
+        if !isempty(b)
+            r += dim(c) * count(>(tol), b)
+        end
+    end
+    return r
+    # return sum(((c, b),) -> dim(c) * count(>(tol), b), S; init)
 end
 
-function LinearAlgebra.cond(t::AbstractTensorMap, p::Real=2)
+function LinearAlgebra.cond(t::AbstractTensorMap, p::Real = 2)
     if p == 2
         if dim(t) == 0
             domain(t) == codomain(t) ||
@@ -324,9 +337,9 @@ function LinearAlgebra.tr(t::AbstractTensorMap)
 end
 
 # TensorMap multiplication
-function LinearAlgebra.mul!(tC::AbstractTensorMap,
-                            tA::AbstractTensorMap,
-                            tB::AbstractTensorMap, α=true, β=false)
+function LinearAlgebra.mul!(
+        tC::AbstractTensorMap, tA::AbstractTensorMap, tB::AbstractTensorMap, α = true, β = false
+    )
     compose(space(tA), space(tB)) == space(tC) ||
         throw(SpaceMismatch(lazy"$(space(tC)) ≠ $(space(tA)) * $(space(tB))"))
 
@@ -377,7 +390,7 @@ function Base.inv(t::AbstractTensorMap)
     T = float(scalartype(t))
     tinv = similar(t, T, dom ← cod)
     for (c, b) in blocks(t)
-        binv = MatrixAlgebra.one!(block(tinv, c))
+        binv = one!(block(tinv, c))
         ldiv!(lu(b), binv)
     end
     return tinv
@@ -424,9 +437,7 @@ function exp!(t::TensorMap)
 end
 
 # Sylvester equation with TensorMap objects:
-function LinearAlgebra.sylvester(A::AbstractTensorMap,
-                                 B::AbstractTensorMap,
-                                 C::AbstractTensorMap)
+function LinearAlgebra.sylvester(A::AbstractTensorMap, B::AbstractTensorMap, C::AbstractTensorMap)
     (codomain(A) == domain(A) == codomain(C) && codomain(B) == domain(B) == domain(C)) ||
         throw(SpaceMismatch())
     cod = domain(A)
@@ -449,11 +460,11 @@ for f in (:cos, :sin, :tan, :cot, :cosh, :sinh, :tanh, :coth, :atan, :acot, :asi
         tf = similar(t, T)
         if T <: Real
             for (c, b) in blocks(t)
-                copy!(block(tf, c), real(MatrixAlgebra.$f(b)))
+                copy!(block(tf, c), real(MatrixAlgebraKit.$f(b)))
             end
         else
             for (c, b) in blocks(t)
-                copy!(block(tf, c), MatrixAlgebra.$f(b))
+                copy!(block(tf, c), MatrixAlgebraKit.$f(b))
             end
         end
         return tf
@@ -475,10 +486,11 @@ for f in (:sqrt, :log, :asin, :acos, :acosh, :atanh, :acoth)
 end
 
 # concatenate tensors
-function catdomain(t1::TT, t2::TT) where {S,N₁,TT<:AbstractTensorMap{<:Any,S,N₁,1}}
+function catdomain(t1::TT, t2::TT) where {S, N₁, TT <: AbstractTensorMap{<:Any, S, N₁, 1}}
     codomain(t1) == codomain(t2) ||
-        throw(SpaceMismatch("codomains of tensors to concatenate must match:\n" *
-                            "$(codomain(t1)) ≠ $(codomain(t2))"))
+        throw(
+        SpaceMismatch("codomains of tensors to concatenate must match:\n$(codomain(t1)) ≠ $(codomain(t2))")
+    )
     V1, = domain(t1)
     V2, = domain(t2)
     isdual(V1) == isdual(V2) ||
@@ -493,10 +505,9 @@ function catdomain(t1::TT, t2::TT) where {S,N₁,TT<:AbstractTensorMap{<:Any,S,N
     end
     return t
 end
-function catcodomain(t1::TT, t2::TT) where {S,N₂,TT<:AbstractTensorMap{<:Any,S,1,N₂}}
+function catcodomain(t1::TT, t2::TT) where {S, N₂, TT <: AbstractTensorMap{<:Any, S, 1, N₂}}
     domain(t1) == domain(t2) ||
-        throw(SpaceMismatch("domains of tensors to concatenate must match:\n" *
-                            "$(domain(t1)) ≠ $(domain(t2))"))
+        throw(SpaceMismatch("domains of tensors to concatenate must match:\n$(domain(t1)) ≠ $(domain(t2))"))
     V1, = codomain(t1)
     V2, = codomain(t2)
     isdual(V1) == isdual(V2) ||
@@ -533,8 +544,8 @@ function absorb!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap)
         throw(DimensionError("Incompatible number of indices for source and destination"))
     S = spacetype(tdst)
     S == spacetype(tsrc) || throw(SpaceMismatch("incompatible spacetypes"))
-    dom = mapreduce(infimum, ⊗, domain(tdst), domain(tsrc); init=one(S))
-    cod = mapreduce(infimum, ⊗, codomain(tdst), codomain(tsrc); init=one(S))
+    dom = mapreduce(infimum, ⊗, domain(tdst), domain(tsrc); init = one(S))
+    cod = mapreduce(infimum, ⊗, codomain(tdst), codomain(tsrc); init = one(S))
     for (f1, f2) in fusiontrees(cod ← dom)
         @inbounds data_dst = tdst[f1, f2]
         @inbounds data_src = tsrc[f1, f2]
@@ -553,45 +564,44 @@ Compute the tensor product between two `AbstractTensorMap` instances, which resu
 new `TensorMap` instance whose codomain is `codomain(t1) ⊗ codomain(t2)` and whose domain
 is `domain(t1) ⊗ domain(t2)`.
 """
-function ⊗(t1::AbstractTensorMap, t2::AbstractTensorMap)
-    (S = spacetype(t1)) === spacetype(t2) ||
-        throw(SpaceMismatch("spacetype(t1) ≠ spacetype(t2)"))
-    cod1, cod2 = codomain(t1), codomain(t2)
-    dom1, dom2 = domain(t1), domain(t2)
-    p12 = ((codomainind(t1)..., (codomainind(t2) .+ numind(t1))...),
-           (domainind(t1)..., (domainind(t2) .+ numind(t1))...))
+function ⊗(A::AbstractTensorMap, B::AbstractTensorMap)
+    (S = spacetype(A)) === spacetype(B) || throw(SpaceMismatch("incompatible space types"))
 
-    T = promote_type(scalartype(t1), scalartype(t2))
-    TC = promote_type(sectorscalartype(sectortype(t1)), T)
-    t = TO.tensoralloc_contract(TC,
-                                t1, ((codomainind(t1)..., domainind(t1)...), ()), false,
-                                t2, ((), (codomainind(t2)..., domainind(t2)...)), false,
-                                p12, Val(false))
+    # allocate destination with correct scalartype
+    pA = ((codomainind(A)..., domainind(A)...), ())
+    pB = ((), (codomainind(B)..., domainind(B)...))
+    NA = numind(A)
+    pAB = (
+        (codomainind(A)..., (codomainind(B) .+ NA)...),
+        (domainind(A)..., (domainind(B) .+ NA)...),
+    )
+    TC = TO.promote_contract(scalartype(A), scalartype(B))
+    C = TO.tensoralloc_contract(TC, A, pA, false, B, pB, false, pAB, Val(false))
+    zerovector!(C)
 
-    zerovector!(t)
-    for (f1l, f1r) in fusiontrees(t1)
-        for (f2l, f2r) in fusiontrees(t2)
+    # implement tensor product
+    for (f1l, f1r) in fusiontrees(A)
+        @inbounds a = A[f1l, f1r]
+        for (f2l, f2r) in fusiontrees(B)
+            @inbounds b = B[f2l, f2r]
             c1 = f1l.coupled # = f1r.coupled
             c2 = f2l.coupled # = f2r.coupled
-            for c in c1 ⊗ c2
-                for μ in 1:Nsymbol(c1, c2, c)
-                    for (fl, coeff1) in merge(f1l, f2l, c, μ)
-                        for (fr, coeff2) in merge(f1r, f2r, c, μ)
-                            d1 = dim(cod1, f1l.uncoupled)
-                            d2 = dim(cod2, f2l.uncoupled)
-                            d3 = dim(dom1, f1r.uncoupled)
-                            d4 = dim(dom2, f2r.uncoupled)
-                            m1 = sreshape(t1[f1l, f1r], (d1, 1, d3, 1))
-                            m2 = sreshape(t2[f2l, f2r], (1, d2, 1, d4))
-                            m = sreshape(t[fl, fr], (d1, d2, d3, d4))
-                            m .+= coeff1 .* conj(coeff2) .* m1 .* m2
-                        end
+            for c in c1 ⊗ c2, μ in 1:Nsymbol(c1, c2, c)
+                for (fl, coeff1) in merge(f1l, f2l, c, μ)
+                    for (fr, coeff2) in merge(f1r, f2r, c, μ)
+                        TO.tensorcontract!(
+                            C[fl, fr],
+                            A[f1l, f1r], pA, false,
+                            B[f2l, f2r], pB, false,
+                            pAB,
+                            coeff1 * conj(coeff2), One()
+                        )
                     end
                 end
             end
         end
     end
-    return t
+    return C
 end
 
 # deligne product of tensors

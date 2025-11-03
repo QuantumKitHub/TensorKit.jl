@@ -1,10 +1,10 @@
 # scalartype
 #------------
-VectorInterface.scalartype(::Type{TT}) where {T,TT<:AbstractTensorMap{T}} = scalartype(T)
+VectorInterface.scalartype(::Type{TT}) where {T, TT <: AbstractTensorMap{T}} = scalartype(T)
 
 # zerovector & zerovector!!
 #---------------------------
-function VectorInterface.zerovector(t::AbstractTensorMap, ::Type{S}) where {S<:Number}
+function VectorInterface.zerovector(t::AbstractTensorMap, ::Type{S}) where {S <: Number}
     return zerovector!(similar(t, S))
 end
 function VectorInterface.zerovector!(t::AbstractTensorMap)
@@ -64,28 +64,32 @@ end
 # add, add! & add!!
 #-------------------
 # TODO: remove VectorInterface from calls to `add!` when `TensorKit.add!` is renamed
-function VectorInterface.add(ty::AbstractTensorMap, tx::AbstractTensorMap,
-                             α::Number, β::Number)
+function VectorInterface.add(
+        ty::AbstractTensorMap, tx::AbstractTensorMap, α::Number, β::Number
+    )
     space(ty) == space(tx) || throw(SpaceMismatch("$(space(ty)) ≠ $(space(tx))"))
     T = VectorInterface.promote_add(ty, tx, α, β)
-    return add!(scale!(similar(ty, T), ty, β), tx, α)
+    return add!(scale!(zerovector(ty, T), ty, β), tx, α)
 end
-function VectorInterface.add!(ty::AbstractTensorMap, tx::AbstractTensorMap,
-                              α::Number, β::Number)
+function VectorInterface.add!(
+        ty::AbstractTensorMap, tx::AbstractTensorMap, α::Number, β::Number
+    )
     space(ty) == space(tx) || throw(SpaceMismatch("$(space(ty)) ≠ $(space(tx))"))
     for ((cy, by), (cx, bx)) in zip(blocks(ty), blocks(tx))
         add!(by, bx, α, β)
     end
     return ty
 end
-function VectorInterface.add!(ty::TensorMap, tx::TensorMap,
-                              α::Number, β::Number)
+function VectorInterface.add!(
+        ty::TensorMap, tx::TensorMap, α::Number, β::Number
+    )
     space(ty) == space(tx) || throw(SpaceMismatch("$(space(ty)) ≠ $(space(tx))"))
     add!(ty.data, tx.data, α, β)
     return ty
 end
-function VectorInterface.add!!(ty::AbstractTensorMap, tx::AbstractTensorMap,
-                               α::Number, β::Number)
+function VectorInterface.add!!(
+        ty::AbstractTensorMap, tx::AbstractTensorMap, α::Number, β::Number
+    )
     # spacecheck is done in add(!)
     T = VectorInterface.promote_add(ty, tx, α, β)
     if T <: scalartype(ty)

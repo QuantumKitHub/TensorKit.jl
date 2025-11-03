@@ -118,15 +118,15 @@ blocks
 
 To access the data associated with a specific fusion tree pair, you can use:
 ```@docs
-Base.getindex(::TensorMap{T,S,N₁,N₂}, ::FusionTree{I,N₁}, ::FusionTree{I,N₂}) where {T,S,N₁,N₂,I<:Sector}
-Base.setindex!(::TensorMap{T,S,N₁,N₂}, ::Any, ::FusionTree{I,N₁}, ::FusionTree{I,N₂}) where {T,S,N₁,N₂,I<:Sector}
+Base.getindex(::AbstractTensorMap, ::FusionTree, ::FusionTree)
+Base.setindex!(::AbstractTensorMap, ::Any, ::FusionTree, ::FusionTree)
 ```
 
 For a tensor `t` with `FusionType(sectortype(t)) isa UniqueFusion`, fusion trees are 
 completely determined by the outcoming sectors, and the data can be accessed in a more
 straightforward way:
 ```@docs
-Base.getindex(::TensorMap, ::Tuple{I,Vararg{I}}) where {I<:Sector}
+Base.getindex(::AbstractTensorMap, ::Tuple{I,Vararg{I}}) where {I<:Sector}
 ```
 
 For tensor `t` with `sectortype(t) == Trivial`, the data can be accessed and manipulated
@@ -214,26 +214,21 @@ contract!
 
 ## `TensorMap` factorizations
 
-The factorisation methods come in two flavors, namely a non-destructive version where you
-can specify an additional permutation of the domain and codomain indices before the
-factorisation is performed (provided that `sectorstyle(t)` has a symmetric braiding) as
-well as a destructive version The non-destructive methods are given first:
+The factorisation methods are powered by [MatrixAlgebraKit.jl](https://github.com/QuantumKitHub/MatrixAlgebraKit.jl)
+and all follow the same strategy. The idea is that the `TensorMap` is interpreted as a linear
+map based on the current partition of indices between `domain` and `codomain`, and then the
+entire range of MatrixAlgebraKit functions can be called.
+Factorizing a tensor according to a different partition of the indices is possible
+by prepending the factorization step with an explicit call to [`permute`](@ref) or [`transpose`](@ref).
+
+For the full list of factorizations, see [Decompositions](@extref MatrixAlgebraKit).
+
+Additionally, it is possible to obtain truncated versions of some of these factorizations
+through the [`MatrixAlgebraKit.TruncationStrategy`](@ref) objects.
+
+The exact truncation strategy can be controlled through the strategies defined in [Truncations](@extref MatrixAlgebraKit),
+but for `TensorMap`s there is also the special-purpose scheme:
 
 ```@docs
-leftorth
-rightorth
-leftnull
-rightnull
-tsvd
-eigh
-eig
-eigen
-isposdef
+truncspace
 ```
-
-The corresponding destructive methods have an exclamation mark at the end of their name,
-and only accept the `TensorMap` object as well as the method-specific algorithm and keyword
-arguments.
-
-
-TODO: document svd truncation types

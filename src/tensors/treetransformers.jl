@@ -7,10 +7,10 @@ abstract type TreeTransformer end
 
 struct TrivialTreeTransformer <: TreeTransformer end
 
-const _AbelianTransformerData{T,N} = Tuple{T,StridedStructure{N},StridedStructure{N}}
+const _AbelianTransformerData{T, N} = Tuple{T, StridedStructure{N}, StridedStructure{N}}
 
-struct AbelianTreeTransformer{T,N} <: TreeTransformer
-    data::Vector{_AbelianTransformerData{T,N}}
+struct AbelianTreeTransformer{T, N} <: TreeTransformer
+    data::Vector{_AbelianTransformerData{T, N}}
 end
 
 function AbelianTreeTransformer(transform, p, Vdst, Vsrc)
@@ -22,7 +22,7 @@ function AbelianTreeTransformer(transform, p, Vdst, Vsrc)
     L = length(structure_src.fusiontreelist)
     T = sectorscalartype(sectortype(Vdst))
     N = numind(Vsrc)
-    data = Vector{Tuple{T,StridedStructure{N},StridedStructure{N}}}(undef, L)
+    data = Vector{Tuple{T, StridedStructure{N}, StridedStructure{N}}}(undef, L)
 
     for i in 1:L
         f₁, f₂ = structure_src.fusiontreelist[i]
@@ -45,14 +45,14 @@ function AbelianTreeTransformer(transform, p, Vdst, Vsrc)
     return transformer
 end
 
-const _GenericTransformerData{T,N} = Tuple{Matrix{T},
-                                           Tuple{NTuple{N,Int},
-                                                 Vector{Tuple{NTuple{N,Int},Int}}},
-                                           Tuple{NTuple{N,Int},
-                                                 Vector{Tuple{NTuple{N,Int},Int}}}}
+const _GenericTransformerData{T, N} = Tuple{
+    Matrix{T},
+    Tuple{NTuple{N, Int}, Vector{Tuple{NTuple{N, Int}, Int}}},
+    Tuple{NTuple{N, Int}, Vector{Tuple{NTuple{N, Int}, Int}}},
+}
 
-struct GenericTreeTransformer{T,N} <: TreeTransformer
-    data::Vector{_GenericTransformerData{T,N}}
+struct GenericTreeTransformer{T, N} <: TreeTransformer
+    data::Vector{_GenericTransformerData{T, N}}
 end
 
 function GenericTreeTransformer(transform, p, Vdst, Vsrc)
@@ -76,7 +76,7 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
     T = sectorscalartype(I)
     N = numind(Vdst)
     L = length(uncoupleds_src_unique)
-    data = Vector{_GenericTransformerData{T,N}}(undef, L)
+    data = Vector{_GenericTransformerData{T, N}}(undef, L)
 
     # TODO: this can be multithreaded
     for (i, uncoupled) in enumerate(uncoupleds_src_unique)
@@ -101,24 +101,28 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
         sz_src, newstructs_src = repack_transformer_structure(fusionstructure_src, inds_src)
         sz_dst, newstructs_dst = repack_transformer_structure(fusionstructure_dst, inds_dst)
 
-        @debug("Created recoupling block for uncoupled: $uncoupled",
-               sz = size(matrix), sparsity = count(!iszero, matrix) / length(matrix))
+        @debug(
+            "Created recoupling block for uncoupled: $uncoupled",
+            sz = size(matrix), sparsity = count(!iszero, matrix) / length(matrix)
+        )
 
         data[i] = (matrix, (sz_dst, newstructs_dst), (sz_src, newstructs_src))
     end
 
-    transformer = GenericTreeTransformer{T,N}(data)
+    transformer = GenericTreeTransformer{T, N}(data)
 
     # sort by (approximate) weight to facilitate multi-threading strategies
     sort!(transformer)
 
     Δt = Base.time() - t₀
 
-    @debug("TreeTransformer for $Vsrc to $Vdst via $p",
-           nblocks = length(data),
-           sz_median = size(data[cld(end, 2)][1], 1),
-           sz_max = size(data[1][1], 1),
-           Δt)
+    @debug(
+        "TreeTransformer for $Vsrc to $Vdst via $p",
+        nblocks = length(data),
+        sz_median = size(data[cld(end, 2)][1], 1),
+        sz_max = size(data[1][1], 1),
+        Δt
+    )
 
     return transformer
 end
@@ -130,13 +134,14 @@ function repack_transformer_structure(structures, ids)
 end
 
 function buffersize(transformer::GenericTreeTransformer)
-    return maximum(transformer.data; init=0) do (basistransform, structures_dst, _)
+    return maximum(transformer.data; init = 0) do (basistransform, structures_dst, _)
         return prod(structures_dst[1]) * size(basistransform, 1)
     end
 end
 
-function allocate_buffers(tdst::TensorMap, tsrc::TensorMap,
-                          transformer::GenericTreeTransformer)
+function allocate_buffers(
+        tdst::TensorMap, tsrc::TensorMap, transformer::GenericTreeTransformer
+    )
     sz = buffersize(transformer)
     return similar(tdst.data, sz), similar(tsrc.data, sz)
 end
@@ -147,12 +152,12 @@ function treetransformertype(Vdst, Vsrc)
 
     T = sectorscalartype(I)
     N = numind(Vdst)
-    return FusionStyle(I) == UniqueFusion() ? AbelianTreeTransformer{T,N} :
-           GenericTreeTransformer{T,N}
+    return FusionStyle(I) == UniqueFusion() ? AbelianTreeTransformer{T, N} : GenericTreeTransformer{T, N}
 end
 
-function TreeTransformer(transform::Function, p, Vdst::HomSpace{S},
-                         Vsrc::HomSpace{S}) where {S}
+function TreeTransformer(
+        transform::Function, p, Vdst::HomSpace{S}, Vsrc::HomSpace{S}
+    ) where {S}
     permute(Vsrc, p) == Vdst ||
         throw(SpaceMismatch("Incompatible spaces for permuting"))
 
@@ -160,8 +165,8 @@ function TreeTransformer(transform::Function, p, Vdst::HomSpace{S},
     I === Trivial && return TrivialTreeTransformer()
 
     return FusionStyle(I) == UniqueFusion() ?
-           AbelianTreeTransformer(transform, p, Vdst, Vsrc) :
-           GenericTreeTransformer(transform, p, Vdst, Vsrc)
+        AbelianTreeTransformer(transform, p, Vdst, Vsrc) :
+        GenericTreeTransformer(transform, p, Vdst, Vsrc)
 end
 
 # braid is special because it has levels
@@ -171,8 +176,9 @@ end
 function treebraider(tdst::TensorMap, tsrc::TensorMap, p::Index2Tuple, levels)
     return treebraider(space(tdst), space(tsrc), p, levels)
 end
-@cached function treebraider(Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
-                             levels)::treetransformertype(Vdst, Vsrc)
+@cached function treebraider(
+        Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, levels
+    )::treetransformertype(Vdst, Vsrc)
     fusiontreebraider(f1, f2) = braid(f1, f2, levels..., p...)
     return TreeTransformer(fusiontreebraider, p, Vdst, Vsrc)
 end
@@ -186,8 +192,9 @@ for (transform, treetransformer) in
         function $treetransformer(tdst::TensorMap, tsrc::TensorMap, p::Index2Tuple)
             return $treetransformer(space(tdst), space(tsrc), p)
         end
-        @cached function $treetransformer(Vdst::TensorMapSpace, Vsrc::TensorMapSpace,
-                                          p::Index2Tuple)::treetransformertype(Vdst, Vsrc)
+        @cached function $treetransformer(
+                Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple
+            )::treetransformertype(Vdst, Vsrc)
             fusiontreetransform(f1, f2) = $transform(f1, f2, p...)
             return TreeTransformer(fusiontreetransform, p, Vdst, Vsrc)
         end
@@ -198,8 +205,10 @@ end
 
 # Sorting based on cost model
 # ---------------------------
-function Base.sort!(transformer::Union{AbelianTreeTransformer,GenericTreeTransformer};
-                    by=_transformer_weight, rev::Bool=true)
+function Base.sort!(
+        transformer::Union{AbelianTreeTransformer, GenericTreeTransformer};
+        by = _transformer_weight, rev::Bool = true
+    )
     sort!(transformer.data; by, rev)
     return transformer
 end

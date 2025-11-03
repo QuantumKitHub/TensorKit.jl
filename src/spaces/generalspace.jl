@@ -12,22 +12,22 @@ struct GeneralSpace{𝔽} <: ElementarySpace
     function GeneralSpace{𝔽}(d::Int, dual::Bool, conj::Bool) where {𝔽}
         d >= 0 ||
             throw(ArgumentError("Dimension of a vector space should be bigger than zero"))
-        if 𝔽 isa Field
+        return if 𝔽 isa Field
             new{𝔽}(Int(d), dual, (𝔽 ⊆ ℝ) ? false : conj)
         else
             throw(ArgumentError("Unrecognised scalar field: $𝔽"))
         end
     end
 end
-function GeneralSpace{𝔽}(d::Int=0; dual::Bool=false, conj::Bool=false) where {𝔽}
+function GeneralSpace{𝔽}(d::Int = 0; dual::Bool = false, conj::Bool = false) where {𝔽}
     return GeneralSpace{𝔽}(d, dual, conj)
 end
 
-dim(V::GeneralSpace, s::Trivial=Trivial()) = V.d
+dim(V::GeneralSpace, s::Trivial = Trivial()) = V.d
 isdual(V::GeneralSpace) = V.dual
 isconj(V::GeneralSpace) = V.conj
 
-Base.axes(V::GeneralSpace, ::Trivial=Trivial()) = Base.OneTo(dim(V))
+Base.axes(V::GeneralSpace, ::Trivial = Trivial()) = Base.OneTo(dim(V))
 hassector(V::GeneralSpace, ::Trivial) = dim(V) != 0
 sectors(V::GeneralSpace) = OneOrNoneIterator(dim(V) != 0, Trivial())
 sectortype(::Type{<:GeneralSpace}) = Trivial
@@ -42,14 +42,9 @@ dual(V::GeneralSpace{𝔽}) where {𝔽} = GeneralSpace{𝔽}(dim(V), !isdual(V)
 Base.conj(V::GeneralSpace{𝔽}) where {𝔽} = GeneralSpace{𝔽}(dim(V), isdual(V), !isconj(V))
 
 function Base.show(io::IO, V::GeneralSpace{𝔽}) where {𝔽}
-    if isconj(V)
-        print(io, "conj(")
-    end
+    isconj(V) && print(io, "conj(")
     print(io, "GeneralSpace{", 𝔽, "}(", dim(V), ")")
-    if isdual(V)
-        print(io, "'")
-    end
-    if isconj(V)
-        print(io, ")")
-    end
+    isdual(V) && print(io, "'")
+    isconj(V) && print(io, ")")
+    return nothing
 end

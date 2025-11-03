@@ -5,11 +5,10 @@ function TO.tensorstructure(t::AbstractTensorMap, iA::Int, conjA::Bool)
     return !conjA ? space(t, iA) : conj(space(t, iA))
 end
 
-function TO.tensoralloc(::Type{TT},
-                        structure::TensorMapSpace{S,N₁,N₂},
-                        istemp::Val,
-                        allocator=TO.DefaultAllocator()) where
-         {T,S,N₁,N₂,TT<:AbstractTensorMap{T,S,N₁,N₂}}
+function TO.tensoralloc(
+        ::Type{TT}, structure::TensorMapSpace{S, N₁, N₂},
+        istemp::Val, allocator = TO.DefaultAllocator()
+    ) where {T, S, N₁, N₂, TT <: AbstractTensorMap{T, S, N₁, N₂}}
     A = storagetype(TT)
     dim = fusionblockstructure(structure).totaldim
     data = TO.tensoralloc(A, dim, istemp, allocator)
@@ -17,15 +16,16 @@ function TO.tensoralloc(::Type{TT},
     return TensorMap{T}(data, structure)
 end
 
-function TO.tensorfree!(t::TensorMap, allocator=TO.DefaultAllocator())
+function TO.tensorfree!(t::TensorMap, allocator = TO.DefaultAllocator())
     TO.tensorfree!(t.data, allocator)
     return nothing
 end
 
 TO.tensorscalar(t::AbstractTensorMap) = scalar(t)
 
-function _canonicalize(p::Index2Tuple{N₁,N₂},
-                       ::AbstractTensorMap{<:IndexSpace,N₁,N₂}) where {N₁,N₂}
+function _canonicalize(
+        p::Index2Tuple{N₁, N₂}, ::AbstractTensorMap{<:IndexSpace, N₁, N₂}
+    ) where {N₁, N₂}
     return p
 end
 _canonicalize(p::Index2Tuple, t::AbstractTensorMap) = _canonicalize(linearize(p), t)
@@ -36,10 +36,12 @@ function _canonicalize(p::IndexTuple, t::AbstractTensorMap)
 end
 
 # tensoradd!
-function TO.tensoradd!(C::AbstractTensorMap,
-                       A::AbstractTensorMap, pA::Index2Tuple, conjA::Bool,
-                       α::Number, β::Number,
-                       backend, allocator)
+function TO.tensoradd!(
+        C::AbstractTensorMap,
+        A::AbstractTensorMap, pA::Index2Tuple, conjA::Bool,
+        α::Number, β::Number,
+        backend, allocator
+    )
     if conjA
         A′ = adjoint(A)
         pA′ = adjointtensorindices(A, _canonicalize(pA, C))
@@ -50,15 +52,17 @@ function TO.tensoradd!(C::AbstractTensorMap,
     return C
 end
 
-function TO.tensoradd_type(TC, A::AbstractTensorMap, ::Index2Tuple{N₁,N₂},
-                           ::Bool) where {N₁,N₂}
+function TO.tensoradd_type(
+        TC, A::AbstractTensorMap, ::Index2Tuple{N₁, N₂}, ::Bool
+    ) where {N₁, N₂}
     I = sectortype(A)
     M = similarstoragetype(A, sectorscalartype(I) <: Real ? TC : complex(TC))
     return tensormaptype(spacetype(A), N₁, N₂, M)
 end
 
-function TO.tensoradd_structure(A::AbstractTensorMap, pA::Index2Tuple{N₁,N₂},
-                                conjA::Bool) where {N₁,N₂}
+function TO.tensoradd_structure(
+        A::AbstractTensorMap, pA::Index2Tuple{N₁, N₂}, conjA::Bool
+    ) where {N₁, N₂}
     if !conjA
         # don't use `permute` as this is also used when indices are traced
         return select(space(A), pA)
@@ -68,10 +72,12 @@ function TO.tensoradd_structure(A::AbstractTensorMap, pA::Index2Tuple{N₁,N₂}
 end
 
 # tensortrace!
-function TO.tensortrace!(C::AbstractTensorMap,
-                         A::AbstractTensorMap, p::Index2Tuple, q::Index2Tuple,
-                         conjA::Bool,
-                         α::Number, β::Number, backend, allocator)
+function TO.tensortrace!(
+        C::AbstractTensorMap,
+        A::AbstractTensorMap, p::Index2Tuple, q::Index2Tuple,
+        conjA::Bool,
+        α::Number, β::Number, backend, allocator
+    )
     if conjA
         A′ = adjoint(A)
         p′ = adjointtensorindices(A, _canonicalize(p, C))
@@ -84,11 +90,13 @@ function TO.tensortrace!(C::AbstractTensorMap,
 end
 
 # tensorcontract!
-function TO.tensorcontract!(C::AbstractTensorMap,
-                            A::AbstractTensorMap, pA::Index2Tuple, conjA::Bool,
-                            B::AbstractTensorMap, pB::Index2Tuple, conjB::Bool,
-                            pAB::Index2Tuple, α::Number, β::Number,
-                            backend, allocator)
+function TO.tensorcontract!(
+        C::AbstractTensorMap,
+        A::AbstractTensorMap, pA::Index2Tuple, conjA::Bool,
+        B::AbstractTensorMap, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple, α::Number, β::Number,
+        backend, allocator
+    )
     pAB′ = _canonicalize(pAB, C)
     if conjA && conjB
         A′ = A'
@@ -110,10 +118,12 @@ function TO.tensorcontract!(C::AbstractTensorMap,
     return C
 end
 
-function TO.tensorcontract_type(TC,
-                                A::AbstractTensorMap, ::Index2Tuple, ::Bool,
-                                B::AbstractTensorMap, ::Index2Tuple, ::Bool,
-                                ::Index2Tuple{N₁,N₂}) where {N₁,N₂}
+function TO.tensorcontract_type(
+        TC,
+        A::AbstractTensorMap, ::Index2Tuple, ::Bool,
+        B::AbstractTensorMap, ::Index2Tuple, ::Bool,
+        ::Index2Tuple{N₁, N₂}
+    ) where {N₁, N₂}
     spacetype(A) == spacetype(B) || throw(SpaceMismatch("incompatible space types"))
     I = sectortype(A)
     M = similarstoragetype(A, sectorscalartype(I) <: Real ? TC : complex(TC))
@@ -122,17 +132,21 @@ function TO.tensorcontract_type(TC,
     return tensormaptype(spacetype(A), N₁, N₂, M)
 end
 
-function TO.tensorcontract_structure(A::AbstractTensorMap, pA::Index2Tuple, conjA::Bool,
-                                     B::AbstractTensorMap, pB::Index2Tuple, conjB::Bool,
-                                     pAB::Index2Tuple{N₁,N₂}) where {N₁,N₂}
+function TO.tensorcontract_structure(
+        A::AbstractTensorMap, pA::Index2Tuple, conjA::Bool,
+        B::AbstractTensorMap, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple{N₁, N₂}
+    ) where {N₁, N₂}
     sA = TO.tensoradd_structure(A, pA, conjA)
     sB = TO.tensoradd_structure(B, pB, conjB)
     return permute(compose(sA, sB), pAB)
 end
 
-function TO.checkcontractible(tA::AbstractTensorMap, iA::Int, conjA::Bool,
-                              tB::AbstractTensorMap, iB::Int, conjB::Bool,
-                              label)
+function TO.checkcontractible(
+        tA::AbstractTensorMap, iA::Int, conjA::Bool,
+        tB::AbstractTensorMap, iB::Int, conjB::Bool,
+        label
+    )
     sA = TO.tensorstructure(tA, iA, conjA)'
     sB = TO.tensorstructure(tB, iB, conjB)
     sA == sB ||
@@ -156,13 +170,15 @@ TO.tensorcost(t::AbstractTensorMap, i::Int) = dim(space(t, i))
 Return the updated `tdst`, which is the result of adding `α * tsrc` to `tdst` after permuting
 the indices of `tsrc` according to `(p₁, p₂)` and furthermore tracing the indices in `q₁` and `q₂`.
 """
-function trace_permute!(tdst::AbstractTensorMap,
-                        tsrc::AbstractTensorMap,
-                        (p₁, p₂)::Index2Tuple,
-                        (q₁, q₂)::Index2Tuple,
-                        α::Number,
-                        β::Number,
-                        backend=TO.DefaultBackend())
+function trace_permute!(
+        tdst::AbstractTensorMap,
+        tsrc::AbstractTensorMap,
+        (p₁, p₂)::Index2Tuple,
+        (q₁, q₂)::Index2Tuple,
+        α::Number,
+        β::Number,
+        backend = TO.DefaultBackend()
+    )
     # some input checks
     (S = spacetype(tdst)) == spacetype(tsrc) ||
         throw(SpaceMismatch("incompatible spacetypes"))
@@ -235,12 +251,14 @@ end
 Return the updated `C`, which is the result of adding `α * A * B` to `C` after permuting
 the indices of `A` and `B` according to `(oindA, cindA)` and `(cindB, oindB)` respectively.
 """
-function contract!(C::AbstractTensorMap,
-                   A::AbstractTensorMap, (oindA, cindA)::Index2Tuple,
-                   B::AbstractTensorMap, (cindB, oindB)::Index2Tuple,
-                   (p₁, p₂)::Index2Tuple,
-                   α::Number, β::Number,
-                   backend, allocator)
+function contract!(
+        C::AbstractTensorMap,
+        A::AbstractTensorMap, (oindA, cindA)::Index2Tuple,
+        B::AbstractTensorMap, (cindB, oindB)::Index2Tuple,
+        (p₁, p₂)::Index2Tuple,
+        α::Number, β::Number,
+        backend, allocator
+    )
     length(cindA) == length(cindB) ||
         throw(IndexError("number of contracted indices does not match"))
     N₁, N₂ = length(oindA), length(oindB)
@@ -263,19 +281,15 @@ function contract!(C::AbstractTensorMap,
 
     # keep order A en B, check possibilities for cind
     memcost1 = memcost2 = dC * (!hsp(C, (oindAinC, oindBinC)))
-    memcost1 += dA * (!hsp(A, (oindA, cindA′))) +
-                dB * (!hsp(B, (cindB′, oindB)))
-    memcost2 += dA * (!hsp(A, (oindA, cindA′′))) +
-                dB * (!hsp(B, (cindB′′, oindB)))
+    memcost1 += dA * (!hsp(A, (oindA, cindA′))) + dB * (!hsp(B, (cindB′, oindB)))
+    memcost2 += dA * (!hsp(A, (oindA, cindA′′))) + dB * (!hsp(B, (cindB′′, oindB)))
 
     # reverse order A en B, check possibilities for cind
     memcost3 = memcost4 = dC * (!hsp(C, (oindBinC, oindAinC)))
-    memcost3 += dB * (!hsp(B, (oindB, cindB′))) +
-                dA * (!hsp(A, (cindA′, oindA)))
-    memcost4 += dB * (!hsp(B, (oindB, cindB′′))) +
-                dA * (!hsp(A, (cindA′′, oindA)))
+    memcost3 += dB * (!hsp(B, (oindB, cindB′))) + dA * (!hsp(A, (cindA′, oindA)))
+    memcost4 += dB * (!hsp(B, (oindB, cindB′′))) + dA * (!hsp(A, (cindA′′, oindA)))
 
-    if min(memcost1, memcost2) <= min(memcost3, memcost4)
+    return if min(memcost1, memcost2) <= min(memcost3, memcost4)
         if memcost1 <= memcost2
             return _contract!(α, A, B, β, C, oindA, cindA′, oindB, cindB′, p₁, p₂)
         else
@@ -293,11 +307,13 @@ function contract!(C::AbstractTensorMap,
 end
 
 # TODO: also transform _contract! into new interface, and add backend support
-function _contract!(α, A::AbstractTensorMap, B::AbstractTensorMap,
-                    β, C::AbstractTensorMap,
-                    oindA::IndexTuple, cindA::IndexTuple,
-                    oindB::IndexTuple, cindB::IndexTuple,
-                    p₁::IndexTuple, p₂::IndexTuple)
+function _contract!(
+        α, A::AbstractTensorMap, B::AbstractTensorMap,
+        β, C::AbstractTensorMap,
+        oindA::IndexTuple, cindA::IndexTuple,
+        oindB::IndexTuple, cindB::IndexTuple,
+        p₁::IndexTuple, p₂::IndexTuple
+    )
     if !(BraidingStyle(sectortype(C)) isa SymmetricBraiding)
         throw(SectorMismatch("only tensors with symmetric braiding rules can be contracted; try `@planar` instead"))
     end
@@ -310,7 +326,7 @@ function _contract!(α, A::AbstractTensorMap, B::AbstractTensorMap,
             end
         end
     end
-    A′ = permute(A, (oindA, cindA); copy=copyA)
+    A′ = permute(A, (oindA, cindA); copy = copyA)
     B′ = permute(B, (cindB, oindB))
     if BraidingStyle(sectortype(A)) isa Fermionic
         for i in domainind(A′)

@@ -5,7 +5,7 @@ using LinearAlgebra: LinearAlgebra
 LinearAlgebra.BLAS.set_num_threads(1)
 
 using TensorOperations: TensorOperations
-TensorOperations.enable_cache(; maxrelsize=0.7)
+TensorOperations.enable_cache(; maxrelsize = 0.7)
 using TensorKit: TensorKit
 using TensorKit: ℂ, Z2Space, U1Space
 using DelimitedFiles
@@ -27,9 +27,9 @@ for i in 1:N
     Vmpo = ℂ^Dmpo
     Vphys = ℂ^Dphys
 
-    mpo_timer = TensorKitTimers.mpo_timer(; Vmps=Vmps, Vmpo=Vmpo, Vphys=Vphys)
+    mpo_timer = TensorKitTimers.mpo_timer(; Vmps = Vmps, Vmpo = Vmpo, Vphys = Vphys)
 
-    times, times_gc = mpo_timer(; outer=K)
+    times, times_gc = mpo_timer(; outer = K)
     mpo_triv_times[:, i] = times
     mpo_triv_times_gc[:, i] = times_gc
     empty!(TensorOperations.cache)
@@ -55,9 +55,9 @@ for i in 1:N
     Vmpo = Z2Space((a => b for (a, b) in Dmpo)...)
     Vphys = Z2Space((a => b for (a, b) in Dphys)...)
 
-    mpo_timer = TensorKitTimers.mpo_timer(; Vmps=Vmps, Vmpo=Vmpo, Vphys=Vphys)
+    mpo_timer = TensorKitTimers.mpo_timer(; Vmps = Vmps, Vmpo = Vmpo, Vphys = Vphys)
 
-    times, times_gc = mpo_timer(; outer=K)
+    times, times_gc = mpo_timer(; outer = K)
     mpo_z2_times[:, i] = times
     mpo_z2_times_gc[:, i] = times_gc
     empty!(TensorOperations.cache)
@@ -83,9 +83,9 @@ for i in 1:N
     Vmpo = U1Space((a => b for (a, b) in Dmpo)...)
     Vphys = U1Space((a => b for (a, b) in Dphys)...)
 
-    mpo_timer = TensorKitTimers.mpo_timer(; Vmps=Vmps, Vmpo=Vmpo, Vphys=Vphys)
+    mpo_timer = TensorKitTimers.mpo_timer(; Vmps = Vmps, Vmpo = Vmpo, Vphys = Vphys)
 
-    times, times_gc = mpo_timer(; outer=K)
+    times, times_gc = mpo_timer(; outer = K)
     mpo_u1_times[:, i] = times
     mpo_u1_times_gc[:, i] = times_gc
     empty!(TensorOperations.cache)
@@ -115,10 +115,9 @@ for i in 1:N
     Vphys = ℂ^Dphys
     Venv = ℂ^Denv
 
-    pepo_timer = TensorKitTimers.pepo_timer(; Vpeps=Vpeps, Vpepo=Vpepo, Vphys=Vphys,
-                                            Venv=Venv)
+    pepo_timer = TensorKitTimers.pepo_timer(; Vpeps, Vpepo, Vphys, Venv)
 
-    times, times_gc = pepo_timer(; outer=K)
+    times, times_gc = pepo_timer(; outer = K)
     pepo_triv_times[:, i] = times
     pepo_triv_times_gc[:, i] = times_gc
     empty!(TensorOperations.cache)
@@ -146,10 +145,9 @@ for i in 1:N
     Vphys = Z2Space((a => b for (a, b) in Dphys)...)
     Venv = Z2Space((a => b for (a, b) in Denv)...)
 
-    pepo_timer = TensorKitTimers.pepo_timer(; Vpeps=Vpeps, Vpepo=Vpepo, Vphys=Vphys,
-                                            Venv=Venv)
+    pepo_timer = TensorKitTimers.pepo_timer(; Vpeps, Vpepo, Vphys, Venv)
 
-    times, times_gc = pepo_timer(; outer=K)
+    times, times_gc = pepo_timer(; outer = K)
     pepo_z2_times[:, i] = times
     pepo_z2_times_gc[:, i] = times_gc
     empty!(TensorOperations.cache)
@@ -177,10 +175,9 @@ for i in 1:N
     Vphys = U1Space((a => b for (a, b) in Dphys)...)
     Venv = U1Space((a => b for (a, b) in Denv)...)
 
-    pepo_timer = TensorKitTimers.pepo_timer(; Vpeps=Vpeps, Vpepo=Vpepo, Vphys=Vphys,
-                                            Venv=Venv)
+    pepo_timer = TensorKitTimers.pepo_timer(; Vpeps, Vpepo, Vphys, Venv)
 
-    times, times_gc = pepo_timer(; outer=K)
+    times, times_gc = pepo_timer(; outer = K)
     pepo_u1_times[:, i] = times
     pepo_u1_times_gc[:, i] = times_gc
     empty!(TensorOperations.cache)
@@ -204,9 +201,9 @@ for i in 1:N
 
     Vmera = ℂ^Dmera
 
-    mera_timer = TensorKitTimers.mera_timer(; Vmera=Vmera)
+    mera_timer = TensorKitTimers.mera_timer(; Vmera = Vmera)
 
-    times, times_gc = mera_timer(; outer=K)
+    times, times_gc = mera_timer(; outer = K)
 
     mera_triv_times[:, i] = times
     mera_triv_times_gc[:, i] = times_gc
@@ -229,9 +226,9 @@ for i in 1:N
 
     Vmera = Z2Space((a => b for (a, b) in Dmera)...)
 
-    mera_timer = TensorKitTimers.mera_timer(; Vmera=Vmera)
+    mera_timer = TensorKitTimers.mera_timer(; Vmera = Vmera)
 
-    times, times_gc = mera_timer(; outer=K)
+    times, times_gc = mera_timer(; outer = K)
 
     mera_z2_times[:, i] = times
     mera_z2_times_gc[:, i] = times_gc
@@ -254,9 +251,9 @@ for i in 1:N
 
     Vmera = U1Space((a => b for (a, b) in Dmera)...)
 
-    mera_timer = TensorKitTimers.mera_timer(; Vmera=Vmera)
+    mera_timer = TensorKitTimers.mera_timer(; Vmera = Vmera)
 
-    times, times_gc = mera_timer(; outer=K)
+    times, times_gc = mera_timer(; outer = K)
 
     mera_u1_times[:, i] = times
     mera_u1_times_gc[:, i] = times_gc

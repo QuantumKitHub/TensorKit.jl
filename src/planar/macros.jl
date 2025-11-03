@@ -50,8 +50,9 @@ function planarparser(planarexpr, kwargs...)
             isexpr(val, :tuple) ||
                 throw(ArgumentError("Invalid use of `order`, should be `order=(...,)`"))
             indexorder = map(normalizeindex, val.args)
-            parser.contractiontreebuilder = network -> TO.indexordertree(network,
-                                                                         indexorder)
+            parser.contractiontreebuilder = network -> TO.indexordertree(
+                network, indexorder
+            )
 
         elseif name == :contractcheck
             val isa Bool ||
@@ -79,8 +80,10 @@ function planarparser(planarexpr, kwargs...)
     treebuilder = parser.contractiontreebuilder
     treesorter = parser.contractiontreesorter
     costcheck = parser.contractioncostcheck
-    push!(parser.preprocessors,
-          ex -> TO.processcontractions(ex, treebuilder, treesorter, costcheck))
+    push!(
+        parser.preprocessors,
+        ex -> TO.processcontractions(ex, treebuilder, treesorter, costcheck)
+    )
     parser.contractioncostcheck = nothing
     push!(parser.preprocessors, ex -> _check_planarity(ex))
     push!(parser.preprocessors, ex -> _decompose_planar_contractions(ex, temporaries))
@@ -119,9 +122,10 @@ function _plansor(expr, kwargs...)
     tensorex = tparser(expr)
     planarex = pparser(expr)
 
-    push!(args,
-          Expr(:if, :(BraidingStyle(sectortype($targetsym)) isa Bosonic), tensorex,
-               planarex))
+    push!(
+        args,
+        Expr(:if, :(BraidingStyle(sectortype($targetsym)) isa Bosonic), tensorex, planarex)
+    )
     if !isa(targetobj, Symbol) && targetobj ∈ newtensors
         push!(args, :($targetobj = $targetsym))
     end

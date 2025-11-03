@@ -171,7 +171,7 @@ For practical reasons, we also require some additional methods to be defined:
 
 Further information, such as the quantum dimensions ``d_a`` and Frobenius-Schur indicator
 ``χ_a`` (only if ``a == \overline{a}``) are encoded in the F-symbol. They are obtained as
-[`dim(a)`](@ref) and [`frobeniusschur(a)`](@ref). These functions have default definitions
+[`dim(a)`](@ref) and [`frobenius_schur_phase(a)`](@ref). These functions have default definitions
 which extract the requested data from `Fsymbol(a, conj(a), a, a, one(a), one(a))`, but they
 can be overloaded in case the value can be computed more efficiently.
 

@@ -1,29 +1,32 @@
-for V in (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁)#, VSU₃)
-    V1, V2, V3, V4, V5 = V
-    @assert V3 * V4 * V2 ≿ V1' * V5' # necessary for leftorth tests
-    @assert V3 * V4 ≾ V1' * V2' * V5' # necessary for rightorth tests
-end
+using Test, TestExtras
+using TensorKit
+using TensorKit: type_repr
+using Combinatorics: permutations
+using LinearAlgebra: LinearAlgebra
+
+@isdefined(TestSetup) || include("../setup.jl")
+using .TestSetup
 
 spacelist = try
-    if ENV["CI"] == "true"
+    if get(ENV, "CI", "false") == "true"
         println("Detected running on CI")
         if Sys.iswindows()
             (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂)
         elseif Sys.isapple()
-            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VfU₁, VfSU₂, VSU₂U₁)#, VSU₃)
+            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VfU₁, VfSU₂, VSU₂U₁) #, VSU₃)
         else
-            (Vtr, Vℤ₂, Vfℤ₂, VU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁)#, VSU₃)
+            (Vtr, Vℤ₂, Vfℤ₂, VU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁) #, VSU₃)
         end
     else
-        (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁)#, VSU₃)
+        (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁) #, VSU₃)
     end
 catch
-    (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁)#, VSU₃)
+    (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁) #, VSU₃)
 end
 
 for V in spacelist
     I = sectortype(first(V))
-    Istr = TK.type_repr(I)
+    Istr = type_repr(I)
     println("---------------------------------------")
     println("Tensors with symmetry: $Istr")
     println("---------------------------------------")
@@ -39,7 +42,7 @@ for V in spacelist
                 @test codomain(t) == W
                 @test space(t) == (W ← one(W))
                 @test domain(t) == one(W)
-                @test typeof(t) == TensorMap{T,spacetype(t),5,0,Vector{T}}
+                @test typeof(t) == TensorMap{T, spacetype(t), 5, 0, Vector{T}}
                 # blocks
                 bs = @constinferred blocks(t)
                 (c, b1), state = @constinferred Nothing iterate(bs)
@@ -136,8 +139,7 @@ for V in spacelist
                 @test i1 * i2 == @constinferred(id(T, V1 ⊗ V2))
                 @test i2 * i1 == @constinferred(id(Vector{T}, V2 ⊗ V1))
 
-                w = @constinferred(isometry(T, V1 ⊗ (oneunit(V1) ⊕ oneunit(V1)),
-                                            V1))
+                w = @constinferred(isometry(T, V1 ⊗ (oneunit(V1) ⊕ oneunit(V1)), V1))
                 @test dim(w) == 2 * dim(V1 ← V1)
                 @test w' * w == id(Vector{T}, V1)
                 @test w * w' == (w * w')^2
@@ -235,8 +237,7 @@ for V in spacelist
                     @test dot(t2′, t2) ≈ dot(t′, t) ≈ dot(transpose(t2′), transpose(t2))
                 end
 
-                t3 = VERSION < v"1.7" ? repartition(t, k) :
-                     @constinferred repartition(t, $k)
+                t3 = VERSION < v"1.7" ? repartition(t, k) : @constinferred repartition(t, $k)
                 @test norm(t3) ≈ norm(t)
                 t3′ = @constinferred repartition!(similar(t3), t′)
                 @test norm(t3′) ≈ norm(t′)
@@ -256,14 +257,14 @@ for V in spacelist
                         a2 = convert(Array, t2)
                         @test a2 ≈ permutedims(a, (p1..., p2...))
                         @test convert(Array, transpose(t2)) ≈
-                              permutedims(a2, (5, 4, 3, 2, 1))
+                            permutedims(a2, (5, 4, 3, 2, 1))
                     end
 
                     t3 = repartition(t, k)
                     a3 = convert(Array, t3)
-                    @test a3 ≈ permutedims(a,
-                                           (ntuple(identity, k)...,
-                                            reverse(ntuple(i -> i + k, 5 - k))...))
+                    @test a3 ≈ permutedims(
+                        a, (ntuple(identity, k)..., reverse(ntuple(i -> i + k, 5 - k))...)
+                    )
                 end
             end
         end
@@ -316,14 +317,11 @@ for V in spacelist
                 rhoR = randn(ComplexF64, V5, V5)' # test adjoint tensor
                 H = randn(ComplexF64, V2 * V4, V2 * V4)
                 @tensor HrA12[a, s1, s2, c] := rhoL[a, a'] * conj(A1[a', t1, b]) *
-                                               A2[b, t2, c'] * rhoR[c', c] *
-                                               H[s1, s2, t1, t2]
+                    A2[b, t2, c'] * rhoR[c', c] * H[s1, s2, t1, t2]
 
                 @tensor HrA12array[a, s1, s2, c] := convert(Array, rhoL)[a, a'] *
-                                                    conj(convert(Array, A1)[a', t1, b]) *
-                                                    convert(Array, A2)[b, t2, c'] *
-                                                    convert(Array, rhoR)[c', c] *
-                                                    convert(Array, H)[s1, s2, t1, t2]
+                    conj(convert(Array, A1)[a', t1, b]) * convert(Array, A2)[b, t2, c'] *
+                    convert(Array, rhoR)[c', c] * convert(Array, H)[s1, s2, t1, t2]
 
                 @test HrA12array ≈ convert(Array, HrA12)
             end
@@ -331,8 +329,8 @@ for V in spacelist
         @timedtestset "Index flipping: test flipping inverse" begin
             t = rand(ComplexF64, V1 ⊗ V1' ← V1' ⊗ V1)
             for i in 1:4
-                @test t ≈ flip(flip(t, i), i; inv=true)
-                @test t ≈ flip(flip(t, i; inv=true), i)
+                @test t ≈ flip(flip(t, i), i; inv = true)
+                @test t ≈ flip(flip(t, i; inv = true), i)
             end
         end
         @timedtestset "Index flipping: test via explicit flip" begin
@@ -354,13 +352,10 @@ for V in spacelist
             @tensor ta[a, b] := t1[x, y, a, z] * t2[y, b, z, x]
             @tensor tb[a, b] := flip(t1, 1)[x, y, a, z] * flip(t2, 4)[y, b, z, x]
             @test ta ≈ tb
-            @tensor tb[a, b] := flip(t1, (2, 4))[x, y, a, z] *
-                                flip(t2, (1, 3))[y, b, z, x]
+            @tensor tb[a, b] := flip(t1, (2, 4))[x, y, a, z] * flip(t2, (1, 3))[y, b, z, x]
             @test ta ≈ tb
-            @tensor tb[a, b] := flip(t1, (1, 2, 4))[x, y, a, z] *
-                                flip(t2, (1, 3, 4))[y, b, z, x]
-            @tensor tb[a, b] := flip(t1, (1, 3))[x, y, a, z] *
-                                flip(t2, (2, 4))[y, b, z, x]
+            @tensor tb[a, b] := flip(t1, (1, 2, 4))[x, y, a, z] * flip(t2, (1, 3, 4))[y, b, z, x]
+            @tensor tb[a, b] := flip(t1, (1, 3))[x, y, a, z] * flip(t2, (2, 4))[y, b, z, x]
             @test flip(ta, (1, 2)) ≈ tb
         end
         @timedtestset "Multiplication of isometries: test properties" begin
@@ -369,9 +364,8 @@ for V in spacelist
             for T in (Float64, ComplexF64)
                 t1 = randisometry(T, W1, W2)
                 t2 = randisometry(T, W2 ← W2)
-                @test t1' * t1 ≈ one(t2)
-                @test t2' * t2 ≈ one(t2)
-                @test t2 * t2' ≈ one(t2)
+                @test isisometry(t1)
+                @test isunitary(t2)
                 P = t1 * t1'
                 @test P * P ≈ P
             end
@@ -439,204 +433,6 @@ for V in spacelist
             @test LinearAlgebra.isdiag(D)
             @test LinearAlgebra.diag(D) == d
         end
-        @timedtestset "Factorization" begin
-            W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
-            for T in (Float32, ComplexF64)
-                # Test both a normal tensor and an adjoint one.
-                ts = (rand(T, W), rand(T, W)')
-                for t in ts
-                    @testset "leftorth with $alg" for alg in
-                                                      (TK.QR(), TK.QRpos(),
-                                                       TK.QL(), TK.QLpos(),
-                                                       TK.Polar(), TK.SVD(),
-                                                       TK.SDD())
-                        Q, R = @constinferred leftorth(t, ((3, 4, 2), (1, 5)); alg=alg)
-                        QdQ = Q' * Q
-                        @test QdQ ≈ one(QdQ)
-                        @test Q * R ≈ permute(t, ((3, 4, 2), (1, 5)))
-                        if alg isa Polar
-                            @test isposdef(R)
-                            @test domain(R) == codomain(R) == space(t, 1)' ⊗ space(t, 5)'
-                        end
-                    end
-                    @testset "leftnull with $alg" for alg in
-                                                      (TK.QR(), TK.SVD(),
-                                                       TK.SDD())
-                        N = @constinferred leftnull(t, ((3, 4, 2), (1, 5)); alg=alg)
-                        NdN = N' * N
-                        @test NdN ≈ one(NdN)
-                        @test norm(N' * permute(t, ((3, 4, 2), (1, 5)))) <
-                              100 * eps(norm(t))
-                    end
-                    @testset "rightorth with $alg" for alg in
-                                                       (TK.RQ(), TK.RQpos(),
-                                                        TK.LQ(), TK.LQpos(),
-                                                        TK.Polar(), TK.SVD(),
-                                                        TK.SDD())
-                        L, Q = @constinferred rightorth(t, ((3, 4), (2, 1, 5)); alg=alg)
-                        QQd = Q * Q'
-                        @test QQd ≈ one(QQd)
-                        @test L * Q ≈ permute(t, ((3, 4), (2, 1, 5)))
-                        if alg isa Polar
-                            @test isposdef(L)
-                            @test domain(L) == codomain(L) == space(t, 3) ⊗ space(t, 4)
-                        end
-                    end
-                    @testset "rightnull with $alg" for alg in
-                                                       (TK.LQ(), TK.SVD(),
-                                                        TK.SDD())
-                        M = @constinferred rightnull(t, ((3, 4), (2, 1, 5)); alg=alg)
-                        MMd = M * M'
-                        @test MMd ≈ one(MMd)
-                        @test norm(permute(t, ((3, 4), (2, 1, 5))) * M') <
-                              100 * eps(norm(t))
-                    end
-                    @testset "tsvd with $alg" for alg in (TK.SVD(), TK.SDD())
-                        U, S, V = @constinferred tsvd(t, ((3, 4, 2), (1, 5)); alg=alg)
-                        UdU = U' * U
-                        @test UdU ≈ one(UdU)
-                        VVd = V * V'
-                        @test VVd ≈ one(VVd)
-                        t2 = permute(t, ((3, 4, 2), (1, 5)))
-                        @test U * S * V ≈ t2
-
-                        s = LinearAlgebra.svdvals(t2)
-                        s′ = LinearAlgebra.diag(S)
-                        for (c, b) in s
-                            @test b ≈ s′[c]
-                        end
-                    end
-                    @testset "cond and rank" begin
-                        t2 = permute(t, ((3, 4, 2), (1, 5)))
-                        d1 = dim(codomain(t2))
-                        d2 = dim(domain(t2))
-                        @test rank(t2) == min(d1, d2)
-                        M = leftnull(t2)
-                        @test rank(M) == max(d1, d2) - min(d1, d2)
-                        t3 = unitary(T, V1 ⊗ V2, V1 ⊗ V2)
-                        @test cond(t3) ≈ one(real(T))
-                        @test rank(t3) == dim(V1 ⊗ V2)
-                        t4 = randn(T, V1 ⊗ V2, V1 ⊗ V2)
-                        t4 = (t4 + t4') / 2
-                        vals = LinearAlgebra.eigvals(t4)
-                        λmax = maximum(s -> maximum(abs, s), values(vals))
-                        λmin = minimum(s -> minimum(abs, s), values(vals))
-                        @test cond(t4) ≈ λmax / λmin
-                    end
-                end
-                @testset "empty tensor" begin
-                    t = randn(T, V1 ⊗ V2, zerospace(V1))
-                    @testset "leftorth with $alg" for alg in
-                                                      (TK.QR(), TK.QRpos(),
-                                                       TK.QL(), TK.QLpos(),
-                                                       TK.Polar(), TK.SVD(),
-                                                       TK.SDD())
-                        Q, R = @constinferred leftorth(t; alg=alg)
-                        @test Q == t
-                        @test dim(Q) == dim(R) == 0
-                    end
-                    @testset "leftnull with $alg" for alg in
-                                                      (TK.QR(), TK.SVD(),
-                                                       TK.SDD())
-                        N = @constinferred leftnull(t; alg=alg)
-                        @test N' * N ≈ id(domain(N))
-                        @test N * N' ≈ id(codomain(N))
-                    end
-                    @testset "rightorth with $alg" for alg in
-                                                       (TK.RQ(), TK.RQpos(),
-                                                        TK.LQ(), TK.LQpos(),
-                                                        TK.Polar(), TK.SVD(),
-                                                        TK.SDD())
-                        L, Q = @constinferred rightorth(copy(t'); alg=alg)
-                        @test Q == t'
-                        @test dim(Q) == dim(L) == 0
-                    end
-                    @testset "rightnull with $alg" for alg in
-                                                       (TK.LQ(), TK.SVD(),
-                                                        TK.SDD())
-                        M = @constinferred rightnull(copy(t'); alg=alg)
-                        @test M * M' ≈ id(codomain(M))
-                        @test M' * M ≈ id(domain(M))
-                    end
-                    @testset "tsvd with $alg" for alg in (TK.SVD(), TK.SDD())
-                        U, S, V = @constinferred tsvd(t; alg=alg)
-                        @test U == t
-                        @test dim(U) == dim(S) == dim(V)
-                    end
-                    @testset "cond and rank" begin
-                        @test rank(t) == 0
-                        W2 = zerospace(V1) * zerospace(V2)
-                        t2 = rand(W2, W2)
-                        @test rank(t2) == 0
-                        @test cond(t2) == 0.0
-                    end
-                end
-                t = rand(T, V1 ⊗ V1' ⊗ V2 ⊗ V2')
-                @testset "eig and isposdef" begin
-                    D, V = eigen(t, ((1, 3), (2, 4)))
-                    t2 = permute(t, ((1, 3), (2, 4)))
-                    @test t2 * V ≈ V * D
-
-                    d = LinearAlgebra.eigvals(t2; sortby=nothing)
-                    d′ = LinearAlgebra.diag(D)
-                    for (c, b) in d
-                        @test b ≈ d′[c]
-                    end
-
-                    # Somehow moving these test before the previous one gives rise to errors
-                    # with T=Float32 on x86 platforms. Is this an OpenBLAS issue? 
-                    VdV = V' * V
-                    VdV = (VdV + VdV') / 2
-                    @test isposdef(VdV)
-
-                    @test !isposdef(t2) # unlikely for non-hermitian map
-                    t2 = (t2 + t2')
-                    D, V = eigen(t2)
-                    VdV = V' * V
-                    @test VdV ≈ one(VdV)
-                    D̃, Ṽ = @constinferred eigh(t2)
-                    @test D ≈ D̃
-                    @test V ≈ Ṽ
-                    λ = minimum(minimum(real(LinearAlgebra.diag(b)))
-                                for (c, b) in blocks(D))
-                    @test cond(Ṽ) ≈ one(real(T))
-                    @test isposdef(t2) == isposdef(λ)
-                    @test isposdef(t2 - λ * one(t2) + 0.1 * one(t2))
-                    @test !isposdef(t2 - λ * one(t2) - 0.1 * one(t2))
-                end
-            end
-        end
-        @timedtestset "Tensor truncation" begin
-            for T in (Float32, ComplexF64)
-                for p in (1, 2, 3, Inf)
-                    # Test both a normal tensor and an adjoint one.
-                    ts = (randn(T, V1 ⊗ V2 ⊗ V3, V4 ⊗ V5),
-                          randn(T, V4 ⊗ V5, V1 ⊗ V2 ⊗ V3)')
-                    for t in ts
-                        U₀, S₀, V₀, = tsvd(t)
-                        t = rmul!(t, 1 / norm(S₀, p))
-                        U, S, V, ϵ = @constinferred tsvd(t; trunc=truncerr(5e-1), p=p)
-                        # @show p, ϵ
-                        # @show domain(S)
-                        # @test min(space(S,1), space(S₀,1)) != space(S₀,1)
-                        U′, S′, V′, ϵ′ = tsvd(t; trunc=truncerr(nextfloat(ϵ)), p=p)
-                        @test (U, S, V, ϵ) == (U′, S′, V′, ϵ′)
-                        U′, S′, V′, ϵ′ = tsvd(t; trunc=truncdim(ceil(Int, dim(domain(S)))),
-                                              p=p)
-                        @test (U, S, V, ϵ) == (U′, S′, V′, ϵ′)
-                        U′, S′, V′, ϵ′ = tsvd(t; trunc=truncspace(space(S, 1)), p=p)
-                        @test (U, S, V, ϵ) == (U′, S′, V′, ϵ′)
-                        # results with truncationcutoff cannot be compared because they don't take degeneracy into account, and thus truncate differently
-                        U, S, V, ϵ = tsvd(t; trunc=truncbelow(1 / dim(domain(S₀))), p=p)
-                        # @show p, ϵ
-                        # @show domain(S)
-                        # @test min(space(S,1), space(S₀,1)) != space(S₀,1)
-                        U′, S′, V′, ϵ′ = tsvd(t; trunc=truncspace(space(S, 1)), p=p)
-                        @test (U, S, V, ϵ) == (U′, S′, V′, ϵ′)
-                    end
-                end
-            end
-        end
         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
             @timedtestset "Tensor functions" begin
                 W = V1 ⊗ V2
@@ -645,15 +441,15 @@ for V in spacelist
                     s = dim(W)
                     expt = @constinferred exp(t)
                     @test reshape(convert(Array, expt), (s, s)) ≈
-                          exp(reshape(convert(Array, t), (s, s)))
+                        exp(reshape(convert(Array, t), (s, s)))
 
                     @test (@constinferred sqrt(t))^2 ≈ t
                     @test reshape(convert(Array, sqrt(t^2)), (s, s)) ≈
-                          sqrt(reshape(convert(Array, t^2), (s, s)))
+                        sqrt(reshape(convert(Array, t^2), (s, s)))
 
                     @test exp(@constinferred log(expt)) ≈ expt
                     @test reshape(convert(Array, log(expt)), (s, s)) ≈
-                          log(reshape(convert(Array, expt), (s, s)))
+                        log(reshape(convert(Array, expt), (s, s)))
 
                     @test (@constinferred cos(t))^2 + (@constinferred sin(t))^2 ≈ id(W)
                     @test (@constinferred tan(t)) ≈ sin(t) / cos(t)
@@ -680,8 +476,10 @@ for V in spacelist
                     @test coth(@constinferred acoth(t8)) ≈ t8
                     t = randn(T, W, V1) # not square
                     for f in
-                        (cos, sin, tan, cot, cosh, sinh, tanh, coth, atan, acot, asinh,
-                         sqrt, log, asin, acos, acosh, atanh, acoth)
+                        (
+                            cos, sin, tan, cot, cosh, sinh, tanh, coth, atan, acot, asinh,
+                            sqrt, log, asin, acos, acosh, atanh, acoth,
+                        )
                         @test_throws SpaceMismatch f(t)
                     end
                 end
@@ -691,14 +489,14 @@ for V in spacelist
             for T in (Float32, ComplexF64)
                 tA = rand(T, V1 ⊗ V3, V1 ⊗ V3)
                 tB = rand(T, V2 ⊗ V4, V2 ⊗ V4)
-                tA = 3 // 2 * leftorth(tA; alg=Polar())[1]
-                tB = 1 // 5 * leftorth(tB; alg=Polar())[1]
+                tA = 3 // 2 * left_polar(tA)[1]
+                tB = 1 // 5 * left_polar(tB)[1]
                 tC = rand(T, V1 ⊗ V3, V2 ⊗ V4)
                 t = @constinferred sylvester(tA, tB, tC)
                 @test codomain(t) == V1 ⊗ V3
                 @test domain(t) == V2 ⊗ V4
                 @test norm(tA * t + t * tB + tC) <
-                      (norm(tA) + norm(tB) + norm(tC)) * eps(real(T))^(2 / 3)
+                    (norm(tA) + norm(tB) + norm(tC)) * eps(real(T))^(2 / 3)
                 if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
                     matrix(x) = reshape(convert(Array, x), dim(codomain(x)), dim(domain(x)))
                     @test matrix(t) ≈ sylvester(matrix(tA), matrix(tB), matrix(tC))
@@ -725,8 +523,8 @@ for V in spacelist
                     d4 = dim(domain(t2))
                     At = convert(Array, t)
                     @test reshape(At, (d1, d2, d3, d4)) ≈
-                          reshape(convert(Array, t1), (d1, 1, d3, 1)) .*
-                          reshape(convert(Array, t2), (1, d2, 1, d4))
+                        reshape(convert(Array, t1), (d1, 1, d3, 1)) .*
+                        reshape(convert(Array, t2), (1, d2, 1, d4))
                 end
             end
         end
@@ -778,8 +576,8 @@ end
             d4 = dim(domain(t2))
             At = convert(Array, t)
             @test reshape(At, (d1, d2, d3, d4)) ≈
-                  reshape(convert(Array, t1), (d1, 1, d3, 1)) .*
-                  reshape(convert(Array, t2), (1, d2, 1, d4))
+                reshape(convert(Array, t1), (d1, 1, d3, 1)) .*
+                reshape(convert(Array, t2), (1, d2, 1, d4))
         end
     end
 end

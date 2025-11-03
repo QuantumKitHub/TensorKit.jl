@@ -7,10 +7,9 @@ module TensorKit
 
 # Exports
 #---------
-# Types:
+# Reexport common sector types:
 export Sector, AbstractIrrep, Irrep
-export FusionStyle, UniqueFusion, MultipleFusion, MultiplicityFreeFusion,
-       SimpleFusion, GenericFusion
+export FusionStyle, UniqueFusion, MultipleFusion, MultiplicityFreeFusion, SimpleFusion, GenericFusion
 export UnitStyle, SimpleUnit, GenericUnit
 export BraidingStyle, SymmetricBraiding, Bosonic, Fermionic, Anyonic, NoBraiding
 export Trivial, Z2Irrep, Z3Irrep, Z4Irrep, ZNIrrep, U1Irrep, SU2Irrep, CU1Irrep
@@ -19,6 +18,7 @@ export FermionParity, FermionNumber, FermionSpin
 export FibonacciAnyon, IsingAnyon, IsingBimodule
 export unit, rightunit, leftunit, allunits, isunit
 
+# Export common vector space, fusion tree and tensor types
 export VectorSpace, Field, ElementarySpace # abstract vector spaces
 export unitspace, zerospace, leftunitspace, rightunitspace
 export InnerProductStyle, NoInnerProduct, HasInnerProduct, EuclideanInnerProduct
@@ -40,32 +40,34 @@ export space, field, dual, dim, reduceddim, dims, fuse, flip, isdual, oplus,
 # partial order for vector spaces
 export infimum, supremum, isisomorphic, ismonomorphic, isepimorphic
 
-# methods for sectors and properties thereof
-export sectortype, sectors, hassector, Nsymbol, Fsymbol, Rsymbol, Bsymbol,
-       frobeniusschur, twist, otimes, sectorscalartype, deligneproduct
+# Reexport methods for sectors and properties thereof
+export sectortype, sectors, hassector
+export unit, rightunit, leftunit, allunits, isunit, otimes
+export Nsymbol, Fsymbol, Rsymbol, Bsymbol, frobenius_schur_phase, frobenius_schur_indicator, twist, sectorscalartype, deligneproduct
+
+# Export methods for fusion trees
 export fusiontrees, braid, permute, transpose
-export ZNSpace, SU2Irrep, U1Irrep, CU1Irrep
 # other fusion tree manipulations, should not be exported:
 # export insertat, split, merge, repartition, artin_braid,
 #        bendleft, bendright, foldleft, foldright, cycleclockwise, cycleanticlockwise
 
 # some unicode
-export ⊕, ⊗, ×, ⊠, ℂ, ℝ, ℤ, ←, →, ≾, ≿, ≅, ≺, ≻
+export ⊕, ⊗, ⊖, ×, ⊠, ℂ, ℝ, ℤ, ←, →, ≾, ≿, ≅, ≺, ≻
 export ℤ₂, ℤ₃, ℤ₄, U₁, SU, SU₂, CU₁
 export fℤ₂, fU₁, fSU₂
 export ℤ₂Space, ℤ₃Space, ℤ₄Space, U₁Space, CU₁Space, SU₂Space
 
-# tensor maps
+# Export tensor map methods
 export domain, codomain, numind, numout, numin, domainind, codomainind, allind
-export spacetype, sectortype, storagetype, scalartype, tensormaptype
-export blocksectors, blockdim, block, blocks
+export spacetype, storagetype, scalartype, tensormaptype
+export blocksectors, blockdim, block, blocks, subblocks, subblock
 
 # random methods for constructor
 export randisometry, randisometry!, rand, rand!, randn, randn!
 
 # special purpose constructors
 export zero, one, one!, id, id!, isomorphism, isomorphism!, unitary, unitary!, isometry,
-       isometry!
+    isometry!
 
 # reexport most of VectorInterface and some more tensor algebra
 export zerovector, zerovector!, zerovector!!, scale, scale!, scale!!, add, add!, add!!
@@ -73,23 +75,28 @@ export inner, dot, norm, normalize, normalize!, tr
 
 # factorizations
 export mul!, lmul!, rmul!, adjoint!, pinv, axpy!, axpby!
-export leftorth, rightorth, leftnull, rightnull,
-       leftorth!, rightorth!, leftnull!, rightnull!,
-       tsvd!, tsvd, eigen, eigen!, eig, eig!, eigh, eigh!, exp, exp!,
-       isposdef, isposdef!, ishermitian, sylvester, rank, cond
-export braid, braid!, permute, permute!, transpose, transpose!, twist, twist!, repartition,
-       repartition!
-export catdomain, catcodomain, absorb, absorb!
+export left_orth, right_orth, left_null, right_null,
+    left_orth!, right_orth!, left_null!, right_null!,
+    left_polar, left_polar!, right_polar, right_polar!,
+    qr_full, qr_compact, qr_null, lq_full, lq_compact, lq_null,
+    qr_full!, qr_compact!, qr_null!, lq_full!, lq_compact!, lq_null!,
+    svd_compact!, svd_full!, svd_trunc!, svd_compact, svd_full, svd_trunc,
+    exp, exp!,
+    eigh_full!, eigh_full, eigh_trunc!, eigh_trunc, eig_full!, eig_full, eig_trunc!,
+    eig_trunc,
+    eigh_vals!, eigh_vals, eig_vals!, eig_vals,
+    isposdef, isposdef!, ishermitian, isisometry, isunitary, sylvester, rank, cond
 
-export OrthogonalFactorizationAlgorithm, QR, QRpos, QL, QLpos, LQ, LQpos, RQ, RQpos,
-       SVD, SDD, Polar
+export braid, braid!, permute, permute!, transpose, transpose!, twist, twist!, repartition,
+    repartition!
+export catdomain, catcodomain, absorb, absorb!
 
 # tensor operations
 export @tensor, @tensoropt, @ncon, ncon, @planar, @plansor
 export scalar, add!, contract!
 
 # truncation schemes
-export notrunc, truncerr, truncdim, truncspace, truncbelow
+export notrunc, truncrank, trunctol, truncfilter, truncspace, truncerror
 
 # cache management
 export empty_globalcaches!
@@ -107,7 +114,11 @@ using TensorOperations: TensorOperations, @tensor, @tensoropt, @ncon, ncon
 using TensorOperations: IndexTuple, Index2Tuple, linearize, AbstractBackend
 const TO = TensorOperations
 
+using MatrixAlgebraKit
+
 using LRUCache
+using OhMyThreads
+using ScopedValues
 
 using TensorKitSectors
 import TensorKitSectors: dim, BraidingStyle, FusionStyle, ⊠, ⊗
@@ -115,19 +126,21 @@ import TensorKitSectors: dual, type_repr
 import TensorKitSectors: twist
 
 using Base: @boundscheck, @propagate_inbounds, @constprop,
-            OneTo, tail, front,
-            tuple_type_head, tuple_type_tail, tuple_type_cons,
-            SizeUnknown, HasLength, HasShape, IsInfinite, EltypeUnknown, HasEltype
+    OneTo, tail, front,
+    tuple_type_head, tuple_type_tail, tuple_type_cons,
+    SizeUnknown, HasLength, HasShape, IsInfinite, EltypeUnknown, HasEltype
 using Base.Iterators: product, filter
+using Printf: @sprintf
 
-using LinearAlgebra: LinearAlgebra
+using LinearAlgebra: LinearAlgebra, BlasFloat
 using LinearAlgebra: norm, dot, normalize, normalize!, tr,
-                     axpy!, axpby!, lmul!, rmul!, mul!, ldiv!, rdiv!,
-                     adjoint, adjoint!, transpose, transpose!,
-                     lu, pinv, sylvester,
-                     eigen, eigen!, svd, svd!,
-                     isposdef, isposdef!, ishermitian, rank, cond,
-                     Diagonal, Hermitian
+    axpy!, axpby!, lmul!, rmul!, mul!, ldiv!, rdiv!,
+    adjoint, adjoint!, transpose, transpose!,
+    lu, pinv, sylvester,
+    eigen, eigen!, svd, svd!,
+    isposdef, isposdef!, ishermitian, rank, cond,
+    Diagonal, Hermitian
+using MatrixAlgebraKit
 
 import Base.Meta
 
@@ -141,13 +154,12 @@ include("auxiliary/auxiliary.jl")
 include("auxiliary/caches.jl")
 include("auxiliary/dicts.jl")
 include("auxiliary/iterators.jl")
-include("auxiliary/linalg.jl")
 include("auxiliary/random.jl")
 
 #--------------------------------------------------------------------
 # experiment with different dictionaries
-const SectorDict{K,V} = SortedVectorDict{K,V}
-const FusionTreeDict{K,V} = Dict{K,V}
+const SectorDict{K, V} = SortedVectorDict{K, V}
+const FusionTreeDict{K, V} = Dict{K, V}
 #--------------------------------------------------------------------
 
 # Exception types:
@@ -155,7 +167,7 @@ const FusionTreeDict{K,V} = Dict{K,V}
 abstract type TensorException <: Exception end
 
 # Exception type for all errors related to sector mismatch
-struct SectorMismatch{S<:Union{Nothing,AbstractString}} <: TensorException
+struct SectorMismatch{S <: Union{Nothing, AbstractString}} <: TensorException
     message::S
 end
 SectorMismatch() = SectorMismatch{Nothing}(nothing)
@@ -163,7 +175,7 @@ Base.showerror(io::IO, ::SectorMismatch{Nothing}) = print(io, "SectorMismatch()"
 Base.showerror(io::IO, e::SectorMismatch) = print(io, "SectorMismatch(\"", e.message, "\")")
 
 # Exception type for all errors related to vector space mismatch
-struct SpaceMismatch{S<:Union{Nothing,AbstractString}} <: TensorException
+struct SpaceMismatch{S <: Union{Nothing, AbstractString}} <: TensorException
     message::S
 end
 SpaceMismatch() = SpaceMismatch{Nothing}(nothing)
@@ -171,7 +183,7 @@ Base.showerror(io::IO, ::SpaceMismatch{Nothing}) = print(io, "SpaceMismatch()")
 Base.showerror(io::IO, e::SpaceMismatch) = print(io, "SpaceMismatch(\"", e.message, "\")")
 
 # Exception type for all errors related to invalid tensor index specification.
-struct IndexError{S<:Union{Nothing,AbstractString}} <: TensorException
+struct IndexError{S <: Union{Nothing, AbstractString}} <: TensorException
     message::S
 end
 IndexError() = IndexError{Nothing}(nothing)
@@ -205,6 +217,7 @@ end
 #-------------------------------------
 # general definitions
 include("tensors/abstracttensor.jl")
+include("tensors/backends.jl")
 include("tensors/blockiterator.jl")
 include("tensors/tensor.jl")
 include("tensors/adjoint.jl")
@@ -214,9 +227,10 @@ include("tensors/tensoroperations.jl")
 include("tensors/treetransformers.jl")
 include("tensors/indexmanipulations.jl")
 include("tensors/diagonal.jl")
-include("tensors/truncation.jl")
-include("tensors/factorizations.jl")
 include("tensors/braidingtensor.jl")
+
+include("factorizations/factorizations.jl")
+using .Factorizations
 
 # # Planar macros and related functionality
 # #-----------------------------------------
@@ -235,7 +249,7 @@ include("auxiliary/deprecate.jl")
 # Extensions
 # ----------
 function __init__()
-    @require_extensions
+    return @require_extensions
 end
 
 end
