@@ -296,7 +296,7 @@ function LinearAlgebra.rank(
         t::AbstractTensorMap;
         atol::Real = 0, rtol::Real = atol > 0 ? 0 : _default_rtol(t)
     )
-    r = dim(one(sectortype(t))) * 0
+    r = zero(real(sectorscalartype(sectortype(t))))
     dim(t) == 0 && return r
     S = LinearAlgebra.svdvals(t)
     tol = max(atol, rtol * maximum(first, values(S)))
