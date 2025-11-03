@@ -25,14 +25,15 @@ end
 function randsector(::Type{I}) where {I <: Sector}
     s = collect(smallset(I))
     a = rand(s)
-    while a == one(a) # don't use trivial label
+    while isunit(a) # don't use trivial label
         a = rand(s)
     end
     return a
 end
 function hasfusiontensor(I::Type{<:Sector})
+    isa(UnitStyle(I), GenericUnit) && return false
     try
-        TensorKit.fusiontensor(one(I), one(I), one(I))
+        TensorKit.fusiontensor(unit(I), unit(I), unit(I))
         return true
     catch e
         if e isa MethodError
@@ -81,6 +82,7 @@ sectorlist = (
     FermionParity ⊠ U1Irrep ⊠ SU2Irrep, FermionParity ⊠ SU2Irrep ⊠ SU2Irrep, # Hubbard-like
     FibonacciAnyon, IsingAnyon,
     Z2Irrep ⊠ FibonacciAnyon ⊠ FibonacciAnyon,
+    IsingBimodule, IsingBimodule ⊠ SU2Irrep, IsingBimodule ⊠ IsingBimodule,
 )
 
 # spaces
@@ -158,5 +160,6 @@ Vfib = (
     Vect[FibonacciAnyon](:I => 2, :τ => 3),
     Vect[FibonacciAnyon](:I => 2, :τ => 2),
 )
+#TODO: add IsingBimodule spaces
 
 end
