@@ -220,13 +220,21 @@ end
     @test eval_show(typeof(V)) == typeof(V)
     # space with no sectors
     @test dim(@constinferred(zerospace(V))) == 0
-    # space with a single sector
-    W = @constinferred GradedSpace(unit(I) => 1)
-    @test W == GradedSpace(unit(I) => 1, randsector(I) => 0)
+    # space with unit(s)
+    if isa(UnitStyle(I), GenericUnit)
+        W = @constinferred GradedSpace(unit => 1 for unit in allunits(I))
+        dict = Dict((unit => 1 for unit in allunits(I))..., randsector(I) => 0)
+        @test W == GradedSpace(dict)
+        @test @constinferred(zerospace(V)) == GradedSpace(unit => 0 for unit in allunits(I))
+        # randsector never returns trivial sector, so this cannot error
+        @test_throws ArgumentError("Sector $(allunits(I)[1]) appears multiple times") GradedSpace(allunits(I)[1] => 1, randsector(I) => 0, allunits(I)[1] => 3)
+    else
+        W = @constinferred GradedSpace(unit(I) => 1)
+        @test W == GradedSpace(unit(I) => 1, randsector(I) => 0)
+        @test @constinferred(zerospace(V)) == GradedSpace(unit(I) => 0)
+        @test_throws ArgumentError("Sector $(unit(I)) appears multiple times") GradedSpace(unit(I) => 1, randsector(I) => 0, unit(I) => 3)
+    end
     @test @constinferred(unitspace(V)) == W == unitspace(typeof(V))
-    @test @constinferred(zerospace(V)) == GradedSpace(unit(I) => 0)
-    # randsector never returns trivial sector, so this cannot error
-    @test_throws ArgumentError GradedSpace(unit(I) => 1, randsector(I) => 0, unit(I) => 3)
     @test eval_show(W) == W
     @test isa(V, VectorSpace)
     @test isa(V, ElementarySpace)
@@ -265,7 +273,12 @@ end
     @test V == @constinferred infimum(V, ⊕(V, V))
     @test V ≺ ⊕(V, V)
     @test !(V ≻ ⊕(V, V))
-    @test infimum(V, GradedSpace(unit(I) => 3)) == GradedSpace(unit(I) => 2)
+    if isa(UnitStyle(I), GenericUnit)
+        u = allunits(I)[1]
+    else
+        u = unit(I)
+    end
+    @test infimum(V, GradedSpace(u => 3)) == GradedSpace(u => 2)
     @test_throws SpaceMismatch (⊕(V, V'))
 end
 
