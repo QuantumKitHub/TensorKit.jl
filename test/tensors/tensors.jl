@@ -27,6 +27,7 @@ end
 for V in spacelist
     I = sectortype(first(V))
     Istr = type_repr(I)
+    symmetricbraiding = isa(BraidingStyle(I), SymmetricBraiding)
     println("---------------------------------------")
     println("Tensors with symmetry: $Istr")
     println("---------------------------------------")
@@ -224,6 +225,7 @@ for V in spacelist
             @test Base.promote_typeof(tc, t) == typeof(tc + t)
         end
         @timedtestset "Permutations: test via inner product invariance" begin
+            @assert symmetricbraiding
             W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
             t = rand(ComplexF64, W)
             t′ = randn!(similar(t))
@@ -237,7 +239,7 @@ for V in spacelist
                     @test dot(t2′, t2) ≈ dot(t′, t) ≈ dot(transpose(t2′), transpose(t2))
                 end
 
-                t3 = VERSION < v"1.7" ? repartition(t, k) : @constinferred repartition(t, $k)
+                t3 = @constinferred repartition(t, $k)
                 @test norm(t3) ≈ norm(t)
                 t3′ = @constinferred repartition!(similar(t3), t′)
                 @test norm(t3′) ≈ norm(t′)
@@ -269,28 +271,27 @@ for V in spacelist
             end
         end
         @timedtestset "Full trace: test self-consistency" begin
-            t = rand(ComplexF64, V1 ⊗ V2' ⊗ V2 ⊗ V1')
-            t2 = permute(t, ((1, 2), (4, 3)))
-            s = @constinferred tr(t2)
-            @test conj(s) ≈ tr(t2')
+            t = rand(ComplexF64, V1 ⊗ V2' ← V1 ⊗ V2')
+            s = @constinferred tr(t)
+            @test conj(s) ≈ tr(t')
             if !isdual(V1)
-                t2 = twist!(t2, 1)
+                t2 = twist!(t, 1)
             end
             if isdual(V2)
-                t2 = twist!(t2, 2)
+                t2 = twist!(t, 2)
             end
             ss = tr(t2)
-            @tensor s2 = t[a, b, b, a]
-            @tensor t3[a, b] := t[a, c, c, b]
-            @tensor s3 = t3[a, a]
+            @plansor s2 = t[a b; a b]
+            @plansor t3[a; b] := t[a c; b c]
+            @plansor s3 = t3[a; a]
             @test ss ≈ s2
             @test ss ≈ s3
         end
         @timedtestset "Partial trace: test self-consistency" begin
-            t = rand(ComplexF64, V1 ⊗ V2' ⊗ V3 ⊗ V2 ⊗ V1' ⊗ V3')
-            @tensor t2[a, b] := t[c, d, b, d, c, a]
-            @tensor t4[a, b, c, d] := t[d, e, b, e, c, a]
-            @tensor t5[a, b] := t4[a, b, c, c]
+            t = rand(ComplexF64, V1 ⊗ V2 ⊗ V3 ← V1 ⊗ V2 ⊗ V3)
+            @planar t2[a; b] := t[c d b; c d a]
+            @planar t4[a b; c d] := t[e d c; e b a]
+            @planar t5[a; b] := t4[a c; b c]
             @test t2 ≈ t5
         end
         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
@@ -334,6 +335,7 @@ for V in spacelist
             end
         end
         @timedtestset "Index flipping: test via explicit flip" begin
+            @assert symmetricbraiding
             t = rand(ComplexF64, V1 ⊗ V1' ← V1' ⊗ V1)
             F1 = unitary(flip(V1), V1)
 
@@ -347,6 +349,7 @@ for V in spacelist
             @test twist!(flip(t, 4), 4) ≈ tf
         end
         @timedtestset "Index flipping: test via contraction" begin
+            @assert symmetricbraiding
             t1 = rand(ComplexF64, V1 ⊗ V2 ⊗ V3 ← V4)
             t2 = rand(ComplexF64, V2' ⊗ V5 ← V4' ⊗ V1)
             @tensor ta[a, b] := t1[x, y, a, z] * t2[y, b, z, x]
@@ -529,6 +532,7 @@ for V in spacelist
             end
         end
         @timedtestset "Tensor product: test via tensor contraction" begin
+            @assert symmetricbraiding
             for T in (Float32, ComplexF64)
                 t1 = rand(T, V2 ⊗ V3 ⊗ V1)
                 t2 = rand(T, V2 ⊗ V1 ⊗ V3)
