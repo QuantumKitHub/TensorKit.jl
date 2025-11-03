@@ -50,7 +50,7 @@ for V in spacelist
                 next = @constinferred Nothing iterate(bs, state)
                 b2 = @constinferred block(t, first(blocksectors(t)))
                 @test b1 == b2
-                @test eltype(bs) === Pair{typeof(c),typeof(b1)}
+                @test eltype(bs) === Pair{typeof(c), typeof(b1)}
                 @test typeof(b1) === TK.blocktype(t)
                 @test typeof(c) === sectortype(t)
             end
@@ -112,7 +112,7 @@ for V in spacelist
                 next = @constinferred Nothing iterate(bs, state)
                 b2 = @constinferred block(t', first(blocksectors(t')))
                 @test b1 == b2
-                @test eltype(bs) === Pair{typeof(c),typeof(b1)}
+                @test eltype(bs) === Pair{typeof(c), typeof(b1)}
                 @test typeof(b1) === TK.blocktype(t')
                 @test typeof(c) === sectortype(t)
                 # linear algebra
@@ -156,20 +156,20 @@ for V in spacelist
                 @test scalartype(t2) === T
                 @test t.data === t2.data
                 @test @constinferred(removeunitspace(t2, $(numind(t2)))) == t
-                t3 = @constinferred insertleftunitspace(t; copy=true)
-                @test t3 == @constinferred insertrightunitspace(t; copy=true)
+                t3 = @constinferred insertleftunitspace(t; copy = true)
+                @test t3 == @constinferred insertrightunitspace(t; copy = true)
                 @test t.data !== t3.data
                 for (c, b) in blocks(t)
                     @test b == block(t3, c)
                 end
                 @test @constinferred(removeunitspace(t3, $(numind(t3)))) == t
-                t4 = @constinferred insertrightunitspace(t, 3; dual=true)
+                t4 = @constinferred insertrightunitspace(t, 3; dual = true)
                 @test numin(t4) == numin(t) && numout(t4) == numout(t) + 1
                 for (c, b) in blocks(t)
                     @test b == block(t4, c)
                 end
                 @test @constinferred(removeunitspace(t4, 4)) == t
-                t5 = @constinferred insertleftunitspace(t, 4; dual=true)
+                t5 = @constinferred insertleftunitspace(t, 4; dual = true)
                 @test numin(t5) == numin(t) + 1 && numout(t5) == numout(t)
                 for (c, b) in blocks(t)
                     @test b == block(t5, c)

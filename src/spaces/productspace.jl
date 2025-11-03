@@ -234,7 +234,7 @@ end
 Return a tensor product of zero spaces of type `S`, i.e. this is the unit object under the
 tensor product operation, such that `V ⊗ one(V) == V`.
 """
-#TODO: unit(V::S)?
+
 Base.one(V::VectorSpace) = one(typeof(V))
 Base.one(::Type{<:ProductSpace{S}}) where {S <: ElementarySpace} = ProductSpace{S, 0}(())
 Base.one(::Type{S}) where {S <: ElementarySpace} = ProductSpace{S, 0}(())

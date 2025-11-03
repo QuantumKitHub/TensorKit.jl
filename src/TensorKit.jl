@@ -34,8 +34,10 @@ export TruncationScheme
 export SpaceMismatch, SectorMismatch, IndexError # error types
 
 # general vector space methods
-export space, field, dual, dim, reduceddim, dims, fuse, flip, isdual, oplus,
-       insertleftunitspace, insertrightunitspace, removeunitspace
+# Export general vector space methods
+export space, field, dual, dim, reduceddim, dims, fuse, flip, isdual
+export unitspace, zerospace, oplus, ominus
+export insertleftunitspace, insertrightunitspace, removeunitspace
 
 # partial order for vector spaces
 export infimum, supremum, isisomorphic, ismonomorphic, isepimorphic

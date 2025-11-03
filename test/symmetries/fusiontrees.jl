@@ -578,7 +578,7 @@ using .TestSetup
         d1 = transpose(f1, f1, (N + 1, 1:N..., ((2N):-1:(N + 3))...), (N + 2,))
         f1front, = TK.split(f1, N - 1)
         T = sectorscalartype(I)
-        d2 = Dict{typeof((f1front, f1front)),T}()
+        d2 = Dict{typeof((f1front, f1front)), T}()
         for ((f1′, f2′), coeff′) in d1
             for ((f1′′, f2′′), coeff′′) in
                 TK.planar_trace(
