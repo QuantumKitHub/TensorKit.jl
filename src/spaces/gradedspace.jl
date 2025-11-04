@@ -142,7 +142,7 @@ function leftunitspace(S::GradedSpace{I}) where {I<:Sector}
         return unitspace(typeof(S))
     else
         !isempty(sectors(S)) || throw(ArgumentError("Cannot determine type of empty space"))
-        allequal(a.row for a in sectors(S)) ||
+        allequal(leftunit, sectors(S)) ||
             throw(ArgumentError("sectors of $S do not have the same left unit"))
 
         sector = leftunit(first(sectors(S)))
@@ -161,7 +161,7 @@ function rightunitspace(S::GradedSpace{I}) where {I<:Sector}
         return unitspace(typeof(S))
     else
         !isempty(sectors(S)) || throw(ArgumentError("Cannot determine type of empty space"))
-        allequal(a.row for a in sectors(S)) ||
+        allequal(rightunit, sectors(S)) ||
             throw(ArgumentError("sectors of $S do not have the same right unit"))
 
         sector = rightunit(first(sectors(S)))
@@ -170,19 +170,9 @@ function rightunitspace(S::GradedSpace{I}) where {I<:Sector}
 end
 
 function unitspace(S::Type{<:GradedSpace{I}}) where {I<:Sector}
-    if UnitStyle(I) isa SimpleUnit
-        return S(unit(I) => 1)
-    else
-        return S(unit => 1 for unit in allunits(I))
-    end
+    return S(unit => 1 for unit in allunits(I))
 end
-function zerospace(S::Type{<:GradedSpace{I}}) where {I<:Sector}
-    if UnitStyle(I) isa SimpleUnit
-        return S(unit(I) => 0)
-    else
-        return S(unit => 0 for unit in allunits(I))
-    end
-end
+zerospace(S::Type{<:GradedSpace}) = S()
 
 # TODO: the following methods can probably be implemented more efficiently for
 # `FiniteGradedSpace`, but we don't expect them to be used often in hot loops, so
