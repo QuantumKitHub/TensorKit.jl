@@ -644,7 +644,7 @@ function Base.summary(io::IO, t::AbstractTensorMap)
 end
 
 # Human-readable:
-function Base.show(io::IO, ::MIME"text/plain", t::AbstractTensorMap)
+function Base.show(io::IO, mime::MIME"text/plain", t::AbstractTensorMap)
     # 1) show summary: typically d₁×d₂×… ← d₃×d₄×… $(typeof(t))
     summary(io, t)
 
@@ -664,6 +664,6 @@ function Base.show(io::IO, ::MIME"text/plain", t::AbstractTensorMap)
 
     # 3) [optional]: show data
     println(io, "\n\n blocks: ")
-    show_blocks(io, MIME"text/plain"(), blocks(t))
+    show_blocks(io, mime, blocks(t))
     return nothing
 end
