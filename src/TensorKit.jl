@@ -20,7 +20,7 @@ export unit, rightunit, leftunit, allunits, isunit
 
 # Export common vector space, fusion tree and tensor types
 export VectorSpace, Field, ElementarySpace # abstract vector spaces
-export unitspace, zerospace, leftunitspace, rightunitspace
+export leftunitspace, rightunitspace
 export InnerProductStyle, NoInnerProduct, HasInnerProduct, EuclideanInnerProduct
 export ComplexSpace, CartesianSpace, GeneralSpace, GradedSpace # concrete spaces
 export ZNSpace, Z2Space, Z3Space, Z4Space, U1Space, CU1Space, SU2Space
