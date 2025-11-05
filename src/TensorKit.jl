@@ -37,7 +37,7 @@ export SpaceMismatch, SectorMismatch, IndexError # error types
 # Export general vector space methods
 export space, field, dual, dim, reduceddim, dims, fuse, flip, isdual
 export unitspace, zerospace, oplus, ominus
-export insertleftunitspace, insertrightunitspace, removeunitspace
+export insertleftunit, insertrightunit, removeunit
 
 # partial order for vector spaces
 export infimum, supremum, isisomorphic, ismonomorphic, isepimorphic

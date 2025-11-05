@@ -33,7 +33,7 @@ end
 
 Base.@deprecate EuclideanProduct() EuclideanInnerProduct()
 
-Base.@deprecate insertunit(P::ProductSpace, args...; kwargs...) insertleftunitspace(args...; kwargs...)
+Base.@deprecate insertunit(P::ProductSpace, args...; kwargs...) insertleftunit(args...; kwargs...)
 
 # Factorization structs
 @deprecate QR() MatrixAlgebraKit.LAPACK_HouseholderQR()

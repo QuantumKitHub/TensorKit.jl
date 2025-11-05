@@ -196,62 +196,62 @@ function compose(W::HomSpace{S}, V::HomSpace{S}) where {S}
 end
 
 """
-    insertleftunitspace(W::HomSpace, i=numind(W) + 1; conj=false, dual=false)
+    insertleftunit(W::HomSpace, i=numind(W) + 1; conj=false, dual=false)
 
 Insert a trivial vector space, isomorphic to the underlying field, at position `i`,
 which can be specified as an `Int` or as `Val(i)` for improved type stability.
 More specifically, adds a left monoidal unit or its dual.
 
-See also [`insertrightunitspace`](@ref insertrightunitspace(::HomSpace, ::Val{i}) where {i}),
-[`removeunitspace`](@ref removeunitspace(::HomSpace, ::Val{i}) where {i}).
+See also [`insertrightunit`](@ref insertrightunit(::HomSpace, ::Val{i}) where {i}),
+[`removeunit`](@ref removeunit(::HomSpace, ::Val{i}) where {i}).
 """
-function insertleftunitspace(
+function insertleftunit(
         W::HomSpace, ::Val{i} = Val(numind(W) + 1);
         conj::Bool = false, dual::Bool = false
     ) where {i}
     if i ≤ numout(W)
-        return insertleftunitspace(codomain(W), Val(i); conj, dual) ← domain(W)
+        return insertleftunit(codomain(W), Val(i); conj, dual) ← domain(W)
     else
-        return codomain(W) ← insertleftunitspace(domain(W), Val(i - numout(W)); conj, dual)
+        return codomain(W) ← insertleftunit(domain(W), Val(i - numout(W)); conj, dual)
     end
 end
 
 """
-    insertrightunitspace(W::HomSpace, i=numind(W); conj=false, dual=false)
+    insertrightunit(W::HomSpace, i=numind(W); conj=false, dual=false)
 
 Insert a trivial vector space, isomorphic to the underlying field, after position `i`,
 which can be specified as an `Int` or as `Val(i)` for improved type stability.
 More specifically, adds a right monoidal unit or its dual.
 
-See also [`insertleftunitspace`](@ref insertleftunitspace(::HomSpace, ::Val{i}) where {i}),
-[`removeunitspace`](@ref removeunitspace(::HomSpace, ::Val{i}) where {i}).
+See also [`insertleftunit`](@ref insertleftunit(::HomSpace, ::Val{i}) where {i}),
+[`removeunit`](@ref removeunit(::HomSpace, ::Val{i}) where {i}).
 """
-function insertrightunitspace(
+function insertrightunit(
         W::HomSpace, ::Val{i} = Val(numind(W));
         conj::Bool = false, dual::Bool = false
     ) where {i}
     if i ≤ numout(W)
-        return insertrightunitspace(codomain(W), Val(i); conj, dual) ← domain(W)
+        return insertrightunit(codomain(W), Val(i); conj, dual) ← domain(W)
     else
-        return codomain(W) ← insertrightunitspace(domain(W), Val(i - numout(W)); conj, dual)
+        return codomain(W) ← insertrightunit(domain(W), Val(i - numout(W)); conj, dual)
     end
 end
 
 """
-    removeunitspace(P::HomSpace, i)
+    removeunit(P::HomSpace, i)
 
 This removes a trivial tensor product factor at position `1 ≤ i ≤ N`, where `i`
 can be specified as an `Int` or as `Val(i)` for improved type stability.
 For this to work, the space at position `i` has to be isomorphic to the field of scalars.
 
-This operation undoes the work of [`insertleftunitspace`](@ref insertleftunitspace(::HomSpace, ::Val{i}) where {i}) 
-and [`insertrightunitspace`](@ref insertrightunitspace(::HomSpace, ::Val{i}) where {i}).
+This operation undoes the work of [`insertleftunit`](@ref insertleftunit(::HomSpace, ::Val{i}) where {i}) 
+and [`insertrightunit`](@ref insertrightunit(::HomSpace, ::Val{i}) where {i}).
 """
-function removeunitspace(P::HomSpace, ::Val{i}) where {i}
+function removeunit(P::HomSpace, ::Val{i}) where {i}
     if i ≤ numout(P)
-        return removeunitspace(codomain(P), Val(i)) ← domain(P)
+        return removeunit(codomain(P), Val(i)) ← domain(P)
     else
-        return codomain(P) ← removeunitspace(domain(P), Val(i - numout(P)))
+        return codomain(P) ← removeunit(domain(P), Val(i - numout(P)))
     end
 end
 

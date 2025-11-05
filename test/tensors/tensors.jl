@@ -158,21 +158,21 @@ for V in spacelist
             for T in (Float32, ComplexF64)
                 t = @constinferred rand(T, W)
                 if isa(UnitStyle(I), SimpleUnit)
-                    t2 = @constinferred insertleftunitspace(t)
-                    @test t2 == @constinferred insertrightunitspace(t)
-                    @test space(t2) == insertleftunitspace(space(t))
-                    @test @constinferred(removeunitspace(t2, $(numind(t2)))) == t
-                    t3 = @constinferred insertleftunitspace(t; copy = true)
-                    @test t3 == @constinferred insertrightunitspace(t; copy = true)
-                    @test @constinferred(removeunitspace(t3, $(numind(t3)))) == t
+                    t2 = @constinferred insertleftunit(t)
+                    @test t2 == @constinferred insertrightunit(t)
+                    @test space(t2) == insertleftunit(space(t))
+                    @test @constinferred(removeunit(t2, $(numind(t2)))) == t
+                    t3 = @constinferred insertleftunit(t; copy = true)
+                    @test t3 == @constinferred insertrightunit(t; copy = true)
+                    @test @constinferred(removeunit(t3, $(numind(t3)))) == t
                 else
-                    t2 = @constinferred insertleftunitspace(t, 5)
-                    @test t2 == @constinferred insertrightunitspace(t, 4)
-                    @test space(t2) == insertleftunitspace(space(t), 5)
-                    @test @constinferred(removeunitspace(t2, $(numind(t2) - 1))) == t
-                    t3 = @constinferred insertleftunitspace(t, 5; copy = true)
-                    @test t3 == @constinferred insertrightunitspace(t, 4; copy = true)
-                    @test @constinferred(removeunitspace(t3, $(numind(t3) - 1))) == t
+                    t2 = @constinferred insertleftunit(t, 5)
+                    @test t2 == @constinferred insertrightunit(t, 4)
+                    @test space(t2) == insertleftunit(space(t), 5)
+                    @test @constinferred(removeunit(t2, $(numind(t2) - 1))) == t
+                    t3 = @constinferred insertleftunit(t, 5; copy = true)
+                    @test t3 == @constinferred insertrightunit(t, 4; copy = true)
+                    @test @constinferred(removeunit(t3, $(numind(t3) - 1))) == t
                 end
 
                 @test numind(t2) == numind(t) + 1
@@ -184,19 +184,19 @@ for V in spacelist
                     @test b == block(t3, c)
                 end
 
-                t4 = @constinferred insertrightunitspace(t, 3; dual = true)
+                t4 = @constinferred insertrightunit(t, 3; dual = true)
                 @test numin(t4) == numin(t) && numout(t4) == numout(t) + 1
                 for (c, b) in blocks(t)
                     @test b == block(t4, c)
                 end
-                @test @constinferred(removeunitspace(t4, 4)) == t
+                @test @constinferred(removeunit(t4, 4)) == t
 
-                t5 = @constinferred insertleftunitspace(t, 4; dual = true)
+                t5 = @constinferred insertleftunit(t, 4; dual = true)
                 @test numin(t5) == numin(t) + 1 && numout(t5) == numout(t)
                 for (c, b) in blocks(t)
                     @test b == block(t5, c)
                 end
-                @test @constinferred(removeunitspace(t5, 4)) == t
+                @test @constinferred(removeunit(t5, 4)) == t
             end
         end
         if hasfusiontensor(I)

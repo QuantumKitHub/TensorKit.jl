@@ -184,9 +184,9 @@ transpose(::AbstractTensorMap, ::Index2Tuple)
 repartition(::AbstractTensorMap, ::Int, ::Int)
 flip(t::AbstractTensorMap, I)
 twist(::AbstractTensorMap, ::Int)
-insertleftunitspace(::AbstractTensorMap, ::Val{i}) where {i}
-insertrightunitspace(::AbstractTensorMap, ::Val{i}) where {i}
-removeunitspace(::AbstractTensorMap, ::Val{i}) where {i}
+insertleftunit(::AbstractTensorMap, ::Val{i}) where {i}
+insertrightunit(::AbstractTensorMap, ::Val{i}) where {i}
+removeunit(::AbstractTensorMap, ::Val{i}) where {i}
 ```
 
 ```@docs
