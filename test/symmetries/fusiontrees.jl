@@ -10,7 +10,7 @@ using TensorKitSectors
 @isdefined(TestSetup) || include("../setup.jl")
 using .TestSetup
 
-@timedtestset "Fusion trees for $(TensorKit.type_repr(I))" verbose = true for I in sectorlist # product sectors with multifusion doesn't work because of isunit
+@timedtestset "Fusion trees for $(TensorKit.type_repr(I))" verbose = true for I in sectorlist
     Istr = TensorKit.type_repr(I)
     N = 5
     out = random_fusiontree(I, N)
