@@ -318,7 +318,15 @@ and [`insertrightunitspace`](@ref insertrightunitspace(::ProductSpace, ::Val{i})
 """
 function removeunitspace(P::ProductSpace, ::Val{i}) where {i}
     1 ≤ i ≤ length(P) || _boundserror(P, i)
-    isisomorphic(P[i], unitspace(P[i])) || _nontrivialspaceerror(P, i)
+    I = sectortype(P)
+    if isa(UnitStyle(I), SimpleUnit)
+        isisomorphic(P[i], unitspace(P[i])) || _nontrivialspaceerror(P, i)
+    else
+        isisomorphic(P[i], leftunitspace(P[i])) ||
+            isisomorphic(P[i], rightunitspace(P[i])) ||
+            isisomorphic(P[i], unitspace(P[i])) ||
+            _nontrivialspaceerror(P, i)
+    end
     return ProductSpace{spacetype(P)}(TupleTools.deleteat(P.spaces, i))
 end
 
