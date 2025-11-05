@@ -237,7 +237,7 @@ for V in spacelist
                 @test isisometry(Vᴴ; side = :right)
 
                 #FIXME: dimension of S is a float, might be a real issue if it's a decimal
-                trunc = truncrank(Int(dim(domain(S)) ÷ 2))
+                trunc = truncrank(dim(domain(S)) ÷ 2)
                 U1, S1, Vᴴ1 = @constinferred svd_trunc(t; trunc)
                 @test t * Vᴴ1' ≈ U1 * S1
                 @test isisometry(U1)
@@ -269,7 +269,7 @@ for V in spacelist
                 @test isisometry(Vᴴ4; side = :right)
                 @test norm(t - U4 * S4 * Vᴴ4) <= 0.5
 
-                trunc = truncrank(Int(dim(domain(S)) ÷ 2)) & trunctol(; atol = λ - 10eps(λ))
+                trunc = truncrank(dim(domain(S)) ÷ 2) & trunctol(; atol = λ - 10eps(λ))
                 U5, S5, Vᴴ5 = @constinferred svd_trunc(t; trunc)
                 @test t * Vᴴ5' ≈ U5 * S5
                 @test isisometry(U5)
@@ -299,7 +299,7 @@ for V in spacelist
                 @test @constinferred isposdef(vdv)
                 t isa DiagonalTensorMap || @test !isposdef(t) # unlikely for non-hermitian map
 
-                d, v = @constinferred eig_trunc(t; trunc = truncrank(Int(dim(domain(t)) ÷ 2)))
+                d, v = @constinferred eig_trunc(t; trunc = truncrank(dim(domain(t)) ÷ 2))
                 @test t * v ≈ v * d
                 @test dim(domain(d)) ≤ dim(domain(t)) ÷ 2
 
@@ -330,7 +330,7 @@ for V in spacelist
                 @test isposdef(t - λ * one(t) + 0.1 * one(t))
                 @test !isposdef(t - λ * one(t) - 0.1 * one(t))
 
-                d, v = @constinferred eigh_trunc(t; trunc = truncrank(Int(dim(domain(t)) ÷ 2)))
+                d, v = @constinferred eigh_trunc(t; trunc = truncrank(dim(domain(t)) ÷ 2))
                 @test t * v ≈ v * d
                 @test dim(domain(d)) ≤ dim(domain(t)) ÷ 2
             end

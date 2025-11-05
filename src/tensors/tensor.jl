@@ -333,7 +333,7 @@ function TensorMap(
     # dimension check
     codom = codomain(V)
     dom = domain(V)
-    arraysize = Int.(dims(V))
+    arraysize = dims(V)
     matsize = (dim(codom), dim(dom))
 
     if !(size(data) == arraysize || size(data) == matsize)

@@ -617,7 +617,7 @@ function Base.convert(::Type{Array}, t::AbstractTensorMap)
         dom = domain(t)
         T = sectorscalartype(I) <: Complex ? complex(scalartype(t)) :
             sectorscalartype(I) <: Integer ? scalartype(t) : float(scalartype(t))
-        A = zeros(T, Int.(dims(t))...)
+        A = zeros(T, dims(t)...)
         for (f₁, f₂) in fusiontrees(t)
             F = convert(Array, (f₁, f₂))
             Aslice = StridedView(A)[axes(cod, f₁.uncoupled)..., axes(dom, f₂.uncoupled)...]

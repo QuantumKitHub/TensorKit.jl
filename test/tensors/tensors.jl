@@ -85,14 +85,14 @@ for V in spacelist
                             t = @constinferred randn(T, W)
                         end
                         a = @constinferred convert(Array, t)
-                        b = reshape(a, Int(dim(codomain(W))), Int(dim(domain(W)))) # no init in dim makes reshape error for su2
+                        b = reshape(a, dim(codomain(W)), dim(domain(W)))
                         @test t ≈ @constinferred TensorMap(a, W)
                         @test t ≈ @constinferred TensorMap(b, W)
                         @test t === @constinferred TensorMap(t.data, W)
                     end
                 end
                 for T in (Int, Float32, ComplexF64)
-                    t = randn(T, V1 ⊗ V2 ← zerospace(V1)) # no init in dim makes zerospace call error for z2
+                    t = randn(T, V1 ⊗ V2 ← zerospace(V1))
                     a = convert(Array, t)
                     @test norm(a) == 0
                 end
@@ -427,8 +427,8 @@ for V in spacelist
                     t1 = rand(T, W1 ← W1)
                     t2 = rand(T, W2, W2)
                     t = rand(T, W1 ← W2)
-                    d1 = Int(dim(W1))
-                    d2 = Int(dim(W2))
+                    d1 = dim(W1)
+                    d2 = dim(W2)
                     At1 = reshape(convert(Array, t1), d1, d1)
                     At2 = reshape(convert(Array, t2), d2, d2)
                     At = reshape(convert(Array, t), d1, d2)
@@ -469,7 +469,7 @@ for V in spacelist
                 W = V1 ⊗ V2
                 for T in (Float64, ComplexF64)
                     t = randn(T, W, W)
-                    s = Int(dim(W))
+                    s = dim(W)
                     expt = @constinferred exp(t)
                     @test reshape(convert(Array, expt), (s, s)) ≈
                         exp(reshape(convert(Array, t), (s, s)))
@@ -529,7 +529,7 @@ for V in spacelist
                 @test norm(tA * t + t * tB + tC) <
                     (norm(tA) + norm(tB) + norm(tC)) * eps(real(T))^(2 / 3)
                 if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
-                    matrix(x) = reshape(convert(Array, x), Int(dim(codomain(x))), Int(dim(domain(x))))
+                    matrix(x) = reshape(convert(Array, x), dim(codomain(x)), dim(domain(x)))
                     @test matrix(t) ≈ sylvester(matrix(tA), matrix(tB), matrix(tC))
                 end
             end
@@ -553,10 +553,10 @@ for V in spacelist
                     t1 = rand(T, V2 ⊗ V3 ⊗ V1, V1)
                     t2 = rand(T, V2 ⊗ V1 ⊗ V3, V2)
                     t = @constinferred (t1 ⊗ t2)
-                    d1 = Int(dim(codomain(t1)))
-                    d2 = Int(dim(codomain(t2)))
-                    d3 = Int(dim(domain(t1)))
-                    d4 = Int(dim(domain(t2)))
+                    d1 = dim(codomain(t1))
+                    d2 = dim(codomain(t2))
+                    d3 = dim(domain(t1))
+                    d4 = dim(domain(t2))
                     At = convert(Array, t)
                     @test reshape(At, (d1, d2, d3, d4)) ≈
                         reshape(convert(Array, t1), (d1, 1, d3, 1)) .*
@@ -618,10 +618,10 @@ end
             t1 = rand(T, V1 ⊗ V2, V3' ⊗ V4)
             t2 = rand(T, W2, W1 ⊗ W1')
             t = @constinferred (t1 ⊠ t2)
-            d1 = Int(dim(codomain(t1)))
-            d2 = Int(dim(codomain(t2)))
-            d3 = Int(dim(domain(t1)))
-            d4 = Int(dim(domain(t2)))
+            d1 = dim(codomain(t1))
+            d2 = dim(codomain(t2))
+            d3 = dim(domain(t1))
+            d4 = dim(domain(t2))
             At = convert(Array, t)
             @test reshape(At, (d1, d2, d3, d4)) ≈
                 reshape(convert(Array, t1), (d1, 1, d3, 1)) .*
