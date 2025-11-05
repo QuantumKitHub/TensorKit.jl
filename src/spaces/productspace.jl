@@ -269,10 +269,10 @@ function insertleftunitspace(P::ProductSpace, ::Val{i}=Val(length(P) + 1);
         u = leftunitspace(P[i])
     end
     if dual
-        u = dual(u)
+        u = TensorKit.dual(u)
     end
     if conj
-        u = conj(u)
+        u = TensorKit.conj(u)
     end
     return ProductSpace(TupleTools.insertafter(P.spaces, i - 1, (u,)))
 end
@@ -298,10 +298,10 @@ function insertrightunitspace(P::ProductSpace, ::Val{i}=Val(length(P));
         u = rightunitspace(P[i])
     end
     if dual
-        u = dual(u)
+        u = TensorKit.dual(u)
     end
     if conj
-        u = conj(u)
+        u = TensorKit.conj(u)
     end
     return ProductSpace(TupleTools.insertafter(P.spaces, i, (u,)))
 end
