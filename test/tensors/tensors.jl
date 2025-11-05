@@ -618,10 +618,10 @@ end
             t1 = rand(T, V1 ⊗ V2, V3' ⊗ V4)
             t2 = rand(T, W2, W1 ⊗ W1')
             t = @constinferred (t1 ⊠ t2)
-            d1 = dim(codomain(t1))
-            d2 = dim(codomain(t2))
-            d3 = dim(domain(t1))
-            d4 = dim(domain(t2))
+            d1 = Int(dim(codomain(t1)))
+            d2 = Int(dim(codomain(t2)))
+            d3 = Int(dim(domain(t1)))
+            d4 = Int(dim(domain(t2)))
             At = convert(Array, t)
             @test reshape(At, (d1, d2, d3, d4)) ≈
                 reshape(convert(Array, t1), (d1, 1, d3, 1)) .*
