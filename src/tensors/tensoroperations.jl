@@ -327,30 +327,46 @@ function blas_contract!(
         pAB::Index2Tuple, α, β,
         backend, allocator
     )
-    I = sectortype(C)
-    BraidingStyle(I) isa SymmetricBraiding ||
+    bstyle = BraidingStyle(sectortype(C))
+    bstyle isa SymmetricBraiding ||
         throw(SectorMismatch("only tensors with symmetric braiding rules can be contracted; try `@planar` instead"))
     TC = eltype(C)
 
+    # check which tensors have to be permuted/copied
+    copyA = !(TO.isblascontractable(A, pA) && eltype(A) === TC)
+    copyB = !(TO.isblascontractable(B, pB) && eltype(B) === TC)
+
+    if bstyle isa Fermionic && any(isdual ∘ Base.Fix1(space, B), pB[1])
+        # twist smallest object if neither or both already have to be permuted
+        # otherwise twist the one that already is copied
+        if copyA ⊻ copyB
+            twistA = dim(A) < dim(B)
+        else
+            twistA = copyA
+        end
+        twistB = !twistA
+        copyA |= twistA
+        copyB |= twistB
+    else
+        twistA = false
+        twistB = false
+    end
+
     # Bring A in the correct form for BLAS contraction
-    flagA = TO.isblascontractable(A, pA) && eltype(A) === TC &&
-        !(BraidingStyle(I) isa Fermionic && any(i -> isdual(space(A, i)), pA[2]))
-    if !flagA
+    if copyA
         Anew = TO.tensoralloc_add(TC, A, pA, false, Val(true), allocator)
         Anew = TO.tensoradd!(Anew, A, pA, false, One(), Zero(), backend, allocator)
-        for i in domainind(Anew)
-            isdual(space(Anew, i)) || twist!(Anew, i)
-        end
+        twistA && twist!(Anew, filter(!isdual ∘ Base.Fix1(space, Anew), domainind(Anew)))
     else
         Anew = permute(A, pA)
     end
     pAnew = (codomainind(Anew), domainind(Anew))
 
     # Bring B in the correct form for BLAS contraction
-    flagB = TO.isblascontractable(B, pB) && eltype(B) === TC
-    if !flagB
+    if copyB
         Bnew = TO.tensoralloc_add(TC, B, pB, false, Val(true), allocator)
         Bnew = TO.tensoradd!(Bnew, B, pB, false, One(), Zero(), backend, allocator)
+        twistB && twist!(Bnew, filter(isdual ∘ Base.Fix1(space, Bnew), codomainind(Bnew)))
     else
         Bnew = permute(B, pB)
     end
@@ -358,20 +374,20 @@ function blas_contract!(
 
     # Bring C in the correct form for BLAS contraction
     ipAB = TO.oindABinC(pAB, pAnew, pBnew)
-    flagC = TO.isblasdestination(C, ipAB)
+    copyC = !TO.isblasdestination(C, ipAB)
 
-    if flagC
-        Cnew = permute(C, ipAB)
-        mul!(Cnew, Anew, Bnew, α, β)
-    else
+    if copyC
         Cnew = TO.tensoralloc_add(TC, C, ipAB, false, Val(true), allocator)
         mul!(Cnew, Anew, Bnew)
         TO.tensoradd!(C, Cnew, pAB, false, α, β, backend, allocator)
         TO.tensorfree!(Cnew, allocator)
+    else
+        Cnew = permute(C, ipAB)
+        mul!(Cnew, Anew, Bnew, α, β)
     end
 
-    flagA || TO.tensorfree!(Anew, allocator)
-    flagB || TO.tensorfree!(Bnew, allocator)
+    copyA && TO.tensorfree!(Anew, allocator)
+    copyB && TO.tensorfree!(Bnew, allocator)
 
     return C
 end
