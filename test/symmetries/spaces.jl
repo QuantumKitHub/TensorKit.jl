@@ -187,7 +187,7 @@ end
 
 @timedtestset "ElementarySpace: $(type_repr(Vect[I]))" for I in sectorlist
     if Base.IteratorSize(values(I)) === Base.IsInfinite()
-        set = unique(vcat(unit(I), [randsector(I) for k in 1:10]))
+        set = unique(vcat(allunits(I)..., [randsector(I) for k in 1:10]))
         gen = (c => 2 for c in set)
     else
         gen = (values(I)[k] => (k + 1) for k in 1:length(values(I)))
@@ -227,7 +227,8 @@ end
         @test W == GradedSpace(dict)
         @test @constinferred(zerospace(V)) == GradedSpace(unit => 0 for unit in allunits(I))
         # randsector never returns trivial sector, so this cannot error
-        @test_throws ArgumentError("Sector $(allunits(I)[1]) appears multiple times") GradedSpace(allunits(I)[1] => 1, randsector(I) => 0, allunits(I)[1] => 3)
+        randunit = rand(collect(allunits(I)))
+        @test_throws ArgumentError("Sector $(randunit) appears multiple times") GradedSpace(randunit => 1, randsector(I) => 0, randunit => 3)
     else
         W = @constinferred GradedSpace(unit(I) => 1)
         @test W == GradedSpace(unit(I) => 1, randsector(I) => 0)
@@ -274,7 +275,7 @@ end
     @test V ≺ ⊕(V, V)
     @test !(V ≻ ⊕(V, V))
     if isa(UnitStyle(I), GenericUnit)
-        u = allunits(I)[1]
+        u = first(allunits(I))
     else
         u = unit(I)
     end
