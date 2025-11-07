@@ -5,6 +5,8 @@ Supertype for structures containing the data for a tree transformation.
 """
 abstract type TreeTransformer end
 
+# Permutation transformers
+# ------------------------
 struct TrivialTreeTransformer <: TreeTransformer end
 
 const _AbelianTransformerData{T, N} = Tuple{T, StridedStructure{N}, StridedStructure{N}}
@@ -37,6 +39,37 @@ function AbelianTreeTransformer(transform, p, Vdst, Vsrc)
 
     # sort by (approximate) weight to facilitate multi-threading strategies
     # sort!(transformer)
+
+    Δt = Base.time() - t₀
+
+    @debug("Treetransformer for $Vsrc to $Vdst via $p", nblocks = L, Δt)
+
+    return transformer
+end
+
+function AbelianTreeTransformer(transform, p, Vdst, Vsrc, c)
+    t₀ = Base.time()
+    permute(Vsrc, p) == Vdst || throw(SpaceMismatch("Incompatible spaces for permuting."))
+    structure_dst = fusionblockstructure(Vdst)
+    structure_src = fusionblockstructure(Vsrc)
+
+    T = sectorscalartype(sectortype(Vdst))
+    N = numind(Vsrc)
+    data = Vector{Tuple{T, StridedStructure{N}, StridedStructure{N}}}()
+    transformer = AbelianTreeTransformer(data)
+
+    isnothing(c) && return transformer
+
+    L = length(structure_src.fusiontreelist)
+    for i in 1:L
+        f₁, f₂ = structure_src.fusiontreelist[i]
+        (f₃, f₄), coeff = only(transform(f₁, f₂))
+        f₃.coupled == c || continue # TODO this is probably very inefficient
+        j = structure_dst.fusiontreeindices[(f₃, f₄)]
+        stridestructure_dst = structure_dst.fusiontreestructure[j]
+        stridestructure_src = structure_src.fusiontreestructure[i]
+        push!(data, (coeff, stridestructure_dst, stridestructure_src))
+    end
 
     Δt = Base.time() - t₀
 
@@ -224,4 +257,93 @@ end
 # actual cost model would scale like L x length(subblock)
 function _transformer_weight((mat, structs_dst, structs_src)::_GenericTransformerData)
     return length(mat) * prod(structs_dst[1])
+end
+
+
+# Contraction transformers
+# ------------------------
+
+const _AbelianContractionTransformerData{T, N₁, N₂, N₃} = Tuple{
+    NTuple{3, StridedStructure{2}},                  # block data
+    AbelianTreeTransformer{T, N₁},                 # permute A
+    AbelianTreeTransformer{T, N₂},                  # permute B
+    AbelianTreeTransformer{T, N₃},                  # invpermute C
+}
+
+struct AbelianContractionTreeTransformer{T, N₁, N₂, N₃} <: TreeTransformer
+    data::Vector{_AbelianContractionTransformerData{T, N₁, N₂, N₃}}
+end
+
+_trivtuple(::Index2Tuple{N₁, N₂}) where {N₁, N₂} = (ntuple(identity, N₁), ntuple(i -> i + N₁, N₂))
+
+function needsbuffer(treetransformer::AbelianContractionTreeTransformer, i)
+    return !isempty(first(treetransformer.data)[i + 1].data)
+end
+
+function AbelianContractionTreeTransformer(VC, VA, pA, VB, pB, pAB)
+    VA′ = permute(VA, pA)
+    VB′ = permute(VB, pB)
+    VC′ = compose(VA′, VB′)
+
+    T = sectorscalartype(sectortype(VC))
+    bCs = blocksectors(VC′)
+
+    data = Vector{_AbelianContractionTransformerData{T, numind(VA), numind(VB), numind(VC)}}(undef, length(bCs))
+
+    pAnew = _trivtuple(pA)
+    pBnew = _trivtuple(pB)
+    pABnew = _trivtuple(pAB)
+
+    # sanity check
+    ipAB = TO.oindABinC(pAB, pAnew, pBnew)
+    @assert VC′ == permute(VC, ipAB)
+
+    treepermuterA(f1, f2) = permute(f1, f2, pA...)
+    treepermuterB(f1, f2) = permute(f1, f2, pB...)
+    treepermuterAB(f1, f2) = permute(f1, f2, pAB...)
+
+    blockstructuresA = fusionblockstructure(VA′).blockstructure
+    blockstructuresB = fusionblockstructure(VB′).blockstructure
+    blockstructuresC = fusionblockstructure(VC′).blockstructure
+
+
+    for (i, c) in enumerate(bCs)
+        # how do we transform an individual block of A or B
+        # careful, we have to permute INTO C, not from C
+        transformA = AbelianTreeTransformer(treepermuterA, pA, VA′, VA, pA == pAnew ? nothing : c)
+        transformB = AbelianTreeTransformer(treepermuterB, pB, VB′, VB, pB == pBnew ? nothing : c)
+        invtransformC = AbelianTreeTransformer(treepermuterAB, pAB, VC, VC′, pAB == pABnew ? nothing : c)
+
+        # where is the data for the given block
+        blockszC, blockrangeC = get(blockstructuresC, c, ((0, 0), 1:0))
+        blockstructureC = (blockszC, (1, blockszC[1]), first(blockrangeC) - 1)
+
+        blockszA, blockrangeA = get(blockstructuresA, c, ((blockszC[1], 0), 1:0))
+        blockstructureA = (blockszA, (1, blockszA[1]), first(blockrangeA) - 1)
+
+        blockszB, blockrangeB = get(blockstructuresB, c, ((0, blockszC[2]), 1:0))
+        blockstructureB = (blockszB, (1, blockszB[1]), first(blockrangeB) - 1)
+
+
+        data[i] = (
+            (blockstructureA, blockstructureB, blockstructureC),
+            transformA, transformB, invtransformC,
+        )
+    end
+
+    return AbelianContractionTreeTransformer(data)
+end
+
+function contractiontransformertype(VC, VA, VB)
+    T = sectorscalartype(sectortype(VC))
+    return AbelianContractionTreeTransformer{T, numind(VA), numind(VB), numind(VC)}
+end
+
+@cached function contractiontransformer(
+        VC::TensorMapSpace,
+        VA::TensorMapSpace, pA::Index2Tuple,
+        VB::TensorMapSpace, pB::Index2Tuple,
+        pAB::Index2Tuple
+    )::contractiontransformertype(VC, VA, VB)
+    return AbelianContractionTreeTransformer(VC, VA, pA, VB, pB, pAB)
 end

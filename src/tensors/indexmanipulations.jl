@@ -535,11 +535,17 @@ function _add_abelian_kernel_threaded!(
 end
 
 function _add_transform_single!(
+        tdst::TensorMap, tsrc::TensorMap, p, subtransform::_AbelianTransformerData,
+        α, β, backend...
+    )
+    return _add_transform_single!(tdst.data, tsrc.data, p, subtransform, α, β, backend...)
+end
+function _add_transform_single!(
         tdst, tsrc, p, (coeff, struct_dst, struct_src)::_AbelianTransformerData,
         α, β, backend...
     )
-    subblock_dst = StridedView(tdst.data, struct_dst...)
-    subblock_src = StridedView(tsrc.data, struct_src...)
+    subblock_dst = StridedView(tdst, struct_dst...)
+    subblock_src = StridedView(tsrc, struct_src...)
     TO.tensoradd!(subblock_dst, subblock_src, p, false, α * coeff, β, backend...)
     return nothing
 end

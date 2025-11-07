@@ -332,6 +332,12 @@ function blas_contract!(
         throw(SectorMismatch("only tensors with symmetric braiding rules can be contracted; try `@planar` instead"))
     TC = eltype(C)
 
+    if !(bstyle isa Fermionic) && FusionStyle(sectortype(C)) isa UniqueFusion && C isa TensorMap && A isa TensorMap && B isa TensorMap
+        transformer = contractiontransformer(space(C), space(A), pA, space(B), pB, pAB)
+        _contract_abelian_kernel!(C, A, pA, B, pB, pAB, transformer, α, β, backend, allocator)
+        return C
+    end
+
     # check which tensors have to be permuted/copied
     copyA = !(TO.isblascontractable(A, pA) && eltype(A) === TC)
     copyB = !(TO.isblascontractable(B, pB) && eltype(B) === TC)
@@ -390,6 +396,78 @@ function blas_contract!(
     copyB && TO.tensorfree!(Bnew, allocator)
 
     return C
+end
+
+# Custom backend
+# --------------
+function _contract_abelian_kernel!(
+        _C, _A, pA, _B, pB, pAB, transformer, α, β, backend, allocator
+    )
+    isempty(transformer.data) && return nothing
+
+    A = _A.data
+    B = _B.data
+    C = _C.data
+
+    # preallocate buffers
+    A′ = needsbuffer(transformer, 1) ? similar(A) : A
+    B′ = needsbuffer(transformer, 2) ? similar(B) : B
+    C′ = needsbuffer(transformer, 3) ? similar(C) : C
+
+    if use_threaded_transform(_C, transformer)
+        _contract_abelian_kernel_threaded!((C, C′), (A, A′), pA, (B, B′), pB, pAB, transformer, α, β, backend, allocator)
+    else
+        _contract_abelian_kernel_nonthreaded!((C, C′), (A, A′), pA, (B, B′), pB, pAB, transformer, α, β, backend, allocator)
+    end
+    return nothing
+end
+
+function _contract_abelian_kernel_nonthreaded!(
+        C, A, pA, B, pB, pAB, transformer, α, β, backend, allocator
+    )
+    for subtransformer in transformer.data
+        _contract_abelian_single!(C, A, pA, B, pB, pAB, subtransformer, α, β, backend, allocator)
+    end
+    return nothing
+end
+
+function _contract_abelian_kernel_threaded!(
+        C, A, pA, B, pB, pAB, transformer, α, β, backend, allocator; ntasks::Int = get_num_transformer_threads()
+    )
+    nblocks = length(transformer.data)
+    counter = Threads.Atomic{Int}(1)
+    Threads.@sync for _ in 1:min(ntasks, nblocks)
+        Threads.@spawn begin
+            while true
+                local_counter = Threads.atomic_add!(counter, 1)
+                local_counter > nblocks && break
+                subtransformer = transformer.data[local_counter]
+                _contract_abelian_single!(C, A, pA, B, pB, pAB, subtransformer, α, β, backend, allocator)
+            end
+        end
+    end
+    return nothing
+end
+
+function _contract_abelian_single!(
+        (C, C′), (A, A′), pA, (B, B′), pB, pAB,
+        ((bstrA, bstrB, bstrC), transformA, transformB, transformC), α, β, backend, allocator
+    )
+    A === A′ || _add_abelian_kernel_nonthreaded!(A′, A, pA, transformA, One(), Zero(), backend, allocator)
+    B === B′ || _add_abelian_kernel_nonthreaded!(B′, A, pB, transformB, One(), Zero(), backend, allocator)
+
+    bC′ = StridedView(C′, bstrC...)
+    bA′ = StridedView(A′, bstrA...)
+    bB′ = StridedView(B′, bstrB...)
+
+    if C === C′
+        mul!(bC′, bA′, bB′, α, β)
+    else
+        mul!(bC′, bA′, bB′)
+        _add_abelian_kernel_nonthreaded!(C, C′, pAB, transformC, α, β, backend, allocator)
+    end
+
+    return nothing
 end
 
 # Scalar implementation
