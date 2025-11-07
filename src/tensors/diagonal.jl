@@ -306,7 +306,7 @@ function LinearAlgebra.pinv(d::DiagonalTensorMap; kwargs...)
     if iszero(atol)
         rtol = get(kwargs, :rtol, zero(real(T)))
     else
-        rtol = sqrt(eps(real(float(unitspace(T))))) * length(d.data)
+        rtol = sqrt(eps(real(float(one(T))))) * length(d.data)
     end
     pdata = let tol = max(atol, rtol * maximum(abs, d.data))
         map(x -> abs(x) < tol ? zero(x) : pinv(x), d.data)

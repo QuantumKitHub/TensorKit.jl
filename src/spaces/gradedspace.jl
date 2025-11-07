@@ -92,8 +92,8 @@ Base.hash(V::GradedSpace, h::UInt) = hash(V.dual, hash(V.dims, h))
 field(::Type{<:GradedSpace}) = ℂ
 InnerProductStyle(::Type{<:GradedSpace}) = EuclideanInnerProduct()
 function dim(V::GradedSpace)
-    s = sectors(V)
-    return isempty(s) ? dim(first(allunits(sectortype(V)))) * 0 : sum(c -> dim(c) * dim(V, c), s)
+    init = 0 * dim(first(allunits(sectortype(V))))
+    return sum(c -> dim(c) * dim(V, c), sectors(V); init = init)
 end
 function dim(V::GradedSpace{I, <:AbstractDict}, c::I) where {I <: Sector}
     return get(V.dims, isdual(V) ? dual(c) : c, 0)
