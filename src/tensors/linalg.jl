@@ -431,7 +431,7 @@ function exp!(t::TensorMap)
     domain(t) == codomain(t) ||
         error("Exponential of a tensor only exist when domain == codomain.")
     for (c, b) in blocks(t)
-        copy!(b, exp!(b))
+        copy!(b, LinearAlgebra.exp!(b))
     end
     return t
 end
