@@ -151,7 +151,10 @@ function blocksectors(P::ProductSpace{S, N}) where {S, N}
     end
     bs = Vector{I}()
     if N == 0
-        return allunits(I)
+        for u in allunits(I)  
+            push!(bs, u)  
+        end 
+        return bs
     elseif N == 1
         for s in sectors(P)
             push!(bs, first(s))
