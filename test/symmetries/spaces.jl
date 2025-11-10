@@ -226,9 +226,8 @@ end
         dict = Dict((unit => 1 for unit in allunits(I))..., randsector(I) => 0)
         @test W == GradedSpace(dict)
         @test @constinferred(zerospace(V)) == GradedSpace(unit => 0 for unit in allunits(I))
-        # randsector never returns trivial sector, so this cannot error
         randunit = rand(collect(allunits(I)))
-        @test_throws ArgumentError("Sector $(randunit) appears multiple times") GradedSpace(randunit => 1, randsector(I) => 0, randunit => 3)
+        @test_throws ArgumentError("Sector $(randunit) appears multiple times") GradedSpace(randunit => 1, randunit => 3)
     else
         W = @constinferred GradedSpace(unit(I) => 1)
         @test W == GradedSpace(unit(I) => 1, randsector(I) => 0)

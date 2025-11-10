@@ -245,27 +245,25 @@ for V in spacelist
             @test Base.promote_typeof(t, tc) == typeof(tc)
             @test Base.promote_typeof(tc, t) == typeof(tc + t)
         end
-        if symmetricbraiding
-            @timedtestset "Permutations: test via inner product invariance" begin
-                W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
-                t = rand(ComplexF64, W)
-                t′ = randn!(similar(t))
-                for k in 0:5
-                    for p in permutations(1:5)
-                        p1 = ntuple(n -> p[n], k)
-                        p2 = ntuple(n -> p[k + n], 5 - k)
-                        t2 = @constinferred permute(t, (p1, p2))
-                        @test norm(t2) ≈ norm(t)
-                        t2′ = permute(t′, (p1, p2))
-                        @test dot(t2′, t2) ≈ dot(t′, t) ≈ dot(transpose(t2′), transpose(t2))
-                    end
-
-                    t3 = @constinferred repartition(t, $k)
-                    @test norm(t3) ≈ norm(t)
-                    t3′ = @constinferred repartition!(similar(t3), t′)
-                    @test norm(t3′) ≈ norm(t′)
-                    @test dot(t′, t) ≈ dot(t3′, t3)
+        symmetricbraiding && @timedtestset "Permutations: test via inner product invariance" begin
+            W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
+            t = rand(ComplexF64, W)
+            t′ = randn!(similar(t))
+            for k in 0:5
+                for p in permutations(1:5)
+                    p1 = ntuple(n -> p[n], k)
+                    p2 = ntuple(n -> p[k + n], 5 - k)
+                    t2 = @constinferred permute(t, (p1, p2))
+                    @test norm(t2) ≈ norm(t)
+                    t2′ = permute(t′, (p1, p2))
+                    @test dot(t2′, t2) ≈ dot(t′, t) ≈ dot(transpose(t2′), transpose(t2))
                 end
+
+                t3 = @constinferred repartition(t, $k)
+                @test norm(t3) ≈ norm(t)
+                t3′ = @constinferred repartition!(similar(t3), t′)
+                @test norm(t3′) ≈ norm(t′)
+                @test dot(t′, t) ≈ dot(t3′, t3)
             end
         end
         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
@@ -292,24 +290,22 @@ for V in spacelist
                 end
             end
         end
-        if symmetricbraiding
-            @timedtestset "Full trace: test self-consistency" begin
-                t = rand(ComplexF64, V1 ⊗ V2' ← V1 ⊗ V2')
-                s = @constinferred tr(t)
-                @test conj(s) ≈ tr(t')
-                if !isdual(V1)
-                    t2 = twist!(t, 1)
-                end
-                if isdual(V2)
-                    t2 = twist!(t, 2)
-                end
-                ss = tr(t2)
-                @planar s2 = t[a b; a b]
-                @planar t3[a; b] := t[a c; b c]
-                @planar s3 = t3[a; a]
-                @test ss ≈ s2
-                @test ss ≈ s3
+        symmetricbraiding && @timedtestset "Full trace: test self-consistency" begin
+            t = rand(ComplexF64, V1 ⊗ V2' ← V1 ⊗ V2')
+            s = @constinferred tr(t)
+            @test conj(s) ≈ tr(t')
+            if !isdual(V1)
+                t2 = twist!(t, 1)
             end
+            if isdual(V2)
+                t2 = twist!(t, 2)
+            end
+            ss = tr(t2)
+            @planar s2 = t[a b; a b]
+            @planar t3[a; b] := t[a c; b c]
+            @planar s3 = t3[a; a]
+            @test ss ≈ s2
+            @test ss ≈ s3
         end
         @timedtestset "Partial trace: test self-consistency" begin
             t = rand(ComplexF64, V1 ⊗ V2 ⊗ V3 ← V1 ⊗ V2 ⊗ V3)
@@ -326,15 +322,14 @@ for V in spacelist
                 @test t3 ≈ convert(Array, t2)
             end
         end
-        if isa(UnitStyle(I), SimpleUnit) #TODO: find version that works for all multifusion cases
-            @timedtestset "Trace and contraction" begin
-                t1 = rand(ComplexF64, V1 ⊗ V2 ⊗ V3)
-                t2 = rand(ComplexF64, V2' ⊗ V4 ⊗ V1')
-                t3 = t1 ⊗ t2
-                @tensor ta[a, b] := t1[x, y, a] * t2[y, b, x]
-                @tensor tb[a, b] := t3[x, y, a, y, b, x]
-                @test ta ≈ tb
-            end
+    #TODO: find version that works for all multifusion cases
+        (UnitStyle(I) == SimpleUnit()) && @timedtestset "Trace and contraction" begin
+            t1 = rand(ComplexF64, V1 ⊗ V2 ⊗ V3)
+            t2 = rand(ComplexF64, V2' ⊗ V4 ⊗ V1')
+            t3 = t1 ⊗ t2
+            @tensor ta[a, b] := t1[x, y, a] * t2[y, b, x]
+            @tensor tb[a, b] := t3[x, y, a, y, b, x]
+            @test ta ≈ tb
         end
         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
             @timedtestset "Tensor contraction: test via conversion" begin
@@ -353,41 +348,37 @@ for V in spacelist
                 @test HrA12array ≈ convert(Array, HrA12)
             end
         end
-        if !isa(BraidingStyle(I), NoBraiding)
-            @timedtestset "Index flipping: test flipping inverse" begin
-                t = rand(ComplexF64, V1 ⊗ V1' ← V1' ⊗ V1)
-                for i in 1:4
-                    @test t ≈ flip(flip(t, i), i; inv = true)
-                    @test t ≈ flip(flip(t, i; inv = true), i)
-                end
+        (BraidingStyle(I) != NoBraiding()) && @timedtestset "Index flipping: test flipping inverse" begin
+            t = rand(ComplexF64, V1 ⊗ V1' ← V1' ⊗ V1)
+            for i in 1:4
+                @test t ≈ flip(flip(t, i), i; inv = true)
+                @test t ≈ flip(flip(t, i; inv = true), i)
             end
         end
-        if symmetricbraiding
-            @timedtestset "Index flipping: test via explicit flip" begin
-                t = rand(ComplexF64, V1 ⊗ V1' ← V1' ⊗ V1)
-                F1 = unitary(flip(V1), V1)
+        symmetricbraiding && @timedtestset "Index flipping: test via explicit flip" begin
+            t = rand(ComplexF64, V1 ⊗ V1' ← V1' ⊗ V1)
+            F1 = unitary(flip(V1), V1)
 
-                @tensor tf[a, b; c, d] := F1[a, a'] * t[a', b; c, d]
-                @test flip(t, 1) ≈ tf
-                @tensor tf[a, b; c, d] := conj(F1[b, b']) * t[a, b'; c, d]
-                @test twist!(flip(t, 2), 2) ≈ tf
-                @tensor tf[a, b; c, d] := F1[c, c'] * t[a, b; c', d]
-                @test flip(t, 3) ≈ tf
-                @tensor tf[a, b; c, d] := conj(F1[d, d']) * t[a, b; c, d']
-                @test twist!(flip(t, 4), 4) ≈ tf
-            end
-            @timedtestset "Index flipping: test via contraction" begin
-                t1 = rand(ComplexF64, V1 ⊗ V2 ⊗ V3 ← V4)
-                t2 = rand(ComplexF64, V2' ⊗ V5 ← V4' ⊗ V1)
-                @tensor ta[a, b] := t1[x, y, a, z] * t2[y, b, z, x]
-                @tensor tb[a, b] := flip(t1, 1)[x, y, a, z] * flip(t2, 4)[y, b, z, x]
-                @test ta ≈ tb
-                @tensor tb[a, b] := flip(t1, (2, 4))[x, y, a, z] * flip(t2, (1, 3))[y, b, z, x]
-                @test ta ≈ tb
-                @tensor tb[a, b] := flip(t1, (1, 2, 4))[x, y, a, z] * flip(t2, (1, 3, 4))[y, b, z, x]
-                @tensor tb[a, b] := flip(t1, (1, 3))[x, y, a, z] * flip(t2, (2, 4))[y, b, z, x]
-                @test flip(ta, (1, 2)) ≈ tb
-            end
+            @tensor tf[a, b; c, d] := F1[a, a'] * t[a', b; c, d]
+            @test flip(t, 1) ≈ tf
+            @tensor tf[a, b; c, d] := conj(F1[b, b']) * t[a, b'; c, d]
+            @test twist!(flip(t, 2), 2) ≈ tf
+            @tensor tf[a, b; c, d] := F1[c, c'] * t[a, b; c', d]
+            @test flip(t, 3) ≈ tf
+            @tensor tf[a, b; c, d] := conj(F1[d, d']) * t[a, b; c, d']
+            @test twist!(flip(t, 4), 4) ≈ tf
+        end
+        symmetricbraiding && @timedtestset "Index flipping: test via contraction" begin
+            t1 = rand(ComplexF64, V1 ⊗ V2 ⊗ V3 ← V4)
+            t2 = rand(ComplexF64, V2' ⊗ V5 ← V4' ⊗ V1)
+            @tensor ta[a, b] := t1[x, y, a, z] * t2[y, b, z, x]
+            @tensor tb[a, b] := flip(t1, 1)[x, y, a, z] * flip(t2, 4)[y, b, z, x]
+            @test ta ≈ tb
+            @tensor tb[a, b] := flip(t1, (2, 4))[x, y, a, z] * flip(t2, (1, 3))[y, b, z, x]
+            @test ta ≈ tb
+            @tensor tb[a, b] := flip(t1, (1, 2, 4))[x, y, a, z] * flip(t2, (1, 3, 4))[y, b, z, x]
+            @tensor tb[a, b] := flip(t1, (1, 3))[x, y, a, z] * flip(t2, (2, 4))[y, b, z, x]
+            @test flip(ta, (1, 2)) ≈ tb
         end
         @timedtestset "Multiplication of isometries: test properties" begin
             W2 = V4 ⊗ V5
@@ -564,15 +555,13 @@ for V in spacelist
                 end
             end
         end
-        if symmetricbraiding
-            @timedtestset "Tensor product: test via tensor contraction" begin
-                for T in (Float32, ComplexF64)
-                    t1 = rand(T, V2 ⊗ V3 ⊗ V1)
-                    t2 = rand(T, V2 ⊗ V1 ⊗ V3)
-                    t = @constinferred (t1 ⊗ t2)
-                    @tensor t′[1, 2, 3, 4, 5, 6] := t1[1, 2, 3] * t2[4, 5, 6]
-                    @test t ≈ t′
-                end
+        symmetricbraiding && @timedtestset "Tensor product: test via tensor contraction" begin
+            for T in (Float32, ComplexF64)
+                t1 = rand(T, V2 ⊗ V3 ⊗ V1)
+                t2 = rand(T, V2 ⊗ V1 ⊗ V3)
+                t = @constinferred (t1 ⊗ t2)
+                @tensor t′[1, 2, 3, 4, 5, 6] := t1[1, 2, 3] * t2[4, 5, 6]
+                @test t ≈ t′
             end
         end
         @timedtestset "Tensor absorption" begin

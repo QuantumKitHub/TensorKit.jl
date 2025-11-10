@@ -505,32 +505,11 @@ using .TestSetup
                     end
 
                     if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
-                        Af1 = convert(Array, f1)
-                        Af2 = convert(Array, f2)
-                        sz1 = size(Af1)
-                        sz2 = size(Af2)
-                        d1 = prod(sz1[1:(end - 1)])
-                        d2 = prod(sz2[1:(end - 1)])
-                        dc = sz1[end]
-                        A = reshape(
-                            reshape(Af1, (d1, dc)) * reshape(Af2, (d2, dc))',
-                            (sz1[1:(end - 1)]..., sz2[1:(end - 1)]...)
-                        )
+                        A = convert(Array, (f1, f2))
                         Ap = permutedims(A, (p1..., p2...))
                         A2 = zero(Ap)
                         for ((f1′, f2′), coeff) in d
-                            Af1′ = convert(Array, f1′)
-                            Af2′ = convert(Array, f2′)
-                            sz1′ = size(Af1′)
-                            sz2′ = size(Af2′)
-                            d1′ = prod(sz1′[1:(end - 1)])
-                            d2′ = prod(sz2′[1:(end - 1)])
-                            dc′ = sz1′[end]
-                            A2 += coeff * reshape(
-                                reshape(Af1′, (d1′, dc′)) *
-                                    reshape(Af2′, (d2′, dc′))',
-                                (sz1′[1:(end - 1)]..., sz2′[1:(end - 1)]...)
-                            )
+                            A2 .+= coeff .* convert(Array, (f1′, f2′))
                         end
                         @test Ap ≈ A2
                     end
