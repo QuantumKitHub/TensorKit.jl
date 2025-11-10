@@ -273,7 +273,11 @@ function has_shared_twist(t, inds)
     elseif BraidingStyle(I) == Bosonic()
         return true
     else
-        return isempty(inds)
+        for i in inds
+            cs = sectors(space(t, i))
+            all(isone ∘ twist, cs) || return false
+        end
+        return true
     end
 end
 
