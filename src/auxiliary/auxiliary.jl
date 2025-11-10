@@ -80,3 +80,9 @@ function _copyto!(A::StridedView{<:Any, 1}, B::StridedView{<:Any, 2})
 
     return A
 end
+
+@static if VERSION < v"1.11" # TODO: remove once support for v1.10 is dropped
+    _allequal(f, xs) = allequal(Base.Generator(f, xs))
+else
+    _allequal(f, xs) = allequal(f, xs)
+end
