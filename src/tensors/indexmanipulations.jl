@@ -317,7 +317,7 @@ See [`twist!`](@ref) for storing the result in place.
 """
 function twist(t::AbstractTensorMap, inds; inv::Bool = false, copy::Bool = false)
     !copy && has_shared_twist(t, inds) && return t
-    return twist!(copy(t), is; inv)
+    return twist!(Base.copy(t), is; inv)
 end
 
 # Methods which change the number of indices, implement using `Val(i)` for type inference
