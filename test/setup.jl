@@ -76,7 +76,8 @@ function force_planar(tsrc::TensorMap{<:Any, <:GradedSpace})
     return tdst
 end
 
-function random_fusiontree(I::Type{<:Sector}, N::Int) # for fusion tree tests
+#TODO: make less yucky
+function random_fusion(I::Type{<:Sector}, N::Int) # for fusion tree tests
     in = nothing
     out = nothing
     while in === nothing
