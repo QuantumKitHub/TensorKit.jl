@@ -132,6 +132,12 @@ function Base.axes(V::GradedSpace{I}, c::I) where {I <: Sector}
     return (offset + 1):(offset + dim(c) * dim(V, c))
 end
 
+@static if VERSION < v"1.11"
+    _allequal(f, xs) = allequal(Base.Generator(f, xs))
+else
+    _allequal(f, xs) = allequal(f, xs)
+end
+
 """
     leftunitspace(S::GradedSpace{I}) where {I<:Sector} -> GradedSpace{I}
 
@@ -143,7 +149,7 @@ function leftunitspace(S::GradedSpace{I}) where {I<:Sector}
         return unitspace(typeof(S))
     else
         !isempty(sectors(S)) || throw(ArgumentError("Cannot determine type of empty space"))
-        allequal(leftunit, sectors(S)) ||
+        _allequal(leftunit, sectors(S)) ||
             throw(ArgumentError("sectors of $S do not have the same left unit"))
 
         sector = leftunit(first(sectors(S)))
@@ -162,7 +168,7 @@ function rightunitspace(S::GradedSpace{I}) where {I<:Sector}
         return unitspace(typeof(S))
     else
         !isempty(sectors(S)) || throw(ArgumentError("Cannot determine type of empty space"))
-        allequal(rightunit, sectors(S)) ||
+        _allequal(rightunit, sectors(S)) ||
             throw(ArgumentError("sectors of $S do not have the same right unit"))
 
         sector = rightunit(first(sectors(S)))
