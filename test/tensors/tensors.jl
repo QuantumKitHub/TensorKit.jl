@@ -305,10 +305,11 @@ for V in spacelist
             @test ss ≈ s3
         end
         @timedtestset "Partial trace: test self-consistency" begin
+            # TODO: extend to multifusion but keep these @tensor tests
             t = rand(ComplexF64, V1 ⊗ V2 ⊗ V3 ← V1 ⊗ V2 ⊗ V3)
-            @planar t2[a; b] := t[c d b; c d a]
-            @planar t4[a b; c d] := t[e d c; e b a]
-            @planar t5[a; b] := t4[a c; b c]
+            @tensor t2[a; b] := t[c d b; c d a]
+            @tensor t4[a b; c d] := t[e d c; e b a]
+            @tensor t5[a; b] := t4[a c; b c]
             @test t2 ≈ t5
         end
         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
