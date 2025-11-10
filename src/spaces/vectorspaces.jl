@@ -188,6 +188,33 @@ function rightunitspace(S::ElementarySpace)
 end
 
 """
+    isunitspace(S::ElementarySpace) -> Bool
+
+Return whether the elementary space `S` is a unit space, i.e. is isomorphic to the
+trivial one-dimensional space. For vector spaces of type `GradedSpace{I}` where `Sector` `I` has a
+semi-simple unit structure, this returns `true` if `S` is isomorphic to either the left, right or
+semi-simple unit space.
+"""
+function isunitspace(S::ElementarySpace) #TODO: add tests for this
+    I = sectortype(S)
+    return if isa(UnitStyle(I), SimpleUnit)
+        isisomorphic(S, unitspace(S))
+    else
+        try
+            isisomorphic(S, unitspace(S)) ||
+                isisomorphic(S, leftunitspace(S)) ||
+                isisomorphic(S, rightunitspace(S))
+        catch e
+            if isa(e, ArgumentError)
+                return false
+            else
+                rethrow(e)
+            end
+        end
+    end
+end
+
+"""
     ⊕(V₁::S, V₂::S, V₃::S...) where {S<:ElementarySpace} -> S
     oplus(V₁::S, V₂::S, V₃::S...) where {S<:ElementarySpace} -> S
 
