@@ -144,13 +144,10 @@ for V in spacelist
                     @test i2 * i1 == @constinferred(id(Vector{T}, V2 ⊗ V1))
                 end
 
-                if isa(UnitStyle(I), SimpleUnit)
-                    # FIXME?: unitspace returns all units, leads to invalid fusion channels
-                    w = @constinferred isometry(T, V1 ⊗ (unitspace(V1) ⊕ unitspace(V1)), V1)
-                    @test dim(w) == 2 * dim(V1 ← V1)
-                    @test w' * w == id(Vector{T}, V1)
-                    @test w * w' == (w * w')^2
-                end
+                w = @constinferred isometry(T, V1 ⊗ (rightunitspace(V1) ⊕ rightunitspace(V1)), V1)
+                @test dim(w) == 2 * dim(V1 ← V1)
+                @test w' * w == id(Vector{T}, V1)
+                @test w * w' == (w * w')^2
             end
         end
         @timedtestset "Trivial space insertion and removal" begin
