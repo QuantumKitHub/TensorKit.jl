@@ -99,9 +99,9 @@ function blocksectors(W::HomSpace)
     if N₁ == 0 && N₂ == 0
         return allunits(I)
     elseif N₁ == 0
-        return filter!(isone, collect(blocksectors(dom))) # module space cannot end in empty space
+        return filter!(isunit, collect(blocksectors(dom))) # module space cannot end in empty space
     elseif N₂ == 0
-        return filter!(isone, collect(blocksectors(codom)))
+        return filter!(isunit, collect(blocksectors(codom)))
     elseif N₂ <= N₁
         return filter!(c -> hasblock(codom, c), collect(blocksectors(dom)))
     else
@@ -336,8 +336,7 @@ end
     end
 
     fusiontreeindices = sizehint!(
-        FusionTreeDict{Tuple{F₁, F₂}, Int}(),
-        length(fusiontreelist)
+        FusionTreeDict{Tuple{F₁, F₂}, Int}(), length(fusiontreelist)
     )
     for (i, f₁₂) in enumerate(fusiontreelist)
         fusiontreeindices[f₁₂] = i
