@@ -256,8 +256,10 @@ More specifically, adds a left monoidal unit or its dual.
 
 See also [`insertrightunit`](@ref insertrightunit(::ProductSpace, ::Val{i}) where {i}), [`removeunit`](@ref removeunit(::ProductSpace, ::Val{i}) where {i}).
 """
-function insertleftunit(P::ProductSpace, ::Val{i}=Val(length(P) + 1);
-                        conj::Bool=false, dual::Bool=false) where {i}
+function insertleftunit(
+        P::ProductSpace, ::Val{i} = Val(length(P) + 1);
+        conj::Bool = false, dual::Bool = false
+    ) where {i}
     N = length(P)
     I = sectortype(P)
     if UnitStyle(I) isa SimpleUnit
@@ -285,8 +287,10 @@ More specifically, adds a right monoidal unit or its dual.
 
 See also [`insertleftunit`](@ref insertleftunit(::ProductSpace, ::Val{i}) where {i}), [`removeunit`](@ref removeunit(::ProductSpace, ::Val{i}) where {i}).
 """
-function insertrightunit(P::ProductSpace, ::Val{i}=Val(length(P));
-                         conj::Bool=false, dual::Bool=false) where {i}
+function insertrightunit(
+        P::ProductSpace, ::Val{i} = Val(length(P));
+        conj::Bool = false, dual::Bool = false
+    ) where {i}
     N = length(P)
     I = sectortype(P)
     if UnitStyle(I) isa SimpleUnit

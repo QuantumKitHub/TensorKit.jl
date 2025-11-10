@@ -88,14 +88,14 @@ function random_fusiontree(I::Type{<:Sector}, N::Int) # for fusion tree tests
                 in = nothing
             else
                 rethrow(e)
-            end 
+            end
         end
     end
     return out
 end
 
 # for fusion tree merge test
-function safe_tensor_product(x::I, y::I) where {I<:Sector}
+function safe_tensor_product(x::I, y::I) where {I <: Sector}
     tp = x ⊗ y
     if isempty(tp)
         return nothing
@@ -194,21 +194,21 @@ C0, C1 = IsingBimodule(1, 1, 0), IsingBimodule(1, 1, 1)
 D0, D1 = IsingBimodule(2, 2, 0), IsingBimodule(2, 2, 1)
 M, Mop = IsingBimodule(1, 2, 0), IsingBimodule(2, 1, 0)
 VIB_diag = (
-        Vect[IsingBimodule](C0 => 1, C1 => 2),
-        Vect[IsingBimodule](C0 => 2, C1 => 1),
-        Vect[IsingBimodule](C0 => 3, C1 => 1),
-        Vect[IsingBimodule](C0 => 2, C1 => 3),
-        Vect[IsingBimodule](C0 => 3, C1 => 2)
+    Vect[IsingBimodule](C0 => 1, C1 => 2),
+    Vect[IsingBimodule](C0 => 2, C1 => 1),
+    Vect[IsingBimodule](C0 => 3, C1 => 1),
+    Vect[IsingBimodule](C0 => 2, C1 => 3),
+    Vect[IsingBimodule](C0 => 3, C1 => 2),
 )
 
 # not a random ordering! designed to make V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5 work (tensors)
 # while V1 ⊗ V2 ← V4 isn't empty (factorizations)
 VIB_M = (
     Vect[IsingBimodule](C0 => 1, C1 => 2),
-         Vect[IsingBimodule](M => 3),
-         Vect[IsingBimodule](C0 => 2, C1 => 3),
-         Vect[IsingBimodule](M => 4),
-         Vect[IsingBimodule](D0 => 3, D1 => 4)
+    Vect[IsingBimodule](M => 3),
+    Vect[IsingBimodule](C0 => 2, C1 => 3),
+    Vect[IsingBimodule](M => 4),
+    Vect[IsingBimodule](D0 => 3, D1 => 4),
 )
 
 end

@@ -144,7 +144,7 @@ end
 Return the corresponding vector space of type `GradedSpace{I}` that represents the trivial
 one-dimensional space consisting of the left unit of the objects in  `Sector` `I`.
 """
-function leftunitspace(S::GradedSpace{I}) where {I<:Sector}
+function leftunitspace(S::GradedSpace{I}) where {I <: Sector}
     if UnitStyle(I) isa SimpleUnit
         return unitspace(typeof(S))
     else
@@ -163,7 +163,7 @@ end
 Return the corresponding vector space of type `GradedSpace{I}` that represents the trivial
 one-dimensional space consisting of the right unit of the objects in `Sector` `I`.
 """
-function rightunitspace(S::GradedSpace{I}) where {I<:Sector}
+function rightunitspace(S::GradedSpace{I}) where {I <: Sector}
     if UnitStyle(I) isa SimpleUnit
         return unitspace(typeof(S))
     else
@@ -183,7 +183,7 @@ Return the corresponding vector space of type `GradedSpace{I}` that represents t
  space consisting of the unit(s) of the objects in `Sector` `I`. For `I` with simple unit,
 this is a one-dimensional space.
 """
-function unitspace(S::Type{<:GradedSpace{I}}) where {I<:Sector}
+function unitspace(S::Type{<:GradedSpace{I}}) where {I <: Sector}
     return S(unit => 1 for unit in allunits(I))
 end
 zerospace(S::Type{<:GradedSpace}) = S()

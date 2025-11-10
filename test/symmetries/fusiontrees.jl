@@ -418,7 +418,7 @@ using .TestSetup
         else
             N = 4
         end
-    
+
         out = random_fusiontree(I, N)
         numtrees = count(n -> true, fusiontrees((out..., map(dual, out)...)))
         while !(0 < numtrees < 100)
