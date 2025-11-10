@@ -170,6 +170,13 @@ function rightunitspace(S::GradedSpace{I}) where {I<:Sector}
     end
 end
 
+"""
+    unitspace(S::GradedSpace{I}) where {I<:Sector} -> GradedSpace{I}
+
+Return the corresponding vector space of type `GradedSpace{I}` that represents the
+ space consisting of the unit(s) of the objects in `Sector` `I`. For `I` with simple unit,
+this is a one-dimensional space.
+"""
 function unitspace(S::Type{<:GradedSpace{I}}) where {I<:Sector}
     return S(unit => 1 for unit in allunits(I))
 end
