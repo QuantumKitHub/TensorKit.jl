@@ -195,7 +195,7 @@ trivial one-dimensional space. For vector spaces of type `GradedSpace{I}` where 
 semi-simple unit structure, this returns `true` if `V` is isomorphic to either the left, right or
 semi-simple unit space.
 """
-function isunitspace(V::ElementarySpace) #TODO: add tests for this
+function isunitspace(V::ElementarySpace)
     I = sectortype(V)
     return if isa(UnitStyle(I), SimpleUnit)
         isisomorphic(V, unitspace(V))

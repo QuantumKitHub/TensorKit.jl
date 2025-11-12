@@ -277,30 +277,45 @@ for V in spacelist
                 end
             end
         end
-        symmetricbraiding && @timedtestset "Full trace: test self-consistency" begin
-            # TODO: extend to multifusion but keep these @tensor tests
-            t = rand(ComplexF64, V1 ⊗ V2' ← V1 ⊗ V2')
-            s = @constinferred tr(t)
+        @timedtestset "Full trace: test self-consistency" begin
+            if symmetricbraiding
+                t = rand(ComplexF64, V1 ⊗ V2' ← V1 ⊗ V2')
+                if !isdual(V1)
+                    t2 = twist!(t, 1)
+                end
+                if isdual(V2)
+                    t2 = twist!(t, 2)
+                end
+                s = @constinferred tr(t)
+                ss = tr(t2)
+                @tensor s2 = t[a b; a b]
+                @tensor t3[a; b] := t[a c; b c]
+                @tensor s3 = t3[a; a]
+            else
+                t = rand(ComplexF64, V1 ⊗ V2 ← V1 ⊗ V2) # avoid permutes
+                s = @constinferred tr(t)
+                ss = s
+                @planar s2 = t[a b; a b]
+                @planar t3[a; b] := t[a c; b c]
+                @planar s3 = t3[a; a]
+            end
+
             @test conj(s) ≈ tr(t')
-            if !isdual(V1)
-                t2 = twist!(t, 1)
-            end
-            if isdual(V2)
-                t2 = twist!(t, 2)
-            end
-            ss = tr(t2)
-            @tensor s2 = t[a b; a b]
-            @tensor t3[a; b] := t[a c; b c]
-            @tensor s3 = t3[a; a]
             @test ss ≈ s2
             @test ss ≈ s3
         end
         @timedtestset "Partial trace: test self-consistency" begin
-            # TODO: extend to multifusion but keep these @tensor tests
-            t = rand(ComplexF64, V1 ⊗ V2 ⊗ V3 ← V1 ⊗ V2 ⊗ V3)
-            @tensor t2[a; b] := t[c d b; c d a]
-            @tensor t4[a b; c d] := t[e d c; e b a]
-            @tensor t5[a; b] := t4[a c; b c]
+            if symmetricbraiding
+                t = rand(ComplexF64, V1 ⊗ V2 ⊗ V3 ← V1 ⊗ V2 ⊗ V3)
+                @tensor t2[a; b] := t[c d b; c d a]
+                @tensor t4[a b; c d] := t[e d c; e b a]
+                @tensor t5[a; b] := t4[a c; b c]
+            else
+                t = rand(ComplexF64, V3 ⊗ V4 ⊗ V5 ← V3 ⊗ V4 ⊗ V5) # compatible with module fusion
+                @planar t2[a; b] := t[c a d; c b d]
+                @planar t4[a b; c d] := t[e a b; e c d]
+                @planar t5[a; b] := t4[a c; b c]
+            end
             @test t2 ≈ t5
         end
         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
@@ -311,7 +326,7 @@ for V in spacelist
                 @test t3 ≈ convert(Array, t2)
             end
         end
-    #TODO: find version that works for all multifusion cases
+        #TODO: find version that works for all multifusion cases
         (UnitStyle(I) == SimpleUnit()) && @timedtestset "Trace and contraction" begin
             t1 = rand(ComplexF64, V1 ⊗ V2 ⊗ V3)
             t2 = rand(ComplexF64, V2' ⊗ V4 ⊗ V1')
