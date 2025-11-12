@@ -35,9 +35,9 @@ for V in spacelist
     I = sectortype(first(V))
     Istr = TensorKit.type_repr(I)
     println("---------------------------------------")
-    println("Factorizations with symmetry: $Istr")
+    println("CUDA Factorizations with symmetry: $Istr")
     println("---------------------------------------")
-    @timedtestset "Factorizations with symmetry: $Istr" verbose = true begin
+    @timedtestset "CUDA Factorizations with symmetry: $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
         W = V1 ⊗ V2
         @testset "QR decomposition" begin
