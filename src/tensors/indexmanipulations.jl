@@ -280,7 +280,7 @@ function twist!(t::AbstractTensorMap, is; inv::Bool = false)
     if BraidingStyle(sectortype(t)) == NoBraiding()
         for i in is
             cs = sectors(space(t, i))
-            all(isone, cs) || throw(SectorMismatch(lazy"Cannot twist sectors $cs"))
+            all(isunit, cs) || throw(SectorMismatch(lazy"Cannot twist sectors $cs"))
         end
         return t
     end
