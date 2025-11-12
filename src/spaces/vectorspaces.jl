@@ -42,8 +42,8 @@ represent objects in 𝕜-linear monoidal categories.
 abstract type VectorSpace end
 
 """
-    field(a) -> Type{𝔽<:Field}
-    field(::Type{T}) -> Type{𝔽<:Field}
+    field(a) -> Type{𝔽 <: Field}
+    field(::Type{T}) -> Type{𝔽 <: Field}
 
 Return the type of field over which object `a` (e.g. a vector space or a tensor) is defined.
 Also works in type domain.
@@ -119,12 +119,12 @@ Return the sum of all degeneracy dimensions of the vector space `V`.
 reduceddim(V::ElementarySpace) = sum(Base.Fix1(dim, V), sectors(V); init = 0)
 
 """
-    unitspace(V::S) where {S<:ElementarySpace} -> S
+    unitspace(V::S) where {S <: ElementarySpace} -> S
 
 Return the corresponding vector space of type `S` that represents the trivial
 one-dimensional space, i.e. the space that is isomorphic to the corresponding field. Note
 that this is different from `one(V::S)`, which returns the empty product space
-`ProductSpace{S,0}(())`. `Base.oneunit` falls back to `unitspace`. For vector spaces 
+`ProductSpace{S, 0}(())`. `Base.oneunit` falls back to `unitspace`. For vector spaces 
 of type `GradedSpace{I}` where `Sector` `I` has a semi-simple unit structure, this
 returns a multi-dimensional space corresponding to all unit sectors in `I`.
 """
@@ -133,7 +133,7 @@ Base.oneunit(V::ElementarySpace) = unitspace(V)
 Base.oneunit(::Type{V}) where {V <: ElementarySpace} = unitspace(V)
 
 """
-    zerospace(V::S) where {S<:ElementarySpace} -> S
+    zerospace(V::S) where {S <: ElementarySpace} -> S
 
 Return the corresponding vector space of type `S` that represents the zero-dimensional or empty space.
 This is, with a slight abuse of notation, the zero element of the direct sum of vector spaces.
@@ -144,66 +144,66 @@ Base.zero(V::ElementarySpace) = zerospace(V)
 Base.zero(::Type{V}) where {V <: ElementarySpace} = zerospace(V)
 
 """
-    leftunitspace(V::ElementarySpace)-> ElementarySpace
+    leftunitspace(V::S) where {S <: ElementarySpace} -> S
 
 Return the corresponding vector space of type `ElementarySpace` that represents the trivial
 one-dimensional space, i.e. the space that is isomorphic to the corresponding field. For vector spaces 
 of type `GradedSpace{I}`, this corresponds to the unique left unit of the objects in `Sector` `I` present
 in the vector space.
 """
-function leftunitspace(S::ElementarySpace)
-    I = sectortype(S)
+function leftunitspace(V::ElementarySpace)
+    I = sectortype(V)
     if UnitStyle(I) isa SimpleUnit
-        return unitspace(typeof(S))
+        return unitspace(typeof(V))
     else
-        !isempty(sectors(S)) || throw(ArgumentError("Cannot determine type of empty space"))
-        _allequal(leftunit, sectors(S)) ||
-            throw(ArgumentError("sectors of $S do not have the same left unit"))
+        !isempty(sectors(V)) || throw(ArgumentError("Cannot determine type of empty space"))
+        _allequal(leftunit, sectors(V)) ||
+            throw(ArgumentError("sectors of $V do not have the same left unit"))
 
-        sector = leftunit(first(sectors(S)))
-        return spacetype(S)(sector => 1)
+        sector = leftunit(first(sectors(V)))
+        return spacetype(V)(sector => 1)
     end
 end
 
 """
-    rightunitspace(S::ElementarySpace) -> ElementarySpace
+    rightunitspace(V::S) where {S <: ElementarySpace} -> S
 
 Return the corresponding vector space of type `ElementarySpace` that represents the trivial
 one-dimensional space, i.e. the space that is isomorphic to the corresponding field. For vector spaces 
 of type `GradedSpace{I}`, this corresponds to the right unit of the objects in `Sector` `I` present
 in the vector space.
 """
-function rightunitspace(S::ElementarySpace)
-    I = sectortype(S)
+function rightunitspace(V::ElementarySpace)
+    I = sectortype(V)
     if UnitStyle(I) isa SimpleUnit
-        return unitspace(typeof(S))
+        return unitspace(typeof(V))
     else
-        !isempty(sectors(S)) || throw(ArgumentError("Cannot determine type of empty space"))
-        _allequal(rightunit, sectors(S)) ||
-            throw(ArgumentError("sectors of $S do not have the same right unit"))
+        !isempty(sectors(V)) || throw(ArgumentError("Cannot determine type of empty space"))
+        _allequal(rightunit, sectors(V)) ||
+            throw(ArgumentError("sectors of $V do not have the same right unit"))
 
-        sector = rightunit(first(sectors(S)))
-        return spacetype(S)(sector => 1)
+        sector = rightunit(first(sectors(V)))
+        return spacetype(V)(sector => 1)
     end
 end
 
 """
-    isunitspace(S::ElementarySpace) -> Bool
+    isunitspace(V::S) where {S <: ElementarySpace} -> Bool
 
-Return whether the elementary space `S` is a unit space, i.e. is isomorphic to the
+Return whether the elementary space `V` is a unit space, i.e. is isomorphic to the
 trivial one-dimensional space. For vector spaces of type `GradedSpace{I}` where `Sector` `I` has a
-semi-simple unit structure, this returns `true` if `S` is isomorphic to either the left, right or
+semi-simple unit structure, this returns `true` if `V` is isomorphic to either the left, right or
 semi-simple unit space.
 """
-function isunitspace(S::ElementarySpace) #TODO: add tests for this
-    I = sectortype(S)
+function isunitspace(V::ElementarySpace) #TODO: add tests for this
+    I = sectortype(V)
     return if isa(UnitStyle(I), SimpleUnit)
-        isisomorphic(S, unitspace(S))
+        isisomorphic(V, unitspace(V))
     else
         try
-            isisomorphic(S, unitspace(S)) ||
-                isisomorphic(S, leftunitspace(S)) ||
-                isisomorphic(S, rightunitspace(S))
+            isisomorphic(V, unitspace(V)) ||
+                isisomorphic(V, leftunitspace(V)) ||
+                isisomorphic(V, rightunitspace(V))
         catch e
             if isa(e, ArgumentError)
                 return false
