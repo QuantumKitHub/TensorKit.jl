@@ -139,7 +139,7 @@ function bendright(src::FusionTreeBlock)
                 iszero(coeff) && continue
                 vertices2 = N₂ > 0 ? (f₂.vertices..., ν) : ()
                 f₂′ = FusionTree(uncoupled2, a, isdual2, inner2, vertices2)
-                row = indexmap[(f₁′, f₂′)]
+                row = indexmap[treeindex_data((f₁′, f₂′))]
                 @inbounds U[row, col] = coeff
             end
         end
