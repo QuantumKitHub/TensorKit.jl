@@ -203,7 +203,7 @@ function permute(
         d′ = typeof(d)(undef, dual(d.domain))
         for (c, b) in blocks(d)
             f = only(fusiontrees(codomain(d), c))
-            ((f′, _), coeff) = only(permute(f, f, p₁, p₂))
+            ((f′, _), coeff) = only(permute((f, f), (p₁, p₂)))
             c′ = f′.coupled
             scale!(block(d′, c′), b, coeff)
         end

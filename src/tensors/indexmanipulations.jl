@@ -17,7 +17,7 @@ function flip(t::AbstractTensorMap, I; inv::Bool = false)
     P = flip(space(t), I)
     t′ = similar(t, P)
     for (f₁, f₂) in fusiontrees(t)
-        (f₁′, f₂′), factor = only(flip(f₁, f₂, I; inv))
+        (f₁′, f₂′), factor = only(flip((f₁, f₂), I; inv))
         scale!(t′[f₁′, f₂′], t[f₁, f₂], factor)
     end
     return t′
@@ -575,8 +575,10 @@ function _add_abelian_kernel_threaded!(tdst, tsrc, p, transformer, α, β, backe
 end
 
 function _add_abelian_block!(tdst, tsrc, p, transformer, f₁, f₂, α, β, backend...)
-    (f₁′, f₂′), coeff = first(transformer(f₁, f₂))
-    @inbounds TO.tensoradd!(tdst[f₁′, f₂′], tsrc[f₁, f₂], p, false, α * coeff, β, backend...)
+    (f₁′, f₂′), coeff = first(transformer((f₁, f₂)))
+    @inbounds TO.tensoradd!(
+        tdst[f₁′, f₂′], tsrc[f₁, f₂], p, false, α * coeff, β, backend...
+    )
     return nothing
 end
 
@@ -634,8 +636,10 @@ function _add_general_kernel_nonthreaded!(tdst, tsrc, p, transformer, α, β, ba
         tdst = scale!(tdst, β)
     end
     for (f₁, f₂) in fusiontrees(tsrc)
-        for ((f₁′, f₂′), coeff) in transformer(f₁, f₂)
-            @inbounds TO.tensoradd!(tdst[f₁′, f₂′], tsrc[f₁, f₂], p, false, α * coeff, One(), backend...)
+        for ((f₁′, f₂′), coeff) in transformer((f₁, f₂))
+            @inbounds TO.tensoradd!(
+                tdst[f₁′, f₂′], tsrc[f₁, f₂], p, false, α * coeff, One(), backend...
+            )
         end
     end
     return nothing
@@ -699,8 +703,10 @@ end
 function _add_nonabelian_sector!(tdst, tsrc, p, fusiontreetransform, s₁, s₂, α, backend...)
     for (f₁, f₂) in fusiontrees(tsrc)
         (f₁.uncoupled == s₁ && f₂.uncoupled == s₂) || continue
-        for ((f₁′, f₂′), coeff) in fusiontreetransform(f₁, f₂)
-            @inbounds TO.tensoradd!(tdst[f₁′, f₂′], tsrc[f₁, f₂], p, false, α * coeff, One(), backend...)
+        for ((f₁′, f₂′), coeff) in fusiontreetransform((f₁, f₂))
+            @inbounds TO.tensoradd!(
+                tdst[f₁′, f₂′], tsrc[f₁, f₂], p, false, α * coeff, One(), backend...
+            )
         end
     end
     return nothing

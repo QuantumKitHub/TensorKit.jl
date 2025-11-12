@@ -105,6 +105,8 @@ function FusionTree(
 end
 FusionTree(uncoupled::Tuple{I, Vararg{I}}) where {I <: Sector} = FusionTree(uncoupled, unit(I))
 
+const FusionTreePair{I, N₁, N₂} = Tuple{FusionTree{I, N₁}, FusionTree{I, N₂}}
+
 # Properties
 sectortype(::Type{<:FusionTree{I}}) where {I <: Sector} = I
 FusionStyle(::Type{<:FusionTree{I}}) where {I <: Sector} = FusionStyle(I)
@@ -147,7 +149,7 @@ end
 Base.:(==)(f₁::FusionTree, f₂::FusionTree) = false
 
 # Facilitate getting correct fusion tree types
-function fusiontreetype(::Type{I}, N::Int) where {I <: Sector}
+Base.@assume_effects :foldable function fusiontreetype(::Type{I}, N::Int) where {I <: Sector}
     return if N === 0
         FusionTree{I, 0, 0, 0}
     elseif N === 1
@@ -155,6 +157,9 @@ function fusiontreetype(::Type{I}, N::Int) where {I <: Sector}
     else
         FusionTree{I, N, N - 2, N - 1}
     end
+end
+Base.@assume_effects :foldable function fusiontreetype(::Type{I}, N₁::Int, N₂::Int) where {I <: Sector}
+    return Tuple{fusiontreetype(I, N₁), fusiontreetype(I, N₂)}
 end
 
 # converting to actual array
@@ -215,9 +220,7 @@ function Base.convert(A::Type{<:AbstractArray}, f::FusionTree{I, N}) where {I, N
 end
 
 # TODO: is this piracy?
-function Base.convert(
-        A::Type{<:AbstractArray}, (f₁, f₂)::Tuple{FusionTree{I}, FusionTree{I}}
-    ) where {I}
+function Base.convert(A::Type{<:AbstractArray}, (f₁, f₂)::FusionTreePair{I}) where {I}
     F₁ = convert(A, f₁)
     F₂ = convert(A, f₂)
     sz1 = size(F₁)
@@ -247,11 +250,12 @@ function Base.show(io::IO, t::FusionTree{I}) where {I <: Sector}
     end
 end
 
-# Manipulate fusion trees
-include("manipulations.jl")
-
 # Fusion tree iterators
 include("iterator.jl")
+include("fusiontreeblocks.jl")
+
+# Manipulate fusion trees
+include("manipulations.jl")
 
 # auxiliary routines
 # _abelianinner: generate the inner indices for given outer indices in the abelian case
