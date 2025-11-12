@@ -87,7 +87,9 @@ end
     @test @constinferred(axes(V)) == Base.OneTo(d)
     @test ℝ^d == ℝ[](d) == CartesianSpace(d) == typeof(V)(d)
     W = @constinferred ℝ^1
+    @test @constinferred(isunitspace(W))
     @test @constinferred(unitspace(V)) == W == unitspace(typeof(V))
+    @test @constinferred(leftunitspace(V)) == W == @constinferred(rightunitspace(V))
     @test @constinferred(zerospace(V)) == ℝ^0 == zerospace(typeof(V))
     @test @constinferred(⊕(V, zerospace(V))) == V
     @test @constinferred(⊕(V, V)) == ℝ^(2d)
@@ -133,7 +135,9 @@ end
     @test @constinferred(axes(V)) == Base.OneTo(d)
     @test ℂ^d == Vect[Trivial](d) == Vect[](Trivial() => d) == ℂ[](d) == typeof(V)(d)
     W = @constinferred ℂ^1
+    @test @constinferred(isunitspace(W))
     @test @constinferred(unitspace(V)) == W == unitspace(typeof(V))
+    @test @constinferred(leftunitspace(V)) == W == @constinferred(rightunitspace(V))
     @test @constinferred(zerospace(V)) == ℂ^0 == zerospace(typeof(V))
     @test @constinferred(⊕(V, zerospace(V))) == V
     @test @constinferred(⊕(V, V)) == ℂ^(2d)
@@ -228,7 +232,14 @@ end
     randunit = rand(collect(allunits(I)))
     @test_throws ArgumentError("Sector $(randunit) appears multiple times") GradedSpace(randunit => 1, randunit => 3)
 
+    @test isunitspace(W)
     @test @constinferred(unitspace(V)) == W == unitspace(typeof(V))
+    if isa(UnitStyle(I), SimpleUnit)
+        @test @constinferred(leftunitspace(V)) == W == @constinferred(rightunitspace(V))
+    else
+        @test_throws ArgumentError leftunitspace(V)
+        @test_throws ArgumentError rightunitspace(V)
+    end
     @test eval_show(W) == W
     @test isa(V, VectorSpace)
     @test isa(V, ElementarySpace)
