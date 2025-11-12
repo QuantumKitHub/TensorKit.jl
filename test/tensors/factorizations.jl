@@ -33,6 +33,8 @@ for V in spacelist
     @timedtestset "Factorizations with symmetry: $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
         W = V1 ⊗ V2
+        @assert !isempty(blocksectors(W))
+        @assert !isempty(intersect(blocksectors(V4), blocksectors(W)))
 
         @testset "QR decomposition" begin
             for T in eltypes,
@@ -236,13 +238,15 @@ for V in spacelist
                 @test isisometry(U)
                 @test isisometry(Vᴴ; side = :right)
 
-                #FIXME: dimension of S is a float, might be a real issue if it's a decimal
-                trunc = truncrank(dim(domain(S)) ÷ 2)
+                # dimension of S is a float for IsingBimodule
+                nvals = dim(domain(S)) ÷ 2
+                eltype(nvals) <: AbstractFloat && (nvals = Int(nvals))
+                trunc = truncrank(nvals)
                 U1, S1, Vᴴ1 = @constinferred svd_trunc(t; trunc)
                 @test t * Vᴴ1' ≈ U1 * S1
                 @test isisometry(U1)
                 @test isisometry(Vᴴ1; side = :right)
-                @test dim(domain(S1)) <= trunc.howmany
+                @test dim(domain(S1)) <= nvals
 
                 λ = minimum(minimum, values(LinearAlgebra.diag(S1)))
                 trunc = trunctol(; atol = λ - 10eps(λ))
@@ -269,13 +273,13 @@ for V in spacelist
                 @test isisometry(Vᴴ4; side = :right)
                 @test norm(t - U4 * S4 * Vᴴ4) <= 0.5
 
-                trunc = truncrank(dim(domain(S)) ÷ 2) & trunctol(; atol = λ - 10eps(λ))
+                trunc = truncrank(nvals) & trunctol(; atol = λ - 10eps(λ))
                 U5, S5, Vᴴ5 = @constinferred svd_trunc(t; trunc)
                 @test t * Vᴴ5' ≈ U5 * S5
                 @test isisometry(U5)
                 @test isisometry(Vᴴ5; side = :right)
                 @test minimum(minimum, values(LinearAlgebra.diag(S5))) >= λ
-                @test dim(domain(S5)) ≤ dim(domain(S)) ÷ 2
+                @test dim(domain(S5)) ≤ nvals
             end
         end
 
@@ -299,9 +303,11 @@ for V in spacelist
                 @test @constinferred isposdef(vdv)
                 t isa DiagonalTensorMap || @test !isposdef(t) # unlikely for non-hermitian map
 
-                d, v = @constinferred eig_trunc(t; trunc = truncrank(dim(domain(t)) ÷ 2))
+                nvals = dim(domain(t)) ÷ 2
+                eltype(nvals) <: AbstractFloat && (nvals = Int(nvals))
+                d, v = @constinferred eig_trunc(t; trunc = truncrank(nvals))
                 @test t * v ≈ v * d
-                @test dim(domain(d)) ≤ dim(domain(t)) ÷ 2
+                @test dim(domain(d)) ≤ nvals
 
                 t2 = (t + t')
                 D, V = eigen(t2)
@@ -330,9 +336,9 @@ for V in spacelist
                 @test isposdef(t - λ * one(t) + 0.1 * one(t))
                 @test !isposdef(t - λ * one(t) - 0.1 * one(t))
 
-                d, v = @constinferred eigh_trunc(t; trunc = truncrank(dim(domain(t)) ÷ 2))
+                d, v = @constinferred eigh_trunc(t; trunc = truncrank(nvals))
                 @test t * v ≈ v * d
-                @test dim(domain(d)) ≤ dim(domain(t)) ÷ 2
+                @test dim(domain(d)) ≤ nvals
             end
         end
 
