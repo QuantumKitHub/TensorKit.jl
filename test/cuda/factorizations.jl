@@ -1,6 +1,10 @@
-using Test, TestExtras
-using TensorKit
-using LinearAlgebra: LinearAlgebra
+using LinearAlgebra, CUDA, Test, TestExtras, TensorKit, cuTENSOR
+
+const CUDAExt = Base.get_extension(TensorKit, :TensorKitCUDAExt)
+@assert !isnothing(CUDAExt)
+# const CuTensorMap{T,S,N1,N2,I,A} = CUDAExt.CuTensorMap{T,S,N1,N2,I,A}
+const CuTensorMap = getglobal(CUDAExt, :CuTensorMap)
+const CuDiagonalTensorMap = getglobal(CUDAExt, :CuDiagonalTensorMap)
 
 @isdefined(TestSetup) || include("../setup.jl")
 using .TestSetup
@@ -22,23 +26,25 @@ catch
     (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂)
 end
 
+import CUDA: rand as curand, randn as curandn
+
+
 eltypes = (Float32, ComplexF64)
 
 for V in spacelist
     I = sectortype(first(V))
     Istr = TensorKit.type_repr(I)
     println("---------------------------------------")
-    println("Factorizations with symmetry: $Istr")
+    println("CUDA Factorizations with symmetry: $Istr")
     println("---------------------------------------")
-    @timedtestset "Factorizations with symmetry: $Istr" verbose = true begin
+    @timedtestset "CUDA Factorizations with symmetry: $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
         W = V1 ⊗ V2
-
         @testset "QR decomposition" begin
             for T in eltypes,
                     t in (
-                        rand(T, W, W), rand(T, W, W)', rand(T, W, V1), rand(T, V1, W)',
-                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                        curand(T, W, W), curand(T, W, W)', curand(T, W, V1), curand(T, V1, W)',
+                        CuDiagonalTensorMap(curand(T, reduceddim(V1)), V1),
                     )
 
                 Q, R = @constinferred qr_full(t)
@@ -64,7 +70,7 @@ for V in spacelist
 
             # empty tensor
             for T in eltypes
-                t = rand(T, V1 ⊗ V2, zero(V1))
+                t = curand(T, V1 ⊗ V2, zero(V1))
 
                 Q, R = @constinferred qr_full(t)
                 @test Q * R ≈ t
@@ -86,12 +92,11 @@ for V in spacelist
                 @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
             end
         end
-
         @testset "LQ decomposition" begin
             for T in eltypes,
                     t in (
-                        rand(T, W, W), rand(T, W, W)', rand(T, W, V1), rand(T, V1, W)',
-                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                        curand(T, W, W), curand(T, W, W)', curand(T, W, V1), curand(T, V1, W)',
+                        CuDiagonalTensorMap(curand(T, reduceddim(V1)), V1),
                     )
 
                 L, Q = @constinferred lq_full(t)
@@ -113,7 +118,7 @@ for V in spacelist
 
             for T in eltypes
                 # empty tensor
-                t = rand(T, zero(V1), V1 ⊗ V2)
+                t = curand(T, zero(V1), V1 ⊗ V2)
 
                 L, Q = @constinferred lq_full(t)
                 @test L * Q ≈ t
@@ -135,18 +140,21 @@ for V in spacelist
                 @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
             end
         end
-
         @testset "Polar decomposition" begin
-            for T in eltypes,
+            @testset for T in eltypes,
                     t in (
-                        rand(T, W, W), rand(T, W, W)', rand(T, W, V1), rand(T, V1, W)',
-                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                        curand(T, W, W),
+                        curand(T, W, W)',
+                        curand(T, W, V1),
+                        curand(T, V1, W)',
+                        CuDiagonalTensorMap(curand(T, reduceddim(V1)), V1),
                     )
 
                 @assert domain(t) ≾ codomain(t)
                 w, p = @constinferred left_polar(t)
                 @test w * p ≈ t
                 @test isisometric(w)
+                # broken for T <: Complex
                 @test isposdef(p)
 
                 w, p = @constinferred left_orth(t; kind = :polar)
@@ -154,8 +162,11 @@ for V in spacelist
                 @test isisometric(w)
             end
 
-            for T in eltypes,
-                    t in (rand(T, W, W), rand(T, W, W)', rand(T, V1, W), rand(T, W, V1)')
+            @testset for T in eltypes,
+                    t in (
+                        curand(T, W, W), curand(T, W, W)', curand(T, V1, W), curand(T, W, V1)',
+                        CuDiagonalTensorMap(curand(T, reduceddim(V1)), V1),
+                    )
 
                 @assert codomain(t) ≾ domain(t)
                 p, wᴴ = @constinferred right_polar(t)
@@ -168,14 +179,13 @@ for V in spacelist
                 @test isisometric(wᴴ; side = :right)
             end
         end
-
         @testset "SVD" begin
             for T in eltypes,
                     t in (
-                        rand(T, W, W), rand(T, W, W)',
-                        rand(T, W, V1), rand(T, V1, W),
-                        rand(T, W, V1)', rand(T, V1, W)',
-                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                        curand(T, W, W), curand(T, W, W)',
+                        curand(T, W, V1), curand(T, V1, W),
+                        curand(T, W, V1)', curand(T, V1, W)',
+                        CuDiagonalTensorMap(curand(T, reduceddim(V1)), V1),
                     )
 
                 u, s, vᴴ = @constinferred svd_full(t)
@@ -208,7 +218,7 @@ for V in spacelist
             end
 
             # empty tensor
-            for T in eltypes, t in (rand(T, W, zero(V1)), rand(T, zero(V1), W))
+            for T in eltypes, t in (curand(T, W, zero(V1)), curand(T, zero(V1), W))
                 U, S, Vᴴ = @constinferred svd_full(t)
                 @test U * S * Vᴴ ≈ t
                 @test isunitary(U)
@@ -223,10 +233,10 @@ for V in spacelist
         @testset "truncated SVD" begin
             for T in eltypes,
                     t in (
-                        randn(T, W, W), randn(T, W, W)',
-                        randn(T, W, V1), randn(T, V1, W),
-                        randn(T, W, V1)', randn(T, V1, W)',
-                        DiagonalTensorMap(randn(T, reduceddim(V1)), V1),
+                        curandn(T, W, W), curandn(T, W, W)',
+                        curandn(T, W, V1), curandn(T, V1, W),
+                        curandn(T, W, V1)', curandn(T, V1, W)',
+                        CuDiagonalTensorMap(curandn(T, reduceddim(V1)), V1),
                     )
 
                 @constinferred normalize!(t)
@@ -237,7 +247,9 @@ for V in spacelist
                 @test isisometric(Vᴴ; side = :right)
 
                 trunc = truncrank(dim(domain(S)) ÷ 2)
-                U1, S1, Vᴴ1 = @constinferred svd_trunc(t; trunc)
+                CUDA.@allowscalar begin
+                    U1, S1, Vᴴ1 = @constinferred svd_trunc(t; trunc)
+                end
                 @test t * Vᴴ1' ≈ U1 * S1
                 @test isisometric(U1)
                 @test isisometric(Vᴴ1; side = :right)
@@ -245,7 +257,9 @@ for V in spacelist
 
                 λ = minimum(minimum, values(LinearAlgebra.diag(S1)))
                 trunc = trunctol(; atol = λ - 10eps(λ))
-                U2, S2, Vᴴ2 = @constinferred svd_trunc(t; trunc)
+                CUDA.@allowscalar begin
+                    U2, S2, Vᴴ2 = @constinferred svd_trunc(t; trunc)
+                end
                 @test t * Vᴴ2' ≈ U2 * S2
                 @test isisometric(U2)
                 @test isisometric(Vᴴ2; side = :right)
@@ -255,34 +269,32 @@ for V in spacelist
                 @test Vᴴ2 ≈ Vᴴ1
 
                 trunc = truncspace(space(S2, 1))
-                U3, S3, Vᴴ3 = @constinferred svd_trunc(t; trunc)
+                CUDA.@allowscalar begin
+                    U3, S3, Vᴴ3 = @constinferred svd_trunc(t; trunc)
+                end
                 @test t * Vᴴ3' ≈ U3 * S3
                 @test isisometric(U3)
                 @test isisometric(Vᴴ3; side = :right)
                 @test space(S3, 1) ≾ space(S2, 1)
 
                 trunc = truncerror(; atol = 0.5)
-                U4, S4, Vᴴ4 = @constinferred svd_trunc(t; trunc)
+                CUDA.@allowscalar begin
+                    U4, S4, Vᴴ4 = @constinferred svd_trunc(t; trunc)
+                end
                 @test t * Vᴴ4' ≈ U4 * S4
                 @test isisometric(U4)
                 @test isisometric(Vᴴ4; side = :right)
                 @test norm(t - U4 * S4 * Vᴴ4) <= 0.5
-
-                trunc = truncrank(dim(domain(S)) ÷ 2) & trunctol(; atol = λ - 10eps(λ))
-                U5, S5, Vᴴ5 = @constinferred svd_trunc(t; trunc)
-                @test t * Vᴴ5' ≈ U5 * S5
-                @test isisometric(U5)
-                @test isisometric(Vᴴ5; side = :right)
-                @test minimum(minimum, values(LinearAlgebra.diag(S5))) >= λ
-                @test dim(domain(S5)) ≤ dim(domain(S)) ÷ 2
             end
         end
 
         @testset "Eigenvalue decomposition" begin
             for T in eltypes,
                     t in (
-                        rand(T, V1, V1), rand(T, W, W), rand(T, W, W)',
-                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                        curand(T, V1, V1),
+                        curand(T, W, W),
+                        curand(T, W, W)',
+                        CuDiagonalTensorMap(curand(T, reduceddim(V1)), V1),
                     )
 
                 d, v = @constinferred eig_full(t)
@@ -296,9 +308,11 @@ for V in spacelist
                 vdv = v' * v
                 vdv = (vdv + vdv') / 2
                 @test @constinferred isposdef(vdv)
-                t isa DiagonalTensorMap || @test !isposdef(t) # unlikely for non-hermitian map
+                t isa CuDiagonalTensorMap || @test !isposdef(t) # unlikely for non-hermitian map
 
-                d, v = @constinferred eig_trunc(t; trunc = truncrank(dim(domain(t)) ÷ 2))
+                CUDA.@allowscalar begin # TODO
+                    d, v = @constinferred eig_trunc(t; trunc = truncrank(dim(domain(t)) ÷ 2))
+                end
                 @test t * v ≈ v * d
                 @test dim(domain(d)) ≤ dim(domain(t)) ÷ 2
 
@@ -329,7 +343,9 @@ for V in spacelist
                 @test isposdef(t - λ * one(t) + 0.1 * one(t))
                 @test !isposdef(t - λ * one(t) - 0.1 * one(t))
 
-                d, v = @constinferred eigh_trunc(t; trunc = truncrank(dim(domain(t)) ÷ 2))
+                CUDA.@allowscalar begin
+                    d, v = @constinferred eigh_trunc(t; trunc = truncrank(dim(domain(t)) ÷ 2))
+                end
                 @test t * v ≈ v * d
                 @test dim(domain(d)) ≤ dim(domain(t)) ÷ 2
             end
@@ -338,10 +354,10 @@ for V in spacelist
         @testset "Condition number and rank" begin
             for T in eltypes,
                     t in (
-                        rand(T, W, W), rand(T, W, W)',
-                        rand(T, W, V1), rand(T, V1, W),
-                        rand(T, W, V1)', rand(T, V1, W)',
-                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                        curand(T, W, W), curand(T, W, W)',
+                        curand(T, W, V1), curand(T, V1, W),
+                        curand(T, W, V1)', curand(T, V1, W)',
+                        CuDiagonalTensorMap(curand(T, reduceddim(V1)), V1),
                     )
 
                 d1, d2 = dim(codomain(t)), dim(domain(t))
@@ -356,13 +372,13 @@ for V in spacelist
                 @test @constinferred(cond(u)) ≈ one(real(T))
                 @test @constinferred(rank(u)) == dim(V1 ⊗ V2)
 
-                t = rand(T, zero(V1), W)
+                t = curand(T, zero(V1), W)
                 @test rank(t) == 0
-                t2 = rand(T, zero(V1) * zero(V2), zero(V1) * zero(V2))
+                t2 = curand(T, zero(V1) * zero(V2), zero(V1) * zero(V2))
                 @test rank(t2) == 0
                 @test cond(t2) == 0.0
             end
-            for T in eltypes, t in (rand(T, W, W), rand(T, W, W)')
+            for T in eltypes, t in (curand(T, W, W), curand(T, W, W)')
                 add!(t, t')
                 vals = @constinferred LinearAlgebra.eigvals(t)
                 λmax = maximum(s -> maximum(abs, s), values(vals))

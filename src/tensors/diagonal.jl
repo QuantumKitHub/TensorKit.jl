@@ -271,7 +271,7 @@ function LinearAlgebra.mul!(
         dC::DiagonalTensorMap, dA::DiagonalTensorMap, dB::DiagonalTensorMap, α::Number, β::Number
     )
     dC.domain == dA.domain == dB.domain || throw(SpaceMismatch())
-    mul!(Diagonal(dC.data), Diagonal(dA.data), Diagonal(dB.data), α, β)
+    @. dC.data = (α * dA.data * dB.data) + β * dC.data
     return dC
 end
 
