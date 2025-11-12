@@ -107,7 +107,7 @@ function bendright(src::FusionTreeBlock)
 
     for (col, (f₁, f₂)) in enumerate(fusiontrees(src))
         c = f₁.coupled
-        a = N₁ == 1 ? leftone(f₁.uncoupled[1]) :
+        a = N₁ == 1 ? leftunit(f₁.uncoupled[1]) :
             (N₁ == 2 ? f₁.uncoupled[1] : f₁.innerlines[end])
         b = f₁.uncoupled[N₁]
 
@@ -170,7 +170,7 @@ function bendleft(src::FusionTreeBlock)
 
     for (col, (f₂, f₁)) in enumerate(fusiontrees(src))
         c = f₁.coupled
-        a = N₁ == 1 ? leftone(f₁.uncoupled[1]) :
+        a = N₁ == 1 ? leftunit(f₁.uncoupled[1]) :
             (N₁ == 2 ? f₁.uncoupled[1] : f₁.innerlines[end])
         b = f₁.uncoupled[N₁]
 
@@ -246,7 +246,7 @@ function foldright(src::FusionTreeBlock)
             @inbounds U[row, col] = factor
         else
             if N₁ == 1
-                cset = (leftone(c1),) # or rightone(a)
+                cset = (leftunit(c1),) # or rightunit(a)
             elseif N₁ == 2
                 cset = (f₁.uncoupled[2],)
             else
@@ -319,7 +319,7 @@ function foldleft(src::FusionTreeBlock)
             @inbounds U[row, col] = conj(factor)
         else
             if N₁ == 1
-                cset = (leftone(c1),) # or rightone(a)
+                cset = (leftunit(c1),) # or rightunit(a)
             elseif N₁ == 2
                 cset = (f₁.uncoupled[2],)
             else
@@ -470,7 +470,7 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
     a, b = uncoupled[i], uncoupled[i + 1]
     uncoupled′ = TupleTools.setindex(uncoupled, b, i)
     uncoupled′ = TupleTools.setindex(uncoupled′, a, i + 1)
-    coupled′ = rightone(src.uncoupled[1][N])
+    coupled′ = rightunit(src.uncoupled[1][N])
 
     isdual = src.isdual[1]
     isdual′ = TupleTools.setindex(isdual, isdual[i], i + 1)
