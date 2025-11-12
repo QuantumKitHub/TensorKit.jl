@@ -234,94 +234,92 @@ using .TestSetup
             end
         end
     end
-    if isa(UnitStyle(I), SimpleUnit)
-        @testset "Fusion tree $Istr: elementary artin braid" begin
-            N = length(out)
-            isdual = ntuple(n -> rand(Bool), N)
-            for in in ⊗(out...)
-                for i in 1:(N - 1)
-                    for f in fusiontrees(out, in, isdual)
-                        d1 = @constinferred TK.artin_braid(f, i) # braid between random objects
-                        @test norm(values(d1)) ≈ 1
-                        d2 = empty(d1)
-                        for (f1, coeff1) in d1
-                            for (f2, coeff2) in TK.artin_braid(f1, i; inv = true)
-                                d2[f2] = get(d2, f2, zero(coeff1)) + coeff2 * coeff1
-                            end
+    (UnitStyle(I) == SimpleUnit) && @testset "Fusion tree $Istr: elementary artin braid" begin
+        N = length(out)
+        isdual = ntuple(n -> rand(Bool), N)
+        for in in ⊗(out...)
+            for i in 1:(N - 1)
+                for f in fusiontrees(out, in, isdual)
+                    d1 = @constinferred TK.artin_braid(f, i) # braid between random objects
+                    @test norm(values(d1)) ≈ 1
+                    d2 = empty(d1)
+                    for (f1, coeff1) in d1
+                        for (f2, coeff2) in TK.artin_braid(f1, i; inv = true)
+                            d2[f2] = get(d2, f2, zero(coeff1)) + coeff2 * coeff1
                         end
-                        for (f2, coeff2) in d2
-                            if f2 == f
-                                @test coeff2 ≈ 1
-                            else
-                                @test isapprox(coeff2, 0; atol = 1.0e-12, rtol = 1.0e-12)
-                            end
+                    end
+                    for (f2, coeff2) in d2
+                        if f2 == f
+                            @test coeff2 ≈ 1
+                        else
+                            @test isapprox(coeff2, 0; atol = 1.0e-12, rtol = 1.0e-12)
                         end
                     end
                 end
             end
+        end
 
-            f = rand(collect(it))
-            d1 = TK.artin_braid(f, 2)
-            d2 = empty(d1)
-            for (f1, coeff1) in d1
-                for (f2, coeff2) in TK.artin_braid(f1, 3)
-                    d2[f2] = get(d2, f2, zero(coeff1)) + coeff2 * coeff1
-                end
-            end
-            d1 = d2
-            d2 = empty(d1)
-            for (f1, coeff1) in d1
-                for (f2, coeff2) in TK.artin_braid(f1, 3; inv = true)
-                    d2[f2] = get(d2, f2, zero(coeff1)) + coeff2 * coeff1
-                end
-            end
-            d1 = d2
-            d2 = empty(d1)
-            for (f1, coeff1) in d1
-                for (f2, coeff2) in TK.artin_braid(f1, 2; inv = true)
-                    d2[f2] = get(d2, f2, zero(coeff1)) + coeff2 * coeff1
-                end
-            end
-            d1 = d2
-            for (f1, coeff1) in d1
-                if f1 == f
-                    @test coeff1 ≈ 1
-                else
-                    @test isapprox(coeff1, 0; atol = 1.0e-12, rtol = 1.0e-12)
-                end
+        f = rand(collect(it))
+        d1 = TK.artin_braid(f, 2)
+        d2 = empty(d1)
+        for (f1, coeff1) in d1
+            for (f2, coeff2) in TK.artin_braid(f1, 3)
+                d2[f2] = get(d2, f2, zero(coeff1)) + coeff2 * coeff1
             end
         end
-        @testset "Fusion tree $Istr: braiding and permuting" begin
-            f = rand(collect(it))
-            p = tuple(randperm(N)...)
-            ip = invperm(p)
+        d1 = d2
+        d2 = empty(d1)
+        for (f1, coeff1) in d1
+            for (f2, coeff2) in TK.artin_braid(f1, 3; inv = true)
+                d2[f2] = get(d2, f2, zero(coeff1)) + coeff2 * coeff1
+            end
+        end
+        d1 = d2
+        d2 = empty(d1)
+        for (f1, coeff1) in d1
+            for (f2, coeff2) in TK.artin_braid(f1, 2; inv = true)
+                d2[f2] = get(d2, f2, zero(coeff1)) + coeff2 * coeff1
+            end
+        end
+        d1 = d2
+        for (f1, coeff1) in d1
+            if f1 == f
+                @test coeff1 ≈ 1
+            else
+                @test isapprox(coeff1, 0; atol = 1.0e-12, rtol = 1.0e-12)
+            end
+        end
+    end
+    (UnitStyle(I) == SimpleUnit) && @testset "Fusion tree $Istr: braiding and permuting" begin
+        f = rand(collect(it))
+        p = tuple(randperm(N)...)
+        ip = invperm(p)
 
-            levels = ntuple(identity, N)
-            d = @constinferred braid(f, levels, p)
-            d2 = Dict{typeof(f), valtype(d)}()
-            levels2 = p
-            for (f2, coeff) in d
-                for (f1, coeff2) in braid(f2, levels2, ip)
-                    d2[f1] = get(d2, f1, zero(coeff)) + coeff2 * coeff
-                end
+        levels = ntuple(identity, N)
+        d = @constinferred braid(f, levels, p)
+        d2 = Dict{typeof(f), valtype(d)}()
+        levels2 = p
+        for (f2, coeff) in d
+            for (f1, coeff2) in braid(f2, levels2, ip)
+                d2[f1] = get(d2, f1, zero(coeff)) + coeff2 * coeff
             end
-            for (f1, coeff2) in d2
-                if f1 == f
-                    @test coeff2 ≈ 1
-                else
-                    @test isapprox(coeff2, 0; atol = 1.0e-12, rtol = 1.0e-12)
-                end
+        end
+        for (f1, coeff2) in d2
+            if f1 == f
+                @test coeff2 ≈ 1
+            else
+                @test isapprox(coeff2, 0; atol = 1.0e-12, rtol = 1.0e-12)
             end
+        end
 
-            if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
-                Af = convert(Array, f)
-                Afp = permutedims(Af, (p..., N + 1))
-                Afp2 = zero(Afp)
-                for (f1, coeff) in d
-                    Afp2 .+= coeff .* convert(Array, f1)
-                end
-                @test Afp ≈ Afp2
+        if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
+            Af = convert(Array, f)
+            Afp = permutedims(Af, (p..., N + 1))
+            Afp2 = zero(Afp)
+            for (f1, coeff) in d
+                Afp2 .+= coeff .* convert(Array, f1)
             end
+            @test Afp ≈ Afp2
         end
     end
 
