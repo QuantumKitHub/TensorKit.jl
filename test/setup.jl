@@ -1,7 +1,7 @@
 module TestSetup
 
 export smallset, randsector, hasfusiontensor, force_planar
-export random_fusiontree, safe_tensor_product
+export random_fusion
 export sectorlist
 export Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, Vfib, VIB_diag, VIB_M
 
@@ -76,33 +76,20 @@ function force_planar(tsrc::TensorMap{<:Any, <:GradedSpace})
     return tdst
 end
 
-#TODO: make less yucky
 function random_fusion(I::Type{<:Sector}, N::Int) # for fusion tree tests
-    in = nothing
-    out = nothing
-    while in === nothing
-        out = ntuple(n -> randsector(I), N)
-        try
-            in = rand(collect(⊗(out...)))
-        catch e
-            if isa(e, ArgumentError)
-                in = nothing
-            else
-                rethrow(e)
-            end
+    t = Vector{I}(undef, N)
+    t[1] = randsector(I)
+    len = 1
+
+    while len < N
+        r = randsector(I)
+        f = ⊗(t[len], r)
+        if !isempty(f)
+            len += 1
+            t[len] = r
         end
     end
-    return out
-end
-
-# for fusion tree merge test
-function safe_tensor_product(x::I, y::I) where {I <: Sector}
-    tp = x ⊗ y
-    if isempty(tp)
-        return nothing
-    else
-        return tp
-    end
+    return tuple(t...)
 end
 
 sectorlist = (
