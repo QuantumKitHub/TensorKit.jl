@@ -1,8 +1,8 @@
 """
-    struct ProductSpace{S<:ElementarySpace, N} <: CompositeSpace{S}
+    struct ProductSpace{S <: ElementarySpace, N} <: CompositeSpace{S}
 
 A `ProductSpace` is a tensor product space of `N` vector spaces of type
-`S<:ElementarySpace`. Only tensor products between [`ElementarySpace`](@ref) objects of the
+`S <: ElementarySpace`. Only tensor products between [`ElementarySpace`](@ref) objects of the
 same type are allowed.
 """
 struct ProductSpace{S <: ElementarySpace, N} <: CompositeSpace{S}
@@ -87,7 +87,7 @@ end
 
 # more specific methods
 """
-    sectors(P::ProductSpace{S, N}) where {S<:ElementarySpace}
+    sectors(P::ProductSpace{S, N}) where {S <: ElementarySpace}
 
 Return an iterator over all possible combinations of sectors (represented as an
 `NTuple{N, sectortype(S)}`) that can appear within the tensor product space `P`.
@@ -151,9 +151,9 @@ function blocksectors(P::ProductSpace{S, N}) where {S, N}
     end
     bs = Vector{I}()
     if N == 0
-        for u in allunits(I)  
-            push!(bs, u)  
-        end 
+        for u in allunits(I)
+            push!(bs, u)
+        end
         return bs
     elseif N == 1
         for s in sectors(P)
@@ -199,7 +199,7 @@ hasblock(P::ProductSpace, c::Sector) = !isempty(fusiontrees(P, c))
     blockdim(P::ProductSpace, c::Sector)
 
 Return the total dimension of a coupled sector `c` in the product space, by summing over
-all `dim(P, s)` for all tuples of sectors `s::NTuple{N, <:Sector}` that can fuse to  `c`,
+all `dim(P, s)` for all tuples of sectors `s::NTuple{N, <: Sector}` that can fuse to  `c`,
 counted with the correct multiplicity (i.e. number of ways in which `s` can fuse to `c`).
 
 See also [`hasblock`](@ref) and [`blocksectors`](@ref).
@@ -231,8 +231,8 @@ end
 
 # unit element with respect to the monoidal structure of taking tensor products
 """
-    one(::S) where {S<:ElementarySpace} -> ProductSpace{S, 0}
-    one(::ProductSpace{S}) where {S<:ElementarySpace} -> ProductSpace{S, 0}
+    one(::S) where {S <: ElementarySpace} -> ProductSpace{S, 0}
+    one(::ProductSpace{S}) where {S <: ElementarySpace} -> ProductSpace{S, 0}
 
 Return a tensor product of zero spaces of type `S`, i.e. this is the unit object under the
 tensor product operation, such that `V ⊗ one(V) == V`.
@@ -251,7 +251,7 @@ fuse(P::ProductSpace{S, 0}) where {S <: ElementarySpace} = unitspace(S)
 fuse(P::ProductSpace{S}) where {S <: ElementarySpace} = fuse(P.spaces...)
 
 """
-    insertleftunit(P::ProductSpace, i::Int=length(P) + 1; conj=false, dual=false)
+    insertleftunit(P::ProductSpace, i::Int = length(P) + 1; conj = false, dual = false)
 
 Insert a trivial vector space, isomorphic to the underlying field, at position `i`,
 which can be specified as an `Int` or as `Val(i)` for improved type stability.
@@ -285,7 +285,7 @@ function insertleftunit(
 end
 
 """
-    insertrightunit(P::ProductSpace, i=length(P); conj=false, dual=false)
+    insertrightunit(P::ProductSpace, i = length(P); conj = false, dual = false)
 
 Insert a trivial vector space, isomorphic to the underlying field, after position `i`,
 which can be specified as an `Int` or as `Val(i)` for improved type stability.
