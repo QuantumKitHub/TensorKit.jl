@@ -123,7 +123,7 @@ function bendright(src::FusionTreeBlock)
 
         coeff₀ = sqrtdim(c) * invsqrtdim(a)
         if f₁.isdual[N₁]
-            coeff₀ *= conj(frobeniusschur(dual(b)))
+            coeff₀ *= conj(frobenius_schur_phase(dual(b)))
         end
         if FusionStyle(I) isa MultiplicityFreeFusion
             coeff = coeff₀ * Bsymbol(a, b, c)
@@ -186,7 +186,7 @@ function bendleft(src::FusionTreeBlock)
 
         coeff₀ = sqrtdim(c) * invsqrtdim(a)
         if f₁.isdual[N₁]
-            coeff₀ *= conj(frobeniusschur(dual(b)))
+            coeff₀ *= conj(frobenius_schur_phase(dual(b)))
         end
         if FusionStyle(I) isa MultiplicityFreeFusion
             coeff = coeff₀ * Bsymbol(a, b, c)
@@ -232,7 +232,7 @@ function foldright(src::FusionTreeBlock)
         isduala = f₁.isdual[1]
         factor = sqrtdim(a)
         if !isduala
-            factor *= conj(frobeniusschur(a))
+            factor *= conj(frobenius_schur_phase(a))
         end
         c1 = dual(a)
         c2 = f₁.coupled
@@ -305,7 +305,7 @@ function foldleft(src::FusionTreeBlock)
         isduala = f₁.isdual[1]
         factor = sqrtdim(a)
         if !isduala
-            factor *= conj(frobeniusschur(a))
+            factor *= conj(frobenius_schur_phase(a))
         end
         c1 = dual(a)
         c2 = f₁.coupled
