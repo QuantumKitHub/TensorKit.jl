@@ -644,20 +644,26 @@ function Base.summary(io::IO, t::AbstractTensorMap)
 end
 
 # Human-readable:
-function Base.show(io::IO, ::MIME"text/plain", t::AbstractTensorMap)
-    # 1) show summary: typically d₁×d₂×… ← d₃×d₄×… $(typeof(t)):
+function Base.show(io::IO, mime::MIME"text/plain", t::AbstractTensorMap)
+    # 1) show summary: typically d₁×d₂×… ← d₃×d₄×… $(typeof(t))
     summary(io, t)
-    println(io, ":")
 
+    # case without `\n`:
+    if get(io, :compact, true)
+        print(io, "(…, ")
+        show(io, mime, space(t))
+        print(io, ')')
+        return nothing
+    end
+
+    # case with `\n`
     # 2) show spaces
-    # println(io, " space(t):")
+    println(io, ':')
     println(io, " codomain: ", codomain(t))
     println(io, " domain: ", domain(t))
 
     # 3) [optional]: show data
-    get(io, :compact, true) && return nothing
-    ioc = IOContext(io, :typeinfo => sectortype(t))
     println(io, "\n\n blocks: ")
-    show_blocks(io, MIME"text/plain"(), blocks(t))
+    show_blocks(io, mime, blocks(t))
     return nothing
 end
