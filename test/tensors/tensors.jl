@@ -151,26 +151,16 @@ for V in spacelist
             end
         end
         @timedtestset "Trivial space insertion and removal" begin
-            W = V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5
+            W = V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5
             for T in (Float32, ComplexF64)
                 t = @constinferred rand(T, W)
-                if isa(UnitStyle(I), SimpleUnit)
-                    t2 = @constinferred insertleftunit(t)
-                    @test t2 == @constinferred insertrightunit(t)
-                    @test space(t2) == insertleftunit(space(t))
-                    @test @constinferred(removeunit(t2, $(numind(t2)))) == t
-                    t3 = @constinferred insertleftunit(t; copy = true)
-                    @test t3 == @constinferred insertrightunit(t; copy = true)
-                    @test @constinferred(removeunit(t3, $(numind(t3)))) == t
-                else
-                    t2 = @constinferred insertleftunit(t, 5)
-                    @test t2 == @constinferred insertrightunit(t, 4)
-                    @test space(t2) == insertleftunit(space(t), 5)
-                    @test @constinferred(removeunit(t2, $(numind(t2) - 1))) == t
-                    t3 = @constinferred insertleftunit(t, 5; copy = true)
-                    @test t3 == @constinferred insertrightunit(t, 4; copy = true)
-                    @test @constinferred(removeunit(t3, $(numind(t3) - 1))) == t
-                end
+                t2 = @constinferred insertleftunit(t)
+                @test t2 == @constinferred insertrightunit(t)
+                @test space(t2) == insertleftunit(space(t))
+                @test @constinferred(removeunit(t2, $(numind(t2)))) == t
+                t3 = @constinferred insertleftunit(t; copy = true)
+                @test t3 == @constinferred insertrightunit(t; copy = true)
+                @test @constinferred(removeunit(t3, $(numind(t3)))) == t
 
                 @test numind(t2) == numind(t) + 1
                 @test scalartype(t2) === T
@@ -182,7 +172,7 @@ for V in spacelist
                 end
 
                 t4 = @constinferred insertrightunit(t, 3; dual = true)
-                @test numin(t4) == numin(t) && numout(t4) == numout(t) + 1
+                @test numin(t4) == numin(t) + 1 && numout(t4) == numout(t)
                 for (c, b) in blocks(t)
                     @test b == block(t4, c)
                 end
@@ -288,6 +278,7 @@ for V in spacelist
             end
         end
         symmetricbraiding && @timedtestset "Full trace: test self-consistency" begin
+            # TODO: extend to multifusion but keep these @tensor tests
             t = rand(ComplexF64, V1 ⊗ V2' ← V1 ⊗ V2')
             s = @constinferred tr(t)
             @test conj(s) ≈ tr(t')
@@ -446,7 +437,7 @@ for V in spacelist
             end
         end
         @timedtestset "diag/diagm" begin
-            W = V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5
+            W = V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5
             t = randn(ComplexF64, W)
             d = LinearAlgebra.diag(t)
             D = LinearAlgebra.diagm(codomain(t), domain(t), d)
