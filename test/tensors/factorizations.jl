@@ -346,11 +346,13 @@ for V in spacelist
                     )
 
                 d1, d2 = dim(codomain(t)), dim(domain(t))
-                @test rank(t) == min(d1, d2)
+                r = rank(t)
+                @test r == min(d1, d2)
+                @test eltype(r) == eltype(d1)
                 M = left_null(t)
-                @test @constinferred(rank(M)) + rank(t) ≈ d1
+                @test @constinferred(rank(M)) + r ≈ d1
                 Mᴴ = right_null(t)
-                @test rank(Mᴴ) + rank(t) ≈ d2
+                @test rank(Mᴴ) + r ≈ d2
             end
             for T in eltypes
                 u = unitary(T, V1 ⊗ V2, V1 ⊗ V2)
