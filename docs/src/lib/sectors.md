@@ -37,7 +37,7 @@ ProductSector
 
 Several more concrete sector types can be found in other packages such as
 [SUNRepresentations.jl](https://github.com/QuantumKitHub/SUNRepresentations.jl),
-[CategoryData.jl](https://github.com/lkdvos/CategoryData.jl),
+[CategoryData.jl](https://github.com/QuantumKitHub/CategoryData.jl),
 [QWignerSymbols.jl](https://github.com/lkdvos/QWignerSymbols.jl), ...:
 
 Some of these types are parameterized by a type parameter that represents a group.

@@ -91,7 +91,7 @@ Base.adjoint(V::VectorSpace) = dual(V)
 Elementary finite-dimensional vector space over a field that can be used as the index
 space corresponding to the indices of a tensor. ElementarySpace is a supertype for all
 vector spaces (objects) that can be associated with the individual indices of a tensor,
-as hinted to by its alias `IndexSpace``.
+as hinted to by its alias `IndexSpace`.
 
 Every elementary vector space should respond to the methods [`conj`](@ref) and
 [`dual`](@ref), returning the complex conjugate space and the dual space respectively. The
@@ -136,8 +136,8 @@ Return the corresponding vector space of type `S` that represents the trivial
 one-dimensional space, i.e. the space that is isomorphic to the corresponding field.
 
 !!! note
-`unitspace(V)`is different from `one(V)`. The latter returns the empty product space
-`ProductSpace{S,0}(())`. `Base.oneunit` falls back to `unitspace`.
+    `unitspace(V)`is different from `one(V)`. The latter returns the empty product space
+    `ProductSpace{S,0}(())`. `Base.oneunit` falls back to `unitspace`.
 """
 unitspace(V::ElementarySpace) = unitspace(typeof(V))
 Base.oneunit(V::ElementarySpace) = unitspace(V)
