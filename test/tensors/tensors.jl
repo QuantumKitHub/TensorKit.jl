@@ -279,28 +279,29 @@ for V in spacelist
         end
         @timedtestset "Full trace: test self-consistency" begin
             if symmetricbraiding
-                t = rand(ComplexF64, V1 ⊗ V2' ← V1 ⊗ V2')
+                t = rand(ComplexF64, V1 ⊗ V2' ⊗ V2 ⊗ V1')
+                t2 = permute(t, ((1, 2), (4, 3)))
+                s = @constinferred tr(t2)
+                @test conj(s) ≈ tr(t2')
                 if !isdual(V1)
-                    t2 = twist!(t, 1)
+                    t2 = twist!(t2, 1)
                 end
                 if isdual(V2)
-                    t2 = twist!(t, 2)
+                    t2 = twist!(t2, 2)
                 end
-                s = @constinferred tr(t)
                 ss = tr(t2)
-                @tensor s2 = t[a b; a b]
-                @tensor t3[a; b] := t[a c; b c]
-                @tensor s3 = t3[a; a]
+                @tensor s2 = t[a, b, b, a]
+                @tensor t3[a, b] := t[a, c, c, b]
+                @tensor s3 = t3[a, a]
             else
                 t = rand(ComplexF64, V1 ⊗ V2 ← V1 ⊗ V2) # avoid permutes
-                s = @constinferred tr(t)
-                ss = s
+                ss = @constinferred tr(t)
+                @test conj(ss) ≈ tr(t')
                 @planar s2 = t[a b; a b]
                 @planar t3[a; b] := t[a c; b c]
                 @planar s3 = t3[a; a]
             end
 
-            @test conj(s) ≈ tr(t')
             @test ss ≈ s2
             @test ss ≈ s3
         end
