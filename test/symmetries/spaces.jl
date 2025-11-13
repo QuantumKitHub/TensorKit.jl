@@ -469,10 +469,10 @@ end
 
 @timedtestset "show and friends" begin
     V = U1Space(i => 1 for i in 1:3)
-    @test string(V) == "Rep[U₁](1 => 1, 2 => 1, 3 => 1)"
-    @test string(V') == "Rep[U₁](1 => 1, 2 => 1, 3 => 1)'"
-    @test sprint((x, y) -> show(x, MIME"text/plain"(), y), V) == "Rep[U₁](…) of dim 3:\n 1 => 1\n 2 => 1\n 3 => 1"
-    @test sprint((x, y) -> show(x, MIME"text/plain"(), y), V') == "Rep[U₁](…)' of dim 3:\n 1 => 1\n 2 => 1\n 3 => 1"
+    @test string(V) == "$(type_repr(typeof(V)))(1 => 1, 2 => 1, 3 => 1)"
+    @test string(V') == "$(type_repr(typeof(V)))(1 => 1, 2 => 1, 3 => 1)'"
+    @test sprint((x, y) -> show(x, MIME"text/plain"(), y), V) == "$(type_repr(typeof(V)))(…) of dim 3:\n 1 => 1\n 2 => 1\n 3 => 1"
+    @test sprint((x, y) -> show(x, MIME"text/plain"(), y), V') == "$(type_repr(typeof(V)))(…)' of dim 3:\n 1 => 1\n 2 => 1\n 3 => 1"
 end
 
 TensorKit.empty_globalcaches!()

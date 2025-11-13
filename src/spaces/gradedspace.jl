@@ -200,7 +200,7 @@ end
 Base.summary(io::IO, V::GradedSpace) = print(io, type_repr(typeof(V)))
 
 function Base.show(io::IO, V::GradedSpace)
-    opn = (get(io, :typeinfo, Any)::DataType == typeof(V) ? "" : type_repr(typeof(V)))
+    opn = (get(io, :typeinfo, Any)::Type == typeof(V) ? "" : type_repr(typeof(V)))
     opn *= "("
     if isdual(V)
         cls = ")'"
