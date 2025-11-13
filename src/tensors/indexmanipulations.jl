@@ -275,7 +275,7 @@ function has_shared_twist(t, inds)
     else
         for i in inds
             cs = sectors(space(t, i))
-            all(isunit ∘ twist, cs) || return false
+            all(isone ∘ twist, cs) || return false
         end
         return true
     end
