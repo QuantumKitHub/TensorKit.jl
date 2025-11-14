@@ -49,7 +49,7 @@ for V in spacelist
                 @test Q * R ≈ t
                 @test isisometric(Q)
 
-                Q, R = @constinferred left_orth(t; kind = :qr)
+                Q, R = @constinferred left_orth(t)
                 @test Q * R ≈ t
                 @test isisometric(Q)
 
@@ -57,7 +57,7 @@ for V in spacelist
                 @test isisometric(N)
                 @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
 
-                N = @constinferred left_null(t; kind = :qr)
+                N = @constinferred left_null(t)
                 @test isisometric(N)
                 @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
             end
@@ -76,7 +76,7 @@ for V in spacelist
                 @test isisometric(Q)
                 @test dim(Q) == dim(R) == dim(t)
 
-                Q, R = @constinferred left_orth(t; kind = :qr)
+                Q, R = @constinferred left_orth(t)
                 @test Q * R ≈ t
                 @test isisometric(Q)
                 @test dim(Q) == dim(R) == dim(t)
@@ -102,7 +102,7 @@ for V in spacelist
                 @test L * Q ≈ t
                 @test isisometric(Q; side = :right)
 
-                L, Q = @constinferred right_orth(t; kind = :lq)
+                L, Q = @constinferred right_orth(t)
                 @test L * Q ≈ t
                 @test isisometric(Q; side = :right)
 
@@ -125,7 +125,7 @@ for V in spacelist
                 @test isisometric(Q; side = :right)
                 @test dim(Q) == dim(L) == dim(t)
 
-                L, Q = @constinferred right_orth(t; kind = :lq)
+                L, Q = @constinferred right_orth(t)
                 @test L * Q ≈ t
                 @test isisometric(Q; side = :right)
                 @test dim(Q) == dim(L) == dim(t)
@@ -149,7 +149,7 @@ for V in spacelist
                 @test isisometric(w)
                 @test isposdef(p)
 
-                w, p = @constinferred left_orth(t; kind = :polar)
+                w, p = @constinferred left_orth(t; alg = TensorKit.LeftOrthAlgorithm{:polar})
                 @test w * p ≈ t
                 @test isisometric(w)
             end
@@ -163,7 +163,7 @@ for V in spacelist
                 @test isisometric(wᴴ; side = :right)
                 @test isposdef(p)
 
-                p, wᴴ = @constinferred right_orth(t; kind = :polar)
+                p, wᴴ = @constinferred right_orth(t; alg = TensorKit.RightOrthAlgorithm{:polar})
                 @test p * wᴴ ≈ t
                 @test isisometric(wᴴ; side = :right)
             end
@@ -194,9 +194,13 @@ for V in spacelist
                     @test b ≈ s′[c]
                 end
 
-                v, c = @constinferred left_orth(t; kind = :svd)
+                v, c = @constinferred left_orth(t; alg = TensorKit.LeftOrthAlgorithm{:svd})
                 @test v * c ≈ t
                 @test isisometric(v)
+                
+                c, vᴴ = @constinferred right_orth(t; alg = TensorKit.RightOrthAlgorithm{:svd})
+                @test c * vᴴ ≈ t
+                @test isisometric(v; side = :right)
 
                 N = @constinferred left_null(t; kind = :svd)
                 @test isisometric(N)

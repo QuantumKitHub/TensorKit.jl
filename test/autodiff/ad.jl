@@ -103,7 +103,7 @@ function remove_lqgauge_dependence!(ΔQ, t, Q)
     return ΔQ
 end
 function remove_eiggauge_dependence!(
-        ΔV, D, V; degeneracy_atol = MatrixAlgebraKit.default_pullback_gaugetol(D)
+        ΔV, D, V; degeneracy_atol = MatrixAlgebraKit.default_pullback_gauge_atol(D)
     )
     gaugepart = V' * ΔV
     for (c, b) in blocks(gaugepart)
@@ -119,7 +119,7 @@ function remove_eiggauge_dependence!(
     return ΔV
 end
 function remove_eighgauge_dependence!(
-        ΔV, D, V; degeneracy_atol = MatrixAlgebraKit.default_pullback_gaugetol(D)
+        ΔV, D, V; degeneracy_atol = MatrixAlgebraKit.default_pullback_gauge_atol(D)
     )
     gaugepart = V' * ΔV
     gaugepart = (gaugepart - gaugepart') / 2
@@ -136,7 +136,7 @@ function remove_eighgauge_dependence!(
     return ΔV
 end
 function remove_svdgauge_dependence!(
-        ΔU, ΔVᴴ, U, S, Vᴴ; degeneracy_atol = MatrixAlgebraKit.default_pullback_gaugetol(S)
+        ΔU, ΔVᴴ, U, S, Vᴴ; degeneracy_atol = MatrixAlgebraKit.default_pullback_gauge_atol(S)
     )
     gaugepart = U' * ΔU + Vᴴ * ΔVᴴ'
     gaugepart = (gaugepart - gaugepart') / 2
