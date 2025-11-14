@@ -403,13 +403,12 @@ using .TestSetup
         end
     end
 
-    if isa(UnitStyle(I), SimpleUnit) # could get these to work for GenericUnit, but somewhat hardcoded
-        if I <: ProductSector
-            N = 3
-        else
-            N = 4
-        end
-
+    if I <: ProductSector
+        N = 3
+    else
+        N = 4
+    end
+    if isa(UnitStyle(I), SimpleUnit)
         out = random_fusion(I, N)
         numtrees = count(n -> true, fusiontrees((out..., map(dual, out)...)))
         while !(0 < numtrees < 100)
@@ -419,112 +418,87 @@ using .TestSetup
         incoming = rand(collect(⊗(out...)))
         f1 = rand(collect(fusiontrees(out, incoming, ntuple(n -> rand(Bool), N))))
         f2 = rand(collect(fusiontrees(out[randperm(N)], incoming, ntuple(n -> rand(Bool), N))))
-        @testset "Double fusion tree $Istr: repartitioning" begin
-            for n in 0:(2 * N)
-                d = @constinferred TK.repartition(f1, f2, $n)
-                @test dim(incoming) ≈
-                    sum(abs2(coef) * dim(f1.coupled) for ((f1, f2), coef) in d)
-                d2 = Dict{typeof((f1, f2)), valtype(d)}()
+    else
+        out = random_fusion(I, N)
+        out2 = random_fusion(I, N)
+        tp = ⊗(out...)
+        tp2 = ⊗(out2...)
+        while isempty(intersect(tp, tp2)) # guarantee fusion to same coloring
+            out2 = random_fusion(I, N)
+            tp2 = ⊗(out2...)
+        end
+        @test_throws ArgumentError fusiontrees((out..., map(dual, out)...))
+        incoming = rand(collect(intersect(tp, tp2)))
+        f1 = rand(collect(fusiontrees(out, incoming, ntuple(n -> rand(Bool), N))))
+        f2 = rand(collect(fusiontrees(out2, incoming, ntuple(n -> rand(Bool), N)))) # no permuting
+    end
+
+    @testset "Double fusion tree $Istr: repartitioning" begin
+        for n in 0:(2 * N)
+            d = @constinferred TK.repartition(f1, f2, $n)
+            @test dim(incoming) ≈
+                sum(abs2(coef) * dim(f1.coupled) for ((f1, f2), coef) in d)
+            d2 = Dict{typeof((f1, f2)), valtype(d)}()
+            for ((f1′, f2′), coeff) in d
+                for ((f1′′, f2′′), coeff2) in TK.repartition(f1′, f2′, N)
+                    d2[(f1′′, f2′′)] = get(d2, (f1′′, f2′′), zero(coeff)) + coeff2 * coeff
+                end
+            end
+            for ((f1′, f2′), coeff2) in d2
+                if f1 == f1′ && f2 == f2′
+                    @test coeff2 ≈ 1
+                else
+                    @test isapprox(coeff2, 0; atol = 1.0e-12, rtol = 1.0e-12)
+                end
+            end
+            if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
+                Af1 = convert(Array, f1)
+                Af2 = permutedims(convert(Array, f2), [N:-1:1; N + 1])
+                sz1 = size(Af1)
+                sz2 = size(Af2)
+                d1 = prod(sz1[1:(end - 1)])
+                d2 = prod(sz2[1:(end - 1)])
+                dc = sz1[end]
+                A = reshape(
+                    reshape(Af1, (d1, dc)) * reshape(Af2, (d2, dc))',
+                    (sz1[1:(end - 1)]..., sz2[1:(end - 1)]...)
+                )
+                A2 = zero(A)
                 for ((f1′, f2′), coeff) in d
-                    for ((f1′′, f2′′), coeff2) in TK.repartition(f1′, f2′, N)
-                        d2[(f1′′, f2′′)] = get(d2, (f1′′, f2′′), zero(coeff)) + coeff2 * coeff
-                    end
-                end
-                for ((f1′, f2′), coeff2) in d2
-                    if f1 == f1′ && f2 == f2′
-                        @test coeff2 ≈ 1
-                    else
-                        @test isapprox(coeff2, 0; atol = 1.0e-12, rtol = 1.0e-12)
-                    end
-                end
-                if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
-                    Af1 = convert(Array, f1)
-                    Af2 = permutedims(convert(Array, f2), [N:-1:1; N + 1])
-                    sz1 = size(Af1)
-                    sz2 = size(Af2)
-                    d1 = prod(sz1[1:(end - 1)])
-                    d2 = prod(sz2[1:(end - 1)])
-                    dc = sz1[end]
-                    A = reshape(
-                        reshape(Af1, (d1, dc)) * reshape(Af2, (d2, dc))',
-                        (sz1[1:(end - 1)]..., sz2[1:(end - 1)]...)
+                    Af1′ = convert(Array, f1′)
+                    Af2′ = permutedims(convert(Array, f2′), [(2N - n):-1:1; 2N - n + 1])
+                    sz1′ = size(Af1′)
+                    sz2′ = size(Af2′)
+                    d1′ = prod(sz1′[1:(end - 1)])
+                    d2′ = prod(sz2′[1:(end - 1)])
+                    dc′ = sz1′[end]
+                    A2 += coeff *
+                        reshape(
+                        reshape(Af1′, (d1′, dc′)) * reshape(Af2′, (d2′, dc′))',
+                        (sz1′[1:(end - 1)]..., sz2′[1:(end - 1)]...)
                     )
-                    A2 = zero(A)
-                    for ((f1′, f2′), coeff) in d
-                        Af1′ = convert(Array, f1′)
-                        Af2′ = permutedims(convert(Array, f2′), [(2N - n):-1:1; 2N - n + 1])
-                        sz1′ = size(Af1′)
-                        sz2′ = size(Af2′)
-                        d1′ = prod(sz1′[1:(end - 1)])
-                        d2′ = prod(sz2′[1:(end - 1)])
-                        dc′ = sz1′[end]
-                        A2 += coeff *
-                            reshape(
-                            reshape(Af1′, (d1′, dc′)) * reshape(Af2′, (d2′, dc′))',
-                            (sz1′[1:(end - 1)]..., sz2′[1:(end - 1)]...)
-                        )
-                    end
-                    @test A ≈ A2
                 end
+                @test A ≈ A2
             end
         end
-        @testset "Double fusion tree $Istr: permutation" begin
-            if BraidingStyle(I) isa SymmetricBraiding
-                for n in 0:(2N)
-                    p = (randperm(2 * N)...,)
-                    p1, p2 = p[1:n], p[(n + 1):(2N)]
-                    ip = invperm(p)
-                    ip1, ip2 = ip[1:N], ip[(N + 1):(2N)]
-
-                    d = @constinferred TK.permute(f1, f2, p1, p2)
-                    @test dim(incoming) ≈
-                        sum(abs2(coef) * dim(f1.coupled) for ((f1, f2), coef) in d)
-                    d2 = Dict{typeof((f1, f2)), valtype(d)}()
-                    for ((f1′, f2′), coeff) in d
-                        d′ = TK.permute(f1′, f2′, ip1, ip2)
-                        for ((f1′′, f2′′), coeff2) in d′
-                            d2[(f1′′, f2′′)] = get(d2, (f1′′, f2′′), zero(coeff)) +
-                                coeff2 * coeff
-                        end
-                    end
-                    for ((f1′, f2′), coeff2) in d2
-                        if f1 == f1′ && f2 == f2′
-                            @test coeff2 ≈ 1
-                        else
-                            @test abs(coeff2) < 1.0e-12
-                        end
-                    end
-
-                    if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
-                        A = convert(Array, (f1, f2))
-                        Ap = permutedims(A, (p1..., p2...))
-                        A2 = zero(Ap)
-                        for ((f1′, f2′), coeff) in d
-                            A2 .+= coeff .* convert(Array, (f1′, f2′))
-                        end
-                        @test Ap ≈ A2
-                    end
-                end
-            end
-        end
-        @testset "Double fusion tree $Istr: transposition" begin
+    end
+    @testset "Double fusion tree $Istr: permutation" begin
+        if BraidingStyle(I) isa SymmetricBraiding
             for n in 0:(2N)
-                i0 = rand(1:(2N))
-                p = mod1.(i0 .+ (1:(2N)), 2N)
-                ip = mod1.(-i0 .+ (1:(2N)), 2N)
-                p′ = tuple(getindex.(Ref(vcat(1:N, (2N):-1:(N + 1))), p)...)
-                p1, p2 = p′[1:n], p′[(2N):-1:(n + 1)]
-                ip′ = tuple(getindex.(Ref(vcat(1:n, (2N):-1:(n + 1))), ip)...)
-                ip1, ip2 = ip′[1:N], ip′[(2N):-1:(N + 1)]
+                p = (randperm(2 * N)...,)
+                p1, p2 = p[1:n], p[(n + 1):(2N)]
+                ip = invperm(p)
+                ip1, ip2 = ip[1:N], ip[(N + 1):(2N)]
 
-                d = @constinferred transpose(f1, f2, p1, p2)
+                d = @constinferred TK.permute(f1, f2, p1, p2)
                 @test dim(incoming) ≈
                     sum(abs2(coef) * dim(f1.coupled) for ((f1, f2), coef) in d)
                 d2 = Dict{typeof((f1, f2)), valtype(d)}()
                 for ((f1′, f2′), coeff) in d
-                    d′ = transpose(f1′, f2′, ip1, ip2)
+                    d′ = TK.permute(f1′, f2′, ip1, ip2)
                     for ((f1′′, f2′′), coeff2) in d′
-                        d2[(f1′′, f2′′)] = get(d2, (f1′′, f2′′), zero(coeff)) + coeff2 * coeff
+                        d2[(f1′′, f2′′)] = get(d2, (f1′′, f2′′), zero(coeff)) +
+                            coeff2 * coeff
                     end
                 end
                 for ((f1′, f2′), coeff2) in d2
@@ -535,68 +509,107 @@ using .TestSetup
                     end
                 end
 
-                if BraidingStyle(I) isa Bosonic
-                    d3 = permute(f1, f2, p1, p2)
-                    for (f1′, f2′) in union(keys(d), keys(d3))
-                        coeff1 = get(d, (f1′, f2′), zero(valtype(d)))
-                        coeff3 = get(d3, (f1′, f2′), zero(valtype(d3)))
-                        @test isapprox(coeff1, coeff3; atol = 1.0e-12)
-                    end
-                end
-
                 if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
-                    Af1 = convert(Array, f1)
-                    Af2 = convert(Array, f2)
-                    sz1 = size(Af1)
-                    sz2 = size(Af2)
-                    d1 = prod(sz1[1:(end - 1)])
-                    d2 = prod(sz2[1:(end - 1)])
-                    dc = sz1[end]
-                    A = reshape(
-                        reshape(Af1, (d1, dc)) * reshape(Af2, (d2, dc))',
-                        (sz1[1:(end - 1)]..., sz2[1:(end - 1)]...)
-                    )
+                    A = convert(Array, (f1, f2))
                     Ap = permutedims(A, (p1..., p2...))
                     A2 = zero(Ap)
                     for ((f1′, f2′), coeff) in d
-                        Af1′ = convert(Array, f1′)
-                        Af2′ = convert(Array, f2′)
-                        sz1′ = size(Af1′)
-                        sz2′ = size(Af2′)
-                        d1′ = prod(sz1′[1:(end - 1)])
-                        d2′ = prod(sz2′[1:(end - 1)])
-                        dc′ = sz1′[end]
-                        A2 += coeff * reshape(
-                            reshape(Af1′, (d1′, dc′)) *
-                                reshape(Af2′, (d2′, dc′))',
-                            (sz1′[1:(end - 1)]..., sz2′[1:(end - 1)]...)
-                        )
+                        A2 .+= coeff .* convert(Array, (f1′, f2′))
                     end
                     @test Ap ≈ A2
                 end
             end
         end
-        @testset "Double fusion tree $Istr: planar trace" begin
-            d1 = transpose(f1, f1, (N + 1, 1:N..., ((2N):-1:(N + 3))...), (N + 2,))
-            f1front, = TK.split(f1, N - 1)
-            T = sectorscalartype(I)
-            d2 = Dict{typeof((f1front, f1front)), T}()
-            for ((f1′, f2′), coeff′) in d1
-                for ((f1′′, f2′′), coeff′′) in
-                    TK.planar_trace(
-                        f1′, f2′, (2:N...,), (1, ((2N):-1:(N + 3))...), (N + 1,),
-                        (N + 2,)
-                    )
-                    coeff = coeff′ * coeff′′
-                    d2[(f1′′, f2′′)] = get(d2, (f1′′, f2′′), zero(coeff)) + coeff
+    end
+    @testset "Double fusion tree $Istr: transposition" begin
+        for n in 0:(2N)
+            i0 = rand(1:(2N))
+            p = mod1.(i0 .+ (1:(2N)), 2N)
+            ip = mod1.(-i0 .+ (1:(2N)), 2N)
+            p′ = tuple(getindex.(Ref(vcat(1:N, (2N):-1:(N + 1))), p)...)
+            p1, p2 = p′[1:n], p′[(2N):-1:(n + 1)]
+            ip′ = tuple(getindex.(Ref(vcat(1:n, (2N):-1:(n + 1))), ip)...)
+            ip1, ip2 = ip′[1:N], ip′[(2N):-1:(N + 1)]
+
+            d = @constinferred transpose(f1, f2, p1, p2)
+            @test dim(incoming) ≈
+                sum(abs2(coef) * dim(f1.coupled) for ((f1, f2), coef) in d)
+            d2 = Dict{typeof((f1, f2)), valtype(d)}()
+            for ((f1′, f2′), coeff) in d
+                d′ = transpose(f1′, f2′, ip1, ip2)
+                for ((f1′′, f2′′), coeff2) in d′
+                    d2[(f1′′, f2′′)] = get(d2, (f1′′, f2′′), zero(coeff)) + coeff2 * coeff
                 end
             end
-            for ((f1_, f2_), coeff) in d2
-                if (f1_, f2_) == (f1front, f1front)
-                    @test coeff ≈ dim(f1.coupled) / dim(f1front.coupled)
+            for ((f1′, f2′), coeff2) in d2
+                if f1 == f1′ && f2 == f2′
+                    @test coeff2 ≈ 1
                 else
-                    @test abs(coeff) < 1.0e-12
+                    @test abs(coeff2) < 1.0e-12
                 end
+            end
+
+            if BraidingStyle(I) isa Bosonic
+                d3 = permute(f1, f2, p1, p2)
+                for (f1′, f2′) in union(keys(d), keys(d3))
+                    coeff1 = get(d, (f1′, f2′), zero(valtype(d)))
+                    coeff3 = get(d3, (f1′, f2′), zero(valtype(d3)))
+                    @test isapprox(coeff1, coeff3; atol = 1.0e-12)
+                end
+            end
+
+            if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
+                Af1 = convert(Array, f1)
+                Af2 = convert(Array, f2)
+                sz1 = size(Af1)
+                sz2 = size(Af2)
+                d1 = prod(sz1[1:(end - 1)])
+                d2 = prod(sz2[1:(end - 1)])
+                dc = sz1[end]
+                A = reshape(
+                    reshape(Af1, (d1, dc)) * reshape(Af2, (d2, dc))',
+                    (sz1[1:(end - 1)]..., sz2[1:(end - 1)]...)
+                )
+                Ap = permutedims(A, (p1..., p2...))
+                A2 = zero(Ap)
+                for ((f1′, f2′), coeff) in d
+                    Af1′ = convert(Array, f1′)
+                    Af2′ = convert(Array, f2′)
+                    sz1′ = size(Af1′)
+                    sz2′ = size(Af2′)
+                    d1′ = prod(sz1′[1:(end - 1)])
+                    d2′ = prod(sz2′[1:(end - 1)])
+                    dc′ = sz1′[end]
+                    A2 += coeff * reshape(
+                        reshape(Af1′, (d1′, dc′)) *
+                            reshape(Af2′, (d2′, dc′))',
+                        (sz1′[1:(end - 1)]..., sz2′[1:(end - 1)]...)
+                    )
+                end
+                @test Ap ≈ A2
+            end
+        end
+    end
+    @testset "Double fusion tree $Istr: planar trace" begin
+        d1 = transpose(f1, f1, (N + 1, 1:N..., ((2N):-1:(N + 3))...), (N + 2,))
+        f1front, = TK.split(f1, N - 1)
+        T = sectorscalartype(I)
+        d2 = Dict{typeof((f1front, f1front)), T}()
+        for ((f1′, f2′), coeff′) in d1
+            for ((f1′′, f2′′), coeff′′) in
+                TK.planar_trace(
+                    f1′, f2′, (2:N...,), (1, ((2N):-1:(N + 3))...), (N + 1,),
+                    (N + 2,)
+                )
+                coeff = coeff′ * coeff′′
+                d2[(f1′′, f2′′)] = get(d2, (f1′′, f2′′), zero(coeff)) + coeff
+            end
+        end
+        for ((f1_, f2_), coeff) in d2
+            if (f1_, f2_) == (f1front, f1front)
+                @test coeff ≈ dim(f1.coupled) / dim(f1front.coupled)
+            else
+                @test abs(coeff) < 1.0e-12
             end
         end
     end
