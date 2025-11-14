@@ -18,8 +18,7 @@ import MatrixAlgebraKit as MAK
 using MatrixAlgebraKit: AbstractAlgorithm, TruncatedAlgorithm, DiagonalAlgorithm
 using MatrixAlgebraKit: TruncationStrategy, NoTruncation, TruncationByValue,
     TruncationByError, TruncationIntersection, TruncationByFilter, TruncationByOrder
-using MatrixAlgebraKit: left_orth_polar!, right_orth_polar!, left_orth_svd!,
-    right_orth_svd!, left_null_svd!, right_null_svd!, diagview
+using MatrixAlgebraKit: diagview, isisometric
 
 include("utility.jl")
 include("matrixalgebrakit.jl")
@@ -30,9 +29,9 @@ include("pullbacks.jl")
 
 TensorKit.one!(A::AbstractMatrix) = MatrixAlgebraKit.one!(A)
 
-function MatrixAlgebraKit.isisometry(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple)
+function MatrixAlgebraKit.isisometric(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple)
     t = permute(t, (p₁, p₂); copy = false)
-    return isisometry(t)
+    return isisometric(t)
 end
 
 #------------------------------#
