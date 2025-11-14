@@ -26,7 +26,7 @@ end
 for f! in (
         :qr_compact!, :qr_full!, :lq_compact!, :lq_full!,
         :eig_full!, :eigh_full!, :svd_compact!, :svd_full!,
-        :left_polar!, :right_polar!, :left_orth!, :right_orth!,
+        :left_polar!, :right_polar!
     )
     @eval function MAK.$f!(t::AbstractTensorMap, F, alg::AbstractAlgorithm)
         MAK.check_input($f!, t, F, alg)
@@ -44,6 +44,43 @@ for f! in (
         return F
     end
 end
+
+for alg in (MAK.LeftOrthAlgorithm{:qr}, MAK.LeftOrthAlgorithm{:svd}, MAK.LeftOrthAlgorithm{:polar})
+    @eval begin
+        function MAK.left_orth!(t::AbstractTensorMap, F, alg::$alg)
+            MAK.check_input(left_orth!, t, F, alg)
+
+            foreachblock(t, F...) do _, bs
+                factors = Base.tail(bs)
+                factors′ = left_orth!(first(bs), factors, alg)
+                # deal with the case where the output is not in-place
+                for (f′, f) in zip(factors′, factors)
+                    f′ === f || copy!(f, f′)
+                end
+                return nothing
+            end
+            return F
+        end
+    end
+end
+
+for alg in (MAK.RightOrthAlgorithm{:lq}, MAK.RightOrthAlgorithm{:svd}, MAK.RightOrthAlgorithm{:polar})
+    @eval function MAK.right_orth!(t::AbstractTensorMap, F, alg::$alg)
+        MAK.check_input(right_orth!, t, F, alg)
+
+        foreachblock(t, F...) do _, bs
+            factors = Base.tail(bs)
+            factors′ = right_orth!(first(bs), factors, alg)
+            # deal with the case where the output is not in-place
+            for (f′, f) in zip(factors′, factors)
+                f′ === f || copy!(f, f′)
+            end
+            return nothing
+        end
+        return F
+    end
+end
+
 
 # Handle these separately because single output instead of tuple
 for f! in (:qr_null!, :lq_null!)
@@ -464,6 +501,18 @@ function MAK.check_input(::typeof(left_orth!), t::AbstractTensorMap, VC, ::Abstr
     return nothing
 end
 
+function MAK.check_input(::typeof(left_orth!), t::AbstractTensorMap, VC, alg::MAK.LeftOrthAlgorithm{:qr})
+    return MAK.check_input(qr_compact!, t, VC, alg.alg)
+end
+
+function MAK.check_input(::typeof(left_orth!), t::AbstractTensorMap, VC, alg::MAK.LeftOrthAlgorithm{:svd})
+    return MAK.check_input(svd_compact!, t, VC, alg.alg)
+end
+
+function MAK.check_input(::typeof(left_orth!), t::AbstractTensorMap, VC, alg::MAK.LeftOrthAlgorithm{:polar})
+    return MAK.check_input(left_polar!, t, VC, alg.alg)
+end
+
 function MAK.check_input(::typeof(right_orth!), t::AbstractTensorMap, CVᴴ, ::AbstractAlgorithm)
     C, Vᴴ = CVᴴ
 
@@ -477,6 +526,18 @@ function MAK.check_input(::typeof(right_orth!), t::AbstractTensorMap, CVᴴ, ::A
     @check_space(Vᴴ, V_C ← domain(t))
 
     return nothing
+end
+
+function MAK.check_input(::typeof(right_orth!), t::AbstractTensorMap, VC, alg::MAK.RightOrthAlgorithm{:lq})
+    return MAK.check_input(lq_compact!, t, VC, alg.alg)
+end
+
+function MAK.check_input(::typeof(right_orth!), t::AbstractTensorMap, VC, alg::MAK.RightOrthAlgorithm{:svd})
+    return MAK.check_input(svd_compact!, t, VC, alg.alg)
+end
+
+function MAK.check_input(::typeof(right_orth!), t::AbstractTensorMap, VC, alg::MAK.RightOrthAlgorithm{:polar})
+    return MAK.check_input(right_polar!, t, VC, alg.alg)
 end
 
 function MAK.initialize_output(::typeof(left_orth!), t::AbstractTensorMap)
@@ -501,44 +562,16 @@ end
 function MAK.left_orth!(
         t::AbstractTensorMap;
         trunc::TruncationStrategy = notrunc(),
-        kind = trunc == notrunc() ? :qr : :svd,
-        alg_qr = (; positive = true), alg_polar = (;), alg_svd = (;)
+        alg::AbstractAlgorithm = (trunc == notrunc()) ? MAK.select_algorithm(left_orth!, t, Val(:qr)) : MAK.select_algorithm(left_orth!, t, Val(:svd); trunc)
     )
-    trunc == notrunc() || kind === :svd ||
-        throw(ArgumentError("truncation not supported for left_orth with kind = $kind"))
-
-    return if kind === :qr
-        alg_qr isa NamedTuple ? qr_compact!(t; alg_qr...) : qr_compact!(t; alg = alg_qr)
-    elseif kind === :polar
-        alg_polar isa NamedTuple ? left_orth_polar!(t; alg_polar...) :
-            left_orth_polar!(t; alg = alg_polar)
-    elseif kind === :svd
-        alg_svd isa NamedTuple ? left_orth_svd!(t; trunc, alg_svd...) :
-            left_orth_svd!(t; trunc, alg = alg_svd)
-    else
-        throw(ArgumentError(lazy"`left_orth!` received unknown value `kind = $kind`"))
-    end
+    MAK.left_orth!(t, MAK.initialize_output(left_orth!, t, alg), alg)
 end
 function MAK.right_orth!(
         t::AbstractTensorMap;
         trunc::TruncationStrategy = notrunc(),
-        kind = trunc == notrunc() ? :lq : :svd,
-        alg_lq = (; positive = true), alg_polar = (;), alg_svd = (;)
+        alg::AbstractAlgorithm = (trunc == notrunc()) ? MAK.select_algorithm(right_orth!, t, Val(:lq)) : MAK.select_algorithm(right_orth!, t, Val(:svd); trunc)
     )
-    trunc == notrunc() || kind === :svd ||
-        throw(ArgumentError("truncation not supported for right_orth with kind = $kind"))
-
-    return if kind === :lq
-        alg_lq isa NamedTuple ? lq_compact!(t; alg_lq...) : lq_compact!(t; alg = alg_lq)
-    elseif kind === :polar
-        alg_polar isa NamedTuple ? right_orth_polar!(t; alg_polar...) :
-            right_orth_polar!(t; alg = alg_polar)
-    elseif kind === :svd
-        alg_svd isa NamedTuple ? right_orth_svd!(t; trunc, alg_svd...) :
-            right_orth_svd!(t; trunc, alg = alg_svd)
-    else
-        throw(ArgumentError(lazy"`right_orth!` received unknown value `kind = $kind`"))
-    end
+    MAK.right_orth!(t, MAK.initialize_output(right_orth!, t, alg), alg)
 end
 
 # Nullspace
