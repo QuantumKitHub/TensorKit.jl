@@ -26,8 +26,7 @@ end
 for f! in (
         :qr_compact!, :qr_full!, :lq_compact!, :lq_full!,
         :eig_full!, :eigh_full!, :svd_compact!, :svd_full!,
-        :left_polar!, :left_orth_polar!, :right_polar!, :right_orth_polar!,
-        :left_orth!, :right_orth!,
+        :left_polar!, :right_polar!, :left_orth!, :right_orth!,
     )
     @eval function MAK.$f!(t::AbstractTensorMap, F, alg::AbstractAlgorithm)
         MAK.check_input($f!, t, F, alg)
@@ -417,26 +416,6 @@ function MAK.check_input(::typeof(left_polar!), t::AbstractTensorMap, WP, ::Abst
     return nothing
 end
 
-function MAK.check_input(::typeof(left_orth_polar!), t::AbstractTensorMap, WP, ::AbstractAlgorithm)
-    codomain(t) ≿ domain(t) ||
-        throw(ArgumentError("Polar decomposition requires `codomain(t) ≿ domain(t)`"))
-
-    W, P = WP
-    @assert W isa AbstractTensorMap
-    @assert P isa AbstractTensorMap
-
-    # scalartype checks
-    @check_scalar W t
-    @check_scalar P t
-
-    # space checks
-    VW = fuse(domain(t))
-    @check_space(W, codomain(t) ← VW)
-    @check_space(P, VW ← domain(t))
-
-    return nothing
-end
-
 function MAK.initialize_output(::typeof(left_polar!), t::AbstractTensorMap, ::AbstractAlgorithm)
     W = similar(t, space(t))
     P = similar(t, domain(t) ← domain(t))
@@ -458,26 +437,6 @@ function MAK.check_input(::typeof(right_polar!), t::AbstractTensorMap, PWᴴ, ::
     # space checks
     @check_space(P, codomain(t) ← codomain(t))
     @check_space(Wᴴ, space(t))
-
-    return nothing
-end
-
-function MAK.check_input(::typeof(right_orth_polar!), t::AbstractTensorMap, PWᴴ, ::AbstractAlgorithm)
-    codomain(t) ≾ domain(t) ||
-        throw(ArgumentError("Polar decomposition requires `domain(t) ≿ codomain(t)`"))
-
-    P, Wᴴ = PWᴴ
-    @assert P isa AbstractTensorMap
-    @assert Wᴴ isa AbstractTensorMap
-
-    # scalartype checks
-    @check_scalar P t
-    @check_scalar Wᴴ t
-
-    # space checks
-    VW = fuse(codomain(t))
-    @check_space(P, codomain(t) ← VW)
-    @check_space(Wᴴ, VW ← domain(t))
 
     return nothing
 end
@@ -582,36 +541,6 @@ function MAK.right_orth!(
     end
 end
 
-function MAK.left_orth_polar!(t::AbstractTensorMap; alg = nothing, kwargs...)
-    alg′ = MAK.select_algorithm(left_polar!, t, alg; kwargs...)
-    VC = MAK.initialize_output(left_orth!, t)
-    return left_orth_polar!(t, VC, alg′)
-end
-function MAK.left_orth_polar!(t::AbstractTensorMap, VC, alg)
-    alg′ = MAK.select_algorithm(left_polar!, t, alg)
-    return left_orth_polar!(t, VC, alg′)
-end
-function MAK.right_orth_polar!(t::AbstractTensorMap; alg = nothing, kwargs...)
-    alg′ = MAK.select_algorithm(right_polar!, t, alg; kwargs...)
-    CVᴴ = MAK.initialize_output(right_orth!, t)
-    return right_orth_polar!(t, CVᴴ, alg′)
-end
-function MAK.right_orth_polar!(t::AbstractTensorMap, CVᴴ, alg)
-    alg′ = MAK.select_algorithm(right_polar!, t, alg)
-    return right_orth_polar!(t, CVᴴ, alg′)
-end
-
-function MAK.left_orth_svd!(t::AbstractTensorMap; trunc = notrunc(), kwargs...)
-    U, S, Vᴴ = trunc == notrunc() ? svd_compact!(t; kwargs...) :
-        svd_trunc!(t; trunc, kwargs...)
-    return U, lmul!(S, Vᴴ)
-end
-function MAK.right_orth_svd!(t::AbstractTensorMap; trunc = notrunc(), kwargs...)
-    U, S, Vᴴ = trunc == notrunc() ? svd_compact!(t; kwargs...) :
-        svd_trunc!(t; trunc, kwargs...)
-    return rmul!(U, S), Vᴴ
-end
-
 # Nullspace
 # ---------
 function MAK.check_input(::typeof(left_null!), t::AbstractTensorMap, N, ::AbstractAlgorithm)
@@ -649,12 +578,6 @@ function MAK.initialize_output(::typeof(right_null!), t::AbstractTensorMap)
     V_N = ⊖(fuse(domain(t)), V_Q)
     N = similar(t, V_N ← domain(t))
     return N
-end
-
-for (f!, f_svd!) in zip((:left_null!, :right_null!), (:left_null_svd!, :right_null_svd!))
-    @eval function MAK.$f_svd!(t::AbstractTensorMap, N, alg, ::Nothing = nothing)
-        return $f!(t, N; alg_svd = alg)
-    end
 end
 
 # Projections
