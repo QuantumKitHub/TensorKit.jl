@@ -69,6 +69,24 @@ for (left_f!, right_f!) in zip(
     end
 end
 
+for (left_f, right_f) in zip(
+        (:qr_full, :qr_compact, :left_polar, :left_orth),
+        (:lq_full, :lq_compact, :right_polar, :right_orth)
+    )
+    @eval function MAK.$left_f(t::AdjointTensorMap; kwargs...)
+        return reverse(adjoint.($right_f(adjoint(t); kwargs...)))
+    end
+    @eval function MAK.$right_f(t::AdjointTensorMap; kwargs...)
+        return reverse(adjoint.($left_f(adjoint(t); kwargs...)))
+    end
+end
+
+function MAK.eig_full(t::AdjointTensorMap; kwargs...)
+    DV = eig_full(adjoint(t); kwargs...)
+    return (DV[1], adjoint(DV[2]))
+end
+
+
 # 3-arg functions
 for f! in (:svd_full!, :svd_compact!, :svd_trunc!)
     @eval function MAK.copy_input(::typeof($f!), t::AdjointTensorMap)
