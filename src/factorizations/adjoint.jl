@@ -52,10 +52,12 @@ function MAK.is_right_isometric(t::AdjointTensorMap; kwargs...)
 end
 
 # 2-arg functions
-for (left_f!, right_f!) in zip(
-        (:qr_full!, :qr_compact!, :left_polar!),
-        (:lq_full!, :lq_compact!, :right_polar!)
+for (left_f, right_f) in zip(
+        (:qr_full, :qr_compact, :left_polar),
+        (:lq_full, :lq_compact, :right_polar)
     )
+    left_f! = Symbol(left_f, :!)
+    right_f! = Symbol(right_f, :!)
     @eval function MAK.copy_input(::typeof($left_f!), t::AdjointTensorMap)
         return adjoint(MAK.copy_input($right_f!, adjoint(t)))
     end
@@ -74,26 +76,10 @@ for (left_f!, right_f!) in zip(
         return reverse(adjoint.(MAK.initialize_output($left_f!, adjoint(t), _adjoint(alg))))
     end
 
-    @eval function MAK.$left_f!(t::AdjointTensorMap, F, alg::AbstractAlgorithm)
+    @eval MAK.$left_f!(t::AdjointTensorMap, F, alg::AbstractAlgorithm) =
         $right_f!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
-        return F
-    end
-    @eval function MAK.$right_f!(t::AdjointTensorMap, F, alg::AbstractAlgorithm)
+    @eval MAK.$right_f!(t::AdjointTensorMap, F, alg::AbstractAlgorithm) =
         $left_f!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
-        return F
-    end
-end
-
-for (left_f, right_f) in zip(
-        (:qr_full, :qr_compact, :left_polar),
-        (:lq_full, :lq_compact, :right_polar)
-    )
-    @eval function MAK.$left_f(t::AdjointTensorMap; kwargs...)
-        return reverse(adjoint.($right_f(adjoint(t); kwargs...)))
-    end
-    @eval function MAK.$right_f(t::AdjointTensorMap; kwargs...)
-        return reverse(adjoint.($left_f(adjoint(t); kwargs...)))
-    end
 end
 
 # 3-arg functions
