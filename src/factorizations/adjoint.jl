@@ -9,6 +9,21 @@ _adjoint(alg::MAK.LAPACK_HouseholderRQ) = MAK.LAPACK_HouseholderQL(; alg.kwargs.
 _adjoint(alg::MAK.PolarViaSVD) = MAK.PolarViaSVD(_adjoint(alg.svdalg))
 _adjoint(alg::AbstractAlgorithm) = alg
 
+for f in
+    [
+        :svd_compact, :svd_full, :svd_trunc, :svd_vals, :qr_compact, :qr_full, :qr_null,
+        :lq_compact, :lq_full, :lq_null, :eig_full, :eig_trunc, :eig_vals, :eigh_full,
+        :eigh_trunc, :eigh_vals, :left_polar, :right_polar,
+        :project_hermitian, :project_antihermitian, :project_isometric,
+    ]
+    f! = Symbol(f, :!)
+    # just return the algorithm for the parent type since we are mapping this with
+    # `_adjoint` afterwards anyways.
+    # TODO: properly handle these cases
+    @eval MAK.default_algorithm(::typeof($f!), ::Type{T}; kwargs...) where {T <: AdjointTensorMap} =
+        MAK.default_algorithm($f!, TensorKit.parenttype(T); kwargs...)
+end
+
 # 1-arg functions
 function MAK.initialize_output(::typeof(left_null!), t::AdjointTensorMap, alg::AbstractAlgorithm)
     return adjoint(MAK.initialize_output(right_null!, adjoint(t), _adjoint(alg)))
@@ -38,8 +53,8 @@ end
 
 # 2-arg functions
 for (left_f!, right_f!) in zip(
-        (:qr_full!, :qr_compact!, :left_polar!, :left_orth!),
-        (:lq_full!, :lq_compact!, :right_polar!, :right_orth!)
+        (:qr_full!, :qr_compact!, :left_polar!),
+        (:lq_full!, :lq_compact!, :right_polar!)
     )
     @eval function MAK.copy_input(::typeof($left_f!), t::AdjointTensorMap)
         return adjoint(MAK.copy_input($right_f!, adjoint(t)))
@@ -70,8 +85,8 @@ for (left_f!, right_f!) in zip(
 end
 
 for (left_f, right_f) in zip(
-        (:qr_full, :qr_compact, :left_polar, :left_orth),
-        (:lq_full, :lq_compact, :right_polar, :right_orth)
+        (:qr_full, :qr_compact, :left_polar),
+        (:lq_full, :lq_compact, :right_polar)
     )
     @eval function MAK.$left_f(t::AdjointTensorMap; kwargs...)
         return reverse(adjoint.($right_f(adjoint(t); kwargs...)))
