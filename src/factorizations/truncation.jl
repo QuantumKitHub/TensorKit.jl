@@ -76,9 +76,7 @@ function MAK.truncate(
 end
 
 function MAK.truncate(
-        ::typeof(left_null!),
-        (U, S)::Tuple{AbstractTensorMap, AbstractTensorMap},
-        strategy::MatrixAlgebraKit.TruncationStrategy
+        ::typeof(left_null!), (U, S)::NTuple{2, AbstractTensorMap}, strategy::TruncationStrategy
     )
     extended_S = SectorDict(
         c => vcat(diagview(b), zeros(eltype(b), max(0, size(b, 2) - size(b, 1))))
@@ -89,6 +87,40 @@ function MAK.truncate(
     Ũ = similar(U, codomain(U) ← V_truncated)
     truncate_domain!(Ũ, U, ind)
     return Ũ, ind
+end
+function MAK.truncate(
+        ::typeof(right_null!), (S, Vᴴ)::NTuple{2, AbstractTensorMap}, strategy::TruncationStrategy
+    )
+    extended_S = SectorDict(
+        c => vcat(diagview(b), zeros(eltype(b), max(0, size(b, 1) - size(b, 2))))
+            for (c, b) in blocks(S)
+    )
+    ind = MAK.findtruncated(extended_S, strategy)
+    V_truncated = truncate_space(space(Vᴴ, 1), ind)
+    Ṽᴴ = similar(Vᴴ, V_truncated ← domain(Vᴴ))
+    truncate_codomain!(Ṽᴴ, Vᴴ, ind)
+    return Ṽᴴ, ind
+end
+
+# special case `NoTruncation` for null: should keep exact zeros due to rectangularity
+# need to specialize to avoid ambiguity with special case in MatrixAlgebraKit
+function MAK.truncate(
+        ::typeof(left_null!), (U, S)::NTuple{2, AbstractTensorMap}, strategy::NoTruncation
+    )
+    ind = SectorDict(c => (size(b, 2) + 1):size(b, 1) for (c, b) in blocks(S))
+    V_truncated = truncate_space(space(S, 1), ind)
+    Ũ = similar(U, codomain(U) ← V_truncated)
+    truncate_domain!(Ũ, U, ind)
+    return Ũ, ind
+end
+function MAK.truncate(
+        ::typeof(right_null!), (S, Vᴴ)::NTuple{2, AbstractTensorMap}, strategy::NoTruncation
+    )
+    ind = SectorDict(c => (size(b, 1) + 1):size(b, 2) for (c, b) in blocks(S))
+    V_truncated = truncate_space(space(Vᴴ, 1), ind)
+    Ṽᴴ = similar(Vᴴ, V_truncated ← domain(Vᴴ))
+    truncate_codomain!(Ṽᴴ, Vᴴ, ind)
+    return Ṽᴴ, ind
 end
 
 for f! in (:eig_trunc!, :eigh_trunc!)
