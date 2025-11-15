@@ -200,7 +200,7 @@ for V in spacelist
 
                 c, vᴴ = @constinferred right_orth(t; alg = :svd)
                 @test c * vᴴ ≈ t
-                @test isisometric(v; side = :right)
+                @test isisometric(vᴴ; side = :right)
 
                 N = @constinferred left_null(t; alg = :svd)
                 @test isisometric(N)
