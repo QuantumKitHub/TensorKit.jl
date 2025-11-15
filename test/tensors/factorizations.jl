@@ -235,48 +235,55 @@ for V in spacelist
 
                 @constinferred normalize!(t)
 
-                U, S, Vᴴ = @constinferred svd_trunc(t; trunc = notrunc())
+                U, S, Vᴴ, ϵ = @constinferred svd_trunc(t; trunc = notrunc())
                 @test U * S * Vᴴ ≈ t
+                @test ϵ ≈ 0
                 @test isisometric(U)
                 @test isisometric(Vᴴ; side = :right)
 
                 trunc = truncrank(dim(domain(S)) ÷ 2)
-                U1, S1, Vᴴ1 = @constinferred svd_trunc(t; trunc)
+                U1, S1, Vᴴ1, ϵ1 = @constinferred svd_trunc(t; trunc)
                 @test t * Vᴴ1' ≈ U1 * S1
                 @test isisometric(U1)
                 @test isisometric(Vᴴ1; side = :right)
+                @test norm(t - U1 * S1 * Vᴴ1) ≈ ϵ1 atol = eps(real(T))^(4 / 5)
                 @test dim(domain(S1)) <= trunc.howmany
 
                 λ = minimum(minimum, values(LinearAlgebra.diag(S1)))
                 trunc = trunctol(; atol = λ - 10eps(λ))
-                U2, S2, Vᴴ2 = @constinferred svd_trunc(t; trunc)
+                U2, S2, Vᴴ2, ϵ2 = @constinferred svd_trunc(t; trunc)
                 @test t * Vᴴ2' ≈ U2 * S2
                 @test isisometric(U2)
                 @test isisometric(Vᴴ2; side = :right)
+                @test norm(t - U2 * S2 * Vᴴ2) ≈ ϵ2 atol = eps(real(T))^(4 / 5)
                 @test minimum(minimum, values(LinearAlgebra.diag(S1))) >= λ
                 @test U2 ≈ U1
                 @test S2 ≈ S1
                 @test Vᴴ2 ≈ Vᴴ1
+                @test ϵ1 ≈ ϵ2
 
                 trunc = truncspace(space(S2, 1))
-                U3, S3, Vᴴ3 = @constinferred svd_trunc(t; trunc)
+                U3, S3, Vᴴ3, ϵ3 = @constinferred svd_trunc(t; trunc)
                 @test t * Vᴴ3' ≈ U3 * S3
                 @test isisometric(U3)
                 @test isisometric(Vᴴ3; side = :right)
+                @test norm(t - U3 * S3 * Vᴴ3) ≈ ϵ3 atol = eps(real(T))^(4 / 5)
                 @test space(S3, 1) ≾ space(S2, 1)
 
-                trunc = truncerror(; atol = 0.5)
-                U4, S4, Vᴴ4 = @constinferred svd_trunc(t; trunc)
+                trunc = truncerror(; atol = ϵ2)
+                U4, S4, Vᴴ4, ϵ4 = @constinferred svd_trunc(t; trunc)
                 @test t * Vᴴ4' ≈ U4 * S4
                 @test isisometric(U4)
                 @test isisometric(Vᴴ4; side = :right)
-                @test norm(t - U4 * S4 * Vᴴ4) <= 0.5
+                @test norm(t - U4 * S4 * Vᴴ4) ≈ ϵ4 atol = eps(real(T))^(4 / 5)
+                @test ϵ4 ≤ ϵ2
 
                 trunc = truncrank(dim(domain(S)) ÷ 2) & trunctol(; atol = λ - 10eps(λ))
-                U5, S5, Vᴴ5 = @constinferred svd_trunc(t; trunc)
+                U5, S5, Vᴴ5, ϵ5 = @constinferred svd_trunc(t; trunc)
                 @test t * Vᴴ5' ≈ U5 * S5
                 @test isisometric(U5)
                 @test isisometric(Vᴴ5; side = :right)
+                @test norm(t - U5 * S5 * Vᴴ5) ≈ ϵ5 atol = eps(real(T))^(4 / 5)
                 @test minimum(minimum, values(LinearAlgebra.diag(S5))) >= λ
                 @test dim(domain(S5)) ≤ dim(domain(S)) ÷ 2
             end
