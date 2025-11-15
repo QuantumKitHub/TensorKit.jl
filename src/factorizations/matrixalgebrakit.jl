@@ -26,7 +26,7 @@ end
 for f! in (
         :qr_compact!, :qr_full!, :lq_compact!, :lq_full!,
         :eig_full!, :eigh_full!, :svd_compact!, :svd_full!,
-        :left_polar!, :right_polar!
+        :left_polar!, :right_polar!,
     )
     @eval function MAK.$f!(t::AbstractTensorMap, F, alg::AbstractAlgorithm)
         MAK.check_input($f!, t, F, alg)
@@ -44,43 +44,6 @@ for f! in (
         return F
     end
 end
-
-for alg in (MAK.LeftOrthAlgorithm{:qr}, MAK.LeftOrthAlgorithm{:svd}, MAK.LeftOrthAlgorithm{:polar})
-    @eval begin
-        function MAK.left_orth!(t::AbstractTensorMap, F, alg::$alg)
-            MAK.check_input(left_orth!, t, F, alg)
-
-            foreachblock(t, F...) do _, bs
-                factors = Base.tail(bs)
-                factors′ = left_orth!(first(bs), factors, alg)
-                # deal with the case where the output is not in-place
-                for (f′, f) in zip(factors′, factors)
-                    f′ === f || copy!(f, f′)
-                end
-                return nothing
-            end
-            return F
-        end
-    end
-end
-
-for alg in (MAK.RightOrthAlgorithm{:lq}, MAK.RightOrthAlgorithm{:svd}, MAK.RightOrthAlgorithm{:polar})
-    @eval function MAK.right_orth!(t::AbstractTensorMap, F, alg::$alg)
-        MAK.check_input(right_orth!, t, F, alg)
-
-        foreachblock(t, F...) do _, bs
-            factors = Base.tail(bs)
-            factors′ = right_orth!(first(bs), factors, alg)
-            # deal with the case where the output is not in-place
-            for (f′, f) in zip(factors′, factors)
-                f′ === f || copy!(f, f′)
-            end
-            return nothing
-        end
-        return F
-    end
-end
-
 
 # Handle these separately because single output instead of tuple
 for f! in (:qr_null!, :lq_null!)
@@ -482,135 +445,6 @@ function MAK.initialize_output(::typeof(right_polar!), t::AbstractTensorMap, ::A
     P = similar(t, codomain(t) ← codomain(t))
     Wᴴ = similar(t, space(t))
     return P, Wᴴ
-end
-
-# Orthogonalization
-# -----------------
-function MAK.check_input(::typeof(left_orth!), t::AbstractTensorMap, VC, ::AbstractAlgorithm)
-    V, C = VC
-
-    # scalartype checks
-    @check_scalar V t
-    isnothing(C) || @check_scalar C t
-
-    # space checks
-    V_C = infimum(fuse(codomain(t)), fuse(domain(t)))
-    @check_space(V, codomain(t) ← V_C)
-    isnothing(C) || @check_space(C, V_C ← domain(t))
-
-    return nothing
-end
-
-function MAK.check_input(::typeof(left_orth!), t::AbstractTensorMap, VC, alg::MAK.LeftOrthAlgorithm{:qr})
-    return MAK.check_input(qr_compact!, t, VC, alg.alg)
-end
-
-function MAK.check_input(::typeof(left_orth!), t::AbstractTensorMap, VC, alg::MAK.LeftOrthAlgorithm{:svd})
-    return MAK.check_input(svd_compact!, t, VC, alg.alg)
-end
-
-function MAK.check_input(::typeof(left_orth!), t::AbstractTensorMap, VC, alg::MAK.LeftOrthAlgorithm{:polar})
-    return MAK.check_input(left_polar!, t, VC, alg.alg)
-end
-
-function MAK.check_input(::typeof(right_orth!), t::AbstractTensorMap, CVᴴ, ::AbstractAlgorithm)
-    C, Vᴴ = CVᴴ
-
-    # scalartype checks
-    isnothing(C) || @check_scalar C t
-    @check_scalar Vᴴ t
-
-    # space checks
-    V_C = infimum(fuse(codomain(t)), fuse(domain(t)))
-    isnothing(C) || @check_space(C, codomain(t) ← V_C)
-    @check_space(Vᴴ, V_C ← domain(t))
-
-    return nothing
-end
-
-function MAK.check_input(::typeof(right_orth!), t::AbstractTensorMap, VC, alg::MAK.RightOrthAlgorithm{:lq})
-    return MAK.check_input(lq_compact!, t, VC, alg.alg)
-end
-
-function MAK.check_input(::typeof(right_orth!), t::AbstractTensorMap, VC, alg::MAK.RightOrthAlgorithm{:svd})
-    return MAK.check_input(svd_compact!, t, VC, alg.alg)
-end
-
-function MAK.check_input(::typeof(right_orth!), t::AbstractTensorMap, VC, alg::MAK.RightOrthAlgorithm{:polar})
-    return MAK.check_input(right_polar!, t, VC, alg.alg)
-end
-
-function MAK.initialize_output(::typeof(left_orth!), t::AbstractTensorMap)
-    V_C = infimum(fuse(codomain(t)), fuse(domain(t)))
-    V = similar(t, codomain(t) ← V_C)
-    C = similar(t, V_C ← domain(t))
-    return V, C
-end
-
-function MAK.initialize_output(::typeof(right_orth!), t::AbstractTensorMap)
-    V_C = infimum(fuse(codomain(t)), fuse(domain(t)))
-    C = similar(t, codomain(t) ← V_C)
-    Vᴴ = similar(t, V_C ← domain(t))
-    return C, Vᴴ
-end
-
-# This is a rework of the dispatch logic in order to avoid having to deal with having to
-# allocate the output before knowing the kind of decomposition. In particular, here I disable
-# providing output arguments for left_ and right_orth.
-# This is mainly because polar decompositions have different shapes, and SVD for Diagonal
-# also does
-function MAK.left_orth!(
-        t::AbstractTensorMap;
-        trunc::TruncationStrategy = notrunc(),
-        alg::AbstractAlgorithm = (trunc == notrunc()) ? MAK.select_algorithm(left_orth!, t, Val(:qr)) : MAK.select_algorithm(left_orth!, t, Val(:svd); trunc)
-    )
-    MAK.left_orth!(t, MAK.initialize_output(left_orth!, t, alg), alg)
-end
-function MAK.right_orth!(
-        t::AbstractTensorMap;
-        trunc::TruncationStrategy = notrunc(),
-        alg::AbstractAlgorithm = (trunc == notrunc()) ? MAK.select_algorithm(right_orth!, t, Val(:lq)) : MAK.select_algorithm(right_orth!, t, Val(:svd); trunc)
-    )
-    MAK.right_orth!(t, MAK.initialize_output(right_orth!, t, alg), alg)
-end
-
-# Nullspace
-# ---------
-function MAK.check_input(::typeof(left_null!), t::AbstractTensorMap, N, ::AbstractAlgorithm)
-    # scalartype checks
-    @check_scalar N t
-
-    # space checks
-    V_Q = infimum(fuse(codomain(t)), fuse(domain(t)))
-    V_N = ⊖(fuse(codomain(t)), V_Q)
-    @check_space(N, codomain(t) ← V_N)
-
-    return nothing
-end
-
-function MAK.check_input(::typeof(right_null!), t::AbstractTensorMap, N, ::AbstractAlgorithm)
-    @check_scalar N t
-
-    # space checks
-    V_Q = infimum(fuse(codomain(t)), fuse(domain(t)))
-    V_N = ⊖(fuse(domain(t)), V_Q)
-    @check_space(N, V_N ← domain(t))
-
-    return nothing
-end
-
-function MAK.initialize_output(::typeof(left_null!), t::AbstractTensorMap)
-    V_Q = infimum(fuse(codomain(t)), fuse(domain(t)))
-    V_N = ⊖(fuse(codomain(t)), V_Q)
-    N = similar(t, codomain(t) ← V_N)
-    return N
-end
-
-function MAK.initialize_output(::typeof(right_null!), t::AbstractTensorMap)
-    V_Q = infimum(fuse(codomain(t)), fuse(domain(t)))
-    V_N = ⊖(fuse(domain(t)), V_Q)
-    N = similar(t, V_N ← domain(t))
-    return N
 end
 
 # Projections
