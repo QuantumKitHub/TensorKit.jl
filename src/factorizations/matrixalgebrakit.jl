@@ -149,11 +149,6 @@ function MAK.initialize_output(::typeof(svd_compact!), t::AbstractTensorMap, ::A
     return U, S, Vᴴ
 end
 
-# TODO: remove this once `AbstractMatrix` specialization is removed in MatrixAlgebraKit
-function MAK.initialize_output(::typeof(svd_trunc!), t::AbstractTensorMap, alg::TruncatedAlgorithm)
-    return MAK.initialize_output(svd_compact!, t, alg.alg)
-end
-
 function MAK.initialize_output(::typeof(svd_vals!), t::AbstractTensorMap, alg::AbstractAlgorithm)
     V_cod = infimum(fuse(codomain(t)), fuse(domain(t)))
     return DiagonalTensorMap{real(scalartype(t))}(undef, V_cod)
