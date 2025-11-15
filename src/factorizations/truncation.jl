@@ -145,7 +145,8 @@ end
 # Find truncation
 # ---------------
 # auxiliary functions
-rtol_to_atol(S, p, atol, rtol) = rtol > 0 ? max(atol, TensorKit._norm(S, p) * rtol) : atol
+rtol_to_atol(S, p, atol, rtol) =
+    rtol == 0 ? atol : max(atol, TensorKit._norm(S, p, norm(zero(scalartype(valtype(S))))) * rtol)
 
 function _compute_truncerr(Σdata, truncdim, p = 2)
     I = keytype(Σdata)
