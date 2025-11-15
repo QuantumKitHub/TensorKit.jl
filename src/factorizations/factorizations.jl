@@ -18,7 +18,7 @@ import MatrixAlgebraKit as MAK
 using MatrixAlgebraKit: AbstractAlgorithm, TruncatedAlgorithm, DiagonalAlgorithm
 using MatrixAlgebraKit: TruncationStrategy, NoTruncation, TruncationByValue,
     TruncationByError, TruncationIntersection, TruncationByFilter, TruncationByOrder
-using MatrixAlgebraKit: diagview, isisometric
+using MatrixAlgebraKit: diagview
 
 include("utility.jl")
 include("matrixalgebrakit.jl")
@@ -28,11 +28,6 @@ include("diagonal.jl")
 include("pullbacks.jl")
 
 TensorKit.one!(A::AbstractMatrix) = MatrixAlgebraKit.one!(A)
-
-function MatrixAlgebraKit.isisometric(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple; kwargs...)
-    t = permute(t, (p₁, p₂); copy = false)
-    return isisometric(t; kwargs...)
-end
 
 #------------------------------#
 # LinearAlgebra overloads
@@ -95,6 +90,10 @@ function MAK.is_right_isometric(t::AbstractTensorMap; kwargs...)
     domain(t) ≿ codomain(t) || return false
     f((c, b)) = MAK.is_right_isometric(b; kwargs...)
     return all(f, blocks(t))
+end
+function MAK.isisometric(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple; kwargs...)
+    t = permute(t, (p₁, p₂); copy = false)
+    return MAK.isisometric(t; kwargs...)
 end
 
 end
