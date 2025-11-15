@@ -242,3 +242,17 @@ function MAK.findtruncated_svd(values::SectorDict, strategy::TruncationIntersect
             ) for c in intersect(map(keys, inds)...)
     )
 end
+
+# Truncation error
+# ----------------
+MAK.truncation_error(values::SectorDict, ind) =
+    MAK.truncation_error!(SectorDict(c => copy(v) for (c, v) in values), ind)
+
+function MAK.truncation_error!(values::SectorDict, ind)
+    for (c, v) in values
+        ind_c = get(ind, c, nothing)
+        isnothing(ind_c) && continue
+        v[ind_c] .= zero(eltype(v))
+    end
+    return TensorKit._norm(values, 2, zero(real(eltype(valtype(values)))))
+end
