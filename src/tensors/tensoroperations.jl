@@ -339,7 +339,7 @@ function blas_contract!(
     if bstyle isa Fermionic && any(isdual ∘ Base.Fix1(space, B), pB[1])
         # twist smallest object if neither or both already have to be permuted
         # otherwise twist the one that already is copied
-        if copyA ⊻ copyB
+        if !(copyA ⊻ copyB)
             twistA = dim(A) < dim(B)
         else
             twistA = copyA
