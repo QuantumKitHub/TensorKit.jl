@@ -82,8 +82,7 @@ export left_orth, right_orth, left_null, right_null,
     eigh_full!, eigh_full, eigh_trunc!, eigh_trunc, eig_full!, eig_full, eig_trunc!,
     eig_trunc,
     eigh_vals!, eigh_vals, eig_vals!, eig_vals,
-    isposdef, isposdef!, ishermitian, isisometric, isunitary, sylvester, rank, cond,
-    LeftOrthAlgorithm, RightOrthAlgorithm
+    isposdef, isposdef!, ishermitian, isisometric, isunitary, sylvester, rank, cond
 
 export braid, braid!, permute, permute!, transpose, transpose!, twist, twist!, repartition,
     repartition!
