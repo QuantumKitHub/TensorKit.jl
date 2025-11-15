@@ -29,9 +29,9 @@ include("pullbacks.jl")
 
 TensorKit.one!(A::AbstractMatrix) = MatrixAlgebraKit.one!(A)
 
-function MatrixAlgebraKit.isisometric(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple)
+function MatrixAlgebraKit.isisometric(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple; kwargs...)
     t = permute(t, (p₁, p₂); copy = false)
-    return isisometric(t)
+    return isisometric(t; kwargs...)
 end
 
 #------------------------------#
