@@ -206,7 +206,15 @@ for V in spacelist
                 @test isisometric(N)
                 @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
 
+                N = @constinferred left_null(t; trunc = (; atol = 100 * eps(norm(t))))
+                @test isisometric(N)
+                @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
+
                 Nᴴ = @constinferred right_null(t; alg = :svd)
+                @test isisometric(Nᴴ; side = :right)
+                @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
+
+                Nᴴ = @constinferred right_null(t; trunc = (; atol = 100 * eps(norm(t))))
                 @test isisometric(Nᴴ; side = :right)
                 @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
             end
