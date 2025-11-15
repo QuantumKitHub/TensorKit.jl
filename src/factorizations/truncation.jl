@@ -79,7 +79,7 @@ function MAK.truncate(
         ::typeof(left_null!), (U, S)::NTuple{2, AbstractTensorMap}, strategy::TruncationStrategy
     )
     extended_S = SectorDict(
-        c => vcat(diagview(b), zeros(eltype(b), max(0, size(b, 2) - size(b, 1))))
+        c => vcat(diagview(b), zeros(eltype(b), max(0, size(b, 1) - size(b, 2))))
             for (c, b) in blocks(S)
     )
     ind = MAK.findtruncated(extended_S, strategy)
@@ -92,11 +92,11 @@ function MAK.truncate(
         ::typeof(right_null!), (S, Vᴴ)::NTuple{2, AbstractTensorMap}, strategy::TruncationStrategy
     )
     extended_S = SectorDict(
-        c => vcat(diagview(b), zeros(eltype(b), max(0, size(b, 1) - size(b, 2))))
+        c => vcat(diagview(b), zeros(eltype(b), max(0, size(b, 2) - size(b, 1))))
             for (c, b) in blocks(S)
     )
     ind = MAK.findtruncated(extended_S, strategy)
-    V_truncated = truncate_space(space(Vᴴ, 1), ind)
+    V_truncated = truncate_space(dual(space(S, 2)), ind)
     Ṽᴴ = similar(Vᴴ, V_truncated ← domain(Vᴴ))
     truncate_codomain!(Ṽᴴ, Vᴴ, ind)
     return Ṽᴴ, ind
@@ -117,7 +117,7 @@ function MAK.truncate(
         ::typeof(right_null!), (S, Vᴴ)::NTuple{2, AbstractTensorMap}, strategy::NoTruncation
     )
     ind = SectorDict(c => (size(b, 1) + 1):size(b, 2) for (c, b) in blocks(S))
-    V_truncated = truncate_space(space(Vᴴ, 1), ind)
+    V_truncated = truncate_space(dual(space(S, 2)), ind)
     Ṽᴴ = similar(Vᴴ, V_truncated ← domain(Vᴴ))
     truncate_codomain!(Ṽᴴ, Vᴴ, ind)
     return Ṽᴴ, ind
