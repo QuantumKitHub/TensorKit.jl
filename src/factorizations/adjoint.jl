@@ -81,12 +81,6 @@ for (left_f, right_f) in zip(
     end
 end
 
-function MAK.eig_full(t::AdjointTensorMap; kwargs...)
-    DV = eig_full(adjoint(t); kwargs...)
-    return (DV[1], adjoint(DV[2]))
-end
-
-
 # 3-arg functions
 for f! in (:svd_full!, :svd_compact!, :svd_trunc!)
     @eval function MAK.copy_input(::typeof($f!), t::AdjointTensorMap)
