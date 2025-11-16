@@ -364,7 +364,7 @@ for V in spacelist
             for T in (Float64, ComplexF64)
                 t1 = randisometry(T, W1, W2)
                 t2 = randisometry(T, W2 ← W2)
-                @test isisometry(t1)
+                @test isisometric(t1)
                 @test isunitary(t2)
                 P = t1 * t1'
                 @test P * P ≈ P
