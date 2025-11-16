@@ -96,7 +96,7 @@ function blocksectors(W::HomSpace)
     N₁ = length(codom)
     N₂ = length(dom)
     I = sectortype(W)
-    if N₁ == 0 && N₂ == 0
+    if N₁ == N₂ == 0
         return allunits(I)
     elseif N₁ == 0
         return filter!(isunit, collect(blocksectors(dom))) # module space cannot end in empty space

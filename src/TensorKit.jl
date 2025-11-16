@@ -31,7 +31,6 @@ export DiagonalTensorMap, BraidingTensor
 export TruncationScheme
 export SpaceMismatch, SectorMismatch, IndexError # error types
 
-# general vector space methods
 # Export general vector space methods
 export space, field, dual, dim, reduceddim, dims, fuse, flip, isdual
 export unitspace, zerospace, oplus, ominus

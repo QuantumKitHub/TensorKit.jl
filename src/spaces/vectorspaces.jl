@@ -146,9 +146,9 @@ Base.zero(::Type{V}) where {V <: ElementarySpace} = zerospace(V)
 """
     leftunitspace(V::S) where {S <: ElementarySpace} -> S
 
-Return the corresponding vector space of type `ElementarySpace` that represents the trivial
+Return the corresponding vector space of type `S` that represents the trivial
 one-dimensional space, i.e. the space that is isomorphic to the corresponding field. For vector spaces 
-of type `GradedSpace{I}`, this corresponds to the unique left unit of the objects in `Sector` `I` present
+of type `GradedSpace{I}`, this one-dimensional space contains the unique left unit of the objects in `Sector` `I` present
 in the vector space.
 """
 function leftunitspace(V::ElementarySpace)
