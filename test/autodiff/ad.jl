@@ -90,7 +90,6 @@ function remove_qrgauge_dependence!(ΔQ, t, Q)
     end
     return ΔQ
 end
-
 function remove_lqgauge_dependence!(ΔQ, t, Q)
     for (c, b) in blocks(ΔQ)
         m, n = size(block(t, c))
@@ -103,7 +102,7 @@ function remove_lqgauge_dependence!(ΔQ, t, Q)
     return ΔQ
 end
 function remove_eiggauge_dependence!(
-        ΔV, D, V; degeneracy_atol = MatrixAlgebraKit.default_pullback_gauge_atol(D)
+        ΔV, D, V; degeneracy_atol = MatrixAlgebraKit.default_pullback_degeneracy_atol(D)
     )
     gaugepart = V' * ΔV
     for (c, b) in blocks(gaugepart)
@@ -119,9 +118,9 @@ function remove_eiggauge_dependence!(
     return ΔV
 end
 function remove_eighgauge_dependence!(
-        ΔV, D, V; degeneracy_atol = MatrixAlgebraKit.default_pullback_gauge_atol(D)
+        ΔV, D, V; degeneracy_atol = MatrixAlgebraKit.default_pullback_degeneracy_atol(D)
     )
-    gaugepart = V' * ΔV
+    gaugepart = project_antihermitian!(V' * ΔV)
     gaugepart = (gaugepart - gaugepart') / 2
     for (c, b) in blocks(gaugepart)
         Dc = diagview(block(D, c))
@@ -136,10 +135,9 @@ function remove_eighgauge_dependence!(
     return ΔV
 end
 function remove_svdgauge_dependence!(
-        ΔU, ΔVᴴ, U, S, Vᴴ; degeneracy_atol = MatrixAlgebraKit.default_pullback_gauge_atol(S)
+        ΔU, ΔVᴴ, U, S, Vᴴ; degeneracy_atol = MatrixAlgebraKit.default_pullback_degeneracy_atol(S)
     )
-    gaugepart = U' * ΔU + Vᴴ * ΔVᴴ'
-    gaugepart = (gaugepart - gaugepart') / 2
+    gaugepart = project_antihermitian!(U' * ΔU + Vᴴ * ΔVᴴ')
     for (c, b) in blocks(gaugepart)
         Sd = diagview(block(S, c))
         # for some reason this fails only on tests, and I cannot reproduce it in an
@@ -152,8 +150,6 @@ function remove_svdgauge_dependence!(
     mul!(ΔU, U, gaugepart, -1, 1)
     return ΔU, ΔVᴴ
 end
-
-project_hermitian(A) = (A + A') / 2
 
 # Tests
 # -----
@@ -601,7 +597,7 @@ for V in spacelist
                     USVᴴ_trunc = svd_trunc(t; trunc)
                     ΔUSVᴴ_trunc = rand_tangent.(USVᴴ_trunc)
                     remove_svdgauge_dependence!(
-                        ΔUSVᴴ_trunc[1], ΔUSVᴴ_trunc[3], USVᴴ_trunc...; degeneracy_atol
+                        ΔUSVᴴ_trunc[1], ΔUSVᴴ_trunc[3], Base.front(USVᴴ_trunc)...; degeneracy_atol
                     )
                     # test_ad_rrule(svd_trunc, t;
                     #               fkwargs=(; trunc), output_tangent=ΔUSVᴴ_trunc, atol, rtol)
@@ -610,7 +606,7 @@ for V in spacelist
                     USVᴴ_trunc = svd_trunc(t; trunc)
                     ΔUSVᴴ_trunc = rand_tangent.(USVᴴ_trunc)
                     remove_svdgauge_dependence!(
-                        ΔUSVᴴ_trunc[1], ΔUSVᴴ_trunc[3], USVᴴ_trunc...; degeneracy_atol
+                        ΔUSVᴴ_trunc[1], ΔUSVᴴ_trunc[3], Base.front(USVᴴ_trunc)...; degeneracy_atol
                     )
                     test_ad_rrule(
                         svd_trunc, t;
@@ -631,7 +627,7 @@ for V in spacelist
                     USVᴴ_trunc = svd_trunc(t; trunc)
                     ΔUSVᴴ_trunc = rand_tangent.(USVᴴ_trunc)
                     remove_svdgauge_dependence!(
-                        ΔUSVᴴ_trunc[1], ΔUSVᴴ_trunc[3], USVᴴ_trunc...; degeneracy_atol
+                        ΔUSVᴴ_trunc[1], ΔUSVᴴ_trunc[3], Base.front(USVᴴ_trunc)...; degeneracy_atol
                     )
                     test_ad_rrule(
                         svd_trunc, t;
