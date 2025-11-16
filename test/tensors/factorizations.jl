@@ -239,8 +239,7 @@ for V in spacelist
                 @test isisometry(Vᴴ; side = :right)
 
                 # dimension of S is a float for IsingBimodule
-                nvals = dim(domain(S)) ÷ 2
-                eltype(nvals) <: AbstractFloat && (nvals = Int(nvals))
+                nvals = round(Int, dim(domain(S)) / 2)
                 trunc = truncrank(nvals)
                 U1, S1, Vᴴ1 = @constinferred svd_trunc(t; trunc)
                 @test t * Vᴴ1' ≈ U1 * S1
@@ -303,9 +302,7 @@ for V in spacelist
                 @test @constinferred isposdef(vdv)
                 t isa DiagonalTensorMap || @test !isposdef(t) # unlikely for non-hermitian map
 
-                nvals = dim(domain(t)) ÷ 2
-                eltype(nvals) <: AbstractFloat && (nvals = Int(nvals))
-                d, v = @constinferred eig_trunc(t; trunc = truncrank(nvals))
+                nvals = round(Int, dim(domain(t)) / 2)
                 @test t * v ≈ v * d
                 @test dim(domain(d)) ≤ nvals
 
