@@ -303,6 +303,7 @@ for V in spacelist
                 t isa DiagonalTensorMap || @test !isposdef(t) # unlikely for non-hermitian map
 
                 nvals = round(Int, dim(domain(t)) / 2)
+                d, v = @constinferred eig_trunc(t; trunc = truncrank(nvals))
                 @test t * v ≈ v * d
                 @test dim(domain(d)) ≤ nvals
 
