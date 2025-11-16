@@ -137,7 +137,7 @@ using LinearAlgebra: norm, dot, normalize, normalize!, tr,
     adjoint, adjoint!, transpose, transpose!,
     lu, pinv, sylvester,
     eigen, eigen!, svd, svd!,
-    isposdef, isposdef!, ishermitian, rank, cond,
+    isposdef, isposdef!, rank, cond,
     Diagonal, Hermitian
 using MatrixAlgebraKit
 
