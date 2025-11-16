@@ -27,6 +27,20 @@ function permutation2swaps(perm)
     return swaps
 end
 
+# one-argument version: check whether `p` is a cyclic permutation (of `1:length(p)`)
+function iscyclicpermutation(p)
+    N = length(p)
+    @inbounds for i in 1:N
+        p[mod1(i + 1, N)] == mod1(p[i] + 1, N) || return false
+    end
+    return true
+end
+# two-argument version: check whether `v1` is a cyclic permutation of `v2`
+function iscyclicpermutation(v1, v2)
+    length(v1) == length(v2) || return false
+    return iscyclicpermutation(indexin(v1, v2))
+end
+
 _kron(A, B, C, D...) = _kron(_kron(A, B), C, D...)
 function _kron(A, B)
     sA = size(A)

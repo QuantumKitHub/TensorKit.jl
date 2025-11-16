@@ -113,24 +113,90 @@ Type alias for a fusion-splitting tree pair of sectortype `I`, with `N₁` split
 """
 const FusionTreePair{I, N₁, N₂} = Tuple{FusionTree{I, N₁}, FusionTree{I, N₂}}
 
+"""
+    FusionTreeBlock{I, N₁, N₂, F <: FusionTreePair{I, N₁, N₂}}
+
+Collection of fusion-splitting tree pairs that share the same uncoupled sectors.
+Mostly internal structure to speed up non-`UniqueFusion` fusiontree manipulation computations.
+"""
+struct FusionTreeBlock{I, N₁, N₂, F <: FusionTreePair{I, N₁, N₂}}
+    trees::Vector{F}
+end
+
+function FusionTreeBlock{I}(
+        uncoupled::Tuple{NTuple{N₁, I}, NTuple{N₂, I}},
+        isdual::Tuple{NTuple{N₁, Bool}, NTuple{N₂, Bool}};
+        sizehint::Int = 0
+    ) where {I <: Sector, N₁, N₂}
+    F = fusiontreetype(I, N₁, N₂)
+    trees = Vector{F}(undef, 0)
+    sizehint > 0 && sizehint!(trees, sizehint)
+
+    if N₁ == N₂ == 0
+        return FusionTreeBlock(trees)
+    elseif N₁ == 0
+        cs = sort!(collect(filter(isone, ⊗(uncoupled[2]...))))
+    elseif N₂ == 0
+        cs = sort!(collect(filter(isone, ⊗(uncoupled[1]...))))
+    else
+        cs = sort!(collect(intersect(⊗(uncoupled[1]...), ⊗(uncoupled[2]...))))
+    end
+
+    for c in cs
+        for f₁ in fusiontrees(uncoupled[1], c, isdual[1]),
+                f₂ in fusiontrees(uncoupled[2], c, isdual[2])
+
+            push!(trees, (f₁, f₂))
+        end
+    end
+    return FusionTreeBlock(trees)
+end
+
 # Properties
+# ----------
 sectortype(::Type{<:FusionTree{I}}) where {I <: Sector} = I
 sectortype(::Type{<:FusionTreePair{I}}) where {I <: Sector} = I
-FusionStyle(::Type{<:FusionTree{I}}) where {I <: Sector} = FusionStyle(I)
-FusionStyle(::Type{<:FusionTreePair{I}}) where {I <: Sector} = FusionStyle(I)
-BraidingStyle(::Type{<:FusionTree{I}}) where {I <: Sector} = BraidingStyle(I)
-BraidingStyle(::Type{<:FusionTreePair{I}}) where {I <: Sector} = BraidingStyle(I)
-Base.length(::Type{<:FusionTree{<:Sector, N}}) where {N} = N
+sectortype(::Type{<:FusionTreeBlock{I}}) where {I} = I
 
-FusionStyle(f::FusionTree) = FusionStyle(typeof(f))
-FusionStyle(f::FusionTreePair) = FusionStyle(typeof(f))
-BraidingStyle(f::FusionTree) = BraidingStyle(typeof(f))
-BraidingStyle(f::FusionTreePair) = BraidingStyle(typeof(f))
+FusionStyle(f::Union{FusionTree, FusionTreePair, FusionTreeBlock}) =
+    FusionStyle(typeof(f))
+FusionStyle(::Type{F}) where {F <: Union{FusionTree, FusionTreePair, FusionTreeBlock}} =
+    FusionStyle(sectortype(F))
+
+BraidingStyle(f::Union{FusionTree, FusionTreePair, FusionTreeBlock}) =
+    BraidingStyle(typeof(f))
+BraidingStyle(::Type{F}) where {F <: Union{FusionTree, FusionTreePair, FusionTreeBlock}} =
+    BraidingStyle(sectortype(F))
+
 Base.length(f::FusionTree) = length(typeof(f))
-
+Base.length(::Type{<:FusionTree{<:Sector, N}}) where {N} = N
 # Note: cannot define the following since FusionTreePair is a const for a Tuple
 # Base.length(::Type{<:FusionTreePair{<:Sector, N₁, N₂}}) where {N₁, N₂} = N₁ + N₂
 # Base.length(f::FusionTreePair) = length(typeof(f))
+Base.length(block::FusionTreeBlock) = length(fusiontrees(block))
+
+numout(fs::Union{FusionTreePair, FusionTreeBlock}) = numout(typeof(fs))
+numout(::Type{<:FusionTreePair{I, N₁}}) where {I, N₁} = N₁
+numout(::Type{<:FusionTreeBlock{I, N₁}}) where {I, N₁} = N₁
+numin(fs::Union{FusionTreePair, FusionTreeBlock}) = numin(typeof(fs))
+numin(::Type{<:FusionTreePair{I, N₁, N₂}}) where {I, N₁, N₂} = N₂
+numin(::Type{<:FusionTreeBlock{I, N₁, N₂}}) where {I, N₁, N₂} = N₂
+numind(fs::Union{FusionTreePair, FusionTreeBlock}) = numind(typeof(fs))
+numind(::Type{T}) where {T <: Union{FusionTreePair, FusionTreeBlock}} = numin(T) + numout(T)
+
+Base.propertynames(::FusionTreeBlock, private::Bool = false) = (:trees, :uncoupled, :isdual)
+Base.@constprop :aggressive function Base.getproperty(block::FusionTreeBlock, prop::Symbol)
+    if prop === :uncoupled
+        f₁, f₂ = first(block.trees)
+        return f₁.uncoupled, f₂.uncoupled
+    elseif prop === :isdual
+        f₁, f₂ = first(block.trees)
+        return f₁.isdual, f₂.isdual
+    else
+        return getfield(block, prop)
+    end
+end
+fusiontrees(block::FusionTreeBlock) = block.trees
 
 # Hashing, important for using fusion trees as key in a dictionary
 function Base.hash(f::FusionTree{I}, h::UInt) where {I}
@@ -163,6 +229,24 @@ function Base.:(==)(f₁::FusionTree{I, N}, f₂::FusionTree{I, N}) where {I <: 
 end
 Base.:(==)(f₁::FusionTree, f₂::FusionTree) = false
 
+# Within one block, all values of uncoupled and isdual are equal, so avoid hashing these
+function treeindex_data((f₁, f₂))
+    I = sectortype(f₁)
+    if FusionStyle(I) isa GenericFusion
+        return (f₁.coupled, f₁.innerlines..., f₂.innerlines...),
+            (f₁.vertices..., f₂.vertices...)
+    elseif FusionStyle(I) isa MultipleFusion
+        return (f₁.coupled, f₁.innerlines..., f₂.innerlines...)
+    else # there should be only a single element anyways
+        return false
+    end
+end
+function treeindex_map(fs::FusionTreeBlock)
+    I = sectortype(fs)
+    return fusiontreedict(I)(treeindex_data(f) => ind for (ind, f) in enumerate(fusiontrees(fs)))
+end
+
+
 # Facilitate getting correct fusion tree types
 Base.@assume_effects :foldable function fusiontreetype(::Type{I}, N::Int) where {I <: Sector}
     return if N === 0
@@ -176,6 +260,8 @@ end
 Base.@assume_effects :foldable function fusiontreetype(::Type{I}, N₁::Int, N₂::Int) where {I <: Sector}
     return Tuple{fusiontreetype(I, N₁), fusiontreetype(I, N₂)}
 end
+
+fusiontreedict(I) = FusionStyle(I) isa UniqueFusion ? SingletonDict : FusionTreeDict
 
 # converting to actual array
 function Base.convert(A::Type{<:AbstractArray}, f::FusionTree{I, 0}) where {I}
@@ -267,10 +353,11 @@ end
 
 # Fusion tree iterators
 include("iterator.jl")
-include("fusiontreeblocks.jl")
 
 # Manipulate fusion trees
-include("manipulations.jl")
+include("basic_manipulations.jl")
+include("duality_manipulations.jl")
+include("braiding_manipulations.jl")
 
 # auxiliary routines
 # _abelianinner: generate the inner indices for given outer indices in the abelian case
