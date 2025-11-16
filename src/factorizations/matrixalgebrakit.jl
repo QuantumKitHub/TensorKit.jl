@@ -46,7 +46,7 @@ for f! in (
 end
 
 # Handle these separately because single output instead of tuple
-for f! in (:qr_null!, :lq_null!)
+for f! in (:qr_null!, :lq_null!, :project_hermitian!, :project_antihermitian!, :project_isometric!)
     @eval function MAK.$f!(t::AbstractTensorMap, N, alg::AbstractAlgorithm)
         MAK.check_input($f!, t, N, alg)
 
@@ -444,14 +444,24 @@ end
 
 # Projections
 # -----------
-function MAK.check_input(::typeof(project_hermitian!), tsrc::AbstractTensorMap, tdst::AbstractTensorMap)
+function MAK.check_input(::typeof(project_hermitian!), tsrc::AbstractTensorMap, tdst::AbstractTensorMap, ::AbstractAlgorithm)
     domain(tsrc) == codomain(tsrc) || throw(ArgumentError("Hermitian projection requires square input tensor"))
     tsrc === tdst || @check_space(tdst, space(tsrc))
     return nothing
 end
 
-MAK.check_input(::typeof(project_antihermitian!), tsrc::AbstractTensorMap, tdst::AbstractTensorMap) =
-    MAK.check_input(project_hermitian!, tsrc, tdst)
+MAK.check_input(::typeof(project_antihermitian!), tsrc::AbstractTensorMap, tdst::AbstractTensorMap, alg::AbstractAlgorithm) =
+    MAK.check_input(project_hermitian!, tsrc, tdst, alg)
 
-MAK.initialize_output(::typeof(project_hermitian!), tsrc::AbstractTensorMap) = tsrc
-MAK.initialize_output(::typeof(project_antihermitian!), tsrc::AbstractTensorMap) = tsrc
+function MAK.check_input(::typeof(project_isometric!), t::AbstractTensorMap, W::AbstractTensorMap, alg::AbstractAlgorithm)
+    codomain(t) ≿ domain(t) || throw(ArgumentError("Isometric projection requires `codomain(t) ≿ domain(t)`"))
+    @check_space W space(t)
+    @check_scalar(W, t)
+
+    return nothing
+end
+
+
+MAK.initialize_output(::typeof(project_hermitian!), tsrc::AbstractTensorMap, ::AbstractAlgorithm) = tsrc
+MAK.initialize_output(::typeof(project_antihermitian!), tsrc::AbstractTensorMap, ::AbstractAlgorithm) = tsrc
+MAK.initialize_output(::typeof(project_isometric!), tsrc::AbstractTensorMap, ::AbstractAlgorithm) = similar(tsrc)
