@@ -593,19 +593,12 @@ for V in spacelist
                     test_ad_rrule(svd_compact, t; output_tangent = (ΔU, ΔS, ΔVᴴ), atol, rtol)
                     test_ad_rrule(svd_compact, t; output_tangent = (ΔU, ΔS2, ΔVᴴ), atol, rtol)
 
-                    # TODO: I'm not sure how to properly test with spaces that might change
-                    # with the finite-difference methods, as then the jacobian is ill-defined.
-
-                    trunc = truncrank(max(2, round(Int, min(dim(domain(t)), dim(codomain(t))) * (3 / 4))))
-                    USVᴴ_trunc = svd_trunc(t; trunc)
-                    ΔUSVᴴ_trunc = (rand_tangent.(Base.front(USVᴴ_trunc))..., zero(last(USVᴴ_trunc)))
-                    remove_svdgauge_dependence!(
-                        ΔUSVᴴ_trunc[1], ΔUSVᴴ_trunc[3], Base.front(USVᴴ_trunc)...; degeneracy_atol
-                    )
-                    # test_ad_rrule(svd_trunc, t;
-                    #               fkwargs=(; trunc), output_tangent=ΔUSVᴴ_trunc, atol, rtol)
-
-                    trunc = truncspace(space(USVᴴ_trunc[2], 1))
+                    # Testing truncation with finitedifferences is RNG-prone since the
+                    # Jacobian changes size if the truncation space changes, causing errors.
+                    # So, first test the fixed space case, then do more limited testing on
+                    # some gradients and compare to the fixed space case
+                    V_trunc = spacetype(t)(c => ceil(Int, min(size(b)...) / 2) for (c, b) in blocks(t))
+                    trunc = truncspace(V_trunc)
                     USVᴴ_trunc = svd_trunc(t; trunc)
                     ΔUSVᴴ_trunc = (rand_tangent.(Base.front(USVᴴ_trunc))..., zero(last(USVᴴ_trunc)))
                     remove_svdgauge_dependence!(
@@ -616,26 +609,30 @@ for V in spacelist
                         fkwargs = (; trunc), output_tangent = ΔUSVᴴ_trunc, atol, rtol
                     )
 
-                    # ϵ = norm(*(USVᴴ_trunc...) - t)
-                    # trunc = truncerror(; atol=ϵ)
-                    # USVᴴ_trunc = svd_trunc(t; trunc)
-                    # ΔUSVᴴ_trunc = rand_tangent.(USVᴴ_trunc)
-                    # remove_svdgauge_dependence!(ΔUSVᴴ_trunc[1], ΔUSVᴴ_trunc[3], USVᴴ_trunc...;
-                    #                            degeneracy_atol)
-                    # test_ad_rrule(svd_trunc, t;
-                    #               fkwargs=(; trunc), output_tangent=ΔUSVᴴ_trunc, atol, rtol)
+                    # attempt to construct a loss function that doesn't depend on the gauges
+                    function f(t; trunc)
+                        Utr, Str, Vᴴtr, ϵ = svd_trunc(t; trunc)
+                        return LinearAlgebra.tr(Str) + LinearAlgebra.norm(Utr * Vᴴtr)
+                    end
+
+                    trunc = truncrank(round(Int, dim(V_trunc)))
+                    USVᴴ_trunc = svd_trunc(t; trunc)
+                    g1, = Zygote.gradient(x -> f(x; trunc), t)
+                    g2, = Zygote.gradient(x -> f(x; trunc = truncspace(space(USVᴴ_trunc[2], 1))), t)
+                    @test g1 ≈ g2
+
+                    trunc = truncerror(; atol = last(USVᴴ_trunc))
+                    USVᴴ_trunc = svd_trunc(t; trunc)
+                    g1, = Zygote.gradient(x -> f(x; trunc), t)
+                    g2, = Zygote.gradient(x -> f(x; trunc = truncspace(space(USVᴴ_trunc[2], 1))), t)
+                    @test g1 ≈ g2
 
                     tol = minimum(((c, b),) -> minimum(diagview(b)), blocks(USVᴴ_trunc[2]))
                     trunc = trunctol(; atol = 10 * tol)
                     USVᴴ_trunc = svd_trunc(t; trunc)
-                    ΔUSVᴴ_trunc = (rand_tangent.(Base.front(USVᴴ_trunc))..., zero(last(USVᴴ_trunc)))
-                    remove_svdgauge_dependence!(
-                        ΔUSVᴴ_trunc[1], ΔUSVᴴ_trunc[3], Base.front(USVᴴ_trunc)...; degeneracy_atol
-                    )
-                    # test_ad_rrule(
-                    #     svd_trunc, t;
-                    #     fkwargs = (; trunc), output_tangent = ΔUSVᴴ_trunc, atol, rtol
-                    # )
+                    g1, = Zygote.gradient(x -> f(x; trunc), t)
+                    g2, = Zygote.gradient(x -> f(x; trunc = truncspace(space(USVᴴ_trunc[2], 1))), t)
+                    @test g1 ≈ g2
                 end
             end
 
