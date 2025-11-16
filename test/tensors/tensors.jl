@@ -293,14 +293,15 @@ for V in spacelist
                 @tensor s2 = t[a, b, b, a]
                 @tensor t3[a, b] := t[a, c, c, b]
                 @tensor s3 = t3[a, a]
-            else
-                t = rand(ComplexF64, V1 ⊗ V2 ← V1 ⊗ V2) # avoid permutes
-                ss = @constinferred tr(t)
-                @test conj(ss) ≈ tr(t')
-                @planar s2 = t[a b; a b]
-                @planar t3[a; b] := t[a c; b c]
-                @planar s3 = t3[a; a]
+                @test ss ≈ s2
+                @test ss ≈ s3
             end
+            t = rand(ComplexF64, V1 ⊗ V2 ← V1 ⊗ V2) # avoid permutes
+            ss = @constinferred tr(t)
+            @test conj(ss) ≈ tr(t')
+            @planar s2 = t[a b; a b]
+            @planar t3[a; b] := t[a c; b c]
+            @planar s3 = t3[a; a]
 
             @test ss ≈ s2
             @test ss ≈ s3
@@ -311,12 +312,12 @@ for V in spacelist
                 @tensor t2[a; b] := t[c d b; c d a]
                 @tensor t4[a b; c d] := t[e d c; e b a]
                 @tensor t5[a; b] := t4[a c; b c]
-            else
-                t = rand(ComplexF64, V3 ⊗ V4 ⊗ V5 ← V3 ⊗ V4 ⊗ V5) # compatible with module fusion
-                @planar t2[a; b] := t[c a d; c b d]
-                @planar t4[a b; c d] := t[e a b; e c d]
-                @planar t5[a; b] := t4[a c; b c]
+                @test t2 ≈ t5
             end
+            t = rand(ComplexF64, V3 ⊗ V4 ⊗ V5 ← V3 ⊗ V4 ⊗ V5) # compatible with module fusion
+            @planar t2[a; b] := t[c a d; c b d]
+            @planar t4[a b; c d] := t[e a b; e c d]
+            @planar t5[a; b] := t4[a c; b c]
             @test t2 ≈ t5
         end
         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
