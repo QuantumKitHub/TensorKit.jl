@@ -267,7 +267,7 @@ function has_shared_twist(t, inds)
     if BraidingStyle(I) == NoBraiding()
         for i in inds
             cs = sectors(space(t, i))
-            all(isone, cs) || throw(SectorMismatch(lazy"Cannot twist sectors $cs"))
+            all(isunit, cs) || throw(SectorMismatch(lazy"Cannot twist sectors $cs"))
         end
         return true
     elseif BraidingStyle(I) == Bosonic()

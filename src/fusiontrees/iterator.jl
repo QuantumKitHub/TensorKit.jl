@@ -17,6 +17,9 @@ function fusiontrees(uncoupled::Tuple{Vararg{I}}, coupled::I) where {I <: Sector
     return fusiontrees(uncoupled, coupled, isdual)
 end
 function fusiontrees(uncoupled::Tuple{I, Vararg{I}}) where {I <: Sector}
+    UnitStyle(I) isa GenericUnit && throw(
+        ArgumentError("Must specify coupled sector when UnitStyle is GenericUnit.")
+    )
     coupled = unit(I)
     isdual = ntuple(n -> false, length(uncoupled))
     return fusiontrees(uncoupled, coupled, isdual)
