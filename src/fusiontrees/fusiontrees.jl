@@ -105,17 +105,32 @@ function FusionTree(
 end
 FusionTree(uncoupled::Tuple{I, Vararg{I}}) where {I <: Sector} = FusionTree(uncoupled, unit(I))
 
+"""
+    FusionTreePair{I, N₁, N₂}
+
+Type alias for a fusion-splitting tree pair of sectortype `I`, with `N₁` splitting legs and
+`N₂` fusion legs.
+"""
 const FusionTreePair{I, N₁, N₂} = Tuple{FusionTree{I, N₁}, FusionTree{I, N₂}}
 
 # Properties
 sectortype(::Type{<:FusionTree{I}}) where {I <: Sector} = I
+sectortype(::Type{<:FusionTreePair{I}}) where {I <: Sector} = I
 FusionStyle(::Type{<:FusionTree{I}}) where {I <: Sector} = FusionStyle(I)
+FusionStyle(::Type{<:FusionTreePair{I}}) where {I <: Sector} = FusionStyle(I)
 BraidingStyle(::Type{<:FusionTree{I}}) where {I <: Sector} = BraidingStyle(I)
+BraidingStyle(::Type{<:FusionTreePair{I}}) where {I <: Sector} = BraidingStyle(I)
 Base.length(::Type{<:FusionTree{<:Sector, N}}) where {N} = N
 
 FusionStyle(f::FusionTree) = FusionStyle(typeof(f))
+FusionStyle(f::FusionTreePair) = FusionStyle(typeof(f))
 BraidingStyle(f::FusionTree) = BraidingStyle(typeof(f))
+BraidingStyle(f::FusionTreePair) = BraidingStyle(typeof(f))
 Base.length(f::FusionTree) = length(typeof(f))
+
+# Note: cannot define the following since FusionTreePair is a const for a Tuple
+# Base.length(::Type{<:FusionTreePair{<:Sector, N₁, N₂}}) where {N₁, N₂} = N₁ + N₂
+# Base.length(f::FusionTreePair) = length(typeof(f))
 
 # Hashing, important for using fusion trees as key in a dictionary
 function Base.hash(f::FusionTree{I}, h::UInt) where {I}
