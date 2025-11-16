@@ -352,7 +352,7 @@ for V in spacelist
                 d1, d2 = dim(codomain(t)), dim(domain(t))
                 r = rank(t)
                 @test r == min(d1, d2)
-                @test eltype(r) == eltype(d1)
+                @test typeof(r) == typeof(d1)
                 M = left_null(t)
                 @test @constinferred(rank(M)) + r ≈ d1
                 Mᴴ = right_null(t)
