@@ -1,9 +1,9 @@
 """
     struct ProductSpace{S <: ElementarySpace, N} <: CompositeSpace{S}
+    ProductSpace(spaces::NTuple{N, S}) where {S <: ElementarySpace, N}
 
-A `ProductSpace` is a tensor product space of `N` vector spaces of type
-`S <: ElementarySpace`. Only tensor products between [`ElementarySpace`](@ref) objects of the
-same type are allowed.
+A `ProductSpace` is a tensor product space of `N` vector spaces of type `S <: ElementarySpace`.
+Only tensor products between [`ElementarySpace`](@ref) objects of the same type are allowed.
 """
 struct ProductSpace{S <: ElementarySpace, N} <: CompositeSpace{S}
     spaces::NTuple{N, S}
@@ -65,8 +65,8 @@ Base.axes(P::ProductSpace, n::Int) = axes(P.spaces[n])
 
 dual(P::ProductSpace{<:ElementarySpace, 0}) = P
 dual(P::ProductSpace) = ProductSpace(map(dual, reverse(P.spaces)))
-
-# Base.conj(P::ProductSpace) = ProductSpace(map(conj, P.spaces))
+Base.conj(P::ProductSpace{<:ElementarySpace, 0}) = P
+Base.conj(P::ProductSpace) = ProductSpace(map(conj, P.spaces))
 
 function Base.show(io::IO, P::ProductSpace{S}) where {S <: ElementarySpace}
     spaces = P.spaces

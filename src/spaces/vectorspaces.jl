@@ -36,8 +36,7 @@ Base.issubset(::ComplexNumbers, ::ComplexNumbers) = true
     abstract type VectorSpace end
 
 Abstract type at the top of the type hierarchy for denoting vector spaces, or, more
-accurately, 𝕜-linear categories. All instances of subtypes of VectorSpace will
-represent objects in 𝕜-linear monoidal categories.
+generally, objects in linear monoidal categories.
 """
 abstract type VectorSpace end
 
@@ -46,7 +45,7 @@ abstract type VectorSpace end
     field(::Type{T}) -> Type{𝔽 <: Field}
 
 Return the type of field over which object `a` (e.g. a vector space or a tensor) is defined.
-Also works in type domain.
+This also works in type domain.
 """
 field(x) = field(typeof(x))
 field(::Type{T}) where {T} = field(spacetype(T))
@@ -73,26 +72,26 @@ Return the dual space of `V`; also obtained via `V'`. This should satisfy
 `dual(dual(V)) == V`. It is assumed that `typeof(V) == typeof(V')`.
 """ dual(::VectorSpace)
 
+@doc """
+    conj(V::VectorSpace) -> VectorSpace
+
+Return the conjugate space of `V`. This should satisfy `conj(conj(V)) == V`.
+For vector spaces over the real numbers, it must hold that `conj(V) == V`.
+For vector spaces with a Euclidean inner product, it must hold that `conj(V) == dual(V)`.
+""" conj(::VectorSpace)
+
 # convenience definitions:
 Base.adjoint(V::VectorSpace) = dual(V)
-
-"""
-    isdual(V::ElementarySpace) -> Bool
-
-Return whether an ElementarySpace `V` is normal or rather a dual space. Always returns
-`false` for spaces where `V == dual(V)`.
-"""
-function isdual end
 
 # Hierarchy of elementary vector spaces
 #---------------------------------------
 """
-    abstract type ElementarySpace <: VectorSpace end
+    abstract type ElementarySpace <: VectorSpace
 
 Elementary finite-dimensional vector space over a field that can be used as the index
 space corresponding to the indices of a tensor. ElementarySpace is a supertype for all
 vector spaces (objects) that can be associated with the individual indices of a tensor,
-as hinted to by its alias IndexSpace.
+as hinted to by its alias `IndexSpace`.
 
 Every elementary vector space should respond to the methods [`conj`](@ref) and
 [`dual`](@ref), returning the complex conjugate space and the dual space respectively. The
@@ -103,30 +102,44 @@ of a homogeneous tensor product of these spaces.
 abstract type ElementarySpace <: VectorSpace end
 const IndexSpace = ElementarySpace
 
-# field(::Type{<:ElementarySpace{𝕜}}) where {𝕜} = 𝕜
-
 @doc """
     dim(V::ElementarySpace, s::Sector) -> Int
 
 Return the degeneracy dimension corresponding to the sector `s` of the vector space `V`.
 """ dim(::ElementarySpace, ::Sector)
 
-@doc """
+"""
     reduceddim(V::ElementarySpace) -> Int
 
 Return the sum of all degeneracy dimensions of the vector space `V`.
 """
 reduceddim(V::ElementarySpace) = sum(Base.Fix1(dim, V), sectors(V); init = 0)
 
+@doc """
+    isdual(V::ElementarySpace) -> Bool
+
+Return whether an ElementarySpace `V` is normal or rather a dual space.
+Always returns `false` for spaces where `V == dual(V)`.
+""" isdual(::ElementarySpace)
+
+@doc """
+    isconj(V::ElementarySpace) -> Bool
+
+Return whether an ElementarySpace `V` is normal or rather the conjugated space.
+Always returns `false` for spaces where `V == conj(V)`, i.e. vector spaces over `ℝ`.
+""" isconj(::ElementarySpace)
+
 """
     unitspace(V::S) where {S <: ElementarySpace} -> S
 
 Return the corresponding vector space of type `S` that represents the trivial
-one-dimensional space, i.e. the space that is isomorphic to the corresponding field. Note
-that this is different from `one(V::S)`, which returns the empty product space
-`ProductSpace{S, 0}(())`. `Base.oneunit` falls back to `unitspace`. For vector spaces 
-of type `GradedSpace{I}` where `Sector` `I` has a semi-simple unit structure, this
-returns a multi-dimensional space corresponding to all unit sectors in `I`.
+one-dimensional space, i.e. the space that is isomorphic to the corresponding field.
+For vector spaces of type `GradedSpace{I}` where `Sector` `I` has a semi-simple unit 
+structure, this returns a multi-dimensional space corresponding to all unit sectors in `I`.
+
+!!! note
+    `unitspace(V)`is different from `one(V)`. The latter returns the empty product space
+    `ProductSpace{S,0}(())`. `Base.oneunit` falls back to `unitspace`.
 """
 unitspace(V::ElementarySpace) = unitspace(typeof(V))
 Base.oneunit(V::ElementarySpace) = unitspace(V)
@@ -136,7 +149,7 @@ Base.oneunit(::Type{V}) where {V <: ElementarySpace} = unitspace(V)
     zerospace(V::S) where {S <: ElementarySpace} -> S
 
 Return the corresponding vector space of type `S` that represents the zero-dimensional or empty space.
-This is, with a slight abuse of notation, the zero element of the direct sum of vector spaces.
+This is the zero element of the direct sum of vector spaces.
 `Base.zero` falls back to `zerospace`.
 """
 zerospace(V::ElementarySpace) = zerospace(typeof(V))
@@ -222,7 +235,7 @@ Return the corresponding vector space of type `S` that represents the direct sum
 spaces `V₁`, `V₂`, ... Note that all the individual spaces should have the same value for
 [`isdual`](@ref), as otherwise the direct sum is not defined.
 """
-function ⊕ end
+⊕(V₁::S, V₂::S) where {S <: ElementarySpace}
 ⊕(V₁::ElementarySpace, V₂::ElementarySpace) = ⊕(promote(V₁, V₂)...)
 ⊕(V::Vararg{ElementarySpace}) = foldl(⊕, V)
 const oplus = ⊕
@@ -310,13 +323,20 @@ abstract type HasInnerProduct <: InnerProductStyle end # inner product defined
 struct EuclideanInnerProduct <: HasInnerProduct end # euclidean inner product
 
 """
+    abstract type InnerProductStyle end
     InnerProductStyle(V::VectorSpace) -> ::InnerProductStyle
     InnerProductStyle(S::Type{<:VectorSpace}) -> ::InnerProductStyle
 
-Return the type of inner product for vector spaces, which can be either
-*   `NoInnerProduct()`: no mapping from `dual(V)` to `conj(V)`, i.e. no metric
-*   subtype of `HasInnerProduct`: a metric exists, but no further support is implemented.
-*   `EuclideanInnerProduct()`: the metric is the identity, such that dual and conjugate spaces are isomorphic.
+Trait to describe wether vector spaces exhibit an inner product structure, a.k.a. a unitary structure,
+which can take the following values:
+*   `EuclideanInnerProduct()`: the metric is the identity, making dual and conjugate spaces equivalent
+*   `NoInnerProduct()`: no metric and thus no relation between `dual(V)` or `conj(V)`
+
+Furthermore, `EuclideanInnerProduct` is a subtype of `HasInnerProduct`, indicating that an inner
+product exists, and an isomorphism between the dual space and the conjugate space can be constructed.
+New inner product styles can be defined that subtype `HasInnerProduct`, for example to work with
+vector spaces with non-trivial metrics. However, at the moment TensorKit does not provide built-in
+support for such non-standard inner products.
 """
 InnerProductStyle(V::VectorSpace) = InnerProductStyle(typeof(V))
 InnerProductStyle(::Type{<:VectorSpace}) = NoInnerProduct()
@@ -324,9 +344,6 @@ InnerProductStyle(::Type{<:VectorSpace}) = NoInnerProduct()
 @noinline function throw_invalid_innerproduct(fname)
     throw(ArgumentError("$fname requires Euclidean inner product"))
 end
-
-dual(V::VectorSpace) = dual(InnerProductStyle(V), V)
-dual(::EuclideanInnerProduct, V::VectorSpace) = conj(V)
 
 """
     sectortype(a) -> Type{<:Sector}

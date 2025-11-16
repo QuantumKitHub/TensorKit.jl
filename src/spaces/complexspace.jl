@@ -1,7 +1,9 @@
 """
     struct ComplexSpace <: ElementarySpace
+    ComplexSpace(d::Integer = 0; dual = false)
+    ℂ^d
 
-A standard complex vector space ℂ^d with Euclidean inner product and no additional
+A standard complex vector space ``ℂ^d`` with Euclidean inner product and no additional
 structure. It is completely characterised by its dimension and whether its the normal space
 or its dual (which is canonically isomorphic to the conjugate space).
 """
@@ -30,23 +32,23 @@ function ComplexSpace(dims::AbstractDict; kwargs...)
 end
 ComplexSpace(g::Base.Generator; kwargs...) = ComplexSpace(g...; kwargs...)
 
-field(::Type{ComplexSpace}) = ℂ
-InnerProductStyle(::Type{ComplexSpace}) = EuclideanInnerProduct()
-
 # convenience constructor
 Base.getindex(::ComplexNumbers) = ComplexSpace
 Base.:^(::ComplexNumbers, d::Int) = ComplexSpace(d)
 
 # Corresponding methods:
 #------------------------
-dim(V::ComplexSpace, s::Trivial = Trivial()) = V.d
-isdual(V::ComplexSpace) = V.dual
-Base.axes(V::ComplexSpace, ::Trivial = Trivial()) = Base.OneTo(dim(V))
-hassector(V::ComplexSpace, ::Trivial) = dim(V) != 0
-sectors(V::ComplexSpace) = OneOrNoneIterator(dim(V) != 0, Trivial())
-sectortype(::Type{ComplexSpace}) = Trivial
+field(::Type{ComplexSpace}) = ℂ
+InnerProductStyle(::Type{ComplexSpace}) = EuclideanInnerProduct()
 
-Base.conj(V::ComplexSpace) = ComplexSpace(dim(V), !isdual(V))
+dim(V::ComplexSpace, s::Trivial = Trivial()) = V.d
+Base.axes(V::ComplexSpace, ::Trivial = Trivial()) = Base.OneTo(dim(V))
+
+dual(V::ComplexSpace) = ComplexSpace(dim(V), !isdual(V))
+Base.conj(V::ComplexSpace) = dual(V)
+isdual(V::ComplexSpace) = V.dual
+isconj(V::ComplexSpace) = true
+flip(V::ComplexSpace) = dual(V)
 
 unitspace(::Type{ComplexSpace}) = ComplexSpace(1)
 zerospace(::Type{ComplexSpace}) = ComplexSpace(0)
@@ -62,7 +64,6 @@ function ⊖(V::ComplexSpace, W::ComplexSpace)
 end
 
 fuse(V₁::ComplexSpace, V₂::ComplexSpace) = ComplexSpace(V₁.d * V₂.d)
-flip(V::ComplexSpace) = dual(V)
 
 function infimum(V₁::ComplexSpace, V₂::ComplexSpace)
     return isdual(V₁) == isdual(V₂) ?
@@ -74,5 +75,9 @@ function supremum(V₁::ComplexSpace, V₂::ComplexSpace)
         ComplexSpace(max(dim(V₁), dim(V₂)), isdual(V₁)) :
         throw(SpaceMismatch("Supremum of space and dual space does not exist"))
 end
+
+hassector(V::ComplexSpace, ::Trivial) = dim(V) != 0
+sectors(V::ComplexSpace) = OneOrNoneIterator(dim(V) != 0, Trivial())
+sectortype(::Type{ComplexSpace}) = Trivial
 
 Base.show(io::IO, V::ComplexSpace) = print(io, isdual(V) ? "(ℂ^$(V.d))'" : "ℂ^$(V.d)")
