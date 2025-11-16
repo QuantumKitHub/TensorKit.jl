@@ -25,31 +25,20 @@ for f in
 end
 
 # 1-arg functions
-function MAK.initialize_output(::typeof(left_null!), t::AdjointTensorMap, alg::AbstractAlgorithm)
-    return adjoint(MAK.initialize_output(right_null!, adjoint(t), _adjoint(alg)))
-end
-function MAK.initialize_output(
-        ::typeof(right_null!), t::AdjointTensorMap,
-        alg::AbstractAlgorithm
-    )
-    return adjoint(MAK.initialize_output(left_null!, adjoint(t), _adjoint(alg)))
-end
+MAK.initialize_output(::typeof(qr_null!), t::AdjointTensorMap, alg::AbstractAlgorithm) =
+    adjoint(MAK.initialize_output(lq_null!, adjoint(t), _adjoint(alg)))
+MAK.initialize_output(::typeof(lq_null!), t::AdjointTensorMap, alg::AbstractAlgorithm) =
+    adjoint(MAK.initialize_output(qr_null!, adjoint(t), _adjoint(alg)))
 
-function MAK.left_null!(t::AdjointTensorMap, N, alg::AbstractAlgorithm)
-    right_null!(adjoint(t), adjoint(N), _adjoint(alg))
-    return N
-end
-function MAK.right_null!(t::AdjointTensorMap, N, alg::AbstractAlgorithm)
-    left_null!(adjoint(t), adjoint(N), _adjoint(alg))
-    return N
-end
+MAK.qr_null!(t::AdjointTensorMap, N, alg::AbstractAlgorithm) =
+    lq_null!(adjoint(t), adjoint(N), _adjoint(alg))
+MAK.lq_null!(t::AdjointTensorMap, N, alg::AbstractAlgorithm) =
+    qr_null!(adjoint(t), adjoint(N), _adjoint(alg))
 
-function MAK.is_left_isometric(t::AdjointTensorMap; kwargs...)
-    return MAK.is_right_isometric(adjoint(t); kwargs...)
-end
-function MAK.is_right_isometric(t::AdjointTensorMap; kwargs...)
-    return MAK.is_left_isometric(adjoint(t); kwargs...)
-end
+MAK.is_left_isometric(t::AdjointTensorMap; kwargs...) =
+    MAK.is_right_isometric(adjoint(t); kwargs...)
+MAK.is_right_isometric(t::AdjointTensorMap; kwargs...) =
+    MAK.is_left_isometric(adjoint(t); kwargs...)
 
 # 2-arg functions
 for (left_f, right_f) in zip(
