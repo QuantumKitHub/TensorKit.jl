@@ -1,4 +1,7 @@
-using LinearAlgebra, CUDA, Test, TestExtras, TensorKit, cuTENSOR
+using Test, TestExtras
+using TensorKit
+using LinearAlgebra: LinearAlgebra
+using CUDA, cuTENSOR
 
 const CUDAExt = Base.get_extension(TensorKit, :TensorKitCUDAExt)
 @assert !isnothing(CUDAExt)
@@ -55,7 +58,7 @@ for V in spacelist
                 @test Q * R ≈ t
                 @test isisometric(Q)
 
-                Q, R = @constinferred left_orth(t; kind = :qr)
+                Q, R = @constinferred left_orth(t)
                 @test Q * R ≈ t
                 @test isisometric(Q)
 
@@ -63,7 +66,7 @@ for V in spacelist
                 @test isisometric(N)
                 @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
 
-                N = @constinferred left_null(t; kind = :qr)
+                N = @constinferred left_null(t)
                 @test isisometric(N)
                 @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
             end
@@ -82,7 +85,7 @@ for V in spacelist
                 @test isisometric(Q)
                 @test dim(Q) == dim(R) == dim(t)
 
-                Q, R = @constinferred left_orth(t; kind = :qr)
+                Q, R = @constinferred left_orth(t)
                 @test Q * R ≈ t
                 @test isisometric(Q)
                 @test dim(Q) == dim(R) == dim(t)
@@ -107,7 +110,7 @@ for V in spacelist
                 @test L * Q ≈ t
                 @test isisometric(Q; side = :right)
 
-                L, Q = @constinferred right_orth(t; kind = :lq)
+                L, Q = @constinferred right_orth(t)
                 @test L * Q ≈ t
                 @test isisometric(Q; side = :right)
 
@@ -130,7 +133,7 @@ for V in spacelist
                 @test isisometric(Q; side = :right)
                 @test dim(Q) == dim(L) == dim(t)
 
-                L, Q = @constinferred right_orth(t; kind = :lq)
+                L, Q = @constinferred right_orth(t)
                 @test L * Q ≈ t
                 @test isisometric(Q; side = :right)
                 @test dim(Q) == dim(L) == dim(t)
@@ -157,7 +160,7 @@ for V in spacelist
                 # broken for T <: Complex
                 @test isposdef(p)
 
-                w, p = @constinferred left_orth(t; kind = :polar)
+                w, p = @constinferred left_orth(t; alg = :polar)
                 @test w * p ≈ t
                 @test isisometric(w)
             end
@@ -174,7 +177,7 @@ for V in spacelist
                 @test isisometric(wᴴ; side = :right)
                 @test isposdef(p)
 
-                p, wᴴ = @constinferred right_orth(t; kind = :polar)
+                p, wᴴ = @constinferred right_orth(t; alg = :polar)
                 @test p * wᴴ ≈ t
                 @test isisometric(wᴴ; side = :right)
             end
@@ -204,15 +207,15 @@ for V in spacelist
                     @test b ≈ s′[c]
                 end
 
-                v, c = @constinferred left_orth(t; kind = :svd)
+                v, c = @constinferred left_orth(t; alg = :svd)
                 @test v * c ≈ t
                 @test isisometric(v)
 
-                N = @constinferred left_null(t; kind = :svd)
+                N = @constinferred left_null(t; alg = :svd)
                 @test isisometric(N)
                 @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
 
-                Nᴴ = @constinferred right_null(t; kind = :svd)
+                Nᴴ = @constinferred right_null(t; alg = :svd)
                 @test isisometric(Nᴴ; side = :right)
                 @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
             end
@@ -384,6 +387,63 @@ for V in spacelist
                 λmax = maximum(s -> maximum(abs, s), values(vals))
                 λmin = minimum(s -> minimum(abs, s), values(vals))
                 @test cond(t) ≈ λmax / λmin
+            end
+        end
+
+        @testset "Hermitian projections" begin
+            for T in eltypes,
+                    t in (
+                        curand(T, V1, V1), curand(T, W, W), curand(T, W, W)',
+                        CuDiagonalTensorMap(curand(T, reduceddim(V1)), V1),
+                    )
+                normalize!(t)
+                noisefactor = eps(real(T))^(3 / 4)
+
+                th = (t + t') / 2
+                ta = (t - t') / 2
+                tc = copy(t)
+
+                th′ = @constinferred project_hermitian(t)
+                @test ishermitian(th′)
+                @test th′ ≈ th
+                @test t == tc
+                th_approx = th + noisefactor * ta
+                @test !ishermitian(th_approx) || (T <: Real && t isa CuDiagonalTensorMap)
+                @test ishermitian(th_approx; atol = 10 * noisefactor)
+
+                ta′ = project_antihermitian(t)
+                @test isantihermitian(ta′)
+                @test ta′ ≈ ta
+                @test t == tc
+                ta_approx = ta + noisefactor * th
+                @test !isantihermitian(ta_approx)
+                @test isantihermitian(ta_approx; atol = 10 * noisefactor) || (T <: Real && t isa CuDiagonalTensorMap)
+            end
+        end
+
+        @testset "Isometric projections" begin
+            for T in eltypes,
+                    t in (
+                        curandn(T, W, W), curandn(T, W, W)',
+                        curandn(T, W, V1), curandn(T, V1, W)',
+                    )
+                t2 = project_isometric(t)
+                @test isisometric(t2)
+                t3 = project_isometric(t2)
+                @test t3 ≈ t2 # stability of the projection
+                @test t2 * (t2' * t) ≈ t
+
+                tc = similar(t)
+                t3 = @constinferred project_isometric!(copy!(tc, t), t2)
+                @test t3 === t2
+                @test isisometric(t2)
+
+                # test that t2 is closer to A then any other isometry
+                for k in 1:10
+                    δt = randn!(similar(t))
+                    t3 = project_isometric(t + δt / 100)
+                    @test norm(t - t3) > norm(t - t2)
+                end
             end
         end
     end
