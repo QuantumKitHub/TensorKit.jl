@@ -124,7 +124,6 @@ function remove_eighgauge_dependence!(
         ΔV, D, V; degeneracy_atol = MatrixAlgebraKit.default_pullback_degeneracy_atol(D)
     )
     gaugepart = project_antihermitian!(V' * ΔV)
-    gaugepart = (gaugepart - gaugepart') / 2
     for (c, b) in blocks(gaugepart)
         Dc = diagview(block(D, c))
         # for some reason this fails only on tests, and I cannot reproduce it in an
@@ -598,7 +597,7 @@ for V in spacelist
                     # Jacobian changes size if the truncation space changes, causing errors.
                     # So, first test the fixed space case, then do more limited testing on
                     # some gradients and compare to the fixed space case
-                    V_trunc = spacetype(t)(c => ceil(Int, min(size(b)...) / 2) for (c, b) in blocks(t))
+                    V_trunc = spacetype(t)(c => div(min(size(b)...), 2) for (c, b) in blocks(t))
                     trunc = truncspace(V_trunc)
                     USVᴴ_trunc = svd_trunc(t; trunc)
                     ΔUSVᴴ_trunc = (rand_tangent.(Base.front(USVᴴ_trunc))..., zero(last(USVᴴ_trunc)))
