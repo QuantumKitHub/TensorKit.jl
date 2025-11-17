@@ -49,6 +49,6 @@ Depth = 2
 ## Appendix
 
 ```@contents
-Pages = ["appendix/categories.md"]
+Pages = ["appendix/categories.md", "appendix/symmetric_tutorial.md"]
 Depth = 3
 ```
