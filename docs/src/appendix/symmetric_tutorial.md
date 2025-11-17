@@ -1148,7 +1148,7 @@ subblocks(TT)
 Circling back to our earlier remark, we clearly see that the fusion trees of this tensor
 indeed have non-trivial vertex labels.
 ```@example symmetric_tutorial
-f = collect(fusiontrees(TT))[3][2]
+f = collect(fusiontrees(TT))[4][2]
 ```
 ```@example symmetric_tutorial
 f.vertices
