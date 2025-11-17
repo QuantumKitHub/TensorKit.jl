@@ -67,7 +67,7 @@ function MAK.truncate(
 
     Ũ = similar(U, codomain(U) ← V_truncated)
     truncate_domain!(Ũ, U, ind)
-    S̃ = DiagonalTensorMap{scalartype(S)}(undef, V_truncated)
+    S̃ = DiagonalTensorMap{scalartype(S), typeof(V_truncated), storagetype(S)}(undef, V_truncated)
     truncate_diagonal!(S̃, S, ind)
     Ṽᴴ = similar(Vᴴ, V_truncated ← domain(Vᴴ))
     truncate_codomain!(Ṽᴴ, Vᴴ, ind)
@@ -76,12 +76,10 @@ function MAK.truncate(
 end
 
 function MAK.truncate(
-        ::typeof(left_null!),
-        (U, S)::Tuple{AbstractTensorMap, AbstractTensorMap},
-        strategy::MatrixAlgebraKit.TruncationStrategy
+        ::typeof(left_null!), (U, S)::NTuple{2, AbstractTensorMap}, strategy::TruncationStrategy
     )
     extended_S = SectorDict(
-        c => vcat(diagview(b), zeros(eltype(b), max(0, size(b, 2) - size(b, 1))))
+        c => vcat(diagview(b), zeros(eltype(b), max(0, size(b, 1) - size(b, 2))))
             for (c, b) in blocks(S)
     )
     ind = MAK.findtruncated(extended_S, strategy)
@@ -89,6 +87,40 @@ function MAK.truncate(
     Ũ = similar(U, codomain(U) ← V_truncated)
     truncate_domain!(Ũ, U, ind)
     return Ũ, ind
+end
+function MAK.truncate(
+        ::typeof(right_null!), (S, Vᴴ)::NTuple{2, AbstractTensorMap}, strategy::TruncationStrategy
+    )
+    extended_S = SectorDict(
+        c => vcat(diagview(b), zeros(eltype(b), max(0, size(b, 2) - size(b, 1))))
+            for (c, b) in blocks(S)
+    )
+    ind = MAK.findtruncated(extended_S, strategy)
+    V_truncated = truncate_space(dual(space(S, 2)), ind)
+    Ṽᴴ = similar(Vᴴ, V_truncated ← domain(Vᴴ))
+    truncate_codomain!(Ṽᴴ, Vᴴ, ind)
+    return Ṽᴴ, ind
+end
+
+# special case `NoTruncation` for null: should keep exact zeros due to rectangularity
+# need to specialize to avoid ambiguity with special case in MatrixAlgebraKit
+function MAK.truncate(
+        ::typeof(left_null!), (U, S)::NTuple{2, AbstractTensorMap}, strategy::NoTruncation
+    )
+    ind = SectorDict(c => (size(b, 2) + 1):size(b, 1) for (c, b) in blocks(S))
+    V_truncated = truncate_space(space(S, 1), ind)
+    Ũ = similar(U, codomain(U) ← V_truncated)
+    truncate_domain!(Ũ, U, ind)
+    return Ũ, ind
+end
+function MAK.truncate(
+        ::typeof(right_null!), (S, Vᴴ)::NTuple{2, AbstractTensorMap}, strategy::NoTruncation
+    )
+    ind = SectorDict(c => (size(b, 1) + 1):size(b, 2) for (c, b) in blocks(S))
+    V_truncated = truncate_space(dual(space(S, 2)), ind)
+    Ṽᴴ = similar(Vᴴ, V_truncated ← domain(Vᴴ))
+    truncate_codomain!(Ṽᴴ, Vᴴ, ind)
+    return Ṽᴴ, ind
 end
 
 for f! in (:eig_trunc!, :eigh_trunc!)
@@ -100,7 +132,7 @@ for f! in (:eig_trunc!, :eigh_trunc!)
         ind = MAK.findtruncated(diagview(D), strategy)
         V_truncated = truncate_space(space(D, 1), ind)
 
-        D̃ = DiagonalTensorMap{scalartype(D)}(undef, V_truncated)
+        D̃ = DiagonalTensorMap{scalartype(D), typeof(V_truncated), storagetype(D)}(undef, V_truncated)
         truncate_diagonal!(D̃, D, ind)
 
         Ṽ = similar(V, codomain(V) ← V_truncated)
@@ -113,7 +145,8 @@ end
 # Find truncation
 # ---------------
 # auxiliary functions
-rtol_to_atol(S, p, atol, rtol) = rtol > 0 ? max(atol, TensorKit._norm(S, p) * rtol) : atol
+rtol_to_atol(S, p, atol, rtol) =
+    rtol == 0 ? atol : max(atol, TensorKit._norm(S, p, norm(zero(scalartype(valtype(S))))) * rtol)
 
 function _compute_truncerr(Σdata, truncdim, p = 2)
     I = keytype(Σdata)
@@ -129,17 +162,15 @@ function _findnexttruncvalue(
     ) where {I <: Sector}
     # early return
     (isempty(S) || all(iszero, values(truncdim))) && return nothing
+    mapped_keys = map(keys(truncdim)) do c
+        d = truncdim[c]
+        return by(S[c][d])
+    end
     if rev
-        σmin, imin = findmin(keys(truncdim)) do c
-            d = truncdim[c]
-            return by(S[c][d])
-        end
+        σmin, imin = findmin(mapped_keys)
         return σmin, keys(truncdim)[imin]
     else
-        σmax, imax = findmax(keys(truncdim)) do c
-            d = truncdim[c]
-            return by(S[c][d])
-        end
+        σmax, imax = findmax(mapped_keys)
         return σmax, keys(truncdim)[imax]
     end
 end
@@ -241,4 +272,17 @@ function MAK.findtruncated_svd(values::SectorDict, strategy::TruncationIntersect
                 init = trues(length(values[c]))
             ) for c in intersect(map(keys, inds)...)
     )
+end
+
+# Truncation error
+# ----------------
+MAK.truncation_error(values::SectorDict, ind) =
+    MAK.truncation_error!(SectorDict(c => copy(v) for (c, v) in values), ind)
+
+function MAK.truncation_error!(values::SectorDict, ind)
+    for (c, ind_c) in ind
+        v = values[c]
+        v[ind_c] .= zero(eltype(v))
+    end
+    return TensorKit._norm(values, 2, zero(real(eltype(valtype(values)))))
 end

@@ -9,38 +9,44 @@ _adjoint(alg::MAK.LAPACK_HouseholderRQ) = MAK.LAPACK_HouseholderQL(; alg.kwargs.
 _adjoint(alg::MAK.PolarViaSVD) = MAK.PolarViaSVD(_adjoint(alg.svdalg))
 _adjoint(alg::AbstractAlgorithm) = alg
 
+for f in
+    [
+        :svd_compact, :svd_full, :svd_trunc, :svd_vals, :qr_compact, :qr_full, :qr_null,
+        :lq_compact, :lq_full, :lq_null, :eig_full, :eig_trunc, :eig_vals, :eigh_full,
+        :eigh_trunc, :eigh_vals, :left_polar, :right_polar,
+        :project_hermitian, :project_antihermitian, :project_isometric,
+    ]
+    f! = Symbol(f, :!)
+    # just return the algorithm for the parent type since we are mapping this with
+    # `_adjoint` afterwards anyways.
+    # TODO: properly handle these cases
+    @eval MAK.default_algorithm(::typeof($f!), ::Type{T}; kwargs...) where {T <: AdjointTensorMap} =
+        MAK.default_algorithm($f!, TensorKit.parenttype(T); kwargs...)
+end
+
 # 1-arg functions
-function MAK.initialize_output(::typeof(left_null!), t::AdjointTensorMap, alg::AbstractAlgorithm)
-    return adjoint(MAK.initialize_output(right_null!, adjoint(t), _adjoint(alg)))
-end
-function MAK.initialize_output(
-        ::typeof(right_null!), t::AdjointTensorMap,
-        alg::AbstractAlgorithm
-    )
-    return adjoint(MAK.initialize_output(left_null!, adjoint(t), _adjoint(alg)))
-end
+MAK.initialize_output(::typeof(qr_null!), t::AdjointTensorMap, alg::AbstractAlgorithm) =
+    adjoint(MAK.initialize_output(lq_null!, adjoint(t), _adjoint(alg)))
+MAK.initialize_output(::typeof(lq_null!), t::AdjointTensorMap, alg::AbstractAlgorithm) =
+    adjoint(MAK.initialize_output(qr_null!, adjoint(t), _adjoint(alg)))
 
-function MAK.left_null!(t::AdjointTensorMap, N, alg::AbstractAlgorithm)
-    right_null!(adjoint(t), adjoint(N), _adjoint(alg))
-    return N
-end
-function MAK.right_null!(t::AdjointTensorMap, N, alg::AbstractAlgorithm)
-    left_null!(adjoint(t), adjoint(N), _adjoint(alg))
-    return N
-end
+MAK.qr_null!(t::AdjointTensorMap, N, alg::AbstractAlgorithm) =
+    lq_null!(adjoint(t), adjoint(N), _adjoint(alg))
+MAK.lq_null!(t::AdjointTensorMap, N, alg::AbstractAlgorithm) =
+    qr_null!(adjoint(t), adjoint(N), _adjoint(alg))
 
-function MAK.is_left_isometry(t::AdjointTensorMap; kwargs...)
-    return is_right_isometry(adjoint(t); kwargs...)
-end
-function MAK.is_right_isometry(t::AdjointTensorMap; kwargs...)
-    return is_left_isometry(adjoint(t); kwargs...)
-end
+MAK.is_left_isometric(t::AdjointTensorMap; kwargs...) =
+    MAK.is_right_isometric(adjoint(t); kwargs...)
+MAK.is_right_isometric(t::AdjointTensorMap; kwargs...) =
+    MAK.is_left_isometric(adjoint(t); kwargs...)
 
 # 2-arg functions
-for (left_f!, right_f!) in zip(
-        (:qr_full!, :qr_compact!, :left_polar!, :left_orth!),
-        (:lq_full!, :lq_compact!, :right_polar!, :right_orth!)
+for (left_f, right_f) in zip(
+        (:qr_full, :qr_compact, :left_polar),
+        (:lq_full, :lq_compact, :right_polar)
     )
+    left_f! = Symbol(left_f, :!)
+    right_f! = Symbol(right_f, :!)
     @eval function MAK.copy_input(::typeof($left_f!), t::AdjointTensorMap)
         return adjoint(MAK.copy_input($right_f!, adjoint(t)))
     end
@@ -59,14 +65,10 @@ for (left_f!, right_f!) in zip(
         return reverse(adjoint.(MAK.initialize_output($left_f!, adjoint(t), _adjoint(alg))))
     end
 
-    @eval function MAK.$left_f!(t::AdjointTensorMap, F, alg::AbstractAlgorithm)
+    @eval MAK.$left_f!(t::AdjointTensorMap, F, alg::AbstractAlgorithm) =
         $right_f!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
-        return F
-    end
-    @eval function MAK.$right_f!(t::AdjointTensorMap, F, alg::AbstractAlgorithm)
+    @eval MAK.$right_f!(t::AdjointTensorMap, F, alg::AbstractAlgorithm) =
         $left_f!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
-        return F
-    end
 end
 
 # 3-arg functions
