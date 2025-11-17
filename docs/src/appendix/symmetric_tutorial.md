@@ -466,7 +466,7 @@ with degeneracy 1, `A = U1Space(1 => 1)`. Similarly, the decrease in occupation 
 acting with $a^-$ can be thought of as the *splitting* of an `U1Irrep(n)` into an
 `U1Irrep(n - 1)` and an `U1Irrep(1)`, leading to a representation in terms of a
 `TensorMap(..., A ⊗ V ← V)`. Based on these observations, we can represent the matrix
-elements {eq}`eq:bosonopmatel` as blocks labeled by the $\mathrm{U}(1)$ fusion trees
+elements \eqref{eq:bosonopmatel} as blocks labeled by the $\mathrm{U}(1)$ fusion trees
 
 ```@raw html
 <center><img src="../img/symmetric_tutorial/bosonops.svg" alt="bosonops" class="color-invertible" style="zoom: 170%"/></center>
@@ -580,7 +580,7 @@ c_i^+ c_j^- \right)^\dagger = c_j^+ c_i^- = - c_i^- c_j^+$ and $\left( c_i^+ c_j
 restrict the local occupation number to be 0 or 1, leading to a well-defined notion of
 *fermion-parity*. The local fermion-parity operator is related to the fermion number
 operator as $Q_i = (-1)^{N_i}$, and is diagonal in the occupation number basis. The
-Hamiltonian {eq}`eq:kitaev` is invariant under conjugation by the global fermion-parity
+Hamiltonian \eqref{eq:kitaev} is invariant under conjugation by the global fermion-parity
 operator, $Q H Q^\dagger = H$, where
 ```math
 Q = \exp \left( i \pi \sum_i N_i \right) = (-1)^{\sum_i N_i}.
@@ -1023,7 +1023,7 @@ determined by the spin irrep label. In particular, we have for each irrep $l$
 ```math
 \vec{S}^2 \ket{l,m} = l(l+1) \ket{l,m}.
 ```
-It then follows from Eq. {eq}`eq:casimir_decomp` that the reduced matrix elements of the
+It then follows from Eq. \eqref{eq:casimir_decomp} that the reduced matrix elements of the
 exchange interaction are completely determined by the eigenvalue of the quadratic Casimir on
 the uncoupled and coupled irreps. Indeed, to each fusion tree we can associate a
 well-defined value
