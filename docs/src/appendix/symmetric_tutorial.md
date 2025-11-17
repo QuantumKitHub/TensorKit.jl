@@ -167,7 +167,7 @@ representation, which gives the first and last entries of the fusion rules. Simi
 acts with a minus sign on both $\ket{+} \otimes \ket{-}$ and $\ket{-} \otimes \ket{+}$,
 meaning these transform under the sign representation, which gives the second and third
 entries of the fusion rules. Having introduced this notion of 'fusing' irreps, we can now
-associate associate a well-defined *coupled irrep* to each of the four two-site basis
+associate a well-defined *coupled irrep* to each of the four two-site basis
 states, which is given by the tensor product of the two *uncoupled irreps* associated to
 each individual site. From the matrix elements of $ZZ$ given above, we clearly see that this
 operator only maps between states in the domain and codomain that have the same coupled
