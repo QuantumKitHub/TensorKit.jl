@@ -58,12 +58,12 @@ LinearAlgebra.svdvals!(t::AbstractTensorMap) = diagview(svd_vals!(t))
 function MAK.ishermitian(t::AbstractTensorMap; kwargs...)
     return InnerProductStyle(t) === EuclideanInnerProduct() &&
         domain(t) == codomain(t) &&
-        all(cb -> MatrixAlgebraKit.ishermitian(cb[2]; kwargs...), blocks(t))
+        all(cb -> MAK.ishermitian(cb[2]; kwargs...), blocks(t))
 end
 function MAK.isantihermitian(t::AbstractTensorMap; kwargs...)
     return InnerProductStyle(t) === EuclideanInnerProduct() &&
         domain(t) == codomain(t) &&
-        all(cb -> MatrixAlgebraKit.isantihermitian(cb[2]; kwargs...), blocks(t))
+        all(cb -> MAK.isantihermitian(cb[2]; kwargs...), blocks(t))
 end
 LinearAlgebra.ishermitian(t::AbstractTensorMap) = MAK.ishermitian(t)
 
@@ -90,10 +90,6 @@ function MAK.is_right_isometric(t::AbstractTensorMap; kwargs...)
     domain(t) ≿ codomain(t) || return false
     f((c, b)) = MAK.is_right_isometric(b; kwargs...)
     return all(f, blocks(t))
-end
-function MAK.isisometric(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple; kwargs...)
-    t = permute(t, (p₁, p₂); copy = false)
-    return MAK.isisometric(t; kwargs...)
 end
 
 end
