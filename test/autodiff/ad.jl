@@ -615,23 +615,23 @@ for V in spacelist
                         return LinearAlgebra.tr(Str) + LinearAlgebra.norm(Utr * Vᴴtr)
                     end
 
-                    trunc = truncrank(round(Int, dim(V_trunc)))
-                    USVᴴ_trunc = svd_trunc(t; trunc)
+                    trunc = truncrank(ceil(Int, dim(V_trunc)))
+                    USVᴴ_trunc′ = svd_trunc(t; trunc)
                     g1, = Zygote.gradient(x -> f(x; trunc), t)
-                    g2, = Zygote.gradient(x -> f(x; trunc = truncspace(space(USVᴴ_trunc[2], 1))), t)
+                    g2, = Zygote.gradient(x -> f(x; trunc = truncspace(space(USVᴴ_trunc′[2], 1))), t)
                     @test g1 ≈ g2
 
                     trunc = truncerror(; atol = last(USVᴴ_trunc))
-                    USVᴴ_trunc = svd_trunc(t; trunc)
+                    USVᴴ_trunc′ = svd_trunc(t; trunc)
                     g1, = Zygote.gradient(x -> f(x; trunc), t)
-                    g2, = Zygote.gradient(x -> f(x; trunc = truncspace(space(USVᴴ_trunc[2], 1))), t)
+                    g2, = Zygote.gradient(x -> f(x; trunc = truncspace(space(USVᴴ_trunc′[2], 1))), t)
                     @test g1 ≈ g2
 
-                    tol = minimum(((c, b),) -> minimum(diagview(b)), blocks(USVᴴ_trunc[2]))
+                    tol = minimum(((c, b),) -> minimum(diagview(b)), blocks(USVᴴ_trunc[2]); init = zero(scalartype(USVᴴ_trunc[2])))
                     trunc = trunctol(; atol = 10 * tol)
-                    USVᴴ_trunc = svd_trunc(t; trunc)
+                    USVᴴ_trunc′ = svd_trunc(t; trunc)
                     g1, = Zygote.gradient(x -> f(x; trunc), t)
-                    g2, = Zygote.gradient(x -> f(x; trunc = truncspace(space(USVᴴ_trunc[2], 1))), t)
+                    g2, = Zygote.gradient(x -> f(x; trunc = truncspace(space(USVᴴ_trunc′[2], 1))), t)
                     @test g1 ≈ g2
                 end
             end
