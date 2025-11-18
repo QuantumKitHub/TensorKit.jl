@@ -6,10 +6,14 @@
 # -> A-move (foldleft, foldright) is complicated, needs to be reexpressed in standard form
 
 @doc """
-    bendright(src) -> dst, coeffs
+    bendright((f₁, f₂)::FusionTreePair) -> (f₃, f₄) => coeff
+    bendright(src::FusionTreeBlock) -> dst => coeffs
 
-Map the final splitting vertex `a ⊗ b ← c` of each tree in `src` to a (linear combination of)
-fusion vertices `a ← c ⊗ dual(b)` in `dst`.
+Map the final splitting vertex `a ⊗ b ← c` of `src` to a fusion vertex `a ← c ⊗ dual(b)` in `dst`.
+For `FusionStyle(src) === UniqueFusion()`, both `src` and `dst` are simple `FusionTreePair`s, and the
+transformation consists of a single coefficient `coeff`.
+For generic `FusionStyle`s, the input and output consist of `FusionTreeBlock`s that bundle together
+all trees with the same uncoupled charges, and `coeffs` now forms a transformation matrix
 
 ```
     ╰─┬─╯ |  | |   ╰─┬─╯ |  |  |
@@ -25,6 +29,7 @@ See also [`bendleft`](@ref).
 """ bendright
 
 function bendright(src::FusionTreePair)
+    @assert FusionStyle(src) === UniqueFusion()
     I, N₁, N₂ = sectortype(src), numout(src), numin(src)
     f₁, f₂ = src
     @assert N₁ > 0
@@ -151,6 +156,7 @@ See also [`bendright`](@ref).
 """ bendleft
 
 function bendleft((f₁, f₂)::FusionTreePair{I}) where {I}
+    @assert FusionStyle(I) === UniqueFusion()
     return fusiontreedict(I)(
         (f₁′, f₂′) => conj(coeff) for ((f₂′, f₁′), coeff) in bendright((f₂, f₁))
     )
@@ -222,6 +228,7 @@ end
 
 # change to N₁ - 1, N₂ + 1
 function foldright((f₁, f₂)::FusionTreePair{I, N₁, N₂}) where {I, N₁, N₂}
+    @assert FusionStyle(I) === UniqueFusion()
     # map first splitting vertex (a, b)<-c to fusion vertex b<-(dual(a), c)
     @assert N₁ > 0
     a = f₁.uncoupled[1]
@@ -347,6 +354,7 @@ end
 
 # change to N₁ + 1, N₂ - 1
 function foldleft((f₁, f₂)::FusionTreePair{I}) where {I}
+    @assert FusionStyle(I) === UniqueFusion()
     # map first fusion vertex c<-(a, b) to splitting vertex (dual(a), c)<-b
     return fusiontreedict(I)(
         (f₁′, f₂′) => conj(coeff) for ((f₂′, f₁′), coeff) in foldright((f₂, f₁))
@@ -427,6 +435,7 @@ end
 
 # clockwise cyclic permutation while preserving (N₁, N₂): foldright & bendleft
 function cycleclockwise((f₁, f₂)::FusionTreePair{I}) where {I}
+    @assert FusionStyle(I) === UniqueFusion()
     local newtrees
     if length(f₁) > 0
         for ((f1a, f2a), coeffa) in foldright((f₁, f₂))
@@ -466,6 +475,7 @@ end
 
 # anticlockwise cyclic permutation while preserving (N₁, N₂): foldleft & bendright
 function cycleanticlockwise((f₁, f₂)::FusionTreePair{I}) where {I}
+    @assert FusionStyle(I) === UniqueFusion()
     local newtrees
     if length(f₂) > 0
         for ((f1a, f2a), coeffa) in foldleft((f₁, f₂))
@@ -522,6 +532,7 @@ repartitioning the tree by bending incoming to outgoing sectors (or vice versa) 
 have `N` outgoing sectors.
 """
 @inline function repartition((f₁, f₂)::FusionTreePair, N::Int)
+    @assert FusionStyle((f₁, f₂)) === UniqueFusion()
     f₁.coupled == f₂.coupled || throw(SectorMismatch())
     @assert 0 <= N <= length(f₁) + length(f₂)
     return _recursive_repartition((f₁, f₂), Val(N))
@@ -592,7 +603,6 @@ function _repartition_body(N)
     return ex
 end
 @generated function repartition(src::FusionTreeBlock, ::Val{N}) where {N}
-    1 + 1
     return _repartition_body(numout(src) - N)
 end
 
@@ -618,16 +628,14 @@ const FSPTransposeKey{I, N₁, N₂} = Tuple{FusionTreePair{I}, Index2Tuple{N₁
 const FSBTransposeKey{I, N₁, N₂} = Tuple{FusionTreeBlock{I}, Index2Tuple{N₁, N₂}}
 
 Base.@assume_effects :foldable function _fsdicttype(::Type{T}) where {I, N₁, N₂, T <: FSPTransposeKey{I, N₁, N₂}}
-    F₁ = fusiontreetype(I, N₁)
-    F₂ = fusiontreetype(I, N₂)
     E = sectorscalartype(I)
-    return fusiontreedict(I){Tuple{F₁, F₂}, E}
+    return Pair{fusiontreetype(I, N₁, N₂), E}
 end
 Base.@assume_effects :foldable function _fsdicttype(::Type{T}) where {I, N₁, N₂, T <: FSBTransposeKey{I, N₁, N₂}}
     F₁ = fusiontreetype(I, N₁)
     F₂ = fusiontreetype(I, N₂)
     E = sectorscalartype(I)
-    return Tuple{FusionTreeBlock{I, N₁, N₂, Tuple{F₁, F₂}}, Matrix{E}}
+    return Pair{FusionTreeBlock{I, N₁, N₂, Tuple{F₁, F₂}}, Matrix{E}}
 end
 
 @cached function fstranspose(key::K)::_fsdicttype(K) where {I, N₁, N₂, K <: FSPTransposeKey{I, N₁, N₂}}
@@ -635,10 +643,10 @@ end
     N = N₁ + N₂
     p = linearizepermutation(p1, p2, length(f₁), length(f₂))
     newtrees = repartition((f₁, f₂), N₁)
-    length(p) == 0 && return newtrees
+    length(p) == 0 && return only(newtrees)
     i1 = findfirst(==(1), p)
     @assert i1 !== nothing
-    i1 == 1 && return newtrees
+    i1 == 1 && return only(newtrees)
     Nhalf = N >> 1
     while 1 < i1 <= Nhalf
         local newtrees′
@@ -670,7 +678,7 @@ end
         newtrees = newtrees′
         i1 = mod1(i1 + 1, N)
     end
-    return newtrees
+    return only(newtrees)
 end
 @cached function fstranspose(key::K)::_fsdicttype(K) where {I, N₁, N₂, K <: FSBTransposeKey{I, N₁, N₂}}
     src, (p1, p2) = key
@@ -679,9 +687,9 @@ end
     p = linearizepermutation(p1, p2, numout(src), numin(src))
 
     dst, U = repartition(src, N₁)
-    length(p) == 0 && return dst, U
+    length(p) == 0 && return dst => U
     i1 = findfirst(==(1), p)::Int
-    i1 == 1 && return dst, U
+    i1 == 1 && return dst => U
 
     Nhalf = N >> 1
     while 1 < i1 ≤ Nhalf
@@ -695,7 +703,7 @@ end
         i1 = mod1(i1 + 1, N)
     end
 
-    return dst, U
+    return dst => U
 end
 
 CacheStyle(::typeof(fstranspose), k::FSPTransposeKey{I}) where {I} =

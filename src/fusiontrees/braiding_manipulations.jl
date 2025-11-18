@@ -380,16 +380,14 @@ const FSPBraidKey{I, N₁, N₂} = Tuple{FusionTreePair{I}, Index2Tuple{N₁, N�
 const FSBBraidKey{I, N₁, N₂} = Tuple{FusionTreeBlock{I}, Index2Tuple{N₁, N₂}, Index2Tuple}
 
 Base.@assume_effects :foldable function _fsdicttype(::Type{T}) where {I, N₁, N₂, T <: FSPBraidKey{I, N₁, N₂}}
-    F₁ = fusiontreetype(I, N₁)
-    F₂ = fusiontreetype(I, N₂)
     E = sectorscalartype(I)
-    return fusiontreedict(I){Tuple{F₁, F₂}, E}
+    return Pair{fusiontreetype(I, N₁, N₂), E}
 end
 Base.@assume_effects :foldable function _fsdicttype(::Type{T}) where {I, N₁, N₂, T <: FSBBraidKey{I, N₁, N₂}}
     F₁ = fusiontreetype(I, N₁)
     F₂ = fusiontreetype(I, N₂)
     E = sectorscalartype(I)
-    return Tuple{FusionTreeBlock{I, N₁, N₂, Tuple{F₁, F₂}}, Matrix{E}}
+    return Pair{FusionTreeBlock{I, N₁, N₂, Tuple{F₁, F₂}}, Matrix{E}}
 end
 
 @cached function fsbraid(key::K)::_fsdicttype(K) where {I, N₁, N₂, K <: FSPBraidKey{I, N₁, N₂}}
@@ -409,7 +407,7 @@ end
             end
         end
     end
-    return newtrees
+    return only(newtrees)
 end
 
 function transformation_matrix(transform, dst::FusionTreeBlock{I}, src::FusionTreeBlock{I}) where {I}
@@ -450,11 +448,11 @@ end
     end
 
     if N₂ == 0
-        return dst, U
+        return dst => U
     else
         dst, U_tmp = repartition(dst, N₁)
         U = U_tmp * U
-        return dst, U
+        return dst => U
     end
 end
 

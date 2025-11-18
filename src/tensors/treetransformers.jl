@@ -26,7 +26,7 @@ function AbelianTreeTransformer(transform, p, Vdst, Vsrc)
 
     for i in 1:L
         f₁, f₂ = structure_src.fusiontreelist[i]
-        (f₃, f₄), coeff = only(transform((f₁, f₂)))
+        (f₃, f₄), coeff = transform((f₁, f₂))
         j = structure_dst.fusiontreeindices[(f₃, f₄)]
         stridestructure_dst = structure_dst.fusiontreestructure[j]
         stridestructure_src = structure_src.fusiontreestructure[i]
@@ -69,32 +69,19 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
     N₁ = numout(Vsrc)
     N₂ = numin(Vsrc)
 
-    isdual_src = (map(isdual, codomain(Vsrc).spaces), map(isdual, domain(Vsrc).spaces))
-
-    data = Vector{_GenericTransformerData{T, N}}()
+    fblocks = fusionblocks(Vsrc)
+    nblocks = length(fblocks)
+    data = Vector{_GenericTransformerData{T, N}}(undef, nblocks)
 
     nthreads = get_num_manipulation_threads()
     if nthreads > 1
-        fusiontreeblocks = Vector{FusionTreeBlock{I, N₁, N₂, fusiontreetype(I, N₁, N₂)}}()
-        for cod_uncoupled_src in sectors(codomain(Vsrc)),
-                dom_uncoupled_src in sectors(domain(Vsrc))
-
-            fs_src = FusionTreeBlock{I}((cod_uncoupled_src, dom_uncoupled_src), isdual_src)
-            trees_src = fusiontrees(fs_src)
-            if !isempty(trees_src)
-                push!(fusiontreeblocks, fs_src)
-            end
-        end
-        nblocks = length(fusiontreeblocks)
-
-        resize!(data, nblocks)
         counter = Threads.Atomic{Int}(1)
         Threads.@sync for _ in 1:min(nthreads, nblocks)
             Threads.@spawn begin
                 while true
                     local_counter = Threads.atomic_add!(counter, 1)
                     local_counter > nblocks && break
-                    fs_src = fusiontreeblocks[local_counter]
+                    fs_src = fblocks[local_counter]
                     fs_dst, U = transform(fs_src)
                     matrix = copy(transpose(U)) # TODO: should we avoid this
 
@@ -118,17 +105,11 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
         end
         transformer = GenericTreeTransformer{T, N}(data)
     else
-        isdual_src = (map(isdual, codomain(Vsrc).spaces), map(isdual, domain(Vsrc).spaces))
-        for cod_uncoupled_src in sectors(codomain(Vsrc)),
-                dom_uncoupled_src in sectors(domain(Vsrc))
-
-            fs_src = FusionTreeBlock{I}((cod_uncoupled_src, dom_uncoupled_src), isdual_src)
-            trees_src = fusiontrees(fs_src)
-            isempty(trees_src) && continue
-
+        for (i, fs_src) in enumerate(fblocks)
             fs_dst, U = transform(fs_src)
             matrix = copy(transpose(U)) # TODO: should we avoid this
 
+            trees_src = fusiontrees(fs_src)
             inds_src = map(Base.Fix1(getindex, structure_src.fusiontreeindices), trees_src)
             trees_dst = fusiontrees(fs_dst)
             inds_dst = map(Base.Fix1(getindex, structure_dst.fusiontreeindices), trees_dst)
@@ -142,7 +123,7 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
                 fusionstructure_dst, inds_dst
             )
 
-            push!(data, (matrix, (sz_dst, newstructs_dst), (sz_src, newstructs_src)))
+            data[i] = matrix, (sz_dst, newstructs_dst), (sz_src, newstructs_src)
         end
         transformer = GenericTreeTransformer{T, N}(data)
     end
@@ -180,6 +161,13 @@ function allocate_buffers(
     )
     sz = buffersize(transformer)
     return similar(tdst.data, sz), similar(tsrc.data, sz)
+end
+function allocate_buffers(
+        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, transformer
+    )
+    # be pessimistic and assume the worst for now
+    sz = dim(space(tsrc))
+    return similar(storagetype(tdst), sz), similar(storagetype(tsrc), sz)
 end
 
 function treetransformertype(Vdst, Vsrc)

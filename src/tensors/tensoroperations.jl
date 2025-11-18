@@ -200,38 +200,63 @@ function trace_permute!(
     end
 
     I = sectortype(S)
-    # TODO: is it worth treating UniqueFusion separately? Is it worth to add multithreading support?
     if I === Trivial
         cod = codomain(tsrc)
         dom = domain(tsrc)
         n = length(cod)
         TO.tensortrace!(tdst[], tsrc[], (p₁, p₂), (q₁, q₂), false, α, β, backend)
-        # elseif FusionStyle(I) isa UniqueFusion
-    else
-        cod = codomain(tsrc)
-        dom = domain(tsrc)
-        n = length(cod)
-        scale!(tdst, β)
-        r₁ = (p₁..., q₁...)
-        r₂ = (p₂..., q₂...)
+        return tdst
+    end
+
+    cod = codomain(tsrc)
+    dom = domain(tsrc)
+    n = length(cod)
+    scale!(tdst, β)
+    r₁ = (p₁..., q₁...)
+    r₂ = (p₂..., q₂...)
+
+    # TODO: Is it worth to add multithreading support?
+    if FusionStyle(I) isa UniqueFusion
         for (f₁, f₂) in fusiontrees(tsrc)
-            for ((f₁′, f₂′), coeff) in permute((f₁, f₂), (r₁, r₂))
-                f₁′′, g₁ = split(f₁′, N₁)
-                f₂′′, g₂ = split(f₂′, N₂)
-                g₁ == g₂ || continue
-                coeff *= dim(g₁.coupled) / dim(g₁.uncoupled[1])
-                for i in 2:length(g₁.uncoupled)
-                    if !(g₁.isdual[i])
-                        coeff *= twist(g₁.uncoupled[i])
-                    end
+            (f₁′, f₂′), coeff = permute((f₁, f₂), (r₁, r₂))
+            f₁′′, g₁ = split(f₁′, N₁)
+            f₂′′, g₂ = split(f₂′, N₂)
+            g₁ == g₂ || continue
+            coeff *= dim(g₁.coupled) / dim(g₁.uncoupled[1])
+            for i in 2:length(g₁.uncoupled)
+                if !(g₁.isdual[i])
+                    coeff *= twist(g₁.uncoupled[i])
                 end
-                C = tdst[f₁′′, f₂′′]
-                A = tsrc[f₁, f₂]
-                α′ = α * coeff
-                TO.tensortrace!(C, A, (p₁, p₂), (q₁, q₂), false, α′, One(), backend)
+            end
+            C = tdst[f₁′′, f₂′′]
+            A = tsrc[f₁, f₂]
+            α′ = α * coeff
+            TO.tensortrace!(C, A, (p₁, p₂), (q₁, q₂), false, α′, One(), backend)
+        end
+    else
+        for src in fusionblocks(tsrc)
+            dst, U = permute(src, (r₁, r₂))
+            for (i, (f₁, f₂)) in enumerate(fusiontrees(src))
+                for (j, (f₁′, f₂′)) in enumerate(fusiontrees(dst))
+                    coeff = U[j, i]
+                    f₁′′, g₁ = split(f₁′, N₁)
+                    f₂′′, g₂ = split(f₂′, N₂)
+                    g₁ == g₂ || continue
+                    coeff *= dim(g₁.coupled) / dim(g₁.uncoupled[1])
+                    for i in 2:length(g₁.uncoupled)
+                        if !(g₁.isdual[i])
+                            coeff *= twist(g₁.uncoupled[i])
+                        end
+                    end
+                    C = tdst[f₁′′, f₂′′]
+                    A = tsrc[f₁, f₂]
+                    α′ = α * coeff
+                    TO.tensortrace!(C, A, (p₁, p₂), (q₁, q₂), false, α′, One(), backend)
+                end
             end
         end
     end
+
     return tdst
 end
 
