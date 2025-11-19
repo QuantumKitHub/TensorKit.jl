@@ -13,7 +13,7 @@ Map the final splitting vertex `a ⊗ b ← c` of `src` to a fusion vertex `a �
 For `FusionStyle(src) === UniqueFusion()`, both `src` and `dst` are simple `FusionTreePair`s, and the
 transformation consists of a single coefficient `coeff`.
 For generic `FusionStyle`s, the input and output consist of `FusionTreeBlock`s that bundle together
-all trees with the same uncoupled charges, and `coeffs` now forms a transformation matrix
+all trees with the same uncoupled charges, and `coeffs` now forms a transformation matrix.
 
 ```
     ╰─┬─╯ |  | |   ╰─┬─╯ |  |  |
@@ -28,52 +28,34 @@ all trees with the same uncoupled charges, and `coeffs` now forms a transformati
 See also [`bendleft`](@ref).
 """ bendright
 
-function bendright(src::FusionTreePair)
-    @assert FusionStyle(src) === UniqueFusion()
-    I, N₁, N₂ = sectortype(src), numout(src), numin(src)
-    f₁, f₂ = src
+function bendright((f₁, f₂)::FusionTreePair)
+    I = sectortype((f₁, f₂))
+    @assert FusionStyle(I) === UniqueFusion()
+    N₁, N₂ = numout((f₁, f₂)), numin((f₁, f₂))
     @assert N₁ > 0
     c = f₁.coupled
-    a = N₁ == 1 ? leftunit(f₁.uncoupled[1]) :
-        (N₁ == 2 ? f₁.uncoupled[1] : f₁.innerlines[end])
+    a = N₁ == 1 ? leftunit(f₁.uncoupled[1]) : (N₁ == 2 ? f₁.uncoupled[1] : f₁.innerlines[end])
     b = f₁.uncoupled[N₁]
 
+    # construct the new fusiontree pair
     uncoupled1 = TupleTools.front(f₁.uncoupled)
     isdual1 = TupleTools.front(f₁.isdual)
     inner1 = N₁ > 2 ? TupleTools.front(f₁.innerlines) : ()
     vertices1 = N₁ > 1 ? TupleTools.front(f₁.vertices) : ()
-    f₁′ = FusionTree(uncoupled1, a, isdual1, inner1, vertices1)
+    f₁′ = FusionTree{I}(uncoupled1, a, isdual1, inner1, vertices1)
 
     uncoupled2 = (f₂.uncoupled..., dual(b))
     isdual2 = (f₂.isdual..., !(f₁.isdual[N₁]))
     inner2 = N₂ > 1 ? (f₂.innerlines..., c) : ()
+    vertices2 = N₂ > 0 ? (f₂.vertices..., 1) : ()
+    f₂′ = FusionTree{I}(uncoupled2, a, isdual2, inner2, vertices2)
 
+    # compute the coefficient
     coeff₀ = sqrtdim(c) * invsqrtdim(a)
-    if f₁.isdual[N₁]
-        coeff₀ *= conj(frobenius_schur_phase(dual(b)))
-    end
-    if FusionStyle(I) isa MultiplicityFreeFusion
-        coeff = coeff₀ * Bsymbol(a, b, c)
-        vertices2 = N₂ > 0 ? (f₂.vertices..., 1) : ()
-        f₂′ = FusionTree(uncoupled2, a, isdual2, inner2, vertices2)
-        return SingletonDict((f₁′, f₂′) => coeff)
-    else
-        local newtrees
-        Bmat = Bsymbol(a, b, c)
-        μ = N₁ > 1 ? f₁.vertices[end] : 1
-        for ν in axes(Bmat, 2)
-            coeff = coeff₀ * Bmat[μ, ν]
-            iszero(coeff) && continue
-            vertices2 = N₂ > 0 ? (f₂.vertices..., ν) : ()
-            f₂′ = FusionTree(uncoupled2, a, isdual2, inner2, vertices2)
-            if @isdefined newtrees
-                push!(newtrees, (f₁′, f₂′) => coeff)
-            else
-                newtrees = FusionTreeDict((f₁′, f₂′) => coeff)
-            end
-        end
-        return newtrees
-    end
+    f₁.isdual[N₁] && (coeff₀ *= conj(frobenius_schur_phase(dual(b))))
+    coeff = coeff₀ * Bsymbol(a, b, c)
+
+    return (f₁′, f₂′) => coeff
 end
 function bendright(src::FusionTreeBlock)
     uncoupled_dst = (
@@ -133,14 +115,18 @@ function bendright(src::FusionTreeBlock)
         end
     end
 
-    return dst, U
+    return dst => U
 end
 
 @doc """
-    bendleft(src) -> dst, coeffs
+    bendleft((f₁, f₂)::FusionTreePair) -> (f₃, f₄) => coeff
+    bendleft(src::FusionTreeBlock) -> dst => coeffs
 
-Map the final fusion vertex `a ← c ⊗ dual(b)` of each tree in `src` to a (linear combination of)
-splitting vertices `a ⊗ b ← c` in `dst`.
+Map the final fusion vertex `a ← c ⊗ dual(b)` of `src` to a splitting vertex `a ⊗ b ← c` in `dst`.
+For `FusionStyle(src) === UniqueFusion()`, both `src` and `dst` are simple `FusionTreePair`s, and the
+transformation consists of a single coefficient `coeff`.
+For generic `FusionStyle`s, the input and output consist of `FusionTreeBlock`s that bundle together
+all trees with the same uncoupled charges, and `coeffs` now forms a transformation matrix.
 
 ```
     ╰─┬─╯ |  ╭─╮     ╰─┬─╯ |
@@ -155,11 +141,10 @@ splitting vertices `a ⊗ b ← c` in `dst`.
 See also [`bendright`](@ref).
 """ bendleft
 
-function bendleft((f₁, f₂)::FusionTreePair{I}) where {I}
-    @assert FusionStyle(I) === UniqueFusion()
-    return fusiontreedict(I)(
-        (f₁′, f₂′) => conj(coeff) for ((f₂′, f₁′), coeff) in bendright((f₂, f₁))
-    )
+function bendleft((f₁, f₂)::FusionTreePair)
+    @assert FusionStyle((f₁, f₂)) === UniqueFusion()
+    (f₂′, f₁′), coeff = bendright((f₂, f₁))
+    return (f₁′, f₂′) => conj(coeff)
 end
 
 # !! note that this is more or less a copy of bendright through
@@ -222,66 +207,52 @@ function bendleft(src::FusionTreeBlock)
         end
     end
 
-    return dst, U
+    return dst => U
 end
 
 
-# change to N₁ - 1, N₂ + 1
-function foldright((f₁, f₂)::FusionTreePair{I, N₁, N₂}) where {I, N₁, N₂}
+@doc """
+    foldright((f₁, f₂)::FusionTreePair) -> (f₃, f₄) => coeff
+    foldright(src::FusionTreeBlock) -> dst => coeffs
+
+Map the first splitting vertex `a ⊗ b ← c` of `src` to a fusion vertex `a ← c ⊗ dual(b)` in `dst`.
+For `FusionStyle(src) === UniqueFusion()`, both `src` and `dst` are simple `FusionTreePair`s, and the
+transformation consists of a single coefficient `coeff`.
+For generic `FusionStyle`s, the input and output consist of `FusionTreeBlock`s that bundle together
+all trees with the same uncoupled charges, and `coeffs` now forms a transformation matrix.
+
+```
+    | ╰─┬─╯ |  |   ╰─┬─╯ | |  |
+    |   ╰─┬─╯  |     ╰─┬─╯ |  |
+    |     ╰ ⋯ ┬╯       ╰─┬─╯  |
+    |         |  →       ╰ ⋯ ┬╯
+    |     ╭ ⋯ ┴╮             |
+    |   ╭─┴─╮  |        ╭─ ⋯ ┴╮
+    ╰───┴─╮ |  |      ╭─┴─╮   |
+```
+
+See also [`foldleft`](@ref).
+""" foldright
+
+function foldright((f₁, f₂)::FusionTreePair)
+    I = sectortype((f₁, f₂))
     @assert FusionStyle(I) === UniqueFusion()
-    # map first splitting vertex (a, b)<-c to fusion vertex b<-(dual(a), c)
-    @assert N₁ > 0
+    @assert length(f₁) > 0
+
+    # compute new trees
     a = f₁.uncoupled[1]
     isduala = f₁.isdual[1]
-    factor = sqrtdim(a)
-    if !isduala
-        factor *= conj(frobenius_schur_phase(a))
-    end
     c1 = dual(a)
     c2 = f₁.coupled
-    uncoupled = Base.tail(f₁.uncoupled)
-    isdual = Base.tail(f₁.isdual)
-    if FusionStyle(I) isa UniqueFusion
-        c = first(c1 ⊗ c2)
-        fl = FusionTree{I}(Base.tail(f₁.uncoupled), c, Base.tail(f₁.isdual))
-        fr = FusionTree{I}((c1, f₂.uncoupled...), c, (!isduala, f₂.isdual...))
-        return fusiontreedict(I)((fl, fr) => factor)
-    else
-        local newtrees
-        if N₁ == 1
-            cset = (leftunit(c1),) # or rightunit(a)
-        elseif N₁ == 2
-            cset = (f₁.uncoupled[2],)
-        else
-            cset = ⊗(Base.tail(f₁.uncoupled)...)
-        end
-        for c in c1 ⊗ c2
-            c ∈ cset || continue
-            for μ in 1:Nsymbol(c1, c2, c)
-                fc = FusionTree((c1, c2), c, (!isduala, false), (), (μ,))
-                fr_coeffs = insertat(fc, 2, f₂)
-                for (fl′, coeff1) in insertat(fc, 2, f₁)
-                    N₁ > 1 && !isunit(fl′.innerlines[1]) && continue
-                    coupled = fl′.coupled
-                    uncoupled = Base.tail(Base.tail(fl′.uncoupled))
-                    isdual = Base.tail(Base.tail(fl′.isdual))
-                    inner = N₁ <= 3 ? () : Base.tail(Base.tail(fl′.innerlines))
-                    vertices = N₁ <= 2 ? () : Base.tail(Base.tail(fl′.vertices))
-                    fl = FusionTree{I}(uncoupled, coupled, isdual, inner, vertices)
-                    for (fr, coeff2) in fr_coeffs
-                        coeff = factor * coeff1 * conj(coeff2)
-                        if (@isdefined newtrees)
-                            newtrees[(fl, fr)] = get(newtrees, (fl, fr), zero(coeff)) +
-                                coeff
-                        else
-                            newtrees = fusiontreedict(I)((fl, fr) => coeff)
-                        end
-                    end
-                end
-            end
-        end
-        return newtrees
-    end
+    c = first(c1 ⊗ c2)
+    fl = FusionTree{I}(Base.tail(f₁.uncoupled), c, Base.tail(f₁.isdual))
+    fr = FusionTree{I}((c1, f₂.uncoupled...), c, (!isduala, f₂.isdual...))
+
+    # compute new coefficients
+    factor = sqrtdim(a)
+    isduala || (factor *= conj(frobenius_schur_phase(a)))
+
+    return (fl, fr) => factor
 end
 
 function foldright(src::FusionTreeBlock)
@@ -292,7 +263,6 @@ function foldright(src::FusionTreeBlock)
     isdual_dst = (Base.tail(src.isdual[1]), (!first(src.isdual[1]), src.isdual[2]...))
     I = sectortype(src)
     N₁ = numout(src)
-    N₂ = numin(src)
     @assert N₁ > 0
 
     dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst; sizehint = length(src))
@@ -349,16 +319,36 @@ function foldright(src::FusionTreeBlock)
         end
     end
 
-    return dst, U
+    return dst => U
 end
 
-# change to N₁ + 1, N₂ - 1
-function foldleft((f₁, f₂)::FusionTreePair{I}) where {I}
-    @assert FusionStyle(I) === UniqueFusion()
-    # map first fusion vertex c<-(a, b) to splitting vertex (dual(a), c)<-b
-    return fusiontreedict(I)(
-        (f₁′, f₂′) => conj(coeff) for ((f₂′, f₁′), coeff) in foldright((f₂, f₁))
-    )
+@doc """
+    foldleft((f₁, f₂)::FusionTreePair) -> (f₃, f₄) => coeff
+    foldleft(src::FusionTreeBlock) -> dst => coeffs
+
+Map the first fusion vertex `a ← c ⊗ dual(b)` of `src` to a splitting vertex `a ⊗ b ← c` in `dst`.
+For `FusionStyle(src) === UniqueFusion()`, both `src` and `dst` are simple `FusionTreePair`s, and the
+transformation consists of a single coefficient `coeff`.
+For generic `FusionStyle`s, the input and output consist of `FusionTreeBlock`s that bundle together
+all trees with the same uncoupled charges, and `coeffs` now forms a transformation matrix.
+
+```
+    ╭───┬─╯ |  |       ╰─┬─╯  |
+    |   ╰─┬─╯  |         ╰ ⋯ ┬╯ 
+    |     ╰ ⋯ ┬╯             |
+    |         |  →       ╭ ⋯ ┴╮
+    |     ╭ ⋯ ┴╮       ╭─┴─╮  |
+    |   ╭─┴─╮  |     ╭─┴─╮ |  |
+    | ╭─┴─╮ |  |   ╭─┴─╮ | |  |
+```
+
+See also [`foldright`](@ref).
+""" foldleft
+
+function foldleft((f₁, f₂)::FusionTreePair)
+    @assert FusionStyle((f₁, f₂)) === UniqueFusion()
+    (f₂′, f₁′), coeff = foldright((f₂, f₁))
+    return (f₁′, f₂′) => conj(coeff)
 end
 
 # !! note that this is more or less a copy of foldright through
@@ -430,39 +420,15 @@ function foldleft(src::FusionTreeBlock)
             end
         end
     end
-    return dst, U
+    return dst => U
 end
 
 # clockwise cyclic permutation while preserving (N₁, N₂): foldright & bendleft
-function cycleclockwise((f₁, f₂)::FusionTreePair{I}) where {I}
-    @assert FusionStyle(I) === UniqueFusion()
-    local newtrees
-    if length(f₁) > 0
-        for ((f1a, f2a), coeffa) in foldright((f₁, f₂))
-            for ((f1b, f2b), coeffb) in bendleft((f1a, f2a))
-                coeff = coeffa * coeffb
-                if (@isdefined newtrees)
-                    newtrees[(f1b, f2b)] = get(newtrees, (f1b, f2b), zero(coeff)) + coeff
-                else
-                    newtrees = fusiontreedict(I)((f1b, f2b) => coeff)
-                end
-            end
-        end
-    else
-        for ((f1a, f2a), coeffa) in bendleft((f₁, f₂))
-            for ((f1b, f2b), coeffb) in foldright((f1a, f2a))
-                coeff = coeffa * coeffb
-                if (@isdefined newtrees)
-                    newtrees[(f1b, f2b)] = get(newtrees, (f1b, f2b), zero(coeff)) + coeff
-                else
-                    newtrees = fusiontreedict(I)((f1b, f2b) => coeff)
-                end
-            end
-        end
-    end
-    return newtrees
-end
-function cycleclockwise(src::FusionTreeBlock)
+# anticlockwise cyclic permutation while preserving (N₁, N₂): foldleft & bendright
+# These are utility functions that preserve the type of the input/output trees,
+# and are therefore used to craft type-stable transpose implementations.
+
+function cycleclockwise(src::Union{FusionTreePair, FusionTreeBlock})
     if numout(src) > 0
         tmp, U₁ = foldright(src)
         dst, U₂ = bendleft(tmp)
@@ -470,39 +436,9 @@ function cycleclockwise(src::FusionTreeBlock)
         tmp, U₁ = bendleft(src)
         dst, U₂ = foldright(tmp)
     end
-    return dst, U₂ * U₁
+    return dst => U₂ * U₁
 end
-
-# anticlockwise cyclic permutation while preserving (N₁, N₂): foldleft & bendright
-function cycleanticlockwise((f₁, f₂)::FusionTreePair{I}) where {I}
-    @assert FusionStyle(I) === UniqueFusion()
-    local newtrees
-    if length(f₂) > 0
-        for ((f1a, f2a), coeffa) in foldleft((f₁, f₂))
-            for ((f1b, f2b), coeffb) in bendright((f1a, f2a))
-                coeff = coeffa * coeffb
-                if (@isdefined newtrees)
-                    newtrees[(f1b, f2b)] = get(newtrees, (f1b, f2b), zero(coeff)) + coeff
-                else
-                    newtrees = fusiontreedict(I)((f1b, f2b) => coeff)
-                end
-            end
-        end
-    else
-        for ((f1a, f2a), coeffa) in bendright((f₁, f₂))
-            for ((f1b, f2b), coeffb) in foldleft((f1a, f2a))
-                coeff = coeffa * coeffb
-                if (@isdefined newtrees)
-                    newtrees[(f1b, f2b)] = get(newtrees, (f1b, f2b), zero(coeff)) + coeff
-                else
-                    newtrees = fusiontreedict(I)((f1b, f2b) => coeff)
-                end
-            end
-        end
-    end
-    return newtrees
-end
-function cycleanticlockwise(src::FusionTreeBlock)
+function cycleanticlockwise(src::Union{FusionTreePair, FusionTreeBlock})
     if numin(src) > 0
         tmp, U₁ = foldleft(src)
         dst, U₂ = bendright(tmp)
@@ -510,7 +446,7 @@ function cycleanticlockwise(src::FusionTreeBlock)
         tmp, U₁ = bendright(src)
         dst, U₂ = foldleft(tmp)
     end
-    return dst, U₂ * U₁
+    return dst => U₂ * U₁
 end
 
 # COMPOSITE DUALITY MANIPULATIONS PART 1: Repartition and transpose
@@ -531,39 +467,7 @@ outgoing (`f₁`) and incoming sectors (`f₂`) respectively (with identical cou
 repartitioning the tree by bending incoming to outgoing sectors (or vice versa) in order to
 have `N` outgoing sectors.
 """
-@inline function repartition((f₁, f₂)::FusionTreePair, N::Int)
-    @assert FusionStyle((f₁, f₂)) === UniqueFusion()
-    f₁.coupled == f₂.coupled || throw(SectorMismatch())
-    @assert 0 <= N <= length(f₁) + length(f₂)
-    return _recursive_repartition((f₁, f₂), Val(N))
-end
-
-function _recursive_repartition((f₁, f₂)::FusionTreePair{I, N₁, N₂}, ::Val{N}) where {I, N₁, N₂, N}
-    # recursive definition is only way to get correct number of loops for
-    # GenericFusion, but is too complex for type inference to handle, so we
-    # precompute the parameters of the return type
-    F₁ = fusiontreetype(I, N)
-    F₂ = fusiontreetype(I, N₁ + N₂ - N)
-    FF = Tuple{F₁, F₂}
-    T = sectorscalartype(I)
-    coeff = one(T)
-    if N == N₁
-        return fusiontreedict(I){Tuple{F₁, F₂}, T}((f₁, f₂) => coeff)
-    else
-        local newtrees::fusiontreedict(I){Tuple{F₁, F₂}, T}
-        for ((f₁′, f₂′), coeff1) in (N < N₁ ? bendright((f₁, f₂)) : bendleft((f₁, f₂)))
-            for ((f₁′′, f₂′′), coeff2) in _recursive_repartition((f₁′, f₂′), Val(N))
-                if (@isdefined newtrees)
-                    push!(newtrees, (f₁′′, f₂′′) => coeff1 * coeff2)
-                else
-                    newtrees = fusiontreedict(I){FF, T}((f₁′′, f₂′′) => coeff1 * coeff2)
-                end
-            end
-        end
-        return newtrees
-    end
-end
-@inline function repartition(src::FusionTreeBlock, N::Int)
+@inline function repartition(src::Union{FusionTreePair, FusionTreeBlock}, N::Int)
     @assert 0 <= N <= numind(src)
     return repartition(src, Val(N))
 end
@@ -584,8 +488,12 @@ function _repartition_body(N)
     if N == 0
         ex = quote
             T = sectorscalartype(sectortype(src))
-            U = copyto!(zeros(T, length(src), length(src)), LinearAlgebra.I)
-            return src, U
+            if FusionStyle(src) === UniqueFusion()
+                return src => one(T)
+            else
+                U = copyto!(zeros(T, length(src), length(src)), LinearAlgebra.I)
+                return src, U
+            end
         end
     else
         f = N < 0 ? bendleft : bendright
@@ -597,12 +505,12 @@ function _repartition_body(N)
         ex = quote
             dst, U = $f(src)
             $ex_rep
-            return dst, U
+            return dst => U
         end
     end
     return ex
 end
-@generated function repartition(src::FusionTreeBlock, ::Val{N}) where {N}
+@generated function repartition(src::Union{FusionTreePair, FusionTreeBlock}, ::Val{N}) where {N}
     return _repartition_body(numout(src) - N)
 end
 
@@ -638,49 +546,7 @@ Base.@assume_effects :foldable function _fsdicttype(::Type{T}) where {I, N₁, N
     return Pair{FusionTreeBlock{I, N₁, N₂, Tuple{F₁, F₂}}, Matrix{E}}
 end
 
-@cached function fstranspose(key::K)::_fsdicttype(K) where {I, N₁, N₂, K <: FSPTransposeKey{I, N₁, N₂}}
-    (f₁, f₂), (p1, p2) = key
-    N = N₁ + N₂
-    p = linearizepermutation(p1, p2, length(f₁), length(f₂))
-    newtrees = repartition((f₁, f₂), N₁)
-    length(p) == 0 && return only(newtrees)
-    i1 = findfirst(==(1), p)
-    @assert i1 !== nothing
-    i1 == 1 && return only(newtrees)
-    Nhalf = N >> 1
-    while 1 < i1 <= Nhalf
-        local newtrees′
-        for ((f1a, f2a), coeffa) in newtrees
-            for ((f1b, f2b), coeffb) in cycleanticlockwise((f1a, f2a))
-                coeff = coeffa * coeffb
-                if (@isdefined newtrees′)
-                    newtrees′[(f1b, f2b)] = get(newtrees′, (f1b, f2b), zero(coeff)) + coeff
-                else
-                    newtrees′ = fusiontreedict(I)((f1b, f2b) => coeff)
-                end
-            end
-        end
-        newtrees = newtrees′
-        i1 -= 1
-    end
-    while Nhalf < i1
-        local newtrees′
-        for ((f1a, f2a), coeffa) in newtrees
-            for ((f1b, f2b), coeffb) in cycleclockwise((f1a, f2a))
-                coeff = coeffa * coeffb
-                if (@isdefined newtrees′)
-                    newtrees′[(f1b, f2b)] = get(newtrees′, (f1b, f2b), zero(coeff)) + coeff
-                else
-                    newtrees′ = fusiontreedict(I)((f1b, f2b) => coeff)
-                end
-            end
-        end
-        newtrees = newtrees′
-        i1 = mod1(i1 + 1, N)
-    end
-    return only(newtrees)
-end
-@cached function fstranspose(key::K)::_fsdicttype(K) where {I, N₁, N₂, K <: FSBTransposeKey{I, N₁, N₂}}
+@cached function fstranspose(key::K)::_fsdicttype(K) where {I, N₁, N₂, K <: Union{FSPTransposeKey{I, N₁, N₂}, FSBTransposeKey{I, N₁, N₂}}}
     src, (p1, p2) = key
 
     N = N₁ + N₂
