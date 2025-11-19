@@ -741,15 +741,15 @@ non-Abelian symmetry group $G$, the fact that its elements do not all commute ha
 impact on its representation theory. In particular, the irreps of such a group can be higher
 dimensional, and the fusion of two irreps can give rise to multiple different irreps. On the
 one hand this means that fusion trees of these irreps are no longer completely determined by
-the uncoupled charges. Indeed, in this case some of the
-[internal structure of the `FusionTree` type](@ref sss_fusion_trees) we have ignored before will
-become relevant (of which we will give an [example below](@ref sss_sun_heisenberg)). On the other
-hand, it follows that fusion trees of irreps now not only label blocks, but also encode a
-certain *nontrivial symmetry structure*. We will make this statement more precise in the
-following, but the fact that this is necessary is quite intuitive. If we recall our original
-statement that symmetric tensors consist of blocks associated to fusion trees which carry
-irrep labels, then for higher-dimensional irreps the corresponding fusion trees must encode
-some additional information that implicitly takes into account the internal structure of the
+the uncoupled charges. Indeed, in this case some of the [internal structure of the
+`FusionTree` type](@ref sss_fusion_trees) we have ignored before will become relevant (of
+which we will give an [example below](@ref sss_sun_heisenberg)). On the other hand, it
+follows that fusion trees of irreps now not only label blocks, but also encode a certain
+*nontrivial symmetry structure*. We will make this statement more precise in the following,
+but the fact that this is necessary is quite intuitive. If we recall our original statement
+that symmetric tensors consist of blocks associated to fusion trees which carry irrep
+labels, then for higher-dimensional irreps the corresponding fusion trees must encode some
+additional information that implicitly takes into account the internal structure of the
 representation spaces. In particular, this means that the conversion of an operator, given
 its matrix elements in the irrep basis, to the blocks of the corresponding symmetric
 `TensorMap` is less straightforward since it requires an understanding of exactly what this
@@ -768,8 +768,8 @@ $\mathrm{SU}(N)$-symmetric case.
 Let us recall some basics of representation theory first. Consider a group $G$ and a
 corresponding representation space $V$, such that every element $g \in G$ can be realized as
 a unitary operator $U_g : V \to V$. Let $h$ be a `TensorMap` whose domain and codomain are
-given by the tensor product of two of these representation spaces. Recall that, by
-definition, the statement that '$h$ is symmetric under $G$' means that
+given by the tensor product of two of these representation spaces. By definition, the
+statement that '$h$ is symmetric under $G$' means that
 ```@raw html
 <center><img src="../img/symmetric_tutorial/symmetric_tensor.svg" alt="symmetric_tensor" class="color-invertible" style="zoom: 170%"/></center>
 ```
@@ -793,7 +793,10 @@ encodes how a basis state $\ket{k,n} \in V^{(k)}$ corresponding to some term in 
 sum can be decomposed into a linear combination of basis vectors $\ket{l_1,m_1} \otimes
 \ket{l_2,m_2}$ of the tensor product space:
 ```math
+\begin{equation}
+\label{eq:cg_decomposition}
 \ket{k,n} = \sum_{m_1, m_2} \left( C^{k}_{l_1,l_2} \right)^{n}_{m_1, m_2} \ket{l_1,m_1} \otimes \ket{l_2,m_2}.
+\end{equation}
 ```
 These recoupling coefficients turn out to be essential to the structure of symmetric
 tensors, which can be best understood in the context of the
@@ -835,7 +838,10 @@ the irreps of $\mathrm{SU}(2)$ can be labeled by a halfinteger *spin* that takes
 0, \frac{1}{2}, 1, \frac{3}{2}, ...$, and where the dimension of the spin-$l$ representation
 is equal to $2l + 1$. The fusion rules of $\mathrm{SU}(2)$ are given by
 ```math
+\begin{equation}
+\label{eq:su2_fusion_rules}
 l_1 \otimes l_2 \cong \bigoplus_{k=|l_1-l_2|}^{l_1+l_2}s.
+\end{equation}
 ```
 These are clearly non-Abelian since multiple terms appear on the right hand side, for
 example $\frac{1}{2} \otimes \frac{1}{2} \cong 0 \oplus 1$. In TensorKit.jl, a
@@ -845,34 +851,35 @@ where a given $\mathrm{SU}(2)$ irrep can be represented as an
 [`SU2Irrep`](@ref)
 instance of integer or halfinteger spin as encoded in its `j` field. If we construct a
 `TensorMap` whose symmetry structure corresponds to the coupling of two spin-$\frac{1}{2}$
-irreps to a spin-$1$ irrep, we can then convert it to a plain array and compare it to the
-$\mathrm{SU}(2)$ Clebsch-Gordan coefficients exported by the
-[WignerSymbols.jl package](https://github.com/Jutho/WignerSymbols.jl).
-
+irreps to a spin-$1$ irrep in the sense of \eqref{eq:cg_decomposition}, we can then convert
+it to a plain array and compare it to the $\mathrm{SU}(2)$ Clebsch-Gordan coefficients
+implemented in the [WignerSymbols.jl package](https://github.com/Jutho/WignerSymbols.jl).
 ```@example symmetric_tutorial
-V1 = SU2Space(1 => 1)
-V2 = SU2Space(1//2 => 1)
-t = ones(ComplexF64, V1 ← V2 ⊗ V2)
+V1 = SU2Space(1//2 => 1)
+V2 = SU2Space(1 => 1)
+t = ones(ComplexF64, V1 ⊗ V1 ← V2)
 ```
 
 ```@example symmetric_tutorial
 ta = convert(Array, t)
 ```
-The conversion gives us a $3 \times 2 \times 2$ array, which exactly corresponds to the size
-of the $C_{1}^{\frac{1}{2},\frac{1}{2}}$ Clebsch-Gordan array. In order to explicitly
+The conversion gives us a $2 \times 2 \times 3$ array, which exactly corresponds to the size
+of the $C^{1}_{\frac{1}{2},\frac{1}{2}}$ Clebsch-Gordan array. In order to explicitly
 compare whether the entries match we need to know the ordering of basis states assumed by
 TensorKit.jl when converting the tensor to its matrix elements in the irrep basis. For
 $\mathrm{SU}(2)$ the irrep basis is ordered in ascending magnetic quantum number $m$, which
 gives us a map $m = i - (l+1)$ for mapping an array index to a corresponding magnetic
 quantum number for the spin-$l$ irrep.
 ```@example symmetric_tutorial
-for i1 in 1:dim(V1), i2 in 1:dim(V2), i3 in 1:dim(V2)
+checks = map(Iterators.product(1:dim(V1), 1:dim(V1), 1:dim(V2))) do (i1, i2, i3)
     # map basis state index to magnetic quantum number
-    m1 = i1 - (1 + 1)
+    m1 = i1 - (1//2 + 1)
     m2 = i2 - (1//2 + 1)
-    m3 = i3 - (1//2 + 1)
-    @test ta[i1, i2, i3] ≈ clebschgordan(1//2, m2, 1//2, m3, 1, m1)
+    m3 = i3 - (1 + 1)
+    # check the corresponding array entry
+    return ta[i1, i2, i3] ≈ clebschgordan(1//2, m1, 1//2, m2, 1, m3)
 end
+@test all(checks)
 ```
 
 Based on this discussion, we can quantify the aforementioned 'difficulties' in the inverse
@@ -899,9 +906,47 @@ However, it should be noted that for general groups the Clebsch-Gordan coefficie
 be as easy to compute (in general, no closed formulas exist). In addition, the procedure for
 manually projecting out the reduced matrix elements requires being particularly careful
 about the correspondence between the basis states used to define the original matrix
-elements and those implied by the Clebsch-Gordan coefficients. Therefore, it is often easier
-to directly construct the symmetric tensor based on some representation theory, as we will
-see below.
+elements and those implied by the Clebsch-Gordan coefficients. Finally, for some symmetries
+supported in TensorKit.jl, there are simply no Clebsch-Gordan coefficients. Therefore, it is
+often easier and sometimes simply necessary to directly construct the symmetric tensor and
+then fill in its reduced tensor elements based on some representation theory. Wel will cover
+some examples of this below.
+
+Having introduced and demonstrated the Clebsch-Gordan decomposition, the corresponding
+coefficients and their role in symmetric tensors for the example of $\mathrm{SU}(2)$ using
+the WignerSymbols.jl package, we'll continue our discussion using only TensorKit.jl
+internals. Within TensorKit.jl, the
+$\text{dim}\left( V^{(l_1)} \right) \times \text{dim}\left( V^{(l_2)} \right) \times \text{dim}\left( V^{(k)} \right)$
+array of coefficients that encodes the splitting of the irrep space $V^{(k)}$ to the tensor
+product of irrep spaces $V^{(l_1)} \otimes V^{(l_2)}$ according to the Clebsch-Gordan
+decomposition \eqref{eq:cg_decomposition} above can be explicitly constructed by calling the
+[`TensorKitSectors.fusiontensor`](@ref) method on the corresponding `Sector` instances,
+`fusiontensor(l₁, l₂, k)`. This `fusiontensor` is defined for any sector type corresponding
+to a symmetry which admits Clebsch-Gordan coefficients. For our example above,
+we can build the corresponding fusion tensor as
+
+```@example symmetric_tutorial
+using TensorKit: fusiontensor
+f = fusiontensor(SU2Irrep(1//2), SU2Irrep(1//2), SU2Irrep(1))
+```
+
+We see that this fusion tensor has a size `2×2×3×1`, which contains an additional trailing
+`1` to what we might expect. In the general case, `fusiontensor` returns a 4-dimensional
+array, where the size of the first three dimensions corresponds to the dimensions of the
+irrep spaces under consideration, and the last dimension corresponds to the number of
+distinct ways the irreps $l_1$ and $l_1$ can fuse to irrep $k$. We say that `Sector`s for
+which the size of this last dimension can be larger than 1 have *fusion multiplicities*.
+We'll encounter an example of this below when we consider an $\mathrm{SU}(3)$ symmetry.
+Since $\mathrm{SU}(2)$ doesn't have any fusion multiplicities, we can just discard this last
+index.
+
+We can now explicitly that this `fusiontensor` indeed does what we expect it to do:
+```@example symmetric_tutorial
+@test ta ≈ f[:, :, :, 1]
+```
+Of course, in this case `fusiontensor` just calls `Wignersymbols.clebschgordan` under the
+hood. However, `TensorKitSectors.fusiontensor` works for general symmetries, and makes it
+so that we never have to manually assemble the coefficients into an array.
 
 
 ### The 'generic' approach to the spin-1 Heisenberg model: Wigner-Eckart in action
@@ -931,38 +976,31 @@ nothing #hide
 ```
 
 The next step is to project out the reduced matrix elements by taking the overlap with the
-appropriate Clebsch-Gordan coefficients, according to
-[the Clebsch-Gordan decomposition given above](none2symm). In our current case of a spin-1
-physical space we have $l_1 = l_2 = l_3 = l_4 = 1$, and the coupled irrep $k$ can therefore
-take the values $0, 1, 2$. The reduced matrix element for a given $k$ can then be
-implemented in the following way:
+appropriate Clebsch-Gordan coefficients. In our current case of a spin-1 physical space we
+have $l_1 = l_2 = l_3 = l_4 = 1$, and the coupled irrep $k$ can therefore take the values
+$0, 1, 2$. The reduced matrix element for a given $k$ can be implemented in the
+following way:
 ```@example symmetric_tutorial
-function get_reduced_element(k)
+function get_reduced_element(k::SU2Irrep)
     # construct Clebsch-Gordan coefficients for coupling 1 ⊗ 1 to k   
-    CG = zeros(ComplexF64, 3, 3, 2*k + 1)
-    for m1 in -k:k, m2 in -1:1, m3 in -1:1
-        CG[m2 + 2, m3 + 2, m1 + k + 1] = clebschgordan(1, m2, 1, m3, k, m1)
-    end
-
+    f = fusiontensor(SU2Irrep(1), SU2Irrep(1), k)[:, :, :, 1]
     # project out diagonal matrix on coupled irrep space
-    @tensor reduced_matrix[-1; -2] := CG[1 2; -1] * SS_arr[1 2; 3 4] * conj(CG[3 4; -2])
-
+    @tensor reduced_matrix[-1; -2] := conj(f[1 2; -1]) * SS_arr[1 2; 3 4] * f[3 4; -2]
     # check that it is proportional to the identity
     @assert isapprox(reduced_matrix, reduced_matrix[1, 1] * I; atol=1e-12)
-
     # return the proportionality factor
     return reduced_matrix[1, 1]
 end
 ```
 If we use this to compute the reduced matrix elements for $k = 0, 1, 2$,
 ```@example symmetric_tutorial
-get_reduced_element(0)
+get_reduced_element(SU2Irrep(0))
 ```
 ```@example symmetric_tutorial
-get_reduced_element(1)
+get_reduced_element(SU2Irrep(1))
 ```
 ```@example symmetric_tutorial
-get_reduced_element(2)
+get_reduced_element(SU2Irrep(2))
 ```
 we can read off the entries
 ```math
@@ -992,11 +1030,40 @@ interaction:
 V = SU2Space(1 => 1)
 SS = zeros(ComplexF64, V ⊗ V ← V ⊗ V)
 for (s, f) in fusiontrees(SS)
-    k = Int(f.coupled.j)
+    k = f.coupled
     SS[s, f] .= get_reduced_element(k)
 end
 subblocks(SS)
 ```
+
+We demonstrated this entire procedure of extracting the array blocks of a symmetric tensor
+map for each fusion tree by projecting out the corresponding fusion tensors as an explicit
+illustration of how symmetric tensor maps work under the hood. In practice however, there's
+no need to perform this procedure explicitly. Given a dense array representing the matrix
+elements of a tensor map in the irrep basis, we can convert this to the corresponding
+symmetric tensor map by passing the data array to the `TensorMap` constructor along with the
+corresponding spaces,
+```@example symmetric_tutorial
+SS_auto = TensorMap(SS_arr, V ⊗ V ← V ⊗ V)
+@test SS_auto ≈ SS
+```
+
+!!! warning
+    While the example demonstrated here seems fairly straightforward, there's some inherent
+    challenges to directly initializing a symmetric tensor map from a full dense array. A first
+    important point to reiterate here is that in order for this procedure to work, we had to
+    initialize `SS_arr` by assuming an internal basis convention for the $\mathrm{SU}(2)$
+    representation space $V^{(1)}$ that is consistent with the convention used by
+    `fusiontensor`. While that choice here, corresponding to an ascending magnetic quantum
+    number $m = -1, 0, 1$, seems quite natural, for many symmetries there is no transparent
+    natural choice. In those cases, the only way to use this approach is to explicitly check the
+    basis convention used by [`TensorKitSectors.fusiontensor`](@ref) for that specific symmetry.
+    On top of thes, there's some additional complications when considering graded spaces which
+    contain multiple sectors with non-trivial degeneracies. In that case, to even initialize the
+    dense data array in the first place, you would need to know the order in which the sectors
+    appear in each space internally. This information can be obtained by calling `axes(V, c)`,
+    where `V` and `c` are either an [`ElementarySpace`](@ref) and a [`Sector`](@ref), or a
+    [`ProductSpace`](@ref) and a `Tuple` of `Sector`s respectively.
 
 
 ### An 'elegant' approach to the Heisenberg model
