@@ -36,7 +36,7 @@ whereas support for distributed arrays is planned for the future.
 
 ```@contents
 Pages = ["man/intro.md", "man/spaces.md", "man/sectors.md", "man/tensors.md"]
-Depth = 3
+Depth = 2
 ```
 
 ## Library outline
@@ -50,5 +50,5 @@ Depth = 2
 
 ```@contents
 Pages = ["appendix/categories.md", "appendix/symmetric_tutorial.md"]
-Depth = 3
+Depth = 2
 ```
