@@ -119,7 +119,7 @@ using ScopedValues
 
 using TensorKitSectors
 import TensorKitSectors: dim, BraidingStyle, FusionStyle, ⊠, ⊗
-import TensorKitSectors: dual, type_repr
+import TensorKitSectors: dual, type_repr, fusiontensor
 import TensorKitSectors: twist
 
 using Base: @boundscheck, @propagate_inbounds, @constprop,

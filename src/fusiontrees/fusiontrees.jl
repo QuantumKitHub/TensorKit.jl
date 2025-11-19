@@ -264,50 +264,50 @@ end
 fusiontreedict(I) = FusionStyle(I) isa UniqueFusion ? SingletonDict : FusionTreeDict
 
 # converting to actual array
-function Base.convert(A::Type{<:AbstractArray}, f::FusionTree{I, 0}) where {I}
-    X = convert(A, fusiontensor(unit(I), unit(I), unit(I)))[1, 1, :]
-    return X
-end
-function Base.convert(A::Type{<:AbstractArray}, f::FusionTree{I, 1}) where {I}
+Base.convert(A::Type{<:AbstractArray}, f::FusionTree) = convert(A, fusiontensor(f))
+# TODO: is this piracy?
+Base.convert(A::Type{<:AbstractArray}, (f₁, f₂)::FusionTreePair) =
+    convert(A, fusiontensor((f₁, f₂)))
+
+fusiontensor(::FusionTree{I, 0}) where {I} = fusiontensor(unit(I), unit(I), unit(I))[1, 1, :]
+function fusiontensor(f::FusionTree{I, 1}) where {I}
     c = f.coupled
     if f.isdual[1]
         sqrtdc = sqrtdim(c)
-        Zcbartranspose = sqrtdc * convert(A, fusiontensor(dual(c), c, unit(c)))[:, :, 1, 1]
+        Zcbartranspose = sqrtdc * fusiontensor(dual(c), c, unit(c))[:, :, 1, 1]
         X = conj!(Zcbartranspose) # we want Zcbar^†
     else
-        X = convert(A, fusiontensor(c, unit(c), c))[:, 1, :, 1, 1]
+        X = fusiontensor(c, unit(c), c)[:, 1, :, 1, 1]
     end
     return X
 end
-
-function Base.convert(A::Type{<:AbstractArray}, f::FusionTree{I, 2}) where {I}
+function fusiontensor(f::FusionTree{I, 2}) where {I}
     a, b = f.uncoupled
     isduala, isdualb = f.isdual
     c = f.coupled
     μ = (FusionStyle(I) isa GenericFusion) ? f.vertices[1] : 1
-    C = convert(A, fusiontensor(a, b, c))[:, :, :, μ]
+    C = fusiontensor(a, b, c)[:, :, :, μ]
     X = C
     if isduala
-        Za = convert(A, FusionTree((a,), a, (isduala,), ()))
+        Za = fusiontensor(FusionTree((a,), a, (isduala,), ()))
         @tensor X[a′, b, c] := Za[a′, a] * X[a, b, c]
     end
     if isdualb
-        Zb = convert(A, FusionTree((b,), b, (isdualb,), ()))
+        Zb = fusiontensor(FusionTree((b,), b, (isdualb,), ()))
         @tensor X[a, b′, c] := Zb[b′, b] * X[a, b, c]
     end
     return X
 end
-
-function Base.convert(A::Type{<:AbstractArray}, f::FusionTree{I, N}) where {I, N}
+function fusiontensor(f::FusionTree{I, N}) where {I, N}
     tailout = (f.innerlines[1], TupleTools.tail2(f.uncoupled)...)
     isdualout = (false, TupleTools.tail2(f.isdual)...)
     ftail = FusionTree(tailout, f.coupled, isdualout, Base.tail(f.innerlines), Base.tail(f.vertices))
-    Ctail = convert(A, ftail)
+    Ctail = fusiontensor(ftail)
     f₁ = FusionTree(
         (f.uncoupled[1], f.uncoupled[2]), f.innerlines[1],
         (f.isdual[1], f.isdual[2]), (), (f.vertices[1],)
     )
-    C1 = convert(A, f₁)
+    C1 = fusiontensor(f₁)
     dtail = size(Ctail)
     d1 = size(C1)
     X = similar(C1, (d1[1], d1[2], Base.tail(dtail)...))
@@ -320,20 +320,19 @@ function Base.convert(A::Type{<:AbstractArray}, f::FusionTree{I, N}) where {I, N
     )
 end
 
-# TODO: is this piracy?
-function Base.convert(A::Type{<:AbstractArray}, (f₁, f₂)::FusionTreePair{I}) where {I}
-    F₁ = convert(A, f₁)
-    F₂ = convert(A, f₂)
+function fusiontensor((f₁, f₂)::FusionTreePair)
+    F₁ = fusiontensor(f₁)
+    F₂ = fusiontensor(f₂)
     sz1 = size(F₁)
     sz2 = size(F₂)
     d1 = TupleTools.front(sz1)
     d2 = TupleTools.front(sz2)
-
     return reshape(
         reshape(F₁, TupleTools.prod(d1), sz1[end]) *
             reshape(F₂, TupleTools.prod(d2), sz2[end])', (d1..., d2...)
     )
 end
+fusiontensor(src::FusionTreeBlock) = sum(fusiontensor, fusiontrees(src))
 
 # Show methods
 function Base.show(io::IO, t::FusionTree{I}) where {I <: Sector}
