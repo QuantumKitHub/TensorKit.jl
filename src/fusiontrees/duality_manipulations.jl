@@ -609,12 +609,24 @@ function planar_trace(
     F₁ = fusiontreetype(I, N₁)
     F₂ = fusiontreetype(I, N₂)
     newtrees = FusionTreeDict{Tuple{F₁, F₂}, T}()
-    for ((f₁′, f₂′), coeff′) in repartition((f₁, f₂), N)
+    if FusionStyle(I) isa UniqueFusion
+        (f₁′, f₂′), coeff′ = repartition((f₁, f₂), N)
         for (f₁′′, coeff′′) in planar_trace(f₁′, (q1′, q2′))
-            for (f12′′′, coeff′′′) in transpose((f₁′′, f₂′), (p1′, p2′))
-                coeff = coeff′ * coeff′′ * coeff′′′
-                if !iszero(coeff)
-                    newtrees[f12′′′] = get(newtrees, f12′′′, zero(coeff)) + coeff
+            (f12′′′, coeff′′′) = transpose((f₁′′, f₂′), (p1′, p2′))
+            coeff = coeff′ * coeff′′ * coeff′′′
+            iszero(coeff) || (newtrees[f12′′′] = get(newtrees, f12′′′, zero(coeff)) + coeff)
+        end
+    else
+        # TODO: this is a bit of a hack to fix the traces for now
+        src = FusionTreeBlock([(f₁, f₂)])
+        dst, U = repartition(src, N)
+        for ((f₁′, f₂′), coeff′) in zip(fusiontrees(dst), U)
+            for (f₁′′, coeff′′) in planar_trace(f₁′, (q1′, q2′))
+                src′ = FusionTreeBlock([(f₁′′, f₂′)])
+                dst′, U′ = transpose(src′, (p1′, p2′))
+                for (f12′′′, coeff′′′) in zip(fusiontrees(dst′), U′)
+                    coeff = coeff′ * coeff′′ * coeff′′′
+                    iszero(coeff) || (newtrees[f12′′′] = get(newtrees, f12′′′, zero(coeff)) + coeff)
                 end
             end
         end
