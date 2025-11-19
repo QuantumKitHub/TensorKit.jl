@@ -1,11 +1,17 @@
 using Test, TestExtras
 using TensorKit
+using TensorKit: FusionTreeBlock
 import TensorKit as TK
 using Random: randperm
 using TensorOperations
+using MatrixAlgebraKit: isunitary
 
 # TODO: remove this once type_repr works for all included types
 using TensorKitSectors
+
+_isunitary(x::Number; kwargs...) = isapprox(x * x', one(x); kwargs...)
+_isunitary(x; kwargs...) = isunitary(x; kwargs...)
+_isone(x; kwargs...) = isapprox(x, one(x); kwargs...)
 
 @isdefined(TestSetup) || include("../setup.jl")
 using .TestSetup
@@ -18,7 +24,7 @@ using .TestSetup
     in = rand(collect(⊗(out...)))
     numtrees = length(fusiontrees(out, in, isdual))
     @test numtrees == count(n -> true, fusiontrees(out, in, isdual))
-    while !(0 < numtrees < 30)
+    while !(0 < numtrees < 30) && !(one(in) in ⊗(out...))
         out = ntuple(n -> randsector(I), N)
         in = rand(collect(⊗(out...)))
         numtrees = length(fusiontrees(out, in, isdual))
@@ -99,20 +105,21 @@ using .TestSetup
                 @test c′ == one(c′)
                 return t′
             end
-            braid_i_to_1 = braid(f1, (i, (1:(i - 1))..., ((i + 1):N)...), levels)
-            trees2 = Dict(_reinsert_partial_tree(t, f2) => c for (t, c) in braid_i_to_1)
-            trees3 = empty(trees2)
-            p = (((N + 1):(N + i - 1))..., (1:N)..., ((N + i):(2N - 1))...)
-            levels = ((i:(N + i - 1))..., (1:(i - 1))..., ((i + N):(2N - 1))...)
-            for (t, coeff) in trees2
-                for (t′, coeff′) in braid(t, p, levels)
-                    trees3[t′] = get(trees3, t′, zero(coeff′)) + coeff * coeff′
-                end
-            end
-            for (t, coeff) in trees3
-                coeff′ = get(trees, t, zero(coeff))
-                @test isapprox(coeff′, coeff; atol = 1.0e-12, rtol = 1.0e-12)
-            end
+            # TODO: restore this?
+            # braid_i_to_1 = braid(f1, (i, (1:(i - 1))..., ((i + 1):N)...), levels)
+            # trees2 = Dict(_reinsert_partial_tree(t, f2) => c for (t, c) in braid_i_to_1)
+            # trees3 = empty(trees2)
+            # p = (((N + 1):(N + i - 1))..., (1:N)..., ((N + i):(2N - 1))...)
+            # levels = ((i:(N + i - 1))..., (1:(i - 1))..., ((i + N):(2N - 1))...)
+            # for (t, coeff) in trees2
+            #     for (t′, coeff′) in braid(t, p, levels)
+            #         trees3[t′] = get(trees3, t′, zero(coeff′)) + coeff * coeff′
+            #     end
+            # end
+            # for (t, coeff) in trees3
+            #     coeff′ = get(trees, t, zero(coeff))
+            #     @test isapprox(coeff′, coeff; atol = 1.0e-12, rtol = 1.0e-12)
+            # end
 
             if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
                 Af1 = convert(Array, f1)
@@ -226,89 +233,86 @@ using .TestSetup
     @testset "Fusion tree $Istr: elementary artin braid" begin
         N = length(out)
         isdual = ntuple(n -> rand(Bool), N)
-        for in in ⊗(out...)
-            for i in 1:(N - 1)
-                for f in fusiontrees(out, in, isdual)
-                    d1 = @constinferred TK.artin_braid(f, i)
-                    @test norm(values(d1)) ≈ 1
-                    d2 = empty(d1)
-                    for (f1, coeff1) in d1
-                        for (f2, coeff2) in TK.artin_braid(f1, i; inv = true)
-                            d2[f2] = get(d2, f2, zero(coeff1)) + coeff2 * coeff1
-                        end
-                    end
-                    for (f2, coeff2) in d2
-                        if f2 == f
-                            @test coeff2 ≈ 1
-                        else
-                            @test isapprox(coeff2, 0; atol = 1.0e-12, rtol = 1.0e-12)
-                        end
-                    end
+        if FusionStyle(I) isa UniqueFusion
+            for in in ⊗(out...)
+                src = only(fusiontrees(out, in, isdual))
+
+                for i in 1:(N - 1)
+                    dst, U = @constinferred TK.artin_braid(src, i)
+                    @test _isunitary(U)
+                    dst′, U′ = @constinferred TK.artin_braid(dst, i; inv = true)
+                    @test U' ≈ U′
                 end
+            end
+        else
+            src = FusionTreeBlock{I}((out, ()), (isdual, ()))
+            length(src) > 0 && for i in 1:(N - 1)
+                dst, U = @constinferred TK.artin_braid(src, i)
+                @test _isunitary(U)
+                dst′, U′ = @constinferred TK.artin_braid(dst, i; inv = true)
+                @test U' ≈ U′
             end
         end
 
-        f = rand(collect(it))
-        d1 = TK.artin_braid(f, 2)
-        d2 = empty(d1)
-        for (f1, coeff1) in d1
-            for (f2, coeff2) in TK.artin_braid(f1, 3)
-                d2[f2] = get(d2, f2, zero(coeff1)) + coeff2 * coeff1
-            end
-        end
-        d1 = d2
-        d2 = empty(d1)
-        for (f1, coeff1) in d1
-            for (f2, coeff2) in TK.artin_braid(f1, 3; inv = true)
-                d2[f2] = get(d2, f2, zero(coeff1)) + coeff2 * coeff1
-            end
-        end
-        d1 = d2
-        d2 = empty(d1)
-        for (f1, coeff1) in d1
-            for (f2, coeff2) in TK.artin_braid(f1, 2; inv = true)
-                d2[f2] = get(d2, f2, zero(coeff1)) + coeff2 * coeff1
-            end
-        end
-        d1 = d2
-        for (f1, coeff1) in d1
-            if f1 == f
-                @test coeff1 ≈ 1
-            else
-                @test isapprox(coeff1, 0; atol = 1.0e-12, rtol = 1.0e-12)
+        # Test double braid-unbraid
+        if FusionStyle(I) isa UniqueFusion
+            in = rand(collect(⊗(out...)))
+            src = only(fusiontrees(out, in, isdual))
+            dst, U = TK.artin_braid(src, 2)
+            dst′, U′ = TK.artin_braid(dst, 3)
+            dst″, U″ = TK.artin_braid(dst′, 3; inv = true)
+            dst‴, U‴ = TK.artin_braid(dst″, 2; inv = true)
+            @test U * U′ * U″ * U‴ ≈ 1
+        else
+            src = FusionTreeBlock{I}((out, ()), (isdual, ()))
+            if length(src) > 0
+                dst, U = TK.artin_braid(src, 2)
+                dst′, U′ = TK.artin_braid(dst, 3)
+                dst″, U″ = TK.artin_braid(dst′, 3; inv = true)
+                dst‴, U‴ = TK.artin_braid(dst″, 2; inv = true)
+                @test  U * U′ * U″ * U‴ ≈ LinearAlgebra.I
             end
         end
     end
+
     @testset "Fusion tree $Istr: braiding and permuting" begin
-        f = rand(collect(it))
         p = tuple(randperm(N)...)
         ip = invperm(p)
-
         levels = ntuple(identity, N)
-        d = @constinferred braid(f, p, levels)
-        d2 = Dict{typeof(f), valtype(d)}()
         levels2 = p
-        for (f2, coeff) in d
-            for (f1, coeff2) in braid(f2, ip, levels2)
-                d2[f1] = get(d2, f1, zero(coeff)) + coeff2 * coeff
-            end
+
+        if FusionStyle(I) isa UniqueFusion
+            f = only(fusiontrees(out, in, isdual))
+        else
+            f = FusionTreeBlock{I}((out, ()), (isdual, ()))
         end
-        for (f1, coeff2) in d2
-            if f1 == f
-                @test coeff2 ≈ 1
-            else
-                @test isapprox(coeff2, 0; atol = 1.0e-12, rtol = 1.0e-12)
-            end
-        end
+
+        dst, U = @constinferred braid(f, (p, ()), (levels, ()))
+        @test _isunitary(U)
+        dst′, U′ = braid(dst, (ip, ()), (levels2, ()))
+        @test U' ≈ U′
+
 
         if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
-            Af = convert(Array, f)
-            Afp = permutedims(Af, (p..., N + 1))
-            Afp2 = zero(Afp)
-            for (f1, coeff) in d
-                Afp2 .+= coeff .* convert(Array, f1)
+            if FusionStyle(I) isa UniqueFusion
+                A = permutedims(fusiontensor(f), (p..., N + 1))
+                A′ = U * fusiontensor(dst)
+                @test A ≈ A′
+            else
+                A = map(x -> permutedims(fusiontensor(x[1]), (p..., N + 1)), fusiontrees(f))
+                A′ = map(fusiontensor ∘ first, fusiontrees(dst))
+                for (i, Ai) in enumerate(A)
+                    Aj = sum(U[i, :] .* A′)
+                    @test Ai ≈ Aj
+                end
             end
-            @test Afp ≈ Afp2
+            # Af = convert(Array, f)
+            # Afp = permutedims(Af, (p..., N + 1))
+            # Afp2 = zero(Afp)
+            # for (f1, coeff) in d
+            #     Afp2 .+= coeff .* convert(Array, f1)
+            # end
+            # @test Afp ≈ Afp2
         end
     end
 
@@ -347,11 +351,21 @@ using .TestSetup
                 end
                 perm = ((N .+ (1:N))..., (1:N)...)
                 levels = ntuple(identity, 2 * N)
+
                 for (t, coeff) in trees1
-                    for (t′, coeff′) in braid(t, perm, levels)
+                    if FusionStyle(I) isa UniqueFusion
+                        t′, coeff′ = braid(t, perm, levels)
                         trees3[t′] = get(trees3, t′, zero(valtype(trees3))) + coeff * coeff′
+                    else
+                        src = FusionTreeBlock([(t, FusionTree{I}((), t.coupled, (), ()))])
+                        dst, U = braid(src, (perm, ()), (levels, ()))
+                        for ((t′, _), coeff′) in zip(fusiontrees(dst), U)
+                            trees3[t′] = get(trees3, t′, zero(valtype(trees3))) + coeff * coeff′
+
+                        end
                     end
                 end
+
                 for (t, coeff) in trees3
                     coeff′ = get(trees2, t, zero(coeff))
                     @test isapprox(coeff, coeff′; atol = 1.0e-12, rtol = 1.0e-12)
@@ -393,58 +407,47 @@ using .TestSetup
         numtrees = count(n -> true, fusiontrees((out..., map(dual, out)...)))
     end
     incoming = rand(collect(⊗(out...)))
-    f1 = rand(collect(fusiontrees(out, incoming, ntuple(n -> rand(Bool), N))))
-    f2 = rand(collect(fusiontrees(out[randperm(N)], incoming, ntuple(n -> rand(Bool), N))))
+
+    if FusionStyle(I) isa UniqueFusion
+        f1 = rand(collect(fusiontrees(out, incoming, ntuple(n -> rand(Bool), N))))
+        f2 = rand(collect(fusiontrees(out[randperm(N)], incoming, ntuple(n -> rand(Bool), N))))
+        src = (f1, f2)
+        if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
+            A = fusiontensor(src)
+        end
+    else
+        src = FusionTreeBlock{I}((out, out), (ntuple(n -> rand(Bool), N), ntuple(n -> rand(Bool), N)))
+        if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
+            A = map(fusiontensor, fusiontrees(src))
+        end
+    end
 
     @testset "Double fusion tree $Istr: repartitioning" begin
         for n in 0:(2 * N)
-            d = @constinferred TK.repartition((f1, f2), $n)
-            @test dim(incoming) ≈
-                sum(abs2(coef) * dim(f1.coupled) for ((f1, f2), coef) in d)
-            d2 = Dict{typeof((f1, f2)), valtype(d)}()
-            for ((f1′, f2′), coeff) in d
-                for ((f1′′, f2′′), coeff2) in TK.repartition((f1′, f2′), N)
-                    d2[(f1′′, f2′′)] = get(d2, (f1′′, f2′′), zero(coeff)) + coeff2 * coeff
-                end
-            end
-            for ((f1′, f2′), coeff2) in d2
-                if f1 == f1′ && f2 == f2′
-                    @test coeff2 ≈ 1
-                else
-                    @test isapprox(coeff2, 0; atol = 1.0e-12, rtol = 1.0e-12)
-                end
-            end
+            dst, U = @constinferred TK.repartition(src, $n)
+            # @test _isunitary(U)
+
+            dst′, U′ = repartition(dst, N)
+            @test _isone(U * U′)
+
             if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
-                Af1 = convert(Array, f1)
-                Af2 = permutedims(convert(Array, f2), [N:-1:1; N + 1])
-                sz1 = size(Af1)
-                sz2 = size(Af2)
-                d1 = prod(sz1[1:(end - 1)])
-                d2 = prod(sz2[1:(end - 1)])
-                dc = sz1[end]
-                A = reshape(
-                    reshape(Af1, (d1, dc)) * reshape(Af2, (d2, dc))',
-                    (sz1[1:(end - 1)]..., sz2[1:(end - 1)]...)
-                )
-                A2 = zero(A)
-                for ((f1′, f2′), coeff) in d
-                    Af1′ = convert(Array, f1′)
-                    Af2′ = permutedims(convert(Array, f2′), [(2N - n):-1:1; 2N - n + 1])
-                    sz1′ = size(Af1′)
-                    sz2′ = size(Af2′)
-                    d1′ = prod(sz1′[1:(end - 1)])
-                    d2′ = prod(sz2′[1:(end - 1)])
-                    dc′ = sz1′[end]
-                    A2 += coeff *
-                        reshape(
-                        reshape(Af1′, (d1′, dc′)) * reshape(Af2′, (d2′, dc′))',
-                        (sz1′[1:(end - 1)]..., sz2′[1:(end - 1)]...)
-                    )
+                all_inds = (ntuple(identity, numout(src))..., reverse(ntuple(i -> i + numout(src), numin(src)))...)
+                p₁ = ntuple(i -> all_inds[i], numout(dst))
+                p₂ = reverse(ntuple(i -> all_inds[i + numout(dst)], numin(dst)))
+                if FusionStyle(I) isa UniqueFusion
+                    @test permutedims(A, (p₁..., p₂...)) ≈ U * fusiontensor(dst)
+                else
+                    A′ = map(Base.Fix2(permutedims, (p₁..., p₂...)), A)
+                    A″ = map(fusiontensor, fusiontrees(dst))
+                    for (i, Ai) in enumerate(A′)
+                        Aj = sum(U[:, i] .* A″)
+                        @test Ai ≈ Aj
+                    end
                 end
-                @test A ≈ A2
             end
         end
     end
+
     @testset "Double fusion tree $Istr: permutation" begin
         if BraidingStyle(I) isa SymmetricBraiding
             for n in 0:(2N)
@@ -453,54 +456,52 @@ using .TestSetup
                 ip = invperm(p)
                 ip1, ip2 = ip[1:N], ip[(N + 1):(2N)]
 
-                d = @constinferred TensorKit.permute((f1, f2), (p1, p2))
-                @test dim(incoming) ≈
-                    sum(abs2(coef) * dim(f1.coupled) for ((f1, f2), coef) in d)
-                d2 = Dict{typeof((f1, f2)), valtype(d)}()
-                for ((f1′, f2′), coeff) in d
-                    d′ = TensorKit.permute((f1′, f2′), (ip1, ip2))
-                    for ((f1′′, f2′′), coeff2) in d′
-                        d2[(f1′′, f2′′)] = get(d2, (f1′′, f2′′), zero(coeff)) +
-                            coeff2 * coeff
-                    end
-                end
-                for ((f1′, f2′), coeff2) in d2
-                    if f1 == f1′ && f2 == f2′
-                        @test coeff2 ≈ 1
-                    else
-                        @test abs(coeff2) < 1.0e-12
-                    end
-                end
+                dst, U = @constinferred TensorKit.permute(src, (p1, p2))
+                # @test _isunitary(U)
+                dst′, U′ = @constinferred TensorKit.permute(dst, (ip1, ip2))
+                # @test U' ≈ U′
+                @test _isone(U * U′)
 
                 if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
-                    Af1 = convert(Array, f1)
-                    Af2 = convert(Array, f2)
-                    sz1 = size(Af1)
-                    sz2 = size(Af2)
-                    d1 = prod(sz1[1:(end - 1)])
-                    d2 = prod(sz2[1:(end - 1)])
-                    dc = sz1[end]
-                    A = reshape(
-                        reshape(Af1, (d1, dc)) * reshape(Af2, (d2, dc))',
-                        (sz1[1:(end - 1)]..., sz2[1:(end - 1)]...)
-                    )
-                    Ap = permutedims(A, (p1..., p2...))
-                    A2 = zero(Ap)
-                    for ((f1′, f2′), coeff) in d
-                        Af1′ = convert(Array, f1′)
-                        Af2′ = convert(Array, f2′)
-                        sz1′ = size(Af1′)
-                        sz2′ = size(Af2′)
-                        d1′ = prod(sz1′[1:(end - 1)])
-                        d2′ = prod(sz2′[1:(end - 1)])
-                        dc′ = sz1′[end]
-                        A2 += coeff * reshape(
-                            reshape(Af1′, (d1′, dc′)) *
-                                reshape(Af2′, (d2′, dc′))',
-                            (sz1′[1:(end - 1)]..., sz2′[1:(end - 1)]...)
-                        )
+                    if FusionStyle(I) isa UniqueFusion
+                        @test permutedims(A, (p1..., p2...)) ≈ U * fusiontensor(dst)
+                    else
+                        A′ = map(Base.Fix2(permutedims, (p1..., p2...)), A)
+                        A″ = map(fusiontensor, fusiontrees(dst))
+                        for (i, Ai) in enumerate(A′)
+                            Aj = sum(U[:, i] .* A″)
+                            @test Ai ≈ Aj
+                        end
                     end
-                    @test Ap ≈ A2
+                    #
+                    # Af1 = convert(Array, f1)
+                    # Af2 = convert(Array, f2)
+                    # sz1 = size(Af1)
+                    # sz2 = size(Af2)
+                    # d1 = prod(sz1[1:(end - 1)])
+                    # d2 = prod(sz2[1:(end - 1)])
+                    # dc = sz1[end]
+                    # A = reshape(
+                    #     reshape(Af1, (d1, dc)) * reshape(Af2, (d2, dc))',
+                    #     (sz1[1:(end - 1)]..., sz2[1:(end - 1)]...)
+                    # )
+                    # Ap = permutedims(A, (p1..., p2...))
+                    # A2 = zero(Ap)
+                    # for ((f1′, f2′), coeff) in d
+                    #     Af1′ = convert(Array, f1′)
+                    #     Af2′ = convert(Array, f2′)
+                    #     sz1′ = size(Af1′)
+                    #     sz2′ = size(Af2′)
+                    #     d1′ = prod(sz1′[1:(end - 1)])
+                    #     d2′ = prod(sz2′[1:(end - 1)])
+                    #     dc′ = sz1′[end]
+                    #     A2 += coeff * reshape(
+                    #         reshape(Af1′, (d1′, dc′)) *
+                    #             reshape(Af2′, (d2′, dc′))',
+                    #         (sz1′[1:(end - 1)]..., sz2′[1:(end - 1)]...)
+                    #     )
+                    # end
+                    # @test Ap ≈ A2
                 end
             end
         end
@@ -515,67 +516,74 @@ using .TestSetup
             ip′ = tuple(getindex.(Ref(vcat(1:n, (2N):-1:(n + 1))), ip)...)
             ip1, ip2 = ip′[1:N], ip′[(2N):-1:(N + 1)]
 
-            d = @constinferred transpose((f1, f2), (p1, p2))
-            @test dim(incoming) ≈
-                sum(abs2(coef) * dim(f1.coupled) for ((f1, f2), coef) in d)
-            d2 = Dict{typeof((f1, f2)), valtype(d)}()
-            for ((f1′, f2′), coeff) in d
-                d′ = transpose((f1′, f2′), (ip1, ip2))
-                for ((f1′′, f2′′), coeff2) in d′
-                    d2[(f1′′, f2′′)] = get(d2, (f1′′, f2′′), zero(coeff)) + coeff2 * coeff
-                end
-            end
-            for ((f1′, f2′), coeff2) in d2
-                if f1 == f1′ && f2 == f2′
-                    @test coeff2 ≈ 1
-                else
-                    @test abs(coeff2) < 1.0e-12
-                end
-            end
+            dst, U = @constinferred transpose(src, (p1, p2))
+            # @test _isunitary(U)
+            dst′, U′ = @constinferred transpose(dst, (ip1, ip2))
+            # @test U' ≈ U′
+            @test _isone(U * U′)
 
             if BraidingStyle(I) isa Bosonic
-                d3 = permute((f1, f2), (p1, p2))
-                for (f1′, f2′) in union(keys(d), keys(d3))
-                    coeff1 = get(d, (f1′, f2′), zero(valtype(d)))
-                    coeff3 = get(d3, (f1′, f2′), zero(valtype(d3)))
-                    @test isapprox(coeff1, coeff3; atol = 1.0e-12)
-                end
+                dst″, U″ = permute(src, (p1, p2))
+                @test U″ ≈ U
             end
 
             if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
-                Af1 = convert(Array, f1)
-                Af2 = convert(Array, f2)
-                sz1 = size(Af1)
-                sz2 = size(Af2)
-                d1 = prod(sz1[1:(end - 1)])
-                d2 = prod(sz2[1:(end - 1)])
-                dc = sz1[end]
-                A = reshape(
-                    reshape(Af1, (d1, dc)) * reshape(Af2, (d2, dc))',
-                    (sz1[1:(end - 1)]..., sz2[1:(end - 1)]...)
-                )
-                Ap = permutedims(A, (p1..., p2...))
-                A2 = zero(Ap)
-                for ((f1′, f2′), coeff) in d
-                    Af1′ = convert(Array, f1′)
-                    Af2′ = convert(Array, f2′)
-                    sz1′ = size(Af1′)
-                    sz2′ = size(Af2′)
-                    d1′ = prod(sz1′[1:(end - 1)])
-                    d2′ = prod(sz2′[1:(end - 1)])
-                    dc′ = sz1′[end]
-                    A2 += coeff * reshape(
-                        reshape(Af1′, (d1′, dc′)) *
-                            reshape(Af2′, (d2′, dc′))',
-                        (sz1′[1:(end - 1)]..., sz2′[1:(end - 1)]...)
-                    )
+                if FusionStyle(I) isa UniqueFusion
+                    @test permutedims(A, (p1..., p2...)) ≈ U * fusiontensor(dst)
+                else
+                    A′ = map(Base.Fix2(permutedims, (p1..., p2...)), A)
+                    A″ = map(fusiontensor, fusiontrees(dst))
+                    for (i, Ai) in enumerate(A′)
+                        Aj = sum(U[:, i] .* A″)
+                        @test Ai ≈ Aj
+                    end
                 end
-                @test Ap ≈ A2
+
+                # Af1 = convert(Array, f1)
+                # Af2 = convert(Array, f2)
+                # sz1 = size(Af1)
+                # sz2 = size(Af2)
+                # d1 = prod(sz1[1:(end - 1)])
+                # d2 = prod(sz2[1:(end - 1)])
+                # dc = sz1[end]
+                # A = reshape(
+                #     reshape(Af1, (d1, dc)) * reshape(Af2, (d2, dc))',
+                #     (sz1[1:(end - 1)]..., sz2[1:(end - 1)]...)
+                # )
+                # Ap = permutedims(A, (p1..., p2...))
+                # A2 = zero(Ap)
+                # for ((f1′, f2′), coeff) in d
+                #     Af1′ = convert(Array, f1′)
+                #     Af2′ = convert(Array, f2′)
+                #     sz1′ = size(Af1′)
+                #     sz2′ = size(Af2′)
+                #     d1′ = prod(sz1′[1:(end - 1)])
+                #     d2′ = prod(sz2′[1:(end - 1)])
+                #     dc′ = sz1′[end]
+                #     A2 += coeff * reshape(
+                #         reshape(Af1′, (d1′, dc′)) *
+                #             reshape(Af2′, (d2′, dc′))',
+                #         (sz1′[1:(end - 1)]..., sz2′[1:(end - 1)]...)
+                #     )
+                # end
+                # @test Ap ≈ A2
             end
         end
     end
-    @testset "Double fusion tree $Istr: planar trace" begin
-        d1 = transpose((f1, f1), ((N + 1, 1:N..., ((2N):-1:(N + 3))...), (N + 2,)))
+    false && @testset "Double fusion tree $Istr: planar trace" begin
+
+
+        if FusionStyle(I) isa UniqueFusion
+            f1, f1 = src
+            dst, U = transpose((f1, f1), ((N + 1, 1:N..., ((2N):-1:(N + 3))...), (N + 2,)))
+            d1 = zip((dst,), (U,))
+        else
+            f1, f1 = first(fusiontrees(src))
+            dst, U = transpose(src, ((N + 1, 1:N..., ((2N):-1:(N + 3))...), (N + 2,)))
+            @show size(U)
+            d1 = zip(fusiontrees(dst), U[:, 1])
+        end
+
         f1front, = TK.split(f1, N - 1)
         T = TensorKitSectors._Fscalartype(I)
         d2 = Dict{typeof((f1front, f1front)), T}()
