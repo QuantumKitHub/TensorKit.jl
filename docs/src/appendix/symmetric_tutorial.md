@@ -114,16 +114,19 @@ $\mathbb{Z}_2$ transformation implies the following identities for the local ten
 
 These identitities precisely mean that these local tensors transform trivially under a
 tensor product representation of $\mathbb{Z}_2$. This implies that, recalling [the
-introduction on symmetries](@ref ss_symmetries), in an appropriate basis
-for the local physical vector space, our local tensors would become block-diagonal where
-each so-called *matrix block* is labeled by a $\mathbb{Z}_2$ irrep.The appropriate local basis transformation is precisely the one that brings the local representation $X$ into block-diagonal form. Clearly, this transformation is nothing more than the Hadamard transformation which maps the computational basis of $Z$ eigenstates $\{\ket{\uparrow}, \ket{\downarrow}\}$ to that of the $X$
-eigenstates $\{\ket{+}, \ket{-}\}$ defined as $\ket{+} = \frac{\ket{\uparrow} +
-\ket{\downarrow}}{\sqrt{2}}$ and $\ket{-} = \frac{\ket{\uparrow} -
-\ket{\downarrow}}{\sqrt{2}}$. In the current context, this basis is referred to as the
-*irrep basis* of $\mathbb{Z}_2$, since each basis state corresponds to a one-dimensional
-irreducible representation of $\mathbb{Z}_2$. Indeed, the local symmetry transformation $X$
-acts trivially on the state $\ket{+}$, corresponding to the *trivial irrep*, and yields a
-minus sign when acting on $\ket{-}$, corresponding to the *sign irrep*.
+introduction on symmetries](@ref ss_symmetries), in an appropriate basis for the local
+physical vector space, our local tensors would become block-diagonal where each so-called
+*matrix block* is labeled by a $\mathbb{Z}_2$ irrep. The appropriate local basis
+transformation is precisely the one that brings the local representation $X$ into
+block-diagonal form. Clearly, this transformation is nothing more than the Hadamard
+transformation which maps the computational basis of $Z$ eigenstates $\{\ket{\uparrow}, \ket{\downarrow}\}$ to that of the $X$ eigenstates $\{\ket{+}, \ket{-}\}$ defined as
+$\ket{+} = \frac{\ket{\uparrow} + \ket{\downarrow}}{\sqrt{2}}$ and
+$\ket{-} = \frac{\ket{\uparrow} - \ket{\downarrow}}{\sqrt{2}}$. In the current context,
+this basis is referred to as the *irrep basis* of $\mathbb{Z}_2$, since each basis state
+corresponds to a one-dimensional irreducible representation of $\mathbb{Z}_2$. Indeed, the
+local symmetry transformation $X$ acts trivially on the state $\ket{+}$, corresponding to
+the *trivial irrep*, and yields a minus sign when acting on $\ket{-}$, corresponding to the
+*sign irrep*.
 
 Next, let's make the statement that 'the matrix blocks of the local tensors are labeled by
 $\mathbb{Z}_2$ irreps' more concrete. To this end, consider the action of $ZZ$ in the irrep
@@ -153,9 +156,8 @@ a \otimes b \cong \bigoplus_c N_c^{ab} c,
 ```
 where $N_{ab}^c$ encodes the number of times the irrep $c$ occurs in the tensor product of
 irreps $a$ and $b$. These fusion rules are called *Abelian* if the tensor product of any two
-irreps corresponds to exactly one irrep. We will return to the implications of *non-Abelian*
-fusion rules [later](@ref ss_non_abelian). For the case of the $\mathbb{Z}_2$ irreps, the fusion
-rules are Abelian, and are given by addition modulo 2,
+irreps corresponds to exactly one irrep. We will return to the implications of irreps with *non-Abelian* fusion rules [later](@ref ss_non_abelian). For the case of the $\mathbb{Z}_2$
+irreps, the fusion rules are Abelian, and are given by addition modulo 2,
 ```math
 0 \otimes 0 \cong 0, \quad 0 \otimes 1 \cong 1, \quad 1 \otimes 0 \cong 1, \quad 1 \otimes 1 \cong 0.
 ```
@@ -196,31 +198,30 @@ manually assigning a matrix element to each [fusion tree of the form above](Z2_f
 labeled by a given tensor product of irreps. This matrix element is then automatically
 inserted into the appropriate matrix block. So, for the purpose of this tutorial **we will
 interpret a symmetric `TensorMap` simply as a list of fusion trees, to each of which
-corresponds a certain reduced matrix element**. In TensorKit.jl, these reduced tensor
+corresponds a certain reduced tensor element**. In TensorKit.jl, these reduced tensor
 elements corresponding to the fusion trees of a `TensorMap` can be accessed through the
 [`subblocks`](@ref) method.
 
 !!! note
-    In general, such a reduced matrix element is not necessarily a scalar, but rather an array
+    In general, such a reduced tensor element is not necessarily a scalar, but rather an array
     whose size is determined by the degeneracy of the irreps in the codomain and domain of the
-    fusion tree. For this reason, a reduced matrix element associated to a given fusion tree is
-    also referred to as an *array block*. In the following we will use terms 'reduced matrix
-    element', 'array block' or just 'block' interchangeably. However, it should be remembered
-    that these are distinct from the matrix blocks in the block-diagonal decomposition of the
-    tensor.
+    fusion tree. For this reason, a reduced tensor element associated to a given fusion tree is
+    also referred to as a *subblock*. In the following we will always use terms 'reduced tensor
+    element' or 'subblock' for the reduced tensor elements, to make it clear that these are
+    distinct from the matrix blocks in the block-diagonal decomposition of the tensor.
 
 
 ### [Fusion trees and how to use them](@id sss_fusion_trees)
 
 This view of the underlying symmetry structure in terms of fusion trees and corresponding
-array blocks is a very convenient way of working with the `TensorMap` type. Consider a
-generic fusion tree of the form
+reduced tensor elements is a very convenient way of working with the `TensorMap` type.
+Consider a generic fusion tree of the form
 
 ```@raw html
 <center><img src="../img/symmetric_tutorial/fusiontree.svg" alt="fusiontree" class="color-invertible" style="zoom: 170%"/></center>
 ```
 
-which can be used to label a block of a `TensorMap` corresponding to a two-site operator.
+which can be used to label a subblock of a `TensorMap` corresponding to a two-site operator.
 This object should actually be seen as a *pair of fusion trees*. The first member of the
 pair, related to the codomain of the `TensorMap`, is referred to as the *splitting tree* and
 encodes how the *coupled charge* $c$ splits into the *uncoupled charges* $s_1$ and $s_2$.
@@ -240,23 +241,23 @@ For our current application only `uncoupled` and `coupled` are relevant, since
 $\mathbb{Z}_2$ irreps are self-dual and have Abelian fusion rules. We will come back to
 these other properties when discussion more involved applications. Given some `TensorMap`,
 the method `TensorKit.fusiontrees(t::TensorMap)` returns an iterator over all pairs of
-splitting and fusion trees that label the blocks of `t`.
+splitting and fusion trees that label the subblocks of `t`.
 
 We can now put this into practice by directly constructing the $ZZ$ operator in the irrep
 basis as a $\mathbb{Z}_2$-symmetric `TensorMap`. We will do this in three steps:
 
 - First we construct the physical space at each site as a $\mathbb{Z}_2$-graded vector space.
-- Then we initialize an empty `TensorMap` with the correct domain and codomain vector spaces built from the previously constructed physical space.
-- And finally we iterate over all splitting and fusion tree pairs and manually fill in the corresponding nonzero blocks of the operator.
+- Then we initialize an empty `TensorMap` with the correct domain and codomain vector spaces
+  built from the previously constructed physical space.
+- And finally we iterate over all splitting and fusion tree pairs and manually fill in the
+  corresponding nonzero subblocks of the operator.
 
 After the basis transform to the irrep basis, we can view the two-dimensional complex
 physical vector space we started with as being spanned by the trivial and sign irrep of
 $\mathbb{Z}_2$. In the language of TensorKit.jl, this can be implemented as a `Z2Space`, an
-alias for a
-$\mathbb{Z}_2$-[graded vector space](@ref GradedSpace)
-`Vect[Z2Irrep]`, which contains the trivial irrep `Z2Irrep(0)` with degeneracy 1 and the
-sign irrep `Z2Irrep(1)` with degeneracy 1. We can define this space in the following way and
-check its dimension:
+alias for a [graded vector space](@ref GradedSpace) `Vect[Z2Irrep]`, which contains the
+trivial irrep `Z2Irrep(0)` with degeneracy 1 and the sign irrep `Z2Irrep(1)` with
+degeneracy 1. We can define this space in the following way and check its dimension:
 
 ```@example symmetric_tutorial
 V = Z2Space(0 => 1, 1 => 1)
@@ -275,13 +276,13 @@ subblocks(ZZ)
 ``` 
 While all entries are zero, we see that all eight valid fusion trees with two incoming
 irreps and two outgoing irreps [of the type above](fusiontree) are listed with their
-corresponding block data. Each of these blocks is an array of shape $(1, 1, 1, 1)$ since
-each irrep occuring in the space $V$ has degeneracy 1. Using the [`fusiontrees`](@ref) method and
-the fact that we can index a `TensorMap` using a splitting/fusion tree pair, we can now fill
-in the nonzero blocks of the operator by observing that the $ZZ$ operator flips the irreps
-of the uncoupled charges in the domain with respect to the codomain, as shown in the
-diagrams above. Flipping a given `Z2Irrep` in the codomain can be implemented by fusing them
-with the sign irrep `Z2Irrep(1)`, giving:
+corresponding subblock data. Each of these subblocks is an array of shape $(1, 1, 1, 1)$
+since each irrep occuring in the space $V$ has degeneracy 1. Using the [`fusiontrees`](@ref)
+method and the fact that we can index a `TensorMap` using a splitting/fusion tree pair, we
+can now fill in the nonzero subblocks of the operator by observing that the $ZZ$ operator
+flips the irreps of the uncoupled charges in the domain with respect to the codomain, as
+shown in the diagrams above. Flipping a given `Z2Irrep` in the codomain can be implemented
+by fusing them with the sign irrep `Z2Irrep(1)`, giving:
 
 ```@example symmetric_tutorial
 flip_charge(charge::Z2Irrep) = only(charge ⊗ Z2Irrep(1))
@@ -294,9 +295,10 @@ subblocks(ZZ)
 ```
 
 Indeed, the resulting `TensorMap` exactly encodes the matrix elements of the $ZZ$ operator
-shown in [the diagrams above](Z2_fusiontrees). The $X$ operator can be constructed in
-a similar way. Since it is by definition diagonal in the irrep basis with blocks directly
-corresponding to the trivial and sign irrep, its construction is particularly simple:
+shown in [the diagrams above](Z2_fusiontrees). The $X$ operator can be constructed in a
+similar way. Since it is by definition diagonal in the irrep basis with matrix blocks
+directly corresponding to the trivial and sign irrep, its construction is particularly
+simple:
 
 ```@example symmetric_tutorial
 X = zeros(ComplexF64, V ← V)
@@ -394,7 +396,7 @@ N \ket{n} &= n \ket{n}
 ```
 
 It is then a simple observation that these matrix elements are exactly captured by the
-following $\mathrm{U}(1)$ fusion trees with corresponding block values:
+following $\mathrm{U}(1)$ fusion trees with corresponding subblock values:
 
 ```@raw html
 <center><img src="../img/symmetric_tutorial/U1_fusiontrees.svg" alt="U1_fusiontrees" class="color-invertible" style="zoom: 170%"/></center>
@@ -414,8 +416,8 @@ V = U1Space(n => 1 for n in 0:cutoff)
 ```
 
 We can now initialize the $a^+ a^-$, $a^- a^+$ and $N$ operators as empty `TensorMap`s with
-the correct domain and codomain vector spaces, and fill in the nonzero blocks associated to
-[the fusion trees shown above](U1_fusiontrees). To do this we need access to the integer
+the correct domain and codomain vector spaces, and fill in the nonzero subblocks associated
+to [the fusion trees shown above](U1_fusiontrees). To do this we need access to the integer
 label of the $\mathrm{U}(1)$ irreps in the fusion and splitting trees, which can be accessed
 through the `charge` field of the `U1Irrep` type.
 
@@ -466,7 +468,7 @@ with degeneracy 1, `A = U1Space(1 => 1)`. Similarly, the decrease in occupation 
 acting with $a^-$ can be thought of as the *splitting* of an `U1Irrep(n)` into an
 `U1Irrep(n - 1)` and an `U1Irrep(1)`, leading to a representation in terms of a
 `TensorMap(..., A ⊗ V ← V)`. Based on these observations, we can represent the matrix
-elements \eqref{eq:bosonopmatel} as blocks labeled by the $\mathrm{U}(1)$ fusion trees
+elements \eqref{eq:bosonopmatel} as subblocks labeled by the $\mathrm{U}(1)$ fusion trees
 
 ```@raw html
 <center><img src="../img/symmetric_tutorial/bosonops.svg" alt="bosonops" class="color-invertible" style="zoom: 170%"/></center>
@@ -482,10 +484,10 @@ We can then combine these operators to get the appropriate Hamiltonian terms,
     Although we have made a suggestive distinction between the 'left' and 'right' versions of
     the operators $a_L^\pm$ and $a_R^\pm$, one can actually be obtained from the other by
     permuting the physical and auxiliary indices of the corresponding `TensorMap`s. This
-    permutation has no effect on the actual array blocks of the tensors due to the bosonic
+    permutation has no effect on the actual subblocks of the tensors due to the bosonic
     [`BraidingStyle`](@ref) of $\mathrm{U}(1)$ irreps, so the left and right operators can
     in essence be seen as the 'same' tensors. This is no longer the case when considering
-    fermionic systems, where permuting indices can in fact change the array blocks as we will
+    fermionic systems, where permuting indices can in fact change the subblocks as we will
     see next. As a consequence, it is much less clear how to construct two-site symmetric
     operators in terms of local symmetric objects.
 
@@ -536,7 +538,7 @@ It is then simple to check that this is indeed what we expect.
 ## Level 3: Fermions and the Kitaev model
 
 While we have already covered quite a lot of ground towards understanding symmetric tensors
-in terms of fusion trees and corresponding blocks, the symmetries considered so far have
+in terms of fusion trees and corresponding subblocks, the symmetries considered so far have
 been quite 'simple' in the sense that sectors corresponding to irreps of $\mathbb{Z}_2$ and
 $\mathrm{U}(1)$ have [*Abelian fusion rules*](@ref FusionStyle) and
 [*bosonic exchange statistics*](@ref BraidingStyle).
@@ -548,7 +550,7 @@ that tensor indices can be permuted freely without any 'strange' side effects.
 
 In the following we will consider examples with fermionic and even anyonic exchange
 statistics, and non-Abelian fusion rules. In going through these examples it will become
-clear that the fusion trees labeling the blocks of a symmetric tensor imply more information
+clear that the fusion trees labeling the subblocks of a symmetric tensor imply more information
 than just a labeling.
 
 
@@ -613,9 +615,9 @@ subblocks(t)
 tp = permute(t, ((1,), (3, 2)))
 subblocks(tp)
 ```
-In other words, when exchanging the two domain vector spaces, the block of the `TensorMap`
-for which both corresponding irreps are odd picks up a minus sign, exactly as we would
-expect for fermionic charges.
+In other words, when exchanging the two domain vector spaces, the reduced tensor elements of
+the `TensorMap` for which both uncoupled irreps in the domain of the corresponding fusion
+tree are odd picks up a minus sign, exactly as we would expect for fermionic charges.
 
 
 ### Constructing the Hamiltonian
@@ -655,8 +657,8 @@ c_1^- c_2^+ \ket{1, 0} = c_1^- c_2^+ c_1^+ \ket{0, 0} = - c_2^+ c_1^- c_1^+ \ket
 ```
 
 Once we have these matrix elements the hard part is done, and we can straightforwardly
-associate these to the following $f\mathbb{Z}_2$ fusion trees with corresponding block
-values,
+associate these to the following $f\mathbb{Z}_2$ fusion trees with corresponding reduced
+tensor elements,
 
 ```@raw html
 <center><img src="../img/symmetric_tutorial/fZ2_fusiontrees.svg" alt="fZ2_fusiontrees" class="color-invertible" style="zoom: 170%"/></center>
@@ -744,14 +746,14 @@ one hand this means that fusion trees of these irreps are no longer completely d
 the uncoupled charges. Indeed, in this case some of the [internal structure of the
 `FusionTree` type](@ref sss_fusion_trees) we have ignored before will become relevant (of
 which we will give an [example below](@ref sss_sun_heisenberg)). On the other hand, it
-follows that fusion trees of irreps now not only label blocks, but also encode a certain
-*nontrivial symmetry structure*. We will make this statement more precise in the following,
-but the fact that this is necessary is quite intuitive. If we recall our original statement
-that symmetric tensors consist of blocks associated to fusion trees which carry irrep
-labels, then for higher-dimensional irreps the corresponding fusion trees must encode some
-additional information that implicitly takes into account the internal structure of the
-representation spaces. In particular, this means that the conversion of an operator, given
-its matrix elements in the irrep basis, to the blocks of the corresponding symmetric
+follows that fusion trees of irreps now not only label reduced tensor elements, but also
+encode a certain *nontrivial symmetry structure*. We will make this statement more precise
+in the following, but the fact that this is necessary is quite intuitive. If we recall our
+original statement that symmetric tensors consist of subblocks associated to fusion trees which
+carry irrep labels, then for higher-dimensional irreps the corresponding fusion trees must
+encode some additional information that implicitly takes into account the internal structure
+of the representation spaces. In particular, this means that the conversion of an operator,
+given its matrix elements in the irrep basis, to the subblocks of the corresponding symmetric
 `TensorMap` is less straightforward since it requires an understanding of exactly what this
 implied internal structure is. Therefore, we require some more discussion before we can
 actually move on to an example.
@@ -775,8 +777,8 @@ statement that '$h$ is symmetric under $G$' means that
 ```
 for every $g \in G$. If we label the irreducible representations of $G$ by $l$, then any
 representation space can be decomposed into a direct sum of irreducible representations, $V
-= \bigoplus_l V^{(l)}$, in such a way that $U_g$ is block-diagonal where each block is
-labeled by a particular irrep $l$. For each irrep space $V^{(l)}$ we can define an
+= \bigoplus_l V^{(l)}$, in such a way that $U_g$ is block-diagonal where each matrix block
+is labeled by a particular irrep $l$. For each irrep space $V^{(l)}$ we can define an
 orthonormal basis labeled as $\ket{l, m}$, where the auxiliary label $m$ can take
 $\text{dim}\left( V^{(l)} \right)$ different values. Since we know that tensors are
 multilinear maps over tensor product spaces, it is natural to consider the tensor product of
@@ -805,16 +807,16 @@ theorem implies that for any
 [`TensorMap` $h$ that is symmetric under $G$](@ref ss_symmetries), its matrix elements in the
 tensor product irrep basis are given by the product of Clebsch-Gordan coefficients which
 characterize the coupling of the basis states in the domain and codomain, and a so-called
-*reduced matrix element* which only depends on the irrep labels. Concretely, the matrix
+*reduced tensor element* which only depends on the irrep labels. Concretely, the matrix
 element $\bra{l_1,m_1} \otimes \bra{l_2,m_2} h \ket{l_3,m_3} \otimes \ket{l_4,m_4}$ is given
 by
 ```@raw html
 <center><img src="../img/symmetric_tutorial/wignereckart.svg" alt="wignereckart" class="color-invertible" style="zoom: 170%"/></center>
 ```
 Here, the sum runs over all possible irreps $k$ in the fusion product $l_3 \otimes l_4$ and
-over all basis states $\ket{k,n}$ of $V^{(k)}$. The reduced matrix elements $h_{\text{red}}$
+over all basis states $\ket{k,n}$ of $V^{(k)}$. The reduced tensor elements $h_{\text{red}}$
 are independent of the basis state labels and only depend on the irrep labels themselves.
-Each reduced matrix element should be interpreted as being labeled by an irrep fusion tree,
+Each reduced tensor element should be interpreted as being labeled by an irrep fusion tree,
 ```@raw html
 <center><img src="../img/symmetric_tutorial/anotherfusiontree.svg" alt="anotherfusiontree" class="color-invertible" style="zoom: 170%"/></center>
 ```
@@ -827,12 +829,12 @@ the coupled basis state $\ket{k,n}$ to the codomain basis states $\ket{l_1,m_1} 
 The Wigner-Eckart theorem dictates that this structure in terms of Clebsch-Gordan
 coefficients is necessary to ensure that the corresponding tensor is symmetric. It is
 precisely this structure that is inherently encoded into the fusion tree part of a symmetric
-`TensorMap`. In particular, **the array block value associated to each fusion tree in a
-symmetric tensor is precisely the reduced matrix element in the Clebsch-Gordan
+`TensorMap`. In particular, **the subblock value associated to each fusion tree in a
+symmetric tensor is precisely the reduced tensor element in the Clebsch-Gordan
 decomposition**.
 
 As a small demonstration of this fact, we can make a simple $\mathrm{SU}(2)$-symmetric
-tensor with trivial block values and verify that its implied symmetry structure exactly
+tensor with trivial subblock values and verify that its implied symmetry structure exactly
 corresponds to the expected Clebsch-Gordan coefficient. First, we [recall](su2_irreps) that
 the irreps of $\mathrm{SU}(2)$ can be labeled by a halfinteger *spin* that takes values $l =
 0, \frac{1}{2}, 1, \frac{3}{2}, ...$, and where the dimension of the spin-$l$ representation
@@ -885,7 +887,7 @@ end
 Based on this discussion, we can quantify the aforementioned 'difficulties' in the inverse
 operation of what we just demonstrated, namely converting a given operator to a symmetric
 `TensorMap` given only its matrix elements in the irrep basis. Indeed, it is now clear that
-this precisely requires isolating the reduced matrix elements introduced above. Given the
+this precisely requires isolating the reduced tensor elements introduced above. Given the
 matrix elements of the operator in the irrep basis, this can in general be done by solving
 the system of equations implied by the [Clebsch-Gordan decomposition](wignereckart). A
 simpler way to achieve the same thing is to make use of the fact that the
@@ -893,7 +895,7 @@ simpler way to achieve the same thing is to make use of the fact that the
 on the coupled space. Indeed, by projecting out the appropriate Clebsch-Gordan coefficients
 and using their orthogonality relations, we can construct a diagonal operator on each
 coupled irrep space $V^{(k)}$. Each of these diagonal operators is proportional to the
-identity, where the proportionality factor is precisely the reduced matrix element
+identity, where the proportionality factor is precisely the reduced tensor element
 associated to the corresponding irrep fusion tree.
 ```@raw html
 <center><img src="../img/symmetric_tutorial/none2symm.svg" alt="none2symm" class="color-invertible" style="zoom: 170%"/></center>
@@ -904,7 +906,7 @@ operator in the irrep basis and the Clebsch-Gordan coefficients. In the followin
 demonstrate this explicit procedure for the particular example of $G = \mathrm{SU}(2)$.
 However, it should be noted that for general groups the Clebsch-Gordan coefficients may not
 be as easy to compute (in general, no closed formulas exist). In addition, the procedure for
-manually projecting out the reduced matrix elements requires being particularly careful
+manually projecting out the reduced tensor elements requires being particularly careful
 about the correspondence between the basis states used to define the original matrix
 elements and those implied by the Clebsch-Gordan coefficients. Finally, for some symmetries
 supported in TensorKit.jl, there are simply no Clebsch-Gordan coefficients. Therefore, it is
@@ -960,7 +962,7 @@ site is the three-dimensional spin-1 irrep of $\mathrm{SU}(2)$. Each two-site ex
 operator $\vec{S}_i \cdot \vec{S}_j$ in the sum commutes with a global transformation $g \in
 \mathrm{SU}(2)$, so that it satisfies the [above symmetry condition](symmetric_tensor).
 Therefore, we can represent it as an $\mathrm{SU}(2)$-symmetric `TensorMap`, as long as we
-can isolate its reduced matrix elements.
+can isolate its reduced tensor elements.
 
 In order to apply the above procedure, we first require the matrix elements in the irrep
 basis. These can be constructed as a $3 \times 3 \times 3 \times 3$ array `SS` using the
@@ -975,10 +977,10 @@ Sz = ComplexF64[-1 0 0; 0 0 0; 0 0 1]
 nothing #hide
 ```
 
-The next step is to project out the reduced matrix elements by taking the overlap with the
+The next step is to project out the reduced tensor elements by taking the overlap with the
 appropriate Clebsch-Gordan coefficients. In our current case of a spin-1 physical space we
 have $l_1 = l_2 = l_3 = l_4 = 1$, and the coupled irrep $k$ can therefore take the values
-$0, 1, 2$. The reduced matrix element for a given $k$ can be implemented in the
+$0, 1, 2$. The reduced tensor element for a given $k$ can be implemented in the
 following way:
 ```@example symmetric_tutorial
 function get_reduced_element(k::SU2Irrep)
@@ -992,7 +994,7 @@ function get_reduced_element(k::SU2Irrep)
     return reduced_matrix[1, 1]
 end
 ```
-If we use this to compute the reduced matrix elements for $k = 0, 1, 2$,
+If we use this to compute the reduced tensor elements for $k = 0, 1, 2$,
 ```@example symmetric_tutorial
 get_reduced_element(SU2Irrep(0))
 ```
@@ -1036,13 +1038,13 @@ end
 subblocks(SS)
 ```
 
-We demonstrated this entire procedure of extracting the array blocks of a symmetric tensor
-map for each fusion tree by projecting out the corresponding fusion tensors as an explicit
-illustration of how symmetric tensor maps work under the hood. In practice however, there's
-no need to perform this procedure explicitly. Given a dense array representing the matrix
-elements of a tensor map in the irrep basis, we can convert this to the corresponding
-symmetric tensor map by passing the data array to the `TensorMap` constructor along with the
-corresponding spaces,
+We demonstrated this entire procedure of extracting the reduced tensor elements of a
+symmetric tensor map for each fusion tree by projecting out the corresponding fusion tensors
+as an explicit illustration of how symmetric tensor maps work under the hood. In practice
+however, there's no need to perform this procedure explicitly. Given a dense array
+representing the matrix elements of a tensor map in the irrep basis, we can convert this to
+the corresponding symmetric tensor map by passing the data array to the `TensorMap`
+constructor along with the corresponding spaces,
 ```@example symmetric_tutorial
 SS_auto = TensorMap(SS_arr, V ⊗ V ← V ⊗ V)
 @test SS_auto ≈ SS
@@ -1068,7 +1070,7 @@ SS_auto = TensorMap(SS_arr, V ⊗ V ← V ⊗ V)
 
 ### An 'elegant' approach to the Heisenberg model
 
-As noted above, the explicit procedure of projecting out the reduced matrix elements from
+As noted above, the explicit procedure of projecting out the reduced tensor elements from
 the action of an operator in the irrep basis can be a bit cumbersome for more complicated
 groups. However, using some basic representation theory we can bypass this step altogether
 for the Heisenberg model. First, we rewrite the exchange interaction in the following way:
@@ -1090,7 +1092,7 @@ determined by the spin irrep label. In particular, we have for each irrep $l$
 ```math
 \vec{S}^2 \ket{l,m} = l(l+1) \ket{l,m}.
 ```
-It then follows from Eq. \eqref{eq:casimir_decomp} that the reduced matrix elements of the
+It then follows from Eq. \eqref{eq:casimir_decomp} that the reduced tensor elements of the
 exchange interaction are completely determined by the eigenvalue of the quadratic Casimir on
 the uncoupled and coupled irreps. Indeed, to each fusion tree we can associate a
 well-defined value
@@ -1175,7 +1177,7 @@ For any $N$, the [quadratic Casimir](https://en.wikipedia.org/wiki/Casimir_eleme
 \Omega = \sum_k T^k T^k
 ```
 commutes with all $\mathrm{SU}(N)$ generators, meaning it has a well defined eigenvalue in
-each irrep. This observation then immediately given the reduced matrix elements of the
+each irrep. This observation then immediately given the reduced tensor elements of the
 exchange interaction as
 ```@raw html
 <center><img src="../img/symmetric_tutorial/SUN_fusiontrees.svg" alt="SUN_fusiontrees" class="color-invertible" style="zoom: 170%"/></center>
@@ -1264,7 +1266,7 @@ the product space of two Fibonacci-graded physical spaces
 ```@example symmetric_tutorial
 V = Vect[FibonacciAnyon](:τ => 1)
 ```
-and assigning the following nonzero block value to the two-site fusion trees
+and assigning the following nonzero subblock value to the two-site fusion trees
 ```@raw html
 <center><img src="../img/symmetric_tutorial/Fib_fusiontrees.svg" alt="Fib_fusiontrees" class="color-invertible" style="zoom: 170%"/></center>
 ```
