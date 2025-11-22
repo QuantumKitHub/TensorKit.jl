@@ -186,7 +186,7 @@ function tsvd(t::AbstractTensorMap; kwargs...)
         Base.depwarn("p is a deprecated kwarg, and should be specified through the truncation strategy", :tsvd)
         kwargs = _drop_p(; kwargs...)
     end
-    return haskey(kwargs, :trunc) ? svd_trunc(t; kwargs...) : svd_compact(t; kwargs...)
+    return haskey(kwargs, :trunc) ? svd_trunc(t; kwargs...) : (svd_compact(t; kwargs...)..., abs(zero(scalartype(t))))
 end
 function tsvd!(t::AbstractTensorMap; kwargs...)
     Base.depwarn("`tsvd!` is deprecated, use `svd_compact!`, `svd_full!` or `svd_trunc!` instead", :tsvd!)

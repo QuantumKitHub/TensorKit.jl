@@ -63,13 +63,13 @@ end
 
 function MAK.ishermitian(t::AbstractTensorMap; kwargs...)
     return InnerProductStyle(t) === EuclideanInnerProduct() &&
-           domain(t) == codomain(t) &&
-           all(_blockmap(MAK.ishermitian; kwargs...), blocks(t))
+        domain(t) == codomain(t) &&
+        all(_blockmap(MAK.ishermitian; kwargs...), blocks(t))
 end
 function MAK.isantihermitian(t::AbstractTensorMap; kwargs...)
     return InnerProductStyle(t) === EuclideanInnerProduct() &&
-           domain(t) == codomain(t) &&
-           all(_blockmap(MAK.isantihermitian; kwargs...), blocks(t))
+        domain(t) == codomain(t) &&
+        all(_blockmap(MAK.isantihermitian; kwargs...), blocks(t))
 end
 LinearAlgebra.ishermitian(t::AbstractTensorMap) = MAK.ishermitian(t)
 
