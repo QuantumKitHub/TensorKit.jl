@@ -55,15 +55,21 @@ LinearAlgebra.svdvals!(t::AbstractTensorMap) = diagview(svd_vals!(t))
 #--------------------------------------------------#
 # Checks for hermiticity and positive definiteness #
 #--------------------------------------------------#
+function _blockmap(f; kwargs...)
+    return function ((c, b))
+        return f(b; kwargs...)
+    end
+end
+
 function MAK.ishermitian(t::AbstractTensorMap; kwargs...)
     return InnerProductStyle(t) === EuclideanInnerProduct() &&
-        domain(t) == codomain(t) &&
-        all(cb -> MAK.ishermitian(cb[2]; kwargs...), blocks(t))
+           domain(t) == codomain(t) &&
+           all(_blockmap(MAK.ishermitian; kwargs...), blocks(t))
 end
 function MAK.isantihermitian(t::AbstractTensorMap; kwargs...)
     return InnerProductStyle(t) === EuclideanInnerProduct() &&
-        domain(t) == codomain(t) &&
-        all(cb -> MAK.isantihermitian(cb[2]; kwargs...), blocks(t))
+           domain(t) == codomain(t) &&
+           all(_blockmap(MAK.isantihermitian; kwargs...), blocks(t))
 end
 LinearAlgebra.ishermitian(t::AbstractTensorMap) = MAK.ishermitian(t)
 
@@ -74,22 +80,17 @@ function LinearAlgebra.isposdef!(t::AbstractTensorMap)
     domain(t) == codomain(t) ||
         throw(SpaceMismatch("`isposdef` requires domain and codomain to be the same"))
     InnerProductStyle(spacetype(t)) === EuclideanInnerProduct() || return false
-    for (c, b) in blocks(t)
-        isposdef!(b) || return false
-    end
-    return true
+    return all(_blockmap(isposdef!), blocks(t))
 end
 
 # TODO: tolerances are per-block, not global or weighted - does that matter?
 function MAK.is_left_isometric(t::AbstractTensorMap; kwargs...)
     domain(t) ≾ codomain(t) || return false
-    f((c, b)) = MAK.is_left_isometric(b; kwargs...)
-    return all(f, blocks(t))
+    return all(_blockmap(MAK.is_left_isometric; kwargs...), blocks(t))
 end
 function MAK.is_right_isometric(t::AbstractTensorMap; kwargs...)
     domain(t) ≿ codomain(t) || return false
-    f((c, b)) = MAK.is_right_isometric(b; kwargs...)
-    return all(f, blocks(t))
+    return all(_blockmap(MAK.is_right_isometric; kwargs...), blocks(t))
 end
 
 end
