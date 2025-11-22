@@ -31,12 +31,11 @@ for f! in (
     @eval function MAK.$f!(t::AbstractTensorMap, F, alg::AbstractAlgorithm)
         MAK.check_input($f!, t, F, alg)
 
-        foreachblock(t, F...) do _, bs
-            factors = Base.tail(bs)
-            factors′ = $f!(first(bs), factors, alg)
+        foreachblock(t, F...) do _, (tblock, Fblocks...)
+            Fblocks′ = $f!(tblock, Fblocks, alg)
             # deal with the case where the output is not in-place
-            for (f′, f) in zip(factors′, factors)
-                f′ === f || copy!(f, f′)
+            for (b′, b) in zip(Fblocks′, Fblocks)
+                b === b′ || copy!(b, b′)
             end
             return nothing
         end
@@ -50,10 +49,10 @@ for f! in (:qr_null!, :lq_null!, :project_hermitian!, :project_antihermitian!, :
     @eval function MAK.$f!(t::AbstractTensorMap, N, alg::AbstractAlgorithm)
         MAK.check_input($f!, t, N, alg)
 
-        foreachblock(t, N) do _, (b, n)
-            n′ = $f!(b, n, alg)
+        foreachblock(t, N) do _, (tblock, Nblock)
+            Nblock′ = $f!(tblock, Nblock, alg)
             # deal with the case where the output is not the same as the input
-            n === n′ || copy!(n, n′)
+            Nblock === Nblock′ || copy!(Nblock, Nblock′)
             return nothing
         end
 
@@ -66,10 +65,10 @@ for f! in (:svd_vals!, :eig_vals!, :eigh_vals!)
     @eval function MAK.$f!(t::AbstractTensorMap, N, alg::AbstractAlgorithm)
         MAK.check_input($f!, t, N, alg)
 
-        foreachblock(t, N) do _, (b, n)
-            n′ = $f!(b, diagview(n), alg)
+        foreachblock(t, N) do _, (tblock, Nblock)
+            Nblock′ = $f!(tblock, diagview(Nblock), alg)
             # deal with the case where the output is not the same as the input
-            diagview(n) === n′ || copy!(diagview(n), n′)
+            diagview(Nblock) === Nblock′ || copy!(diagview(Nblock), Nblock′)
             return nothing
         end
 
@@ -445,7 +444,7 @@ end
 # Projections
 # -----------
 function MAK.check_input(::typeof(project_hermitian!), tsrc::AbstractTensorMap, tdst::AbstractTensorMap, ::AbstractAlgorithm)
-    domain(tsrc) == codomain(tsrc) || throw(ArgumentError("Hermitian projection requires square input tensor"))
+    domain(tsrc) == codomain(tsrc) || throw(ArgumentError("(Anti-)Hermitian projection requires square input tensor"))
     tsrc === tdst || @check_space(tdst, space(tsrc))
     return nothing
 end
