@@ -21,7 +21,7 @@ Truncation strategy to keep the first values for each sector when sorted accordi
 such that the resulting vector space is no greater than `V`.
 """
 function truncspace(space::ElementarySpace; by = abs, rev::Bool = true)
-    isdual(space) && throw(ArgumentError("resulting vector space is never dual"))
+    isdual(space) && throw(ArgumentError("truncation space should not be dual"))
     return TruncationSpace(space, by, rev)
 end
 
@@ -37,7 +37,7 @@ function truncate_domain!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, inds
     for (c, b) in blocks(tdst)
         I = get(inds, c, nothing)
         @assert !isnothing(I)
-        copy!(b, @view(block(tsrc, c)[:, I]))
+        copy!(b, view(block(tsrc, c), :, I))
     end
     return tdst
 end
@@ -45,7 +45,7 @@ function truncate_codomain!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, in
     for (c, b) in blocks(tdst)
         I = get(inds, c, nothing)
         @assert !isnothing(I)
-        copy!(b, @view(block(tsrc, c)[I, :]))
+        copy!(b, view(block(tsrc, c), I, :))
     end
     return tdst
 end

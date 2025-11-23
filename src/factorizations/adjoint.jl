@@ -65,10 +65,14 @@ for (left_f, right_f) in zip(
         return reverse(adjoint.(MAK.initialize_output($left_f!, adjoint(t), _adjoint(alg))))
     end
 
-    @eval MAK.$left_f!(t::AdjointTensorMap, F, alg::AbstractAlgorithm) =
-        $right_f!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
-    @eval MAK.$right_f!(t::AdjointTensorMap, F, alg::AbstractAlgorithm) =
-        $left_f!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
+    @eval function MAK.$left_f!(t::AdjointTensorMap, F, alg::AbstractAlgorithm)
+        F′ = $right_f!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
+        return reverse(adjoint.(F′))
+    end
+    @eval function MAK.$right_f!(t::AdjointTensorMap, F, alg::AbstractAlgorithm)
+        F′ = $left_f!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
+        return reverse(adjoint.(F′))
+    end
 end
 
 # 3-arg functions
@@ -83,8 +87,8 @@ for f! in (:svd_full!, :svd_compact!, :svd_trunc!)
         return reverse(adjoint.(MAK.initialize_output($f!, adjoint(t), _adjoint(alg))))
     end
     @eval function MAK.$f!(t::AdjointTensorMap, F, alg::AbstractAlgorithm)
-        $f!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
-        return F
+        F′ = $f!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
+        return reverse(adjoint.(F′))
     end
 
     # disambiguate by prohibition

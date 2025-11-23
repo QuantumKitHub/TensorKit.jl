@@ -32,13 +32,19 @@ for pullback! in (:svd_pullback!, :eig_pullback!, :eigh_pullback!)
             Δt::AbstractTensorMap, t::AbstractTensorMap, F, ΔF, inds = _notrunc_ind(t);
             kwargs...
         )
-        for (c, ind) in inds
-            Δb = block(Δt, c)
-            b = block(t, c)
+        foreachblock(Δt, t) do c, (Δb, b)
             Fc = block.(F, Ref(c))
             ΔFc = block.(ΔF, Ref(c))
+            ind = inds[c]
             MAK.$pullback!(Δb, b, Fc, ΔFc, ind; kwargs...)
         end
+        # for (c, ind) in inds
+        #     Δb = block(Δt, c)
+        #     b = block(t, c)
+        #     Fc = block.(F, Ref(c))
+        #     ΔFc = block.(ΔF, Ref(c))
+        #     MAK.$pullback!(Δb, b, Fc, ΔFc, ind; kwargs...)
+        # end
         return Δt
     end
 end
