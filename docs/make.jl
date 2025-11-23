@@ -21,7 +21,7 @@ pages = [
         "lib/spaces.md", "lib/tensors.md",
     ],
     "Index" => ["index/index.md"],
-    "Appendix" => ["appendix/categories.md", "appendix/symmetric_tutorial.md"],
+    "Appendix" => ["appendix/symmetric_tutorial.md", "appendix/categories.md"],
 ]
 
 mathengine = MathJax3(
