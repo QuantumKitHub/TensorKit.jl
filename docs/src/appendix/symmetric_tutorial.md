@@ -31,7 +31,7 @@ using Test # for showcase testing
 
 ## Level 0: The 1-dimensional Ising model
 
-As the most basic example, we will consider the
+As the most basic example, we consider the
 [1-dimensional transverse-field Ising model](https://en.wikipedia.org/wiki/Transverse-field_Ising_model),
 whose Hamiltonian is given by
 
@@ -57,14 +57,14 @@ U = \prod_i X_i.
 
 We will circle back to the implications of this symmetry later.
 
-As a warmup we will implement the Hamiltonian \eqref{eq:isingham} in the standard way by
+As a warmup, we implement the Hamiltonian \eqref{eq:isingham} in the standard way by
 encoding the matrix elements of the single-site operators $X$ and $Z$ into an array of
 complex numbers, and then combine them in a suitable way to get the Hamiltonian terms.
-Instead of using plain Julia arrays, we will use a representation in terms of `TensorMap`s
-over complex vector spaces. These will essentially just be wrappers around base arrays at
+Instead of using plain Julia arrays, we use a representation in terms of `TensorMap`s
+over complex vector spaces. These are essentially just wrappers around base arrays at
 this point, but their construction requires some consideration of the notion of *spaces*,
 which generalize the notion of `size` for arrays. Each of the operators $X$ and $Z$ acts on
-a local 2-dimensional complex vector space. In the context of TensorKit.jl such a space can
+a local 2-dimensional complex vector space. In the context of TensorKit.jl, such a space can
 be represented as `ComplexSpace(2)`, or using the convenient shorthand `ℂ^2`. A single-site
 Pauli operator maps from a domain physical space to a codomain physical space, and can
 therefore be represented as instances of a `TensorMap(..., ℂ^2 ← ℂ^2)`. The corresponding
@@ -128,8 +128,8 @@ local symmetry transformation $X$ acts trivially on the state $\ket{+}$, corresp
 the *trivial irrep*, and yields a minus sign when acting on $\ket{-}$, corresponding to the
 *sign irrep*.
 
-Next, let's make the statement that 'the matrix blocks of the local tensors are labeled by
-$\mathbb{Z}_2$ irreps' more concrete. To this end, consider the action of $ZZ$ in the irrep
+Next, let's make the statement that "the matrix blocks of the local tensors are labeled by
+$\mathbb{Z}_2$ irreps" more concrete. To this end, consider the action of $ZZ$ in the irrep
 basis, which is given by the four nonzero matrix elements
 
 ```math
@@ -164,7 +164,7 @@ irreps, the fusion rules are Abelian, and are given by addition modulo 2,
 To see how these fusion rules arise, we can consider the action of the symmetry
 transformation $XX$ on the possible two-site basis states, each of which corresponds to a
 tensor product of representations. We can see that $XX$ acts trivially on both $\ket{+}
-\otimes \ket{+}$ and $\ket{-} \otimes \ket{-}$ meaning these transform under the trivial
+\otimes \ket{+}$ and $\ket{-} \otimes \ket{-}$, meaning these transform under the trivial
 representation, which gives the first and last entries of the fusion rules. Similarly, $XX$
 acts with a minus sign on both $\ket{+} \otimes \ket{-}$ and $\ket{-} \otimes \ket{+}$,
 meaning these transform under the sign representation, which gives the second and third
@@ -238,7 +238,7 @@ fields:
 - `vertices::NTuple{L,T}`: list of fusion vertex labels of type `T` and length `L = N - 1`
 
 For our current application only `uncoupled` and `coupled` are relevant, since
-$\mathbb{Z}_2$ irreps are self-dual and have Abelian fusion rules. We will come back to
+$\mathbb{Z}_2$ irreps are self-dual and have Abelian fusion rules, so that irreps on the inner lines of a fusion tree are completely determined by the uncoupled irreps. We will come back to
 these other properties when discussion more involved applications. Given some `TensorMap`,
 the method `TensorKit.fusiontrees(t::TensorMap)` returns an iterator over all pairs of
 splitting and fusion trees that label the subblocks of `t`.
@@ -316,7 +316,7 @@ Given these local operators, we can use them to construct the full manifestly
 $\mathbb{Z}_2$-symmetric Hamiltonian.
 
 !!! note
-    An important observation is that when explicitly imposing the $\mathbb{Z}_2$ symmetry we
+    An important observation is that, when explicitly imposing the $\mathbb{Z}_2$ symmetry, we
     directly constructed the full $ZZ$ operator as a single symmetric tensor. This in contrast
     to the case without symmetries, where we constructed a single-site $Z$ operator and then
     combined them into a two-site operator. Clearly this can no longer be done when imposing
@@ -329,7 +329,7 @@ $\mathbb{Z}_2$-symmetric Hamiltonian.
 
 ## Level 2: The $\mathrm{U}(1)$ Bose-Hubbard model
 
-For our next example we will consider the
+For our next example, we consider the
 [Bose-Hubbard model](https://en.wikipedia.org/wiki/Bose%E2%80%93Hubbard_model), which
 describes interacting bosons on a lattice. The Hamiltonian of this model is given by
 ```math
@@ -366,7 +366,7 @@ U = \sum_i N_i
 ```
 This invariance corresponds to a $\mathrm{U}(1)$ particle number symmetry, which can again
 be manifestly imposed when constructing the Hamiltonian terms as `TensorMap`s. From the
-representation theory of $\mathrm{U}(1)$ we know that it's irreps are all one-dimensional
+representation theory of $\mathrm{U}(1)$, we know that its irreps are all one-dimensional
 and can be labeled by integers $n$ where the tensor product of two irreps is corresponds to
 addition of these labels, giving the Abelian fusion rules
 ```math
@@ -542,7 +542,7 @@ in terms of fusion trees and corresponding subblocks, the symmetries considered 
 been quite 'simple' in the sense that sectors corresponding to irreps of $\mathbb{Z}_2$ and
 $\mathrm{U}(1)$ have [*Abelian fusion rules*](@ref FusionStyle) and
 [*bosonic exchange statistics*](@ref BraidingStyle).
-This means that the fusion of two irreps always gives a single irrep as the fusion product,
+This means that the fusion of two irreps always gives a unique irrep as the fusion product,
 and that exchanging two irreps in a tensor product is trivial. In practice, this implies
 that for tensors with these symmetries the fusion trees are completely fixed by the
 uncoupled charges, which uniquely define both the inner lines and the coupled charge, and
@@ -730,7 +730,7 @@ the `subblocks` of each tensor.
     symmetric tensors that correspond to the symmetric Hamiltonian terms was still quite
     straightforward, it is far less clear in this case how to construct these terms as
     contractions of local symmetric tensors representing individual creation and annihilation
-    operators in this case. While such a decomposition can always be in principle obtained using
+    operators. While such a decomposition can always be in principle obtained using
     a (now explicitly fermionic) SVD, manually constructing such tensors as we did in the
     bosonic case is far from trivial. Trying this would be a good exercise in working with
     fermionic symmetries, but it is not something we will do here.
@@ -790,7 +790,7 @@ irreps, $V^{(l_1)} \otimes V^{(l_2)} \cong \bigoplus_{k} V^{(k)}$. The precise n
 this decomposition, also refered to as the *Clebsch-Gordan problem*, is given by the
 so-called *Clebsch-Gordan coefficients*, which we will denote as $C^{k}_{l_1,l_2}$. This set
 of coefficients, which can be interpreted as a $\text{dim}\left( V^{(l_1)} \right) \times
-\text{dim}\left( V^{(l_2)} \right) \times \text{dim}\left( V^{(k)} \right)$ array, that
+\text{dim}\left( V^{(l_2)} \right) \times \text{dim}\left( V^{(k)} \right)$ array,
 encodes how a basis state $\ket{k,n} \in V^{(k)}$ corresponding to some term in the direct
 sum can be decomposed into a linear combination of basis vectors $\ket{l_1,m_1} \otimes
 \ket{l_2,m_2}$ of the tensor product space:
@@ -842,7 +842,7 @@ is equal to $2l + 1$. The fusion rules of $\mathrm{SU}(2)$ are given by
 ```math
 \begin{equation}
 \label{eq:su2_fusion_rules}
-l_1 \otimes l_2 \cong \bigoplus_{k=|l_1-l_2|}^{l_1+l_2}s.
+l_1 \otimes l_2 \cong \bigoplus_{k=|l_1-l_2|}^{l_1+l_2}k.
 \end{equation}
 ```
 These are clearly non-Abelian since multiple terms appear on the right hand side, for
@@ -902,10 +902,10 @@ associated to the corresponding irrep fusion tree.
 ```
 
 This procedure works for any group symmetry, and all we need are matrix elements of the
-operator in the irrep basis and the Clebsch-Gordan coefficients. In the following we
+operator in the irrep basis and the Clebsch-Gordan coefficients. In the following, we
 demonstrate this explicit procedure for the particular example of $G = \mathrm{SU}(2)$.
-However, it should be noted that for general groups the Clebsch-Gordan coefficients may not
-be as easy to compute (in general, no closed formulas exist). In addition, the procedure for
+However, it should be noted that, for other non-Abelian groups, the Clebsch-Gordan coefficients may not
+be as easy to compute (generically, no closed formulas exist). In addition, the procedure for
 manually projecting out the reduced tensor elements requires being particularly careful
 about the correspondence between the basis states used to define the original matrix
 elements and those implied by the Clebsch-Gordan coefficients. Finally, for some symmetries
@@ -916,7 +916,7 @@ some examples of this below.
 
 Having introduced and demonstrated the Clebsch-Gordan decomposition, the corresponding
 coefficients and their role in symmetric tensors for the example of $\mathrm{SU}(2)$ using
-the WignerSymbols.jl package, we'll continue our discussion using only TensorKit.jl
+the WignerSymbols.jl package, we now continue our discussion using only TensorKit.jl
 internals. Within TensorKit.jl, the
 $\text{dim}\left( V^{(l_1)} \right) \times \text{dim}\left( V^{(l_2)} \right) \times \text{dim}\left( V^{(k)} \right)$
 array of coefficients that encodes the splitting of the irrep space $V^{(k)}$ to the tensor
@@ -978,7 +978,7 @@ nothing #hide
 ```
 
 The next step is to project out the reduced tensor elements by taking the overlap with the
-appropriate Clebsch-Gordan coefficients. In our current case of a spin-1 physical space we
+appropriate Clebsch-Gordan coefficients. In our current case of a spin-1 physical space, we
 have $l_1 = l_2 = l_3 = l_4 = 1$, and the coupled irrep $k$ can therefore take the values
 $0, 1, 2$. The reduced tensor element for a given $k$ can be implemented in the
 following way:
@@ -1041,7 +1041,7 @@ subblocks(SS)
 We demonstrated this entire procedure of extracting the reduced tensor elements of a
 symmetric tensor map for each fusion tree by projecting out the corresponding fusion tensors
 as an explicit illustration of how symmetric tensor maps work under the hood. In practice
-however, there's no need to perform this procedure explicitly. Given a dense array
+however, there is no need to perform this procedure explicitly. Given a dense array
 representing the matrix elements of a tensor map in the irrep basis, we can convert this to
 the corresponding symmetric tensor map by passing the data array to the `TensorMap`
 constructor along with the corresponding spaces,
@@ -1060,7 +1060,7 @@ SS_auto = TensorMap(SS_arr, V ⊗ V ← V ⊗ V)
     number $m = -1, 0, 1$, seems quite natural, for many symmetries there is no transparent
     natural choice. In those cases, the only way to use this approach is to explicitly check the
     basis convention used by [`TensorKitSectors.fusiontensor`](@ref) for that specific symmetry.
-    On top of thes, there's some additional complications when considering graded spaces which
+    On top of this, there are some additional complications when considering graded spaces which
     contain multiple sectors with non-trivial degeneracies. In that case, to even initialize the
     dense data array in the first place, you would need to know the order in which the sectors
     appear in each space internally. This information can be obtained by calling `axes(V, c)`,
@@ -1080,7 +1080,7 @@ for the Heisenberg model. First, we rewrite the exchange interaction in the foll
 \vec{S}_i \cdot \vec{S}_j = \frac{1}{2} \left( \left( \vec{S}_i + \vec{S}_j \right)^2 - \vec{S}_i^2 - \vec{S}_j^2 \right)
 \end{equation}
 ```
-Here, $\vec{S}_i$ and $\vec{S}_j$ are spin operators on the physcial irrep, while total spin
+Here, $\vec{S}_i$ and $\vec{S}_j$ are spin operators on the physical irrep, while total spin
 operator $\vec{S}_i + \vec{S}_j$ can be decomposed onto the different coupled irreps $k$. It
 is a well known fact that the quadratic sum of the generators of $\mathrm{SU}(2)$, often
 refered to as the
@@ -1287,5 +1287,5 @@ subblocks(h)
     However, for categorical symmetries such as the Fibonacci anyons, there are no
     Clebsch-Gordan coefficients. Therefore, the 'matrix elements of the operator in the irrep
     basis' are not well-defined, meaning that a Fibonacci-symmetric tensor cannot actually be
-    converted to a plain array in a meaningful way.
+    converted to a plain array in a straightforward way.
 
