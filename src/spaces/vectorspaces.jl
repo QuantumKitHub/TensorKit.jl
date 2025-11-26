@@ -214,17 +214,8 @@ function isunitspace(V::ElementarySpace)
     return if isa(UnitStyle(I), SimpleUnit)
         isisomorphic(V, unitspace(V))
     else
-        try
-            isisomorphic(V, unitspace(V)) ||
-                isisomorphic(V, leftunitspace(V)) ||
-                isisomorphic(V, rightunitspace(V))
-        catch e
-            if isa(e, ArgumentError)
-                return false
-            else
-                rethrow(e)
-            end
-        end
+        (dim(V) == 0 || !all(isunit, sectors(V))) && return false
+        return true
     end
 end
 
