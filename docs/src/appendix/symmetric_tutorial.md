@@ -156,8 +156,19 @@ a \otimes b \cong \bigoplus_c N_c^{ab} c,
 ```
 where $N_{ab}^c$ encodes the number of times the irrep $c$ occurs in the tensor product of
 irreps $a$ and $b$. These fusion rules are called *Abelian* if the tensor product of any two
-irreps corresponds to exactly one irrep. We will return to the implications of irreps with *non-Abelian* fusion rules [later](@ref ss_non_abelian). For the case of the $\mathbb{Z}_2$
-irreps, the fusion rules are Abelian, and are given by addition modulo 2,
+irreps corresponds to exactly one irrep. We will return to the implications of irreps with
+*non-Abelian* fusion rules [later](@ref ss_non_abelian).
+
+!!! note
+    Within TensorKit.jl, the nature of the fusion rules for charges of a given symmetry are
+    represented by the [`FusionStyle`](@ref) of the corresponding `Sector` subtype. What we
+    refer to as "Abelian" fusion rules in this tutorial corresponds to
+    `UniqueFusion <: FusionStyle`. We will also consider [examples](@ref ss_non_abelian) of
+    two different kinds of non-Abelian" fusion rules, corresponding to
+    `MultipleFusion <: FusionStyle` styles.
+
+For the case of the $\mathbb{Z}_2$ irreps, the fusion rules are Abelian, and are given by
+addition modulo 2,
 ```math
 0 \otimes 0 \cong 0, \quad 0 \otimes 1 \cong 1, \quad 1 \otimes 0 \cong 1, \quad 1 \otimes 1 \cong 0.
 ```
