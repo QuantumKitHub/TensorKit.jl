@@ -134,8 +134,9 @@ Always returns `false` for spaces where `V == conj(V)`, i.e. vector spaces over 
 
 Return the corresponding vector space of type `S` that represents the trivial
 one-dimensional space, i.e. the space that is isomorphic to the corresponding field.
-For vector spaces of type `GradedSpace{I}` where `Sector` `I` has a semi-simple unit 
-structure, this returns a multi-dimensional space corresponding to all unit sectors in `I`.
+For vector spaces where `I = sectortype(S)` has a semi-simple unit structure
+(`UnitStyle(I) == GenericUnit()`), this returns a multi-dimensional space corresponding to all unit sectors:
+`dim(unitspace(V), s) == 1` for all `s in allunits(I)`. 
 
 !!! note
     `unitspace(V)`is different from `one(V)`. The latter returns the empty product space
@@ -169,7 +170,7 @@ function leftunitspace(V::ElementarySpace)
     if UnitStyle(I) isa SimpleUnit
         return unitspace(typeof(V))
     else
-        !isempty(sectors(V)) || throw(ArgumentError("Cannot determine type of empty space"))
+        !isempty(sectors(V)) || throw(ArgumentError("Cannot determine the left unit of an empty space"))
         _allequal(leftunit, sectors(V)) ||
             throw(ArgumentError("sectors of $V do not have the same left unit"))
 
@@ -191,7 +192,7 @@ function rightunitspace(V::ElementarySpace)
     if UnitStyle(I) isa SimpleUnit
         return unitspace(typeof(V))
     else
-        !isempty(sectors(V)) || throw(ArgumentError("Cannot determine type of empty space"))
+        !isempty(sectors(V)) || throw(ArgumentError("Cannot determine the right unit of an empty space"))
         _allequal(rightunit, sectors(V)) ||
             throw(ArgumentError("sectors of $V do not have the same right unit"))
 
