@@ -696,7 +696,7 @@ for (s, f) in fusiontrees(c⁺c⁻)
         c⁺c⁻[s, f] .= 1
     end
 end
-c⁺c⁻
+subblocks(c⁺c⁻)
 ```
 
 ```@example symmetric_tutorial
@@ -706,7 +706,7 @@ for (s, f) in fusiontrees(c⁻c⁺)
         c⁻c⁺[s, f] .= -1
     end
 end
-c⁻c⁺
+subblocks(c⁻c⁺)
 ```
 
 ```@example symmetric_tutorial
@@ -717,7 +717,7 @@ for (s, f) in fusiontrees(c⁺c⁺)
         c⁺c⁺[s, f] .= 1
     end
 end
-c⁺c⁺
+subblocks(c⁺c⁺)
 ```
 
 ```@example symmetric_tutorial
@@ -727,7 +727,7 @@ for (s, f) in fusiontrees(c⁻c⁻)
         c⁻c⁻[s, f] .= -1
     end
 end
-c⁻c⁻
+subblocks(c⁻c⁻)
 ```
 
 ```@example symmetric_tutorial
@@ -735,11 +735,10 @@ N = zeros(ComplexF64, V ← V)
 for (s, f) in fusiontrees(N)
     N[s, f] .= f.coupled == odd ? 1 : 0
 end
-N
+subblocks(N)
 ```
 
-Again, you can easily verify that all the reduced tensor elements are correct by inspecting
-the `subblocks` of each tensor.
+We can easily all the reduced tensor elements are indeed correct.
 
 !!! note
     Working with fermionic systems is inherently tricky, as can already be seen from something
