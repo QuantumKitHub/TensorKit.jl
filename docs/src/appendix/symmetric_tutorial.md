@@ -213,8 +213,14 @@ elements corresponding to the fusion trees of a `TensorMap` can be accessed thro
 
 ### [Fusion trees and how to use them](@id sss_fusion_trees)
 
-This view of the underlying symmetry structure in terms of fusion trees and corresponding
-reduced tensor elements is a very convenient way of working with the `TensorMap` type.
+This view of the underlying symmetry structure in terms of fusion trees of irreps and
+corresponding reduced tensor elements is a very convenient way of working with the
+`TensorMap` type. In fact, this symmetry structure is inherently ingrained in a `TensorMap`,
+and goes beyond the group-loke symmetries we have considered until now. In this more general
+setting, we will refer to the labels that appear on this fusion trees as *charges* or
+*sectors*. These can be thought of as generalization of group irreps, and appear in the
+context of TensorKit.jl as instances of the [`Sector`](@ref) type.
+
 Consider a generic fusion tree of the form
 
 ```@raw html
