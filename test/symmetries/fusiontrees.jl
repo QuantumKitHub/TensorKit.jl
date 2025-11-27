@@ -13,7 +13,7 @@ using .TestSetup
 @timedtestset "Fusion trees for $(TensorKit.type_repr(I))" verbose = true for I in sectorlist
     Istr = TensorKit.type_repr(I)
     N = 5
-    out = random_fusion(I, N)
+    out = random_fusion(I, Val(N))
     isdual = ntuple(n -> rand(Bool), N)
     in = rand(collect(⊗(out...)))
     numtrees = length(fusiontrees(out, in, isdual))
@@ -63,31 +63,30 @@ using .TestSetup
                 @constinferred FusionTree((u, u, u), u)
                 if isa(UnitStyle(I), SimpleUnit)
                     @constinferred FusionTree((u, u, u, u))
+                else
+                    @test_throws ArgumentError FusionTree((u, u, u, u))
                 end
                 @test_throws MethodError FusionTree((u, u), u, (false, false, false))
             else
-                errstr = "fusion tree requires inner lines if `FusionStyle(I) <: MultipleFusion`"
-                @test_throws errstr FusionTree((), u, ())
-                @test_throws errstr FusionTree((u,), u, (false,))
-                @test_throws errstr FusionTree((u, u), u, (false, false))
-                @test_throws errstr FusionTree((u, u, u), u)
-                if isa(UnitStyle(I), SimpleUnit)
-                    @test_throws errstr FusionTree((u, u, u, u))
-                end
+                @test_throws ArgumentError FusionTree((), u, ())
+                @test_throws ArgumentError FusionTree((u,), u, (false,))
+                @test_throws ArgumentError FusionTree((u, u), u, (false, false))
+                @test_throws ArgumentError FusionTree((u, u, u), u)
+                @test_throws ArgumentError FusionTree((u, u, u, u))
             end
         end
     end
     @testset "Fusion tree $Istr: insertat" begin
         N = 4
-        out2 = random_fusion(I, N)
+        out2 = random_fusion(I, Val(N))
         in2 = rand(collect(⊗(out2...)))
         isdual2 = ntuple(n -> rand(Bool), N)
         f2 = rand(collect(fusiontrees(out2, in2, isdual2)))
         for i in 1:N
-            out1 = random_fusion(I, N) # guaranteed good fusion
+            out1 = random_fusion(I, Val(N)) # guaranteed good fusion
             out1 = Base.setindex(out1, in2, i) # can lead to poor fusion
             while isempty(⊗(out1...))
-                out1 = random_fusion(I, N)
+                out1 = random_fusion(I, Val(N))
                 out1 = Base.setindex(out1, in2, i)
             end
             in1 = rand(collect(⊗(out1...)))
@@ -325,14 +324,14 @@ using .TestSetup
 
     @testset "Fusion tree $Istr: merging" begin
         N = 3
-        out1 = random_fusion(I, N)
-        out2 = random_fusion(I, N)
+        out1 = random_fusion(I, Val(N))
+        out2 = random_fusion(I, Val(N))
         in1 = rand(collect(⊗(out1...)))
         in2 = rand(collect(⊗(out2...)))
         tp = ⊗(in1, in2) # messy solution but it works
         while isempty(tp)
-            out1 = random_fusion(I, N)
-            out2 = random_fusion(I, N)
+            out1 = random_fusion(I, Val(N))
+            out2 = random_fusion(I, Val(N))
             in1 = rand(collect(⊗(out1...)))
             in2 = rand(collect(⊗(out2...)))
             tp = ⊗(in1, in2)
@@ -409,22 +408,22 @@ using .TestSetup
         N = 4
     end
     if isa(UnitStyle(I), SimpleUnit)
-        out = random_fusion(I, N)
+        out = random_fusion(I, Val(N))
         numtrees = count(n -> true, fusiontrees((out..., map(dual, out)...)))
         while !(0 < numtrees < 100)
-            out = random_fusion(I, N)
+            out = random_fusion(I, Val(N))
             numtrees = count(n -> true, fusiontrees((out..., map(dual, out)...)))
         end
         incoming = rand(collect(⊗(out...)))
         f1 = rand(collect(fusiontrees(out, incoming, ntuple(n -> rand(Bool), N))))
         f2 = rand(collect(fusiontrees(out[randperm(N)], incoming, ntuple(n -> rand(Bool), N))))
     else
-        out = random_fusion(I, N)
-        out2 = random_fusion(I, N)
+        out = random_fusion(I, Val(N))
+        out2 = random_fusion(I, Val(N))
         tp = ⊗(out...)
         tp2 = ⊗(out2...)
         while isempty(intersect(tp, tp2)) # guarantee fusion to same coloring
-            out2 = random_fusion(I, N)
+            out2 = random_fusion(I, Val(N))
             tp2 = ⊗(out2...)
         end
         @test_throws ArgumentError fusiontrees((out..., map(dual, out)...))

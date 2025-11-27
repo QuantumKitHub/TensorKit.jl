@@ -76,20 +76,14 @@ function force_planar(tsrc::TensorMap{<:Any, <:GradedSpace})
     return tdst
 end
 
-function random_fusion(I::Type{<:Sector}, N::Int) # for fusion tree tests
-    t = Vector{I}(undef, N)
-    t[1] = randsector(I)
-    len = 1
-
-    while len < N
-        r = randsector(I)
-        f = ⊗(t[len], r)
-        if !isempty(f)
-            len += 1
-            t[len] = r
-        end
+function random_fusion(I::Type{<:Sector}, ::Val{N}) where {N} # for fusion tree tests
+    N == 1 && return (randsector(I),)
+    tail = random_fusion(I, Val(N-1))
+    s = randsector(I)
+    while isempty(⊗(s, first(tail)))
+        s = randsector(I)
     end
-    return tuple(t...)
+    return (s, tail...)
 end
 
 sectorlist = (
