@@ -72,7 +72,11 @@ using .TestSetup
                 @test_throws ArgumentError FusionTree((u,), u, (false,))
                 @test_throws ArgumentError FusionTree((u, u), u, (false, false))
                 @test_throws ArgumentError FusionTree((u, u, u), u)
-                @test_throws ArgumentError FusionTree((u, u, u, u))
+                if I <: ProductSector && isa(UnitStyle(I), GenericUnit)
+                    @test_throws DomainError FusionTree((u, u, u, u))
+                else
+                    @test_throws ArgumentError FusionTree((u, u, u, u))
+                end
             end
         end
     end
