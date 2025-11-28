@@ -5,13 +5,13 @@ are relevant to some common physical systems, with an increasing degree of compl
 will assume the reader is somewhat familiar with [the notion of a 'tensor map'](@ref
 ss_whatistensor) and has a rough idea of [what it means for a tensor map to be
 'symmetric'](@ref ss_symmetries). In going through these examples we aim to provide a
-relatively gently introduction to the meaning of [symmetry sectors](@ref ss_sectors) and
+relatively gentle introduction to the meaning of [symmetry sectors](@ref ss_sectors) and
 [vector spaces](@ref ss_rep) within the context of TensorKit.jl, [how to initialize a
 `TensorMap` over a given vector space](@ref ss_tensor_construction) and finally how to
 manually set the data of a [symmetric `TensorMap`](@ref ss_tutorial_symmetries). We will
 keep our discussion as intuitive and simple as possible, only adding as many technical
 details as strictly necessary to understand each example. When considering a different
-physical system of interest, you should then be able to adatpt these recipes and the
+physical system of interest, you should then be able to adapt these recipes and the
 intuition behind them to your specific problem at hand.
 
 !!! note
@@ -594,7 +594,7 @@ denote by '1'. The fusion rules of these irreps are the same as for $\mathbb{Z}_
 to the previous case, the local symmetry operator $Q_i$ is already diagonal, so the
 occupation number basis coincides with the irrep basis and we don't need an additional basis
 transform. The important difference with a regular $\mathbb{Z}_2$ symmetry is that the
-irreps of $f\mathbb{Z}_2$ have fermionic braiding statistics, in the sense that exhanging
+irreps of $f\mathbb{Z}_2$ have fermionic braiding statistics, in the sense that exchanging
 two odd irreps gives rise to a minus sign.
 
 In TensorKit.jl, an $f\mathbb{Z}_2$-graded vector spaces is represented as a
@@ -742,7 +742,7 @@ We will now move on to systems which have more complicated *non-Abelian* symmetr
 non-Abelian symmetry group $G$, the fact that its elements do not all commute has a profound
 impact on its representation theory. In particular, the irreps of such a group can be higher
 dimensional, and the fusion of two irreps can give rise to multiple different irreps. On the
-one hand this means that fusion trees of these irreps are no longer completely determined by
+one hand, this means that fusion trees of these irreps are no longer completely determined by
 the uncoupled charges. Indeed, in this case some of the [internal structure of the
 `FusionTree` type](@ref sss_fusion_trees) we have ignored before will become relevant (of
 which we will give an [example below](@ref sss_sun_heisenberg)). On the other hand, it
@@ -911,7 +911,7 @@ about the correspondence between the basis states used to define the original ma
 elements and those implied by the Clebsch-Gordan coefficients. Finally, for some symmetries
 supported in TensorKit.jl, there are simply no Clebsch-Gordan coefficients. Therefore, it is
 often easier and sometimes simply necessary to directly construct the symmetric tensor and
-then fill in its reduced tensor elements based on some representation theory. Wel will cover
+then fill in its reduced tensor elements based on some representation theory. We will cover
 some examples of this below.
 
 Having introduced and demonstrated the Clebsch-Gordan decomposition, the corresponding
