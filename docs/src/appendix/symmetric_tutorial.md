@@ -255,10 +255,11 @@ fields:
 - `vertices::NTuple{L,T}`: list of fusion vertex labels of type `T` and length `L = N - 1`
 
 For our current application only `uncoupled` and `coupled` are relevant, since
-$\mathbb{Z}_2$ irreps are self-dual and have Abelian fusion rules, so that irreps on the inner lines of a fusion tree are completely determined by the uncoupled irreps. We will come back to
-these other properties when discussion more involved applications. Given some `TensorMap`,
-the method `TensorKit.fusiontrees(t::TensorMap)` returns an iterator over all pairs of
-splitting and fusion trees that label the subblocks of `t`.
+$\mathbb{Z}_2$ irreps are self-dual and have Abelian fusion rules, so that irreps on the
+inner lines of a fusion tree are completely determined by the uncoupled irreps. We will come
+back to these other properties when discussion more involved applications. Given some
+`TensorMap`, the method `TensorKit.fusiontrees(t::TensorMap)` returns an iterator over all
+pairs of splitting and fusion trees that label the subblocks of `t`.
 
 We can now put this into practice by directly constructing the $ZZ$ operator in the irrep
 basis as a $\mathbb{Z}_2$-symmetric `TensorMap`. We will do this in three steps:
@@ -544,12 +545,14 @@ It is then simple to check that this is indeed what we expect.
 !!! note
     From the construction of the Hamiltonian operators
     [in terms of creation and annihilation operators](bosonham) we clearly see that they are
-    invariant under a transformation $a^\pm \to e^{\pm i\theta} a^\pm$. More generally, any
-    invertible transformation on the auxiliary space leaves the resulting contraction unchanged.
-    This ambiguity in the definition clearly shows that one should really always think in terms
-    of the fully symmetric procucts of $a^+$ and $a^-$ rather than in terms of these operators
-    themselves. In particular, one can always decompose such a symmetric product into the
-    [form above](bosonham) by means of an SVD.
+    invariant under a transformation $a^\pm \to e^{\pm i\theta} a^\pm$. More generally, for
+    a two-site operator that is defined as the contraction of two one-site operators across
+    an auxiliary space, modifying the one-site operators by applying transformations $Q$ and
+    $Q^{-1}$ on their respective auxiliary spaces for any invertible $Q$ leaves the
+    resulting contraction unchanged. This ambiguity in the definition clearly shows that one
+    should really always think in terms of the fully symmetric procucts of $a^+$ and $a^-$
+    rather than in terms of these operators themselves. In particular, one can always
+    decompose such a symmetric product into the [form above](bosonham) by means of an SVD.
 
 
 ## Level 3: Fermions and the Kitaev model
