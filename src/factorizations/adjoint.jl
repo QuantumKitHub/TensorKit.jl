@@ -109,6 +109,7 @@ function MAK.svd_trunc!(t::AdjointTensorMap, USVᴴ, alg::TruncatedAlgorithm)
     USVᴴ′ = svd_compact!(t, USVᴴ, alg.alg)
     return MAK.truncate(svd_trunc!, USVᴴ′, alg.trunc)
 end
-function MAK.svd_compact!(t::AdjointTensorMap, USVᴴ, alg::DiagonalAlgorithm)
-    return MAK.svd_compact!(t, USVᴴ, alg.alg)
+function MAK.svd_compact!(t::AdjointTensorMap, F, alg::DiagonalAlgorithm)
+    F′ = svd_compact!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
+    return reverse(adjoint.(F′))
 end
