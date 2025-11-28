@@ -258,8 +258,8 @@ For our current application only `uncoupled` and `coupled` are relevant, since
 $\mathbb{Z}_2$ irreps are self-dual and have Abelian fusion rules, so that irreps on the
 inner lines of a fusion tree are completely determined by the uncoupled irreps. We will come
 back to these other properties when discussion more involved applications. Given some
-`TensorMap`, the method `TensorKit.fusiontrees(t::TensorMap)` returns an iterator over all
-pairs of splitting and fusion trees that label the subblocks of `t`.
+`TensorMap`, the method [`fusiontrees`](@ref) returns an iterator over all pairs of
+splitting and fusion trees that label the subblocks of `t`.
 
 We can now put this into practice by directly constructing the $ZZ$ operator in the irrep
 basis as a $\mathbb{Z}_2$-symmetric `TensorMap`. We will do this in three steps:
