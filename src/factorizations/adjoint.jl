@@ -11,9 +11,11 @@ _adjoint(alg::AbstractAlgorithm) = alg
 
 for f in
     [
-        :svd_compact, :svd_full, :svd_trunc, :svd_vals, :qr_compact, :qr_full, :qr_null,
-        :lq_compact, :lq_full, :lq_null, :eig_full, :eig_trunc, :eig_vals, :eigh_full,
-        :eigh_trunc, :eigh_vals, :left_polar, :right_polar,
+        :svd_compact, :svd_full, :svd_vals,
+        :qr_compact, :qr_full, :qr_null,
+        :lq_compact, :lq_full, :lq_null,
+        :eig_full, :eig_vals, :eigh_full, :eigh_trunc, :eigh_vals,
+        :left_polar, :right_polar,
         :project_hermitian, :project_antihermitian, :project_isometric,
     ]
     f! = Symbol(f, :!)
@@ -76,9 +78,10 @@ for (left_f, right_f) in zip(
 end
 
 # 3-arg functions
-for f! in (:svd_full!, :svd_compact!, :svd_trunc!)
-    @eval function MAK.copy_input(::typeof($f!), t::AdjointTensorMap)
-        return adjoint(MAK.copy_input($f!, adjoint(t)))
+for f in (:svd_full, :svd_compact)
+    f! = Symbol(f, :!)
+    @eval function MAK.copy_input(::typeof($f), t::AdjointTensorMap)
+        return adjoint(MAK.copy_input($f, adjoint(t)))
     end
 
     @eval function MAK.initialize_output(
@@ -86,6 +89,7 @@ for f! in (:svd_full!, :svd_compact!, :svd_trunc!)
         )
         return reverse(adjoint.(MAK.initialize_output($f!, adjoint(t), _adjoint(alg))))
     end
+
     @eval function MAK.$f!(t::AdjointTensorMap, F, alg::AbstractAlgorithm)
         F′ = $f!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
         return reverse(adjoint.(F′))
@@ -98,17 +102,8 @@ for f! in (:svd_full!, :svd_compact!, :svd_trunc!)
         throw(MethodError($f!, (t, alg)))
     end
 end
+
 # avoid amgiguity
-function MAK.initialize_output(
-        ::typeof(svd_trunc!), t::AdjointTensorMap, alg::TruncatedAlgorithm
-    )
-    return MAK.initialize_output(svd_compact!, t, alg.alg)
-end
-# to fix ambiguity
-function MAK.svd_trunc!(t::AdjointTensorMap, USVᴴ, alg::TruncatedAlgorithm)
-    USVᴴ′ = svd_compact!(t, USVᴴ, alg.alg)
-    return MAK.truncate(svd_trunc!, USVᴴ′, alg.trunc)
-end
 function MAK.svd_compact!(t::AdjointTensorMap, F, alg::DiagonalAlgorithm)
     F′ = svd_compact!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
     return reverse(adjoint.(F′))

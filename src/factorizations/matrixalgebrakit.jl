@@ -2,9 +2,11 @@
 # -------------------
 for f in
     [
-        :svd_compact, :svd_full, :svd_trunc, :svd_vals, :qr_compact, :qr_full, :qr_null,
-        :lq_compact, :lq_full, :lq_null, :eig_full, :eig_trunc, :eig_vals, :eigh_full,
-        :eigh_trunc, :eigh_vals, :left_polar, :right_polar,
+        :svd_compact, :svd_full, :svd_vals,
+        :qr_compact, :qr_full, :qr_null,
+        :lq_compact, :lq_full, :lq_null,
+        :eig_full, :eig_vals, :eigh_full, :eigh_vals,
+        :left_polar, :right_polar,
         :project_hermitian, :project_antihermitian, :project_isometric,
     ]
     f! = Symbol(f, :!)
