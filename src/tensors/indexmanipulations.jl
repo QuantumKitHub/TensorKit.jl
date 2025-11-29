@@ -426,13 +426,13 @@ spacecheck_transform(f, tdst::AbstractTensorMap, tsrc::AbstractTensorMap, args..
     )
     return nothing
 end
-@noinline function spacecheck_transform(::typeof(braid), Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, lvls::IndexTuple)
+@noinline function spacecheck_transform(::typeof(braid), Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, levels::IndexTuple)
     spacetype(Vdst) == spacetype(Vsrc) || throw(SectorMismatch("incompatible sector types"))
-    braid(Vsrc, p, lvls) == Vdst ||
+    braid(Vsrc, p, levels) == Vdst ||
         throw(
         SpaceMismatch(
             lazy"""
-            incompatible spaces for `braid(Vsrc, $p, $lvls) -> Vdst`
+            incompatible spaces for `braid(Vsrc, $p, $levels) -> Vdst`
             Vsrc = $Vsrc
             Vdst = $Vdst
             """

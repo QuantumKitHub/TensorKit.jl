@@ -160,10 +160,10 @@ function LinearAlgebra.transpose(W::HomSpace, (p₁, p₂)::Index2Tuple = _trans
     return select(W, (p₁, p₂))
 end
 
-function braid(W::HomSpace, (p₁, p₂)::Index2Tuple, lvls::IndexTuple)
+function braid(W::HomSpace, (p₁, p₂)::Index2Tuple, levels::IndexTuple)
     p = (p₁..., p₂...)
-    TupleTools.isperm(p) && length(p) == numind(W) == length(lvls) ||
-        throw(ArgumentError("$((p₁, p₂)), $lvls is not a valid braiding for $(W)"))
+    TupleTools.isperm(p) && length(p) == numind(W) == length(levels) ||
+        throw(ArgumentError("$((p₁, p₂)), $levels is not a valid braiding for $(W)"))
     return select(W, (p₁, p₂))
 end
 
