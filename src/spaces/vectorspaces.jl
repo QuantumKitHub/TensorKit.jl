@@ -41,8 +41,8 @@ generally, objects in linear monoidal categories.
 abstract type VectorSpace end
 
 """
-    field(a) -> Type{𝔽<:Field}
-    field(::Type{T}) -> Type{𝔽<:Field}
+    field(a) -> Type{𝔽 <: Field}
+    field(::Type{T}) -> Type{𝔽 <: Field}
 
 Return the type of field over which object `a` (e.g. a vector space or a tensor) is defined.
 This also works in type domain.
@@ -130,10 +130,13 @@ Always returns `false` for spaces where `V == conj(V)`, i.e. vector spaces over 
 """ isconj(::ElementarySpace)
 
 """
-    unitspace(V::S) where {S<:ElementarySpace} -> S
+    unitspace(V::S) where {S <: ElementarySpace} -> S
 
 Return the corresponding vector space of type `S` that represents the trivial
 one-dimensional space, i.e. the space that is isomorphic to the corresponding field.
+For vector spaces where `I = sectortype(S)` has a semi-simple unit structure
+(`UnitStyle(I) == GenericUnit()`), this returns a multi-dimensional space corresponding to all unit sectors:
+`dim(unitspace(V), s) == 1` for all `s in allunits(I)`. 
 
 !!! note
     `unitspace(V)`is different from `one(V)`. The latter returns the empty product space
@@ -144,7 +147,7 @@ Base.oneunit(V::ElementarySpace) = unitspace(V)
 Base.oneunit(::Type{V}) where {V <: ElementarySpace} = unitspace(V)
 
 """
-    zerospace(V::S) where {S<:ElementarySpace} -> S
+    zerospace(V::S) where {S <: ElementarySpace} -> S
 
 Return the corresponding vector space of type `S` that represents the zero-dimensional or empty space.
 This is the zero element of the direct sum of vector spaces.
@@ -153,6 +156,68 @@ This is the zero element of the direct sum of vector spaces.
 zerospace(V::ElementarySpace) = zerospace(typeof(V))
 Base.zero(V::ElementarySpace) = zerospace(V)
 Base.zero(::Type{V}) where {V <: ElementarySpace} = zerospace(V)
+
+"""
+    leftunitspace(V::S) where {S <: ElementarySpace} -> S
+
+Return the corresponding vector space of type `S` that represents the trivial
+one-dimensional space, i.e. the space that is isomorphic to the corresponding field. For vector spaces 
+of type `GradedSpace{I}`, this one-dimensional space contains the unique left unit of the objects in `Sector` `I` present
+in the vector space.
+"""
+function leftunitspace(V::ElementarySpace)
+    I = sectortype(V)
+    if UnitStyle(I) isa SimpleUnit
+        return unitspace(typeof(V))
+    else
+        !isempty(sectors(V)) || throw(ArgumentError("Cannot determine the left unit of an empty space"))
+        _allequal(leftunit, sectors(V)) ||
+            throw(ArgumentError("sectors of $V do not have the same left unit"))
+
+        sector = leftunit(first(sectors(V)))
+        return spacetype(V)(sector => 1)
+    end
+end
+
+"""
+    rightunitspace(V::S) where {S <: ElementarySpace} -> S
+
+Return the corresponding vector space of type `ElementarySpace` that represents the trivial
+one-dimensional space, i.e. the space that is isomorphic to the corresponding field. For vector spaces 
+of type `GradedSpace{I}`, this corresponds to the right unit of the objects in `Sector` `I` present
+in the vector space.
+"""
+function rightunitspace(V::ElementarySpace)
+    I = sectortype(V)
+    if UnitStyle(I) isa SimpleUnit
+        return unitspace(typeof(V))
+    else
+        !isempty(sectors(V)) || throw(ArgumentError("Cannot determine the right unit of an empty space"))
+        _allequal(rightunit, sectors(V)) ||
+            throw(ArgumentError("sectors of $V do not have the same right unit"))
+
+        sector = rightunit(first(sectors(V)))
+        return spacetype(V)(sector => 1)
+    end
+end
+
+"""
+    isunitspace(V::S) where {S <: ElementarySpace} -> Bool
+
+Return whether the elementary space `V` is a unit space, i.e. is isomorphic to the
+trivial one-dimensional space. For vector spaces of type `GradedSpace{I}` where `Sector` `I` has a
+semi-simple unit structure, this returns `true` if `V` is isomorphic to either the left, right or
+semi-simple unit space.
+"""
+function isunitspace(V::ElementarySpace)
+    I = sectortype(V)
+    return if isa(UnitStyle(I), SimpleUnit)
+        isisomorphic(V, unitspace(V))
+    else
+        (dim(V) == 0 || !all(isunit, sectors(V))) && return false
+        return true
+    end
+end
 
 """
     ⊕(V₁::S, V₂::S, V₃::S...) where {S<:ElementarySpace} -> S

@@ -15,7 +15,7 @@ export BraidingStyle, SymmetricBraiding, Bosonic, Fermionic, Anyonic, NoBraiding
 export Trivial, Z2Irrep, Z3Irrep, Z4Irrep, ZNIrrep, U1Irrep, SU2Irrep, CU1Irrep
 export ProductSector
 export FermionParity, FermionNumber, FermionSpin
-export FibonacciAnyon, IsingAnyon
+export FibonacciAnyon, IsingAnyon, IsingBimodule
 
 # Export common vector space, fusion tree and tensor types
 export VectorSpace, Field, ElementarySpace # abstract vector spaces
@@ -34,7 +34,10 @@ export SpaceMismatch, SectorMismatch, IndexError # error types
 # Export general vector space methods
 export space, field, dual, dim, reduceddim, dims, fuse, flip, isdual
 export unitspace, zerospace, oplus, ominus
+export leftunitspace, rightunitspace, isunitspace
 export insertleftunit, insertrightunit, removeunit
+
+# partial order for vector spaces
 export infimum, supremum, isisomorphic, ismonomorphic, isepimorphic
 
 # Reexport methods for sectors and properties thereof
