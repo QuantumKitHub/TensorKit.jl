@@ -176,8 +176,11 @@ struct SpaceMismatch{S <: Union{Nothing, AbstractString}} <: TensorException
     message::S
 end
 SpaceMismatch() = SpaceMismatch{Nothing}(nothing)
-Base.showerror(io::IO, ::SpaceMismatch{Nothing}) = print(io, "SpaceMismatch()")
-Base.showerror(io::IO, e::SpaceMismatch) = print(io, "SpaceMismatch(\"", e.message, "\")")
+function Base.showerror(io::IO, err::SpaceMismatch)
+    print(io, "SpaceMismatch: ")
+    isnothing(err.message) || print(io, err.message)
+    return nothing
+end
 
 # Exception type for all errors related to invalid tensor index specification.
 struct IndexError{S <: Union{Nothing, AbstractString}} <: TensorException

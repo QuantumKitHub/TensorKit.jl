@@ -123,7 +123,7 @@ the resuling `HomSpace` after applying certain tensor operations.
 
 ```@docs
 flip(W::HomSpace{S}, I) where {S}
-TensorKit.permute(::HomSpace{S}, ::Index2Tuple{N₁,N₂}) where {S,N₁,N₂}
+TensorKit.permute(::HomSpace, ::Index2Tuple)
 TensorKit.select(::HomSpace{S}, ::Index2Tuple{N₁,N₂}) where {S,N₁,N₂}
 TensorKit.compose(::HomSpace{S}, ::HomSpace{S}) where {S}
 insertleftunit(::HomSpace, ::Val{i}) where {i}
