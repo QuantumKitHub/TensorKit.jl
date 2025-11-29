@@ -175,7 +175,7 @@ the permutation `(p₁..., reverse(p₂)...)` should constitute a cyclic permuta
 
 See [`transpose`](@ref) for creating a new tensor and [`add_transpose!`](@ref) for a more general version.
 """
-function LinearAlgebra.transpose!(
+@propagate_inbounds function LinearAlgebra.transpose!(
         tdst::AbstractTensorMap, tsrc::AbstractTensorMap, (p₁, p₂)::Index2Tuple = _transpose_indices(tsrc)
     )
     return add_transpose!(tdst, tsrc, (p₁, p₂), One(), Zero())
@@ -229,7 +229,7 @@ case of a transposition that only changes the number of in- and outgoing indices
 
 See [`repartition`](@ref) for creating a new tensor.
 """
-function repartition!(tdst::AbstractTensorMap{S}, tsrc::AbstractTensorMap{S}) where {S}
+@propagate_inbounds function repartition!(tdst::AbstractTensorMap{S}, tsrc::AbstractTensorMap{S}) where {S}
     numind(tsrc) == numind(tdst) ||
         throw(ArgumentError("tsrc and tdst should have an equal amount of indices"))
     all_inds = (codomainind(tsrc)..., reverse(domainind(tsrc))...)
@@ -499,7 +499,7 @@ See also [`transpose`](@ref), [`transpose!`](@ref), [`add_permute!`](@ref), [`ad
     return @inbounds add_transform!(tdst, tsrc, p, transformer, α, β, backend...)
 end
 
-function add_transform!(
+@propagate_inbounds function add_transform!(
         tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, transformer,
         α::Number, β::Number, backend::AbstractBackend...
     )
