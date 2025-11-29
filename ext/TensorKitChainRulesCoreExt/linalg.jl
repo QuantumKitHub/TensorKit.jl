@@ -69,6 +69,16 @@ function ChainRulesCore.rrule(
     return permute(tsrc, p; copy = true), permute_pullback
 end
 
+function ChainRulesCore.rrule(
+        ::typeof(transpose), tsrc::AbstractTensorMap, p::Index2Tuple; copy::Bool = false
+    )
+    function transpose_pullback(Δtdst)
+        invp = TensorKit._canonicalize(TupleTools.invperm(linearize(p)), tsrc)
+        return NoTangent(), transpose(unthunk(Δtdst), invp; copy = true), NoTangent()
+    end
+    return transpose(tsrc, p; copy = true), transpose_pullback
+end
+
 function ChainRulesCore.rrule(::typeof(tr), A::AbstractTensorMap)
     tr_pullback(Δtr) = NoTangent(), Δtr * id(domain(A))
     return tr(A), tr_pullback
