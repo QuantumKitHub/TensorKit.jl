@@ -47,11 +47,11 @@ for (left_f, right_f) in zip(
     )
     left_f! = Symbol(left_f, :!)
     right_f! = Symbol(right_f, :!)
-    @eval function MAK.copy_input(::typeof($left_f!), t::AdjointTensorMap)
-        return adjoint(MAK.copy_input($right_f!, adjoint(t)))
+    @eval function MAK.copy_input(::typeof($left_f), t::AdjointTensorMap)
+        return adjoint(MAK.copy_input($right_f, adjoint(t)))
     end
-    @eval function MAK.copy_input(::typeof($right_f!), t::AdjointTensorMap)
-        return adjoint(MAK.copy_input($left_f!, adjoint(t)))
+    @eval function MAK.copy_input(::typeof($right_f), t::AdjointTensorMap)
+        return adjoint(MAK.copy_input($left_f, adjoint(t)))
     end
 
     @eval function MAK.initialize_output(
