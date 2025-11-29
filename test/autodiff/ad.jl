@@ -293,6 +293,7 @@ for V in spacelist
             C = randn(T, domain(A), codomain(A))
             test_rrule(*, A, C)
 
+            test_rrule(transpose, A, ((2, 5, 4), (1, 3)))
             symmetricbraiding && test_rrule(permute, A, ((1, 3, 2), (5, 4)))
             test_rrule(twist, A, 1)
             test_rrule(twist, A, [1, 3])
