@@ -39,18 +39,14 @@ end
 
 spacetype(::Type{<:HomSpace{S}}) where {S} = S
 
-numout(W::HomSpace) = length(codomain(W))
-numin(W::HomSpace) = length(domain(W))
-numind(W::HomSpace) = numin(W) + numout(W)
-
 const TensorSpace{S <: ElementarySpace} = Union{S, ProductSpace{S}}
 const TensorMapSpace{S <: ElementarySpace, N₁, N₂} = HomSpace{
     S, ProductSpace{S, N₁},
     ProductSpace{S, N₂},
 }
+
 numout(::Type{TensorMapSpace{S, N₁, N₂}}) where {S, N₁, N₂} = N₁
 numin(::Type{TensorMapSpace{S, N₁, N₂}}) where {S, N₁, N₂} = N₂
-numind(T::Type{TensorMapSpace{S, N₁, N₂}}) where {S, N₁, N₂} = numout(T) + numin(T)
 
 function Base.getindex(W::TensorMapSpace{<:IndexSpace, N₁, N₂}, i) where {N₁, N₂}
     return i <= N₁ ? codomain(W)[i] : dual(domain(W)[i - N₁])
