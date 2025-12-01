@@ -35,24 +35,6 @@ Base.@deprecate EuclideanProduct() EuclideanInnerProduct()
 
 Base.@deprecate insertunit(P::ProductSpace, args...; kwargs...) insertleftunit(args...; kwargs...)
 
-# Factorization structs
-@deprecate QR() MatrixAlgebraKit.LAPACK_HouseholderQR()
-@deprecate QRpos() MatrixAlgebraKit.LAPACK_HouseholderQR(; positive=true)
-
-@deprecate QL() MatrixAlgebraKit.LAPACK_HouseholderQL()
-@deprecate QLpos() MatrixAlgebraKit.LAPACK_HouseholderQL(; positive=true)
-
-@deprecate LQ() MatrixAlgebraKit.LAPACK_HouseholderLQ()
-@deprecate LQpos() MatrixAlgebraKit.LAPACK_HouseholderLQ(; positive=true)
-
-@deprecate RQ() MatrixAlgebraKit.LAPACK_HouseholderRQ()
-@deprecate RQpos() MatrixAlgebraKit.LAPACK_HouseholderRQ(; positive=true)
-
-@deprecate SDD() MatrixAlgebraKit.LAPACK_DivideAndConquer()
-@deprecate SVD() MatrixAlgebraKit.LAPACK_QRIteration()
-
-@deprecate Polar() MatrixAlgebraKit.PolarViaSVD(MatrixAlgebraKit.LAPACK_DivideAndConquer())
-
 # truncations
 const TruncationScheme = MatrixAlgebraKit.TruncationStrategy
 @deprecate truncdim(d::Int) truncrank(d)
