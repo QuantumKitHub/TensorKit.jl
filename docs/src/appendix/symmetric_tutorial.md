@@ -19,6 +19,14 @@ intuition behind them to your specific problem at hand.
     [TensorKitTensors.jl package](https://github.com/QuantumKitHub/TensorKitTensors.jl), in
     which case we basically provide a narrated walk-through of the corresponding code.
 
+#### Contents of the tutorial
+
+```@contents
+Pages = ["symmetric_tutorial.md"]
+Depth = 2:3
+```
+
+#### Setup
 
 ```@example symmetric_tutorial
 using LinearAlgebra
@@ -26,11 +34,6 @@ using TensorKit
 using WignerSymbols
 using SUNRepresentations
 using Test # for showcase testing
-```
-
-```@contents
-Pages = ["symmetric_tutorial.md"]
-Depth = 2:3
 ```
 
 ## Level 0: The transverse-field Ising model
