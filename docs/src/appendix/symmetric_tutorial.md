@@ -29,7 +29,7 @@ using Test # for showcase testing
 ```
 
 
-## Level 0: The 1-dimensional Ising model
+## Level 0: The transverse-field Ising model
 
 As the most basic example, we consider the
 [1-dimensional transverse-field Ising model](https://en.wikipedia.org/wiki/Transverse-field_Ising_model),
