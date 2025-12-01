@@ -432,7 +432,7 @@ for V in spacelist
             for T in eltypes,
                     t in (
                         randn(T, W, W), randn(T, W, W)',
-                        randn(T, W, V1), randn(T, V1, W)',
+                        randn(T, W, V4), randn(T, V4, W)',
                     )
                 t2 = project_isometric(t)
                 @test isisometric(t2)
