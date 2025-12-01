@@ -305,10 +305,12 @@ V = 1 \cdot V^{(0)} \oplus 1 \cdot V^{(1)},
 which can be constructed in the following way,
 ```@example symmetric_tutorial
 V = Z2Space(0 => 1, 1 => 1)
-dim(V)
 ```
 As a consistency check, we can inspect its dimension as well as the degeneracies of the
 individual irreps:
+```@example symmetric_tutorial
+dim(V)
+```
 ```@example symmetric_tutorial
 dim(V, Z2Irrep(0))
 ```
