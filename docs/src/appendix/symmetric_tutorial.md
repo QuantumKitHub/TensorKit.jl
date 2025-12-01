@@ -84,7 +84,7 @@ X = TensorMap(x_mat, V ← V)
 Z = TensorMap(z_mat, V ← V)
 
 # combine single-site operators into two-site operator
-ZZ = Z ⊗ Z;
+ZZ = Z ⊗ Z
 ```
 
 We can easily verify that our operators have the desired form by checking their data in the
