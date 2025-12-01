@@ -852,6 +852,19 @@ precisely this structure that is inherently encoded into the fusion tree part of
 symmetric tensor is precisely the reduced tensor element in the Clebsch-Gordan
 decomposition**.
 
+!!! note
+    In the Clebsch-Gordan decomposition given above, our notation has actually silently
+    assumed that each irrep $k$ only occurs once in the fusion product of the uncoupled
+    irreps $l_1$ and $l_2$. However, there exist symmetries which have **fusion multiplicities**,
+    where two irreps can fuse to a given coupled irrep in multiple *distinct* ways. In
+    TensorKit.jl, these correspond to `Sector` types with a `GenericFusion <: FusionStyle`
+    fusion style. In the presence of fusion multiplicities, the Clebsch-Gordan coefficients
+    actually have an additional index which labels the particular fusion channel according
+    to which $l_1$ and $l_2$ fuse to $k$. Since the fusion of $\mathrm{SU}(2)$ irreps is
+    multiplicity-free, we could safely ignore this nuance here. We will encounter the
+    implication of fusion multiplicities shortly, and will consider an example of a symmetry
+    which has these multiplicities below.
+
 As a small demonstration of this fact, we can make a simple $\mathrm{SU}(2)$-symmetric
 tensor with trivial subblock values and verify that its implied symmetry structure exactly
 corresponds to the expected Clebsch-Gordan coefficient. First, we [recall](su2_irreps) that
@@ -954,14 +967,13 @@ f = fusiontensor(SU2Irrep(1//2), SU2Irrep(1//2), SU2Irrep(1))
 We see that this fusion tensor has a size `2×2×3×1`, which contains an additional trailing
 `1` to what we might expect. In the general case, `fusiontensor` returns a 4-dimensional
 array, where the size of the first three dimensions corresponds to the dimensions of the
-irrep spaces under consideration, and the last dimension corresponds to the number of
-distinct ways the irreps $l_1$ and $l_1$ can fuse to irrep $k$. We say that `Sector`s for
-which the size of this last dimension can be larger than 1 have *fusion multiplicities*.
-We'll encounter an example of this below when we consider an $\mathrm{SU}(3)$ symmetry.
-Since $\mathrm{SU}(2)$ doesn't have any fusion multiplicities, we can just discard this last
-index.
+irrep spaces under consideration, and the last index lables the different fusion channels,
+where its dimension corresponds to the number of distinct ways the irreps $l_1$ and $l_2$
+can fuse to irrep $k$. This is precicely the extra label of the Clebsch-Gordan coefficients
+that is required in the the presence of fusion multiplicities. Since $\mathrm{SU}(2)$ is
+multiplicity-free, we can just discard this last index here.
 
-We can now explicitly that this `fusiontensor` indeed does what we expect it to do:
+We can now explicitly verify that this `fusiontensor` indeed does what we expect it to do:
 ```@example symmetric_tutorial
 @test ta ≈ f[:, :, :, 1]
 ```
