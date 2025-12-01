@@ -1,11 +1,3 @@
-# convenience to set default
-macro check_space(x, V)
-    return esc(:($MatrixAlgebraKit.@check_size($x, $V, $space)))
-end
-macro check_scalar(x, y, op = :identity, eltype = :scalartype)
-    return esc(:($MatrixAlgebraKit.@check_scalar($x, $y, $op, $eltype)))
-end
-
 function factorisation_scalartype(t::AbstractTensorMap)
     T = scalartype(t)
     return promote_type(Float32, typeof(zero(T) / sqrt(abs2(one(T)))))

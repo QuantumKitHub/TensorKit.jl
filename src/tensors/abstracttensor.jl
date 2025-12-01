@@ -89,80 +89,84 @@ domain(t::AbstractTensorMap) = domain(space(t))
 domain(t::AbstractTensorMap, i) = domain(t)[i]
 source(t::AbstractTensorMap) = domain(t) # categorical terminology
 
-"""
-    numout(::Union{TT,Type{TT}}) where {TT<:AbstractTensorMap} -> Int
+@doc """
+    numout(x) -> Int
+    numout(T::Type) -> Int
 
-Return the number of output spaces of a tensor. This is equivalent to the number of spaces in the codomain of that tensor.
+Return the length of the codomain, i.e. the number of output spaces.
+By default, this is implemented in the type domain.
 
 See also [`numin`](@ref) and [`numind`](@ref).
-"""
+""" numout
+
+numout(x) = numout(typeof(x))
+numout(T::Type) = throw(MethodError(numout, T)) # avoid infinite recursion
 numout(::Type{<:AbstractTensorMap{T, S, N₁}}) where {T, S, N₁} = N₁
 
-"""
-    numin(::Union{TT,Type{TT}}) where {TT<:AbstractTensorMap} -> Int
+@doc """
+    numin(x) -> Int
+    numin(T::Type) -> Int
 
-Return the number of input spaces of a tensor. This is equivalent to the number of spaces in the domain of that tensor.
+Return the length of the domain, i.e. the number of input spaces.
+By default, this is implemented in the type domain.
 
 See also [`numout`](@ref) and [`numind`](@ref).
-"""
+""" numin
+
+numin(x) = numin(typeof(x))
+numin(T::Type) = throw(MethodError(numin, T)) # avoid infinite recursion
 numin(::Type{<:AbstractTensorMap{T, S, N₁, N₂}}) where {T, S, N₁, N₂} = N₂
 
 """
-    numind(::Union{T,Type{T}}) where {T<:AbstractTensorMap} -> Int
+    numind(x) -> Int
+    numind(T::Type) -> Int
+    order(x) = numind(x)
 
-Return the total number of input and output spaces of a tensor. This is equivalent to the
-total number of spaces in the domain and codomain of that tensor.
+Return the total number of input and output spaces, i.e. `numin(x) + numout(x)`.
+Alternatively, the alias `order` can also be used.
 
 See also [`numout`](@ref) and [`numin`](@ref).
 """
-numind(::Type{TT}) where {TT <: AbstractTensorMap} = numin(TT) + numout(TT)
+numind(x) = numin(x) + numout(x)
+
 const order = numind
 
 """
-    codomainind(::Union{TT,Type{TT}}) where {TT<:AbstractTensorMap} -> Tuple{Int}
+    codomainind(x) -> Tuple{Int}
 
-Return all indices of the codomain of a tensor.
+Return all indices of the codomain.
 
 See also [`domainind`](@ref) and [`allind`](@ref).
 """
-function codomainind(::Type{TT}) where {TT <: AbstractTensorMap}
-    return ntuple(identity, numout(TT))
-end
-codomainind(t::AbstractTensorMap) = codomainind(typeof(t))
+codomainind(x) = ntuple(identity, numout(x))
 
 """
-    domainind(::Union{TT,Type{TT}}) where {TT<:AbstractTensorMap} -> Tuple{Int}
+    domainind(x) -> Tuple{Int}
 
-Return all indices of the domain of a tensor.
+Return all indices of the domain.
 
 See also [`codomainind`](@ref) and [`allind`](@ref).
 """
-function domainind(::Type{TT}) where {TT <: AbstractTensorMap}
-    return ntuple(n -> numout(TT) + n, numin(TT))
-end
-domainind(t::AbstractTensorMap) = domainind(typeof(t))
+domainind(x) = ntuple(n -> numout(x) + n, numin(x))
 
 """
-    allind(::Union{TT,Type{TT}}) where {TT<:AbstractTensorMap} -> Tuple{Int}
+    allind(x) -> Tuple{Int}
 
-Return all indices of a tensor, i.e. the indices of its domain and codomain.
+Return all indices, i.e. the indices of both domain and codomain.
 
 See also [`codomainind`](@ref) and [`domainind`](@ref).
 """
-function allind(::Type{TT}) where {TT <: AbstractTensorMap}
-    return ntuple(identity, numind(TT))
-end
-allind(t::AbstractTensorMap) = allind(typeof(t))
+allind(x) = ntuple(identity, numind(x))
 
-function adjointtensorindex(t::AbstractTensorMap, i)
+function adjointtensorindex(t, i)
     return ifelse(i <= numout(t), numin(t) + i, i - numout(t))
 end
 
-function adjointtensorindices(t::AbstractTensorMap, indices::IndexTuple)
+function adjointtensorindices(t, indices::IndexTuple)
     return map(i -> adjointtensorindex(t, i), indices)
 end
 
-function adjointtensorindices(t::AbstractTensorMap, p::Index2Tuple)
+function adjointtensorindices(t, p::Index2Tuple)
     return (adjointtensorindices(t, p[1]), adjointtensorindices(t, p[2]))
 end
 

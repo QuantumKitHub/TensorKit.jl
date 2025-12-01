@@ -11,6 +11,8 @@ struct AdjointTensorMap{T, S, N₁, N₂, TT <: AbstractTensorMap{T, S, N₂, N�
     parent::TT
 end
 Base.parent(t::AdjointTensorMap) = t.parent
+parenttype(t::AdjointTensorMap) = parenttype(typeof(t))
+parenttype(::Type{AdjointTensorMap{T, S, N₁, N₂, TT}}) where {T, S, N₁, N₂, TT} = TT
 
 # Constructor: construct from taking adjoint of a tensor
 Base.adjoint(t::AdjointTensorMap) = parent(t)

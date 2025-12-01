@@ -82,10 +82,12 @@ export left_orth, right_orth, left_null, right_null,
     qr_full!, qr_compact!, qr_null!, lq_full!, lq_compact!, lq_null!,
     svd_compact!, svd_full!, svd_trunc!, svd_compact, svd_full, svd_trunc,
     exp, exp!,
-    eigh_full!, eigh_full, eigh_trunc!, eigh_trunc, eig_full!, eig_full, eig_trunc!,
-    eig_trunc,
-    eigh_vals!, eigh_vals, eig_vals!, eig_vals,
-    isposdef, isposdef!, ishermitian, isisometry, isunitary, sylvester, rank, cond
+    eigh_full!, eigh_full, eigh_trunc!, eigh_trunc, eigh_vals!, eigh_vals,
+    eig_full!, eig_full, eig_trunc!, eig_trunc, eig_vals!, eig_vals,
+    ishermitian, project_hermitian, project_hermitian!,
+    isantihermitian, project_antihermitian, project_antihermitian!,
+    isisometric, isunitary, project_isometric, project_isometric!,
+    isposdef, isposdef!, sylvester, rank, cond
 
 export braid, braid!, permute, permute!, transpose, transpose!, twist, twist!, repartition,
     repartition!
@@ -138,7 +140,7 @@ using LinearAlgebra: norm, dot, normalize, normalize!, tr,
     adjoint, adjoint!, transpose, transpose!,
     lu, pinv, sylvester,
     eigen, eigen!, svd, svd!,
-    isposdef, isposdef!, ishermitian, rank, cond,
+    isposdef, isposdef!, rank, cond,
     Diagonal, Hermitian
 using MatrixAlgebraKit
 
@@ -179,8 +181,11 @@ struct SpaceMismatch{S <: Union{Nothing, AbstractString}} <: TensorException
     message::S
 end
 SpaceMismatch() = SpaceMismatch{Nothing}(nothing)
-Base.showerror(io::IO, ::SpaceMismatch{Nothing}) = print(io, "SpaceMismatch()")
-Base.showerror(io::IO, e::SpaceMismatch) = print(io, "SpaceMismatch(\"", e.message, "\")")
+function Base.showerror(io::IO, err::SpaceMismatch)
+    print(io, "SpaceMismatch: ")
+    isnothing(err.message) || print(io, err.message)
+    return nothing
+end
 
 # Exception type for all errors related to invalid tensor index specification.
 struct IndexError{S <: Union{Nothing, AbstractString}} <: TensorException

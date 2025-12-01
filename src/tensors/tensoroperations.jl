@@ -90,6 +90,35 @@ function TO.tensortrace!(
 end
 
 # tensorcontract!
+function spacecheck_contract(
+        C::AbstractTensorMap,
+        A::AbstractTensorMap, pA::Index2Tuple, conjA::Bool,
+        B::AbstractTensorMap, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple
+    )
+    return spacecheck_contract(space(C), space(A), pA, conjA, space(B), pB, conjB, pAB)
+end
+@noinline function spacecheck_contract(
+        VC::TensorMapSpace,
+        VA::TensorMapSpace, pA::Index2Tuple, conjA::Bool,
+        VB::TensorMapSpace, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple
+    )
+    spacetype(VC) == spacetype(VA) == spacetype(VB) || throw(SectorMismatch("incompatible sector types"))
+    TO.tensorcontract(VA, pA, conjA, VB, pB, conjB, pAB) == VC ||
+        throw(
+        SpaceMismatch(
+            lazy"""
+            incompatible spaces for `tensorcontract(VA, $pA, $conjA, VB, $pB, $conjB, $pAB) -> VC`
+            VA = $VA
+            VB = $VB
+            VC = $VC
+            """
+        )
+    )
+    return nothing
+end
+
 function TO.tensorcontract!(
         C::AbstractTensorMap,
         A::AbstractTensorMap, pA::Index2Tuple, conjA::Bool,
@@ -98,6 +127,7 @@ function TO.tensorcontract!(
         backend, allocator
     )
     pAB′ = _canonicalize(pAB, C)
+    @boundscheck spacecheck_contract(C, A, pA, conjA, B, pB, conjB, pAB′)
     if conjA && conjB
         A′ = A'
         pA′ = adjointtensorindices(A, pA)
