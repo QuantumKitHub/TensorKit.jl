@@ -516,7 +516,7 @@ We can then combine these operators to get the appropriate Hamiltonian terms,
     permutation has no effect on the actual subblocks of the tensors due to the Abelian
     [`FusionStyle`](@ref) and bosonic [`BraidingStyle`](@ref) of $\mathrm{U}(1)$ irreps, so
     the left and right operators can  in essence be seen as the 'same' tensors. This is no
-    longer the case when considering non-Abelian or symmetries. For these cases, permuting
+    longer the case when considering non-Abelian symmetries, or symmetries associated with fermions or anyons. For these cases, permuting
     indices can in fact change the subblocks, as we will see next. As a consequence, it is
     much less clear how to construct two-site symmetric operators in terms of local
     symmetric objects.
