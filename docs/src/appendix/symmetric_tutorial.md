@@ -270,12 +270,23 @@ basis as a $\mathbb{Z}_2$-symmetric `TensorMap`. We will do this in three steps:
 - And finally we iterate over all splitting and fusion tree pairs and manually fill in the
   corresponding nonzero subblocks of the operator.
 
+In TensorKit.jl, the representations of $\mathbb{Z}_2$ are represented as instances of the
+[`Z2Irrep <: Sector`](@ref ZNIrrep) type. There are two such instances, corresponding to the
+trivial irrep `Z2Irrep(0)` and the sign irrep `Z2Irrep(1)`. We can fuse irreps with the `⊗`
+(`\otimes`) operator, which can for example be used to check their fusion rules,
+```@example symmetric_tutorial
+for a in values(Z2Irrep), b in values(Z2Irrep)
+    println("$a ⊗ $b: $(a ⊗ b)")
+end
+```
 After the basis transform to the irrep basis, we can view the two-dimensional complex
 physical vector space we started with as being spanned by the trivial and sign irrep of
 $\mathbb{Z}_2$. In the language of TensorKit.jl, this can be implemented as a `Z2Space`, an
-alias for a [graded vector space](@ref GradedSpace) `Vect[Z2Irrep]`, which contains the
-trivial irrep `Z2Irrep(0)` with degeneracy 1 and the sign irrep `Z2Irrep(1)` with
-degeneracy 1. We can define this space in the following way and check its dimension:
+alias for a [graded vector space](@ref GradedSpace) `Vect[Z2Irrep]`. To construct such a
+graded space we have to specify which irreps it contains, and indicate the degenaracy of
+each irrep. Here, our physical vector space contains the trivial irrep `Z2Irrep(0)` with
+degeneracy 1 and the sign irrep `Z2Irrep(1)` with degeneracy 1. This means can define this
+space in the following way, and check its dimension:
 
 ```@example symmetric_tutorial
 V = Z2Space(0 => 1, 1 => 1)
