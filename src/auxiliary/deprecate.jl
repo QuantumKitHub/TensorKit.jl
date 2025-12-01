@@ -35,12 +35,6 @@ Base.@deprecate EuclideanProduct() EuclideanInnerProduct()
 
 Base.@deprecate insertunit(P::ProductSpace, args...; kwargs...) insertleftunit(args...; kwargs...)
 
-# truncations
-const TruncationScheme = MatrixAlgebraKit.TruncationStrategy
-@deprecate truncdim(d::Int) truncrank(d)
-@deprecate truncbelow(ϵ::Real) trunctol(; atol = ϵ)
-@deprecate truncerr(ϵ::Real) truncerror(ϵ)
-
 # factorizations
 # --------------
 _kindof(::MatrixAlgebraKit.LAPACK_HouseholderQR) = :qr
