@@ -226,8 +226,9 @@ end
     @test dim(@constinferred(zerospace(V))) == 0
     # space with unit(s), always test as if multifusion
     W = @constinferred GradedSpace(unit => 1 for unit in allunits(I))
-    dict = Dict((unit => 1 for unit in allunits(I))...)
+    dict = Dict(unit => 1 for unit in allunits(I))
     @test W == GradedSpace(dict)
+    @test W == GradedSpace(push!(dict, randsector(I) => 0))
     @test @constinferred(zerospace(V)) == GradedSpace(unit => 0 for unit in allunits(I))
     randunit = rand(collect(allunits(I)))
     @test_throws ArgumentError("Sector $(randunit) appears multiple times") GradedSpace(randunit => 1, randunit => 3)
