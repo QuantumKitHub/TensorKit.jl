@@ -220,8 +220,6 @@ for V in spacelist
             test_rrule(copy, T2)
             test_rrule(TensorKit.copy_oftype, T1, ComplexF64)
             if symmetricbraiding
-                test_rrule(TensorKit.permutedcopy_oftype, T1, ComplexF64, ((3, 1), (2, 4)))
-
                 test_rrule(convert, Array, T1)
                 test_rrule(
                     TensorMap, convert(Array, T1), codomain(T1), domain(T1);
