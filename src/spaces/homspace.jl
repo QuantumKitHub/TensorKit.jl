@@ -39,15 +39,14 @@ end
 
 spacetype(::Type{<:HomSpace{S}}) where {S} = S
 
-numout(W::HomSpace) = length(codomain(W))
-numin(W::HomSpace) = length(domain(W))
-numind(W::HomSpace) = numin(W) + numout(W)
-
 const TensorSpace{S <: ElementarySpace} = Union{S, ProductSpace{S}}
 const TensorMapSpace{S <: ElementarySpace, N₁, N₂} = HomSpace{
     S, ProductSpace{S, N₁},
     ProductSpace{S, N₂},
 }
+
+numout(::Type{TensorMapSpace{S, N₁, N₂}}) where {S, N₁, N₂} = N₁
+numin(::Type{TensorMapSpace{S, N₁, N₂}}) where {S, N₁, N₂} = N₂
 
 function Base.getindex(W::TensorMapSpace{<:IndexSpace, N₁, N₂}, i) where {N₁, N₂}
     return i <= N₁ ? codomain(W)[i] : dual(domain(W)[i - N₁])
@@ -137,15 +136,30 @@ fusiontrees(W::HomSpace) = fusionblockstructure(W).fusiontreelist
 # Operations on HomSpaces
 # -----------------------
 """
-    permute(W::HomSpace, (p₁, p₂)::Index2Tuple{N₁,N₂})
+    permute(W::HomSpace, (p₁, p₂)::Index2Tuple)
 
 Return the `HomSpace` obtained by permuting the indices of the domain and codomain of `W`
 according to the permutation `p₁` and `p₂` respectively.
 """
-function permute(W::HomSpace{S}, (p₁, p₂)::Index2Tuple{N₁, N₂}) where {S, N₁, N₂}
+function permute(W::HomSpace, (p₁, p₂)::Index2Tuple)
     p = (p₁..., p₂...)
     TupleTools.isperm(p) && length(p) == numind(W) ||
         throw(ArgumentError("$((p₁, p₂)) is not a valid permutation for $(W)"))
+    return select(W, (p₁, p₂))
+end
+
+_transpose_indices(W::HomSpace) = (reverse(domainind(W)), reverse(codomainind(W)))
+
+function LinearAlgebra.transpose(W::HomSpace, (p₁, p₂)::Index2Tuple = _transpose_indices(W))
+    p = linearizepermutation(p₁, p₂, numout(W), numin(W))
+    iscyclicpermutation(p) || throw(ArgumentError(lazy"$((p₁, p₂)) is not a cyclic permutation for $W"))
+    return select(W, (p₁, p₂))
+end
+
+function braid(W::HomSpace, (p₁, p₂)::Index2Tuple, levels::IndexTuple)
+    p = (p₁..., p₂...)
+    TupleTools.isperm(p) && length(p) == numind(W) == length(levels) ||
+        throw(ArgumentError("$((p₁, p₂)), $levels is not a valid braiding for $(W)"))
     return select(W, (p₁, p₂))
 end
 
@@ -186,6 +200,30 @@ to be possible, the domain of `W` must match the codomain of `V`.
 function compose(W::HomSpace{S}, V::HomSpace{S}) where {S}
     domain(W) == codomain(V) || throw(SpaceMismatch("$(domain(W)) ≠ $(codomain(V))"))
     return HomSpace(codomain(W), domain(V))
+end
+
+function TensorOperations.tensorcontract(
+        A::HomSpace, pA::Index2Tuple, conjA::Bool,
+        B::HomSpace, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple
+    )
+    return if conjA && conjB
+        A′ = A'
+        pA′ = adjointtensorindices(A, pA)
+        B′ = B'
+        pB′ = adjointtensorindices(B, pB)
+        TensorOperations.tensorcontract(A′, pA′, false, B′, pB′, false, pAB)
+    elseif conjA
+        A′ = A'
+        pA′ = adjointtensorindices(A, pA)
+        TensorOperations.tensorcontract(A′, pA′, false, B, pB, false, pAB)
+    elseif conjB
+        B′ = B'
+        pB′ = adjointtensorindices(B, pB)
+        TensorOperations.tensorcontract(A, pA, false, B′, pB′, false, pAB)
+    else
+        return permute(compose(permute(A, pA), permute(B, pB)), pAB)
+    end
 end
 
 """
