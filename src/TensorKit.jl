@@ -147,8 +147,6 @@ import Base.Meta
 
 using Random: Random, rand!, randn!
 
-using PackageExtensionCompat
-
 # Auxiliary files
 #-----------------
 include("auxiliary/auxiliary.jl")
@@ -246,11 +244,5 @@ include("planar/postprocessors.jl")
 include("planar/macros.jl")
 @specialize
 include("planar/planaroperations.jl")
-
-# Extensions
-# ----------
-function __init__()
-    return @require_extensions
-end
 
 end
