@@ -247,9 +247,6 @@ include("planar/macros.jl")
 @specialize
 include("planar/planaroperations.jl")
 
-# deprecations: to be removed in version 1.0 or sooner
-include("auxiliary/deprecate.jl")
-
 # Extensions
 # ----------
 function __init__()
