@@ -28,6 +28,10 @@ using SUNRepresentations
 using Test # for showcase testing
 ```
 
+```@contents
+Pages = ["symmetric_tutorial.md"]
+Depth = 2:3
+```
 
 ## Level 0: The transverse-field Ising model
 
@@ -261,6 +265,8 @@ back to these other properties when discussion more involved applications. Given
 `TensorMap`, the method [`fusiontrees`](@ref) returns an iterator over all pairs of
 splitting and fusion trees that label the subblocks of `t`.
 
+### Constructing a $\mathbb{Z}_2$-symmetric `TensorMap`
+
 We can now put this into practice by directly constructing the $ZZ$ operator in the irrep
 basis as a $\mathbb{Z}_2$-symmetric `TensorMap`. We will do this in three steps:
 
@@ -276,21 +282,38 @@ trivial irrep `Z2Irrep(0)` and the sign irrep `Z2Irrep(1)`. We can fuse irreps w
 (`\otimes`) operator, which can for example be used to check their fusion rules,
 ```@example symmetric_tutorial
 for a in values(Z2Irrep), b in values(Z2Irrep)
-    println("$a ⊗ $b: $(a ⊗ b)")
+    println("$a ⊗ $b = $(a ⊗ b)")
 end
 ```
 After the basis transform to the irrep basis, we can view the two-dimensional complex
 physical vector space we started with as being spanned by the trivial and sign irrep of
 $\mathbb{Z}_2$. In the language of TensorKit.jl, this can be implemented as a `Z2Space`, an
-alias for a [graded vector space](@ref GradedSpace) `Vect[Z2Irrep]`. To construct such a
-graded space we have to specify which irreps it contains, and indicate the degenaracy of
-each irrep. Here, our physical vector space contains the trivial irrep `Z2Irrep(0)` with
-degeneracy 1 and the sign irrep `Z2Irrep(1)` with degeneracy 1. This means can define this
-space in the following way, and check its dimension:
-
+alias for a [graded vector space](@ref GradedSpace) `Vect[Z2Irrep]`. Such a graded vector
+space $V$ is a direct sum of irreducible representation spaces $V^{(a)}$ labeled by the
+irreps $a$ of the group,
+```math
+V = \bigotimes_a N_a  \cdot V^{(a)}.
+```
+The number of times $N_a$ each irrep $a$ appears in the direct sum is called the
+*degeneracy* of the irrep. To construct such a graded space, we therefore have to specify
+which irreps it contains, and indicate the degeneracy of each irrep. Here, our physical
+vector space contains the trivial irrep `Z2Irrep(0)` with degeneracy 1 and the sign irrep
+`Z2Irrep(1)` with degeneracy 1. This means this particular graded space has the form
+```math
+V = 1 \cdot V^{(0)} \oplus 1 \cdot V^{(1)},
+```
+which can be constructed in the following way,
 ```@example symmetric_tutorial
 V = Z2Space(0 => 1, 1 => 1)
 dim(V)
+```
+As a consistency check, we can inspect its dimension as well as the degeneracies of the
+individual irreps:
+```@example symmetric_tutorial
+dim(V, Z2Irrep(0))
+```
+```@example symmetric_tutorial
+dim(V, Z2Irrep(1))
 ```
 
 Given this physical space, we can initialize the $ZZ$ operator as an empty `TensorMap` with
