@@ -294,7 +294,7 @@ to arbitrary tensor contractions require that the two indices to be contracted h
 which are each others dual. Knowing this, all the other functionality of tensors with
 `CartesianSpace` indices remains the same for tensors with `ComplexSpace` indices.
 
-## Symmetries
+## [Symmetries](@id ss_tutorial_symmetries)
 
 So far, the functionality that we have illustrated seems to be just a convenient (or
 inconvenient?) wrapper around dense multidimensional arrays, e.g. Julia's Base `Array`.

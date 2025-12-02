@@ -116,6 +116,12 @@ block
 blocks
 ```
 
+To access the reduced tensor elements associated to fusion tree pairs, you can use:
+```@docs
+subblock
+subblocks
+```
+
 To access the data associated with a specific fusion tree pair, you can use:
 ```@docs
 Base.getindex(::AbstractTensorMap, ::FusionTree, ::FusionTree)

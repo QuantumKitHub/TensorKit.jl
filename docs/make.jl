@@ -21,8 +21,19 @@ pages = [
         "lib/spaces.md", "lib/tensors.md",
     ],
     "Index" => ["index/index.md"],
-    "Appendix" => ["appendix/categories.md"],
+    "Appendix" => ["appendix/symmetric_tutorial.md", "appendix/categories.md"],
 ]
+
+mathengine = MathJax3(
+    Dict(
+        :loader => Dict("load" => ["[tex]/physics"]),
+        :tex => Dict(
+            "inlineMath" => [["\$", "\$"], ["\\(", "\\)"]],
+            "tags" => "ams",
+            "packages" => ["base", "ams", "autoload", "physics"]
+        )
+    )
+)
 
 makedocs(;
     modules = [TensorKit, TensorKitSectors],
@@ -30,7 +41,7 @@ makedocs(;
     authors = "Jutho Haegeman",
     warnonly = [:missing_docs, :cross_references],
     format = Documenter.HTML(;
-        prettyurls = true, mathengine = MathJax(), assets = ["assets/custom.css"]
+        prettyurls = true, mathengine, assets = ["assets/custom.css"]
     ),
     pages = pages,
     pagesonly = true,
