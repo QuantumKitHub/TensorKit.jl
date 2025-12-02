@@ -80,8 +80,10 @@ function random_fusion(I::Type{<:Sector}, ::Val{N}) where {N} # for fusion tree 
     N == 1 && return (randsector(I),)
     tail = random_fusion(I, Val(N - 1))
     s = randsector(I)
-    while isempty(⊗(s, first(tail)))
-        s = randsector(I)
+    counter = 0
+    while isempty(⊗(s, first(tail))) && counter < 20
+        counter += 1
+        s = (counter < 20) ? randsector(I) : leftunit(first(tail))
     end
     return (s, tail...)
 end
