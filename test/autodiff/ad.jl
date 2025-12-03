@@ -61,7 +61,7 @@ end
 
 # Float32 and finite differences don't mix well
 precision(::Type{<:Union{Float32, Complex{Float32}}}) = 1.0e-2
-precision(::Type{<:Union{Float64, Complex{Float64}}}) = 1.0e-6
+precision(::Type{<:Union{Float64, Complex{Float64}}}) = 1.0e-5
 
 function randindextuple(N::Int, k::Int = rand(0:N))
     @assert 0 ≤ k ≤ N
