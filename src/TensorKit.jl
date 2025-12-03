@@ -11,7 +11,7 @@ module TensorKit
 export Sector, AbstractIrrep, Irrep
 export FusionStyle, UniqueFusion, MultipleFusion, MultiplicityFreeFusion, SimpleFusion, GenericFusion
 export UnitStyle, SimpleUnit, GenericUnit
-export BraidingStyle, SymmetricBraiding, Bosonic, Fermionic, Anyonic, NoBraiding
+export BraidingStyle, SymmetricBraiding, Bosonic, Fermionic, Anyonic, NoBraiding, HasBraiding
 export Trivial, Z2Irrep, Z3Irrep, Z4Irrep, ZNIrrep, U1Irrep, SU2Irrep, CU1Irrep
 export ProductSector
 export FermionParity, FermionNumber, FermionSpin
