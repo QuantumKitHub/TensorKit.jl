@@ -47,15 +47,13 @@ end
 
 function show_blocks(io, mime::MIME"text/plain", iter)
     numlinesleft, numcols = get(io, :displaysize, displaysize(io))
-    numlinesleft -= 2
-    # lines of headers should already have been subtracted, but not the 2 spare lines for old and new prompts
-    minlinesperblock = 7
+    numlinesleft -= 2 # lines of headers have already been subtracted, but not the 2 spare lines for old and new prompts
+    minlinesperblock = 7 # aim to have at least this many lines per printed block (= 5 lines for the actual matrix)
     minnumberofblocks = min(3, length(iter)) # aim to show at least this many blocks
     truncateblocks = sum(cb->min(size(cb[2], 1) + 2, minlinesperblock), iter; init = 0) > numlinesleft
     maxnumlinesperblock = max(div(numlinesleft - 2 * truncateblocks, minnumberofblocks), minlinesperblock)
-    # aim to show at least 3 blocks, but not if this means that there
-    # would be less than 7 lines per block (= 5 lines for the actual matrix)
-    # we deduct a line for a truncation message depending on truncateblocks
+    # aim to show at least minnumberofblocks, but not if this means that there would be less than minlinesperblock 
+    # deduct two lines for a truncation message (and newline) if needed
     for (n, (c, b)) in enumerate(iter)
         n == 1 || print(io, "\n\n")
         if get(io, :limit, false)
