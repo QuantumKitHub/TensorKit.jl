@@ -47,18 +47,22 @@ end
 
 function show_blocks(io, mime::MIME"text/plain", iter)
     numlinesleft, numcols = get(io, :displaysize, displaysize(io))
-    # lines of headers should already have been subtracted, but not the 3 spare lines for old and new prompts
-    maxnumlinesperblock = max(div(numlinesleft - 4, min(3, length(iter))), 7)
+    numlinesleft -= 2
+    # lines of headers should already have been subtracted, but not the 2 spare lines for old and new prompts
+    minlinesperblock = 7
+    minnumberofblocks = min(3, length(iter)) # aim to show at least this many blocks
+    truncateblocks = sum(cb->min(size(cb[2], 1) + 2, minlinesperblock), iter; init = 0) > numlinesleft
+    maxnumlinesperblock = max(div(numlinesleft - 2 * truncateblocks, minnumberofblocks), minlinesperblock)
     # aim to show at least 3 blocks, but not if this means that there
     # would be less than 7 lines per block (= 5 lines for the actual matrix)
-    # we deduct 4 lines to leave space for a truncation message and prompts
+    # we deduct a line for a truncation message depending on truncateblocks
     for (n, (c, b)) in enumerate(iter)
         n == 1 || print(io, "\n\n")
         if get(io, :limit, false)
             numlinesneeded = min(size(b, 1) + 2, maxnumlinesperblock)
-            if numlinesleft >= numlinesneeded + 4
-                # we can still print at least this block, and have one line
-                # for the truncation message and 3 more lines for old and new prompts
+            if numlinesleft >= numlinesneeded + 2 * truncateblocks
+                # we can still print at least this block, and have two lines for
+                # the truncation message (and its newline) if it is required
                 print(io, " * ", c, " => ")
                 newio = IOContext(io, :displaysize => (maxnumlinesperblock - 1 + 3, numcols))
                 # subtract 1 line for the newline, but add 3 because of how matrices are printed
