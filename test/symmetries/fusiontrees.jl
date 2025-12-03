@@ -61,7 +61,7 @@ using .TestSetup
                 @constinferred FusionTree((u,), u, (false,))
                 @constinferred FusionTree((u, u), u, (false, false))
                 @constinferred FusionTree((u, u, u), u)
-                if isa(UnitStyle(I), SimpleUnit)
+                if UnitStyle(I) isa SimpleUnit
                     @constinferred FusionTree((u, u, u, u))
                 else
                     @test_throws ArgumentError FusionTree((u, u, u, u))
@@ -72,7 +72,7 @@ using .TestSetup
                 @test_throws ArgumentError FusionTree((u,), u, (false,))
                 @test_throws ArgumentError FusionTree((u, u), u, (false, false))
                 @test_throws ArgumentError FusionTree((u, u, u), u)
-                if I <: ProductSector && isa(UnitStyle(I), GenericUnit)
+                if I <: ProductSector && UnitStyle(I) isa GenericUnit
                     @test_throws DomainError FusionTree((u, u, u, u))
                 else
                     @test_throws ArgumentError FusionTree((u, u, u, u))
@@ -89,7 +89,7 @@ using .TestSetup
         for i in 1:N
             out1 = random_fusion(I, Val(N)) # guaranteed good fusion
             out1 = Base.setindex(out1, in2, i) # can lead to poor fusion
-            while isempty(⊗(out1...))
+            while isempty(⊗(out1...)) # TODO: better way to do this?
                 out1 = random_fusion(I, Val(N))
                 out1 = Base.setindex(out1, in2, i)
             end
@@ -105,7 +105,7 @@ using .TestSetup
             @test length(TK.insertat(f1b, 1, f1a)) == 1
             @test first(TK.insertat(f1b, 1, f1a)) == (f1 => 1)
 
-            if isa(UnitStyle(I), SimpleUnit)
+            if UnitStyle(I) isa SimpleUnit
                 levels = ntuple(identity, N)
                 function _reinsert_partial_tree(t, f)
                     (t′, c′) = first(TK.insertat(t, 1, f))
@@ -237,7 +237,7 @@ using .TestSetup
             end
         end
     end
-    (UnitStyle(I) == SimpleUnit) && @testset "Fusion tree $Istr: elementary artin braid" begin
+    (BraidingStyle(I) isa HasBraiding) && @testset "Fusion tree $Istr: elementary artin braid" begin
         N = length(out)
         isdual = ntuple(n -> rand(Bool), N)
         for in in ⊗(out...)
@@ -293,7 +293,7 @@ using .TestSetup
             end
         end
     end
-    (UnitStyle(I) == SimpleUnit) && @testset "Fusion tree $Istr: braiding and permuting" begin
+    (BraidingStyle(I) isa HasBraiding) && @testset "Fusion tree $Istr: braiding and permuting" begin
         f = rand(collect(it))
         p = tuple(randperm(N)...)
         ip = invperm(p)
@@ -355,7 +355,7 @@ using .TestSetup
                 for (f, coeff) in TK.merge(f1, f2, c, μ)
         )
 
-        if !isa(BraidingStyle(I), NoBraiding)
+        if BraidingStyle(I) isa HasBraiding
             for c in in1 ⊗ in2
                 R = Rsymbol(in1, in2, c)
                 for μ in 1:Nsymbol(in1, in2, c)
@@ -411,7 +411,7 @@ using .TestSetup
     else
         N = 4
     end
-    if isa(UnitStyle(I), SimpleUnit)
+    if UnitStyle(I) isa SimpleUnit
         out = random_fusion(I, Val(N))
         numtrees = count(n -> true, fusiontrees((out..., map(dual, out)...)))
         while !(0 < numtrees < 100)

@@ -11,9 +11,9 @@ spacelist = try
     if get(ENV, "CI", "false") == "true"
         println("Detected running on CI")
         if Sys.iswindows()
-            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VIB_diag, VIB_M)
+            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VIB_diag)
         elseif Sys.isapple()
-            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VfU₁, VfSU₂, VSU₂U₁, VIB_diag, VIB_M) #, VSU₃)
+            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VfU₁, VfSU₂, VSU₂U₁, VIB_M) #, VSU₃)
         else
             (Vtr, Vℤ₂, Vfℤ₂, VU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M) #, VSU₃)
         end
@@ -27,7 +27,7 @@ end
 for V in spacelist
     I = sectortype(first(V))
     Istr = type_repr(I)
-    symmetricbraiding = isa(BraidingStyle(I), SymmetricBraiding)
+    symmetricbraiding = BraidingStyle(I) isa SymmetricBraiding
     println("---------------------------------------")
     println("Tensors with symmetry: $Istr")
     println("---------------------------------------")
@@ -137,7 +137,7 @@ for V in spacelist
                 @test dot(t2, t) ≈ conj(dot(t2', t'))
                 @test dot(t2, t) ≈ dot(t', t2')
 
-                if isa(UnitStyle(I), SimpleUnit) || !isempty(blocksectors(V2 ⊗ V1))
+                if UnitStyle(I) isa SimpleUnit || !isempty(blocksectors(V2 ⊗ V1))
                     i1 = @constinferred(isomorphism(T, V1 ⊗ V2, V2 ⊗ V1)) # can't reverse fusion here when modules are involved
                     i2 = @constinferred(isomorphism(Vector{T}, V2 ⊗ V1, V1 ⊗ V2))
                     @test i1 * i2 == @constinferred(id(T, V1 ⊗ V2))
@@ -329,7 +329,7 @@ for V in spacelist
             end
         end
         #TODO: find version that works for all multifusion cases
-        (UnitStyle(I) == SimpleUnit()) && @timedtestset "Trace and contraction" begin
+        symmetricbraiding && @timedtestset "Trace and contraction" begin
             t1 = rand(ComplexF64, V1 ⊗ V2 ⊗ V3)
             t2 = rand(ComplexF64, V2' ⊗ V4 ⊗ V1')
             t3 = t1 ⊗ t2
@@ -354,7 +354,7 @@ for V in spacelist
                 @test HrA12array ≈ convert(Array, HrA12)
             end
         end
-        (BraidingStyle(I) != NoBraiding()) && @timedtestset "Index flipping: test flipping inverse" begin
+        (BraidingStyle(I) isa HasBraiding) && @timedtestset "Index flipping: test flipping inverse" begin
             t = rand(ComplexF64, V1 ⊗ V1' ← V1' ⊗ V1)
             for i in 1:4
                 @test t ≈ flip(flip(t, i), i; inv = true)
@@ -533,7 +533,7 @@ for V in spacelist
         end
         @timedtestset "Tensor product: test via norm preservation" begin
             for T in (Float32, ComplexF64)
-                if isa(UnitStyle(I), SimpleUnit) || !isempty(blocksectors(V2 ⊗ V1))
+                if UnitStyle(I) isa SimpleUnit || !isempty(blocksectors(V2 ⊗ V1))
                     t1 = rand(T, V2 ⊗ V3 ⊗ V1, V1 ⊗ V2)
                     t2 = rand(T, V2 ⊗ V1 ⊗ V3, V1 ⊗ V1)
                 else
@@ -572,7 +572,7 @@ for V in spacelist
         end
         @timedtestset "Tensor absorption" begin
             # absorbing small into large
-            if isa(UnitStyle(I), SimpleUnit) || !isempty(blocksectors(V2 ⊗ V3))
+            if UnitStyle(I) isa SimpleUnit || !isempty(blocksectors(V2 ⊗ V3))
                 t1 = zeros(V1 ⊕ V1, V2 ⊗ V3)
                 t2 = rand(V1, V2 ⊗ V3)
             else
@@ -587,7 +587,7 @@ for V in spacelist
             @test t3 ≈ t4
 
             # absorbing large into small
-            if isa(UnitStyle(I), SimpleUnit) || !isempty(blocksectors(V2 ⊗ V3))
+            if UnitStyle(I) isa SimpleUnit || !isempty(blocksectors(V2 ⊗ V3))
                 t1 = rand(V1 ⊕ V1, V2 ⊗ V3)
                 t2 = zeros(V1, V2 ⊗ V3)
             else

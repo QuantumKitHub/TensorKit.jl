@@ -235,7 +235,7 @@ end
 
     @test isunitspace(W)
     @test @constinferred(unitspace(V)) == W == unitspace(typeof(V))
-    if isa(UnitStyle(I), SimpleUnit)
+    if UnitStyle(I) isa SimpleUnit
         @test @constinferred(leftunitspace(V)) == W == @constinferred(rightunitspace(V))
     else
         @test_throws ArgumentError leftunitspace(V)
