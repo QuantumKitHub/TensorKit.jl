@@ -3,7 +3,6 @@ using TensorKit
 using TensorKit: type_repr
 using Combinatorics: permutations
 using LinearAlgebra: LinearAlgebra
-using TensorKitSectors: HasBraiding # TODO: remove once exported from TKS
 
 @isdefined(TestSetup) || include("../setup.jl")
 using .TestSetup

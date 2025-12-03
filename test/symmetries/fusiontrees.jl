@@ -6,7 +6,6 @@ using TensorOperations
 
 # TODO: remove this once type_repr works for all included types
 using TensorKitSectors
-using TensorKitSectors: HasBraiding # TODO: remove once exported from TKS
 
 @isdefined(TestSetup) || include("../setup.jl")
 using .TestSetup
