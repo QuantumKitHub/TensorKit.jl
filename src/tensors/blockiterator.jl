@@ -46,12 +46,32 @@ function foreachblock(f, t::AbstractTensorMap; scheduler = nothing)
 end
 
 function show_blocks(io, mime::MIME"text/plain", iter)
-    first = true
-    for (c, b) in iter
-        first || print(io, "\n\n")
-        print(io, " * ", c, " => ")
-        show(io, mime, b)
-        first = false
+    numlinesleft, numcols = get(io, :displaysize, displaysize(io))
+    # lines of headers should already have been subtracted, but not the 3 spare lines for old and new prompts
+    maxnumlinesperblock = max(div(numlinesleft - 4, min(3, length(iter))), 7)
+    # aim to show at least 3 blocks, but not if this means that there
+    # would be less than 7 lines per block (= 5 lines for the actual matrix)
+    # we deduct 4 lines to leave space for a truncation message and prompts
+    for (n, (c, b)) in enumerate(iter)
+        n == 1 || print(io, "\n\n")
+        if get(io, :limit, false)
+            numlinesneeded = min(size(b, 1) + 2, maxnumlinesperblock)
+            if numlinesleft >= numlinesneeded + 4
+                # we can still print at least this block, and have one line
+                # for the truncation message and 3 more lines for old and new prompts
+                print(io, " * ", c, " => ")
+                newio = IOContext(io, :displaysize => (maxnumlinesperblock - 1 + 3, numcols))
+                # subtract 1 line for the newline, but add 3 because of how matrices are printed
+                show(newio, mime, b)
+                numlinesleft -= numlinesneeded
+            else
+                print(io, " * ", "  \u2026   [output of ", length(iter) - n + 1, " more block(s) truncated]")
+                break
+            end
+        else
+            print(io, " * ", c, " => ")
+            show(io, mime, b)
+        end
     end
     return nothing
 end
@@ -73,7 +93,9 @@ end
 function Base.show(io::IO, mime::MIME"text/plain", b::BlockIterator)
     summary(io, b)
     println(io, ":")
-    show_blocks(io, mime, b)
+    (numlines, numcols) = get(io, :displaysize, displaysize(io))
+    newio = IOContext(io, :displaysize => (numlines - 1, numcols))
+    show_blocks(newio, mime, b)
     return nothing
 end
 

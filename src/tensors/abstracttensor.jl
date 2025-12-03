@@ -652,22 +652,21 @@ function Base.show(io::IO, mime::MIME"text/plain", t::AbstractTensorMap)
     # 1) show summary: typically d₁×d₂×… ← d₃×d₄×… $(typeof(t))
     summary(io, t)
 
-    # case without `\n`:
-    if get(io, :compact, true)
+    if get(io, :compact, false)
+        # case without `\n`:
         print(io, "(…, ")
         show(io, mime, space(t))
         print(io, ')')
-        return nothing
+    else
+        # case with `\n`
+        # 2) show spaces
+        println(io, ':')
+        println(io, " codomain: ", codomain(t))
+        println(io, " domain: ", domain(t))
+        # 3) show data
+        println(io, " blocks: ")
+        (numlines, numcols) = get(io, :displaysize, displaysize(io))
+        newio = IOContext(io, :displaysize => (numlines - 4, numcols))
+        show_blocks(newio, mime, blocks(t))
     end
-
-    # case with `\n`
-    # 2) show spaces
-    println(io, ':')
-    println(io, " codomain: ", codomain(t))
-    println(io, " domain: ", domain(t))
-
-    # 3) [optional]: show data
-    println(io, "\n\n blocks: ")
-    show_blocks(io, mime, blocks(t))
-    return nothing
 end
