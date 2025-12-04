@@ -47,7 +47,7 @@ end
 
 function show_blocks(io, mime::MIME"text/plain", iter; maytruncate::Bool = true)
     if maytruncate && get(io, :limit, false)
-        numlinesleft, numcols = get(io, :displaysize, displaysize(io))
+        numlinesleft, numcols = get(io, :displaysize, displaysize(io))::Tuple{Int, Int}
         numlinesleft -= 2 # lines of headers have already been subtracted, but not the 2 spare lines for old and new prompts
         minlinesperblock = 7 # aim to have at least this many lines per printed block (= 5 lines for the actual matrix)
         minnumberofblocks = min(3, length(iter)) # aim to show at least this many blocks
@@ -100,7 +100,7 @@ end
 function Base.show(io::IO, mime::MIME"text/plain", b::BlockIterator)
     summary(io, b)
     println(io, ":")
-    (numlines, numcols) = get(io, :displaysize, displaysize(io))
+    (numlines, numcols) = get(io, :displaysize, displaysize(io))::Tuple{Int, Int}
     newio = IOContext(io, :displaysize => (numlines - 1, numcols))
     show_blocks(newio, mime, b; maytruncate = false)
     return nothing
