@@ -10,7 +10,7 @@ using TensorKit
 using TensorKit: ℙ, PlanarTrivial
 using Base.Iterators: take, product
 
-Random.seed!(1234)
+Random.seed!(123456)
 
 smallset(::Type{I}) where {I <: Sector} = take(values(I), 5)
 function smallset(::Type{ProductSector{Tuple{I1, I2}}}) where {I1, I2}

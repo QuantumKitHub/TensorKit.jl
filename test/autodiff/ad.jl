@@ -133,7 +133,7 @@ function remove_eighgauge_dependence!(
             abs(Dc[i] - Dc[j]) >= degeneracy_atol && (b[i, j] = 0)
         end
     end
-    mul!(ΔV, V / (V' * V), gaugepart, -1, 1)
+    mul!(ΔV, V, gaugepart, -1, 1)
     return ΔV
 end
 function remove_svdgauge_dependence!(
