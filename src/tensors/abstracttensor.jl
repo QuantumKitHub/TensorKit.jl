@@ -669,4 +669,5 @@ function Base.show(io::IO, mime::MIME"text/plain", t::AbstractTensorMap)
         newio = IOContext(io, :displaysize => (numlines - 4, numcols))
         show_blocks(newio, mime, blocks(t))
     end
+    return nothing
 end

@@ -45,18 +45,18 @@ function foreachblock(f, t::AbstractTensorMap; scheduler = nothing)
     return nothing
 end
 
-function show_blocks(io, mime::MIME"text/plain", iter)
-    numlinesleft, numcols = get(io, :displaysize, displaysize(io))
-    numlinesleft -= 2 # lines of headers have already been subtracted, but not the 2 spare lines for old and new prompts
-    minlinesperblock = 7 # aim to have at least this many lines per printed block (= 5 lines for the actual matrix)
-    minnumberofblocks = min(3, length(iter)) # aim to show at least this many blocks
-    truncateblocks = sum(cb->min(size(cb[2], 1) + 2, minlinesperblock), iter; init = 0) > numlinesleft
-    maxnumlinesperblock = max(div(numlinesleft - 2 * truncateblocks, minnumberofblocks), minlinesperblock)
-    # aim to show at least minnumberofblocks, but not if this means that there would be less than minlinesperblock 
-    # deduct two lines for a truncation message (and newline) if needed
-    for (n, (c, b)) in enumerate(iter)
-        n == 1 || print(io, "\n\n")
-        if get(io, :limit, false)
+function show_blocks(io, mime::MIME"text/plain", iter; maytruncate::Bool = true)
+    if maytruncate && get(io, :limit, false)
+        numlinesleft, numcols = get(io, :displaysize, displaysize(io))
+        numlinesleft -= 2 # lines of headers have already been subtracted, but not the 2 spare lines for old and new prompts
+        minlinesperblock = 7 # aim to have at least this many lines per printed block (= 5 lines for the actual matrix)
+        minnumberofblocks = min(3, length(iter)) # aim to show at least this many blocks
+        truncateblocks = sum(cb -> min(size(cb[2], 1) + 2, minlinesperblock), iter; init = 0) > numlinesleft
+        maxnumlinesperblock = max(div(numlinesleft - 2 * truncateblocks, minnumberofblocks), minlinesperblock)
+        # aim to show at least minnumberofblocks, but not if this means that there would be less than minlinesperblock
+        # deduct two lines for a truncation message (and newline) if needed
+        for (n, (c, b)) in enumerate(iter)
+            n == 1 || print(io, "\n\n")
             numlinesneeded = min(size(b, 1) + 2, maxnumlinesperblock)
             if numlinesleft >= numlinesneeded + 2 * truncateblocks
                 # we can still print at least this block, and have two lines for
@@ -70,9 +70,14 @@ function show_blocks(io, mime::MIME"text/plain", iter)
                 print(io, " * ", "  \u2026   [output of ", length(iter) - n + 1, " more block(s) truncated]")
                 break
             end
-        else
+        end
+    else
+        first = true
+        for (c, b) in iter
+            first || print(io, "\n\n")
             print(io, " * ", c, " => ")
             show(io, mime, b)
+            first = false
         end
     end
     return nothing
@@ -97,7 +102,7 @@ function Base.show(io::IO, mime::MIME"text/plain", b::BlockIterator)
     println(io, ":")
     (numlines, numcols) = get(io, :displaysize, displaysize(io))
     newio = IOContext(io, :displaysize => (numlines - 1, numcols))
-    show_blocks(newio, mime, b)
+    show_blocks(newio, mime, b; maytruncate = false)
     return nothing
 end
 
