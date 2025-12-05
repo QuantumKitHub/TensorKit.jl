@@ -28,7 +28,6 @@ export FusionTree
 export IndexSpace, HomSpace, TensorSpace, TensorMapSpace
 export AbstractTensorMap, AbstractTensor, TensorMap, Tensor # tensors and tensor properties
 export DiagonalTensorMap, BraidingTensor
-export TruncationScheme
 export SpaceMismatch, SectorMismatch, IndexError # error types
 
 # Export general vector space methods
@@ -84,6 +83,7 @@ export left_orth, right_orth, left_null, right_null,
     exp, exp!,
     eigh_full!, eigh_full, eigh_trunc!, eigh_trunc, eigh_vals!, eigh_vals,
     eig_full!, eig_full, eig_trunc!, eig_trunc, eig_vals!, eig_vals,
+    eigen, eigen!,
     ishermitian, project_hermitian, project_hermitian!,
     isantihermitian, project_antihermitian, project_antihermitian!,
     isisometric, isunitary, project_isometric, project_isometric!,
@@ -147,8 +147,6 @@ using MatrixAlgebraKit
 import Base.Meta
 
 using Random: Random, rand!, randn!
-
-using PackageExtensionCompat
 
 # Auxiliary files
 #-----------------
@@ -247,14 +245,5 @@ include("planar/postprocessors.jl")
 include("planar/macros.jl")
 @specialize
 include("planar/planaroperations.jl")
-
-# deprecations: to be removed in version 1.0 or sooner
-include("auxiliary/deprecate.jl")
-
-# Extensions
-# ----------
-function __init__()
-    return @require_extensions
-end
 
 end

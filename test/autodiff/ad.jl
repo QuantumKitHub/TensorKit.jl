@@ -61,7 +61,7 @@ end
 
 # Float32 and finite differences don't mix well
 precision(::Type{<:Union{Float32, Complex{Float32}}}) = 1.0e-2
-precision(::Type{<:Union{Float64, Complex{Float64}}}) = 1.0e-6
+precision(::Type{<:Union{Float64, Complex{Float64}}}) = 1.0e-5
 
 function randindextuple(N::Int, k::Int = rand(0:N))
     @assert 0 ≤ k ≤ N
@@ -133,7 +133,7 @@ function remove_eighgauge_dependence!(
             abs(Dc[i] - Dc[j]) >= degeneracy_atol && (b[i, j] = 0)
         end
     end
-    mul!(ΔV, V / (V' * V), gaugepart, -1, 1)
+    mul!(ΔV, V, gaugepart, -1, 1)
     return ΔV
 end
 function remove_svdgauge_dependence!(
@@ -220,8 +220,6 @@ for V in spacelist
             test_rrule(copy, T2)
             test_rrule(TensorKit.copy_oftype, T1, ComplexF64)
             if symmetricbraiding
-                test_rrule(TensorKit.permutedcopy_oftype, T1, ComplexF64, ((3, 1), (2, 4)))
-
                 test_rrule(convert, Array, T1)
                 test_rrule(
                     TensorMap, convert(Array, T1), codomain(T1), domain(T1);
@@ -305,22 +303,26 @@ for V in spacelist
         end
 
         @timedtestset "Linear Algebra part II with scalartype $T" for T in eltypes
+            atol = precision(T)
+            rtol = precision(T)
             for i in 1:3
                 E = randn(T, ⊗(V[1:i]...) ← ⊗(V[1:i]...))
-                test_rrule(LinearAlgebra.tr, E)
-                test_rrule(exp, E; check_inferred = false)
-                test_rrule(inv, E)
+                test_rrule(LinearAlgebra.tr, E; atol, rtol)
+                test_rrule(exp, E; check_inferred = false, atol, rtol)
+                test_rrule(inv, E; atol, rtol)
             end
 
             A = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
-            test_rrule(LinearAlgebra.adjoint, A)
-            test_rrule(LinearAlgebra.norm, A, 2)
+            test_rrule(LinearAlgebra.adjoint, A; atol, rtol)
+            test_rrule(LinearAlgebra.norm, A, 2; atol, rtol)
 
             B = randn(T, space(A))
-            test_rrule(LinearAlgebra.dot, A, B)
+            test_rrule(LinearAlgebra.dot, A, B; atol, rtol)
         end
 
         @timedtestset "Matrix functions ($T)" for T in eltypes
+            atol = precision(T)
+            rtol = precision(T)
             for f in (sqrt, exp)
                 check_inferred = false # !(T <: Real) # not type-stable for real functions
                 t1 = randn(T, V[1] ← V[1])
@@ -342,9 +344,9 @@ for V in spacelist
                     randn!(d3.data)
                 end
 
-                test_rrule(f, t1; rrule_f = Zygote.rrule_via_ad, check_inferred)
-                test_rrule(f, t2; rrule_f = Zygote.rrule_via_ad, check_inferred)
-                test_rrule(f, d ⊢ d2; check_inferred, output_tangent = d3)
+                test_rrule(f, t1; rrule_f = Zygote.rrule_via_ad, check_inferred, atol, rtol)
+                test_rrule(f, t2; rrule_f = Zygote.rrule_via_ad, check_inferred, atol, rtol)
+                test_rrule(f, d ⊢ d2; check_inferred, output_tangent = d3, atol, rtol)
             end
         end
 

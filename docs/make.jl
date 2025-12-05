@@ -22,6 +22,7 @@ pages = [
     ],
     "Index" => ["index/index.md"],
     "Appendix" => ["appendix/symmetric_tutorial.md", "appendix/categories.md"],
+    "Changelog" => "Changelog.md",
 ]
 
 mathengine = MathJax3(
