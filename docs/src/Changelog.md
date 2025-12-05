@@ -38,6 +38,7 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 - Major documentation update/overhaul ([#289](https://github.com/QuantumKitHub/TensorKit.jl/pull/289))
 - Added symmetric tensor tutorial as appendix ([#316](https://github.com/QuantumKitHub/TensorKit.jl/pull/316))
 - Improved error messages throughout codebase ([#309](https://github.com/QuantumKitHub/TensorKit.jl/pull/309))
+- `eigvals` and `svdvals` now output `SectorVector` objects, which do behave as `AbstractVector` but also have the option of iterating the blocks through `Base.pairs`. ([#324](https://github.com/QuantumKitHub/TensorKit.jl/pull/309)
 
 ### Deprecated
 
@@ -52,6 +53,7 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 - Avoid unnecessary copy in `twist` for tensors with bosonic braiding ([#305](https://github.com/QuantumKitHub/TensorKit.jl/pull/305))
 - Small fixes and typos ([#295](https://github.com/QuantumKitHub/TensorKit.jl/pull/295))
+- `eig_vals`, `svd_vals`, etc now all output `SectorVector` objects instead of `DiagonalTensorMap`s, in line with how MatrixAlgebraKit returns `Vector`s instead of `Diagonal`s ([#324](https://github.com/QuantumKitHub/TensorKit.jl/pull/309)
 
 ## [0.15.3](https://github.com/QuantumKitHub/TensorKit.jl/releases/tag/v0.15.3) - 2025-10-30
 

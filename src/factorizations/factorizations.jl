@@ -6,7 +6,7 @@ module Factorizations
 export copy_oftype, factorisation_scalartype, one!, truncspace
 
 using ..TensorKit
-using ..TensorKit: AdjointTensorMap, SectorDict, blocktype, foreachblock, one!
+using ..TensorKit: AdjointTensorMap, SectorDict, SectorVector, blocktype, foreachblock, one!
 
 using LinearAlgebra: LinearAlgebra, BlasFloat, Diagonal, svdvals, svdvals!, eigen, eigen!,
     isposdef, isposdef!, ishermitian
@@ -44,13 +44,13 @@ function LinearAlgebra.eigvals(t::AbstractTensorMap; kwargs...)
     tcopy = copy_oftype(t, factorisation_scalartype(LinearAlgebra.eigen, t))
     return LinearAlgebra.eigvals!(tcopy; kwargs...)
 end
-LinearAlgebra.eigvals!(t::AbstractTensorMap; kwargs...) = diagview(eig_vals!(t))
+LinearAlgebra.eigvals!(t::AbstractTensorMap; kwargs...) = eig_vals!(t)
 
 function LinearAlgebra.svdvals(t::AbstractTensorMap)
     tcopy = copy_oftype(t, factorisation_scalartype(svd_vals!, t))
     return LinearAlgebra.svdvals!(tcopy)
 end
-LinearAlgebra.svdvals!(t::AbstractTensorMap) = diagview(svd_vals!(t))
+LinearAlgebra.svdvals!(t::AbstractTensorMap) = svd_vals!(t)
 
 #--------------------------------------------------#
 # Checks for hermiticity and positive definiteness #

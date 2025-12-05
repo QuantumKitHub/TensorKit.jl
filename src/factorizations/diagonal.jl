@@ -2,6 +2,8 @@
 # -----------------
 _repack_diagonal(d::DiagonalTensorMap) = Diagonal(d.data)
 
+MAK.diagview(t::DiagonalTensorMap) = SectorVector(t.data, TensorKit.diagonalblockstructure(space(t)))
+
 for f in (
         :svd_compact, :svd_full, :svd_trunc, :svd_vals, :qr_compact, :qr_full, :qr_null,
         :lq_compact, :lq_full, :lq_null, :eig_full, :eig_trunc, :eig_vals, :eigh_full,

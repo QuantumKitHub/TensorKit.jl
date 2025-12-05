@@ -1,7 +1,7 @@
 module TensorKitFiniteDifferencesExt
 
 using TensorKit
-using TensorKit: sqrtdim, invsqrtdim
+using TensorKit: sqrtdim, invsqrtdim, SectorVector
 using VectorInterface: scale!
 using FiniteDifferences
 
@@ -29,6 +29,25 @@ function FiniteDifferences.to_vec(t::DiagonalTensorMap)
         return DiagonalTensorMap(back(x_vec))
     end
     return x_vec, DiagonalTensorMap_from_vec
+end
+
+function FiniteDifferences.to_vec(v::SectorVector{T, <:Sector}) where {T}
+    v_normalized = similar(v)
+    for (c, b) in pairs(v)
+        scale!(v_normalized[c], b, sqrtdim(c))
+    end
+    vec = parent(v_normalized)
+    vec_real = T <: Real ? vec : collect(reinterpret(real(T), vec))
+
+    function from_vec(x_real)
+        x = T <: Real ? x_real : reinterpret(T, x_real)
+        v_result = SectorVector(x, v.structure)
+        for (c, b) in pairs(v_result)
+            scale!(b, invsqrtdim(c))
+        end
+        return v_result
+    end
+    return vec_real, from_vec
 end
 
 end
