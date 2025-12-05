@@ -60,23 +60,23 @@ block(v::SectorVector{T, I, A}, c::I) where {T, I, A} = Base.getindex(v, c)
 
 # VectorInterface and LinearAlgebra interface
 # ----------------------------------------------
-VectorInterface.zerovector(v::SectorVector, ::Type{T}) where {T} = 
+VectorInterface.zerovector(v::SectorVector, ::Type{T}) where {T} =
     SectorVector(zerovector(parent(v), T), v.structure)
 VectorInterface.zerovector!(v::SectorVector) = (zerovector!(parent(v)); return v)
 VectorInterface.zerovector!!(v::SectorVector) = (zerovector!!(parent(v)); return v)
 
-VectorInterface.scale(v::SectorVector, α) = SectorVector(scale(parent(v), α), v.structure)
-VectorInterface.scale!(v::SectorVector, α) = (scale!(parent(v), α); return v)
-VectorInterface.scale!!(v::SectorVector, α) = (scale!!(parent(v), α); return v)
+VectorInterface.scale(v::SectorVector, α::Number) = SectorVector(scale(parent(v), α), v.structure)
+VectorInterface.scale!(v::SectorVector, α::Number) = (scale!(parent(v), α); return v)
+VectorInterface.scale!!(v::SectorVector, α::Number) = (scale!!(parent(v), α); return v)
 
-function VectorInterface.add(v1::SectorVector, v2::SectorVector, α = One(), β = One())
-    SectorVector(add(parent(v1), parent(v2), α, β), v1.structure)
+function VectorInterface.add(v1::SectorVector, v2::SectorVector, α::Number, β::Number)
+    return SectorVector(add(parent(v1), parent(v2), α::Number, β::Number), v1.structure)
 end
-function VectorInterface.add!(v1::SectorVector, v2::SectorVector, α = One(), β = One())
+function VectorInterface.add!(v1::SectorVector, v2::SectorVector, α::Number, β::Number)
     add!(parent(v1), parent(v2), α, β)
     return v1
 end
-function VectorInterface.add!!(v1::SectorVector, v2::SectorVector, α = One(), β = One())
+function VectorInterface.add!!(v1::SectorVector, v2::SectorVector, α::Number, β::Number)
     add!!(parent(v1), parent(v2), α, β)
     return v1
 end
