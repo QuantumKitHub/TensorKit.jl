@@ -112,7 +112,7 @@ end
 function MAK.initialize_output(::typeof(eig_vals!), t::AbstractTensorMap, alg::AbstractAlgorithm)
     V_D = fuse(domain(t))
     Tc = complex(scalartype(t))
-    return SectorVector{Tc}(undef, V_cod)
+    return SectorVector{Tc}(undef, V_D)
 end
 
 # QR decomposition

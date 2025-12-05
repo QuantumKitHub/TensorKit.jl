@@ -60,8 +60,8 @@ block(v::SectorVector{T, I, A}, c::I) where {T, I, A} = Base.getindex(v, c)
 
 # VectorInterface and LinearAlgebra interface
 # ----------------------------------------------
-VectorInterface.zerovector(v::SectorVector, ::Type{T}) where {T} =
-    SectorVector(zerovector(parent(v), T), v.structure)
+VectorInterface.zerovector(v::SectorVector, ::Type{S}) where {S <: Number} =
+    SectorVector(zerovector(parent(v), S), v.structure)
 VectorInterface.zerovector!(v::SectorVector) = (zerovector!(parent(v)); return v)
 VectorInterface.zerovector!!(v::SectorVector) = (zerovector!!(parent(v)); return v)
 
