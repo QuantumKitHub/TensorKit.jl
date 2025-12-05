@@ -293,8 +293,7 @@ end
 
 # Truncation error
 # ----------------
-MAK.truncation_error(values::SectorVector, ind) =
-    MAK.truncation_error!(SectorDict(c => copy(v) for (c, v) in values), ind)
+MAK.truncation_error(values::SectorVector, ind) = MAK.truncation_error!(copy(values), ind)
 
 function MAK.truncation_error!(values::SectorVector, ind)
     for (c, ind_c) in ind
