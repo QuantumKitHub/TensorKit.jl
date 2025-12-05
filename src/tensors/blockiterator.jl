@@ -30,7 +30,7 @@ for c in union(blocksectors.(ts)...)
 end
 ```
 """
-function foreachblock(f, t::AbstractTensorMap, ts::AbstractTensorMap...; scheduler = nothing)
+function foreachblock(f, t, ts...; scheduler = nothing)
     tensors = (t, ts...)
     allsectors = union(blocksectors.(tensors)...)
     foreach(allsectors) do c
@@ -38,7 +38,7 @@ function foreachblock(f, t::AbstractTensorMap, ts::AbstractTensorMap...; schedul
     end
     return nothing
 end
-function foreachblock(f, t::AbstractTensorMap; scheduler = nothing)
+function foreachblock(f, t; scheduler = nothing)
     foreach(blocks(t)) do (c, b)
         return f(c, (b,))
     end
