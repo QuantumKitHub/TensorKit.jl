@@ -57,3 +57,49 @@ Base.similar(v::SectorVector, V::ElementarySpace) = SectorVector(undef, V)
 blocksectors(v::SectorVector) = keys(v)
 blocks(v::SectorVector) = pairs(v)
 block(v::SectorVector{T, I, A}, c::I) where {T, I, A} = Base.getindex(v, c)
+
+# VectorInterface and LinearAlgebra interface
+# ----------------------------------------------
+VectorInterface.zerovector(v::SectorVector, ::Type{T}) where {T} = 
+    SectorVector(zerovector(parent(v), T), v.structure)
+VectorInterface.zerovector!(v::SectorVector) = (zerovector!(parent(v)); return v)
+VectorInterface.zerovector!!(v::SectorVector) = (zerovector!!(parent(v)); return v)
+
+VectorInterface.scale(v::SectorVector, α) = SectorVector(scale(parent(v), α), v.structure)
+VectorInterface.scale!(v::SectorVector, α) = (scale!(parent(v), α); return v)
+VectorInterface.scale!!(v::SectorVector, α) = (scale!!(parent(v), α); return v)
+
+function VectorInterface.add(v1::SectorVector, v2::SectorVector, α = One(), β = One())
+    SectorVector(add(parent(v1), parent(v2), α, β), v1.structure)
+end
+function VectorInterface.add!(v1::SectorVector, v2::SectorVector, α = One(), β = One())
+    add!(parent(v1), parent(v2), α, β)
+    return v1
+end
+function VectorInterface.add!!(v1::SectorVector, v2::SectorVector, α = One(), β = One())
+    add!!(parent(v1), parent(v2), α, β)
+    return v1
+end
+
+function VectorInterface.inner(v1::SectorVector, v2::SectorVector)
+    v1.structure == v2.structure || throw(SpaceMismatch("Sector structures do not match"))
+    I = sectortype(v1)
+    if FusionStyle(I) isa UniqueFusion # all quantum dimensions are one
+        return inner(parent(v1), parent(v2))
+    else
+        T = VectorInterface.promote_inner(v1, v2)
+        s = zero(T)
+        for c in blocksectors(v1)
+            b1 = block(v1, c)
+            b2 = block(v2, c)
+            s += convert(T, dim(c)) * inner(b1, b2)
+        end
+    end
+    return s
+end
+
+LinearAlgebra.dot(v1::SectorVector, v2::SectorVector) = inner(v1, v2)
+
+function LinearAlgebra.norm(v::SectorVector, p::Real = 2)
+    return _norm(blocks(v), p, float(zero(real(scalartype(v)))))
+end

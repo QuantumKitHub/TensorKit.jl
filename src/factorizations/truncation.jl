@@ -78,8 +78,7 @@ end
 function MAK.truncate(
         ::typeof(left_null!), (U, S)::NTuple{2, AbstractTensorMap}, strategy::TruncationStrategy
     )
-    extended_S = SectorVector{eltype(S)}(undef, fuse(codomain(U)))
-    fill!(extended_S.data, zero(eltype(extended_S.data)))
+    extended_S = zerovector!(SectorVector{eltype(S)}(undef, fuse(codomain(U))))
     for (c, b) in blocks(S)
         copyto!(extended_S[c], diagview(b)) # copyto! since `b` might be shorter
     end
@@ -92,8 +91,7 @@ end
 function MAK.truncate(
         ::typeof(right_null!), (S, Vᴴ)::NTuple{2, AbstractTensorMap}, strategy::TruncationStrategy
     )
-    extended_S = SectorVector{eltype(S)}(undef, fuse(domain(Vᴴ)))
-    fill!(extended_S.data, zero(eltype(extended_S.data)))
+    extended_S = zerovector!(SectorVector{eltype(S)}(undef, fuse(domain(Vᴴ))))
     for (c, b) in blocks(S)
         copyto!(extended_S[c], diagview(b)) # copyto! since `b` might be shorter
     end
@@ -184,12 +182,12 @@ function _sort_and_perm(values::SectorVector; by = identity, rev::Bool = false)
     perms = SectorDict(
         (
                 begin
-                    p = sortperm(d; by, rev)
+                    p = sortperm(v; by, rev)
                     vs = values_sorted[c]
-                    vs .= d[p]
+                    vs .= view(v, p)
                     c => p
                 end
-            ) for (c, d) in pairs(values)
+            ) for (c, v) in pairs(values)
     )
     return values_sorted, perms
 end
@@ -300,5 +298,5 @@ function MAK.truncation_error!(values::SectorVector, ind)
         v = values[c]
         v[ind_c] .= zero(eltype(v))
     end
-    return TensorKit._norm(pairs(values), 2, zero(real(eltype(valtype(values)))))
+    return norm(values)
 end
