@@ -5,56 +5,58 @@ using TensorKit
 import LinearAlgebra
 ```
 
-Symmetries in a physical system often result in tensors which are invariant under the action
-of the symmetry group, where this group acts as a tensor product of group actions on every
-tensor index separately. The group action on a single index, or thus, on the corresponding
-vector space, can be decomposed into irreducible representations (irreps). Here, we
-restrict to unitary representations, such that the corresponding vector spaces also have a
-natural Euclidean inner product. In particular, the Euclidean inner product between two
-vectors is invariant under the group action and thus transforms according to the trivial
-representation of the group.
+Symmetries in a physical system can be exploited to yield tensors which are invariant under the action of the symmetry group,
+where this group acts as a tensor product of group actions on every tensor index separately.
+The group action on a single index, or thus, on the corresponding vector space,
+can be decomposed into irreducible representations (irreps).
+Here, we restrict to unitary representations,
+such that the corresponding vector spaces also have a natural Euclidean inner product.
+In particular, the Euclidean inner product between two vectors is invariant under the group action and
+thus transforms according to the trivial representation of the group.
 
-The corresponding vector spaces will be canonically represented as
-``V = ⨁_a ℂ^{n_a} ⊗ R_{a}``, where ``a`` labels the different irreps, ``n_a`` is the number
-of times irrep ``a`` appears and ``R_a`` is the vector space associated with irrep ``a``.
-Irreps are also known as spin sectors (in the case of ``\mathsf{SU}_2``) or charge sectors
-(in the case of ``\mathsf{U}_1``), and we henceforth refer to ``a`` as a sector. As
-discussed in the section on [categories](@ref s_categories), and briefly summarized below,
-the approach we follow does in fact go beyond the case of irreps of groups, and sectors
-would more generally correspond to simple objects in a unitary ribbon fusion category.
-Nonetheless, every step can be appreciated by using the representation theory of
-``\mathsf{SU}_2`` or ``\mathsf{SU}_3`` as example. For practical reasons, we assume that
-there is a canonical order of the sectors, so that the vector space ``V`` is
-completely specified by the values of ``n_a``.
+The corresponding vector spaces will be canonically represented as ``V = ⨁_a ℂ^{n_a} ⊗ R_{a}``,
+where ``a`` labels the different irreps, ``n_a`` is the number of times irrep ``a`` appears and ``R_a`` is the vector space associated with irrep ``a``.
+Irreps are also known as spin sectors (in the case of ``\mathsf{SU}_2``) or charge sectors (in the case of ``\mathsf{U}_1``),
+and we henceforth refer to ``a`` as a sector.
+In fact, the approach taken by TensorKit.jl goes beyond the case of irreps of groups, and,
+using the language from the Appendix on [categories](@ref s_categories),
+sectors correspond to (equivalence classes of) simple objects in a unitary fusion or multifusion category.
+Nonetheless, many aspects in the construction of symmetric tensors can already be appreciated by considering the representation theory of a non-abelian group such as ``\mathsf{SU}_2`` or ``\mathsf{SU}_3`` as example.
+For practical reasons, we assume that there is a canonical order of the sectors,
+so that the vector space ``V`` is completely specified by the values of ``n_a``.
 
-The gain in efficiency (both in memory occupation and computation time) obtained from using
-(technically: equivariant) tensor maps is that, by Schur's lemma, they are block diagonal in
-the basis of coupled sectors. To exploit this block diagonal form, it is however essential
-that we know the basis transformation from the individual (uncoupled) sectors appearing in
-the tensor product form of the domain and codomain, to the totally coupled sectors that
-label the different blocks. We refer to the latter as block sectors. The transformation from
-the uncoupled sectors in the domain (or codomain) of the tensor map to the block sector is
-encoded in a fusion tree (or splitting tree). Essentially, it is a sequential application of
-pairwise fusion as described by the group's
-[Clebsch–Gordan (CG) coefficients](https://en.wikipedia.org/wiki/Clebsch–Gordan_coefficients).
-However, it turns out that we do not need the actual CG coefficients, but only how they
-transform under transformations such as interchanging the order of the incoming irreps or
-interchanging incoming and outgoing irreps. This information is known as the topological
-data of the group, i.e. mainly the F-symbols, which are also known as recoupling
-coefficients or [6j-symbols](https://en.wikipedia.org/wiki/6-j_symbol) (more accurately, the
-F-symbol is actually
-[Racah's W-coefficients](https://en.wikipedia.org/wiki/Racah_W-coefficient) in the case of
-``\mathsf{SU}_2``).
+The gain in efficiency (both in memory occupation and computation time) obtained from using symmetric (technically: equivariant) tensor maps is that,
+by Schur's lemma, they are block diagonal in the basis of coupled sectors.
+To exploit this block diagonal form,
+it is however essential that we know the basis transformation from the individual (uncoupled) sectors appearing in the tensor product form of the domain and codomain,
+to the totally coupled sectors that label the different blocks.
+We refer to the latter as block sectors.
+The transformation from the uncoupled sectors in the domain (or codomain) of the tensor map to the block sector is encoded in a fusion tree (or splitting tree).
+Essentially, it is a sequential application of pairwise fusion as described by the group's [Clebsch–Gordan (CG) coefficients](https://en.wikipedia.org/wiki/Clebsch–Gordan_coefficients).
+However, it turns out that we do not need the actual CG coefficients,
+but only how they transform under transformations such as interchanging the order of the incoming irreps or interchanging incoming and outgoing irreps.
+This information is known as the topological data of the group, i.e. mainly the F-symbols,
+which are also known as recoupling coefficients or [6j-symbols](https://en.wikipedia.org/wiki/6-j_symbol)
+(more accurately, the F-symbol is actually [Racah's W-coefficients](https://en.wikipedia.org/wiki/Racah_W-coefficient) in the case of ``\mathsf{SU}_2``).
 
-Below, we describe how to specify a certain type of sector and what information about them
-needs to be implemented. Then, we describe how to build a space ``V`` composed of a direct
-sum of different sectors. In the third section, we explain the details of fusion trees, i.e.
-their construction and manipulation. Finally, we elaborate on the case of general fusion
-categories and the possibility of having fermionic or anyonic twists. But first, we provide
-a quick theoretical overview of the required data of the representation theory of a group.
-We refer to the section on [categories](@ref s_categories), and in particular the
-subsection on [topological data of a unitary fusion category](@ref ss_topologicalfusion),
-for further details.
+Below, we first describe how to specify a certain type of sector and what information about them needs to be implemented.
+Then, we describe how to build a space ``V`` composed of a direct sum of different sectors.
+In the third section, we explain the details of fusion trees, i.e. their construction and manipulation.
+Finally, we elaborate on the case of general fusion categories and the possibility of having fermionic or anyonic twists.
+But first, we provide a quick theoretical overview of the required data of the representation theory of a group.
+We refer to the appendix on [categories](@ref s_categories), and in particular the subsection on [topological data of a unitary fusion category](@ref ss_topologicalfusion), for further details.
+
+!!! note
+    This infrastructure for defining sectors is implemented in a standalone package,
+    [TensorKitSectors.jl](https://github.com/QuantumKitHub/TensorKitSectors.jl),
+    that is imported and reexported by TensorKit.jl.
+
+!!! note
+    On this page of the manual, we assume some famliarity with the representation theory of non-abelian groups,
+    and the structure of a symmetric tensor.
+    For a more pedagogical introduction based on physical examples, we recommend reading the first appendix,
+    which provides a [tutorial-style introduction on the construction of symmetric tensors](@ref s_symmetric_tutorial).
+    
 
 ## [Representation theory and unitary fusion categories](@id ss_representationtheory)
 
