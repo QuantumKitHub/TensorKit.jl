@@ -300,7 +300,7 @@ function LinearAlgebra.rank(
     dim(t) == 0 && return r
     S = LinearAlgebra.svdvals(t)
     tol = max(atol, rtol * maximum(first, values(S)))
-    for (c, b) in S
+    for (c, b) in pairs(S)
         if !isempty(b)
             r += dim(c) * count(>(tol), b)
         end

@@ -44,25 +44,16 @@ for f! in (
 end
 
 # Handle these separately because single output instead of tuple
-for f! in (:qr_null!, :lq_null!, :project_hermitian!, :project_antihermitian!, :project_isometric!)
+for f! in (
+        :qr_null!, :lq_null!,
+        :svd_vals!, :eig_vals!, :eigh_vals!,
+        :project_hermitian!, :project_antihermitian!, :project_isometric!,
+    )
     @eval function MAK.$f!(t::AbstractTensorMap, N, alg::AbstractAlgorithm)
         foreachblock(t, N) do _, (tblock, Nblock)
             Nblock′ = $f!(tblock, Nblock, alg)
             # deal with the case where the output is not the same as the input
             Nblock === Nblock′ || copy!(Nblock, Nblock′)
-            return nothing
-        end
-        return N
-    end
-end
-
-# Handle these separately because single output instead of tuple
-for f! in (:svd_vals!, :eig_vals!, :eigh_vals!)
-    @eval function MAK.$f!(t::AbstractTensorMap, N, alg::AbstractAlgorithm)
-        foreachblock(t, N) do _, (tblock, Nblock)
-            Nblock′ = $f!(tblock, diagview(Nblock), alg)
-            # deal with the case where the output is not the same as the input
-            diagview(Nblock) === Nblock′ || copy!(diagview(Nblock), Nblock′)
             return nothing
         end
         return N
@@ -90,7 +81,7 @@ end
 
 function MAK.initialize_output(::typeof(svd_vals!), t::AbstractTensorMap, alg::AbstractAlgorithm)
     V_cod = infimum(fuse(codomain(t)), fuse(domain(t)))
-    return DiagonalTensorMap{real(scalartype(t))}(undef, V_cod)
+    return diagview(DiagonalTensorMap{real(scalartype(t))}(undef, V_cod))
 end
 
 # Eigenvalue decomposition
@@ -114,13 +105,13 @@ end
 function MAK.initialize_output(::typeof(eigh_vals!), t::AbstractTensorMap, alg::AbstractAlgorithm)
     V_D = fuse(domain(t))
     T = real(scalartype(t))
-    return D = DiagonalTensorMap{Tc}(undef, V_D)
+    return diagview(DiagonalTensorMap{Tc}(undef, V_D))
 end
 
 function MAK.initialize_output(::typeof(eig_vals!), t::AbstractTensorMap, alg::AbstractAlgorithm)
     V_D = fuse(domain(t))
     Tc = complex(scalartype(t))
-    return D = DiagonalTensorMap{Tc}(undef, V_D)
+    return diagview(DiagonalTensorMap{Tc}(undef, V_D))
 end
 
 # QR decomposition

@@ -192,7 +192,7 @@ for V in spacelist
                 @test isisometric(vᴴ; side = :right)
 
                 s′ = LinearAlgebra.diag(s)
-                for (c, b) in LinearAlgebra.svdvals(t)
+                for (c, b) in pairs(LinearAlgebra.svdvals(t))
                     @test b ≈ s′[c]
                 end
 
@@ -312,7 +312,7 @@ for V in spacelist
                 @test t * v ≈ v * d
 
                 d′ = LinearAlgebra.diag(d)
-                for (c, b) in LinearAlgebra.eigvals(t)
+                for (c, b) in pairs(LinearAlgebra.eigvals(t))
                     @test sort(b; by = abs) ≈ sort(d′[c]; by = abs)
                 end
 
