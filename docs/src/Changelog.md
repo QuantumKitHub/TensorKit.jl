@@ -20,7 +20,7 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 ## [Unreleased](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.16.0...HEAD)
 
-## [0.16.0](https://github.com/QuantumKitHub/TensorKit.jl/releases/tag/v0.16.0) - 2025-12-03
+## [0.16.0](https://github.com/QuantumKitHub/TensorKit.jl/releases/tag/v0.16.0) - 2025-12-05
 
 ### Added
 
