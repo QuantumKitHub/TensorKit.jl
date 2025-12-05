@@ -30,7 +30,7 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 ### Changed
 
-- Tensors now no longer print their data by default, only their spaces. Use `blocks(t)` or `subblocks(t)` to inspect data ([#304](https://github.com/QuantumKitHub/TensorKit.jl/pull/304))
+- Improvements to the default printing of tensors, where only a (possibly compressed) representation of the (possibly truncated) list of diagonal blocks is printed. Use `blocks(t)` and `subblocks(t)` for a full inspection of the tensor data ([#304](https://github.com/QuantumKitHub/TensorKit.jl/pull/304), [#322](https://github.com/QuantumKitHub/TensorKit.jl/pull/322)))
 - Updated `left_orth`, `right_orth`, `left_null` and `right_null` interfaces for MatrixAlgebraKit v0.6 ([#312](https://github.com/QuantumKitHub/TensorKit.jl/pull/312))
 - Updated `ishermitian` and `isisometric` implementations ([#312](https://github.com/QuantumKitHub/TensorKit.jl/pull/312))
 - Sector functions now by default use `unit` instead of `one`, `isunit` instead of `isone`, and `dual` instead of `conj` ([#291](https://github.com/QuantumKitHub/TensorKit.jl/pull/291))
