@@ -67,7 +67,7 @@ function MAK.truncate(
 
     Ũ = similar(U, codomain(U) ← V_truncated)
     truncate_domain!(Ũ, U, ind)
-    S̃ = DiagonalTensorMap{scalartype(S)}(undef, V_truncated)
+    S̃ = DiagonalTensorMap{scalartype(S), typeof(V_truncated), storagetype(S)}(undef, V_truncated)
     truncate_diagonal!(S̃, S, ind)
     Ṽᴴ = similar(Vᴴ, V_truncated ← domain(Vᴴ))
     truncate_codomain!(Ṽᴴ, Vᴴ, ind)
@@ -132,7 +132,7 @@ for f! in (:eig_trunc!, :eigh_trunc!)
         ind = MAK.findtruncated(diagview(D), strategy)
         V_truncated = truncate_space(space(D, 1), ind)
 
-        D̃ = DiagonalTensorMap{scalartype(D)}(undef, V_truncated)
+        D̃ = DiagonalTensorMap{scalartype(D), typeof(V_truncated), storagetype(D)}(undef, V_truncated)
         truncate_diagonal!(D̃, D, ind)
 
         Ṽ = similar(V, codomain(V) ← V_truncated)
@@ -162,17 +162,15 @@ function _findnexttruncvalue(
     ) where {I <: Sector}
     # early return
     (isempty(S) || all(iszero, values(truncdim))) && return nothing
+    mapped_keys = map(keys(truncdim)) do c
+        d = truncdim[c]
+        return by(S[c][d])
+    end
     if rev
-        σmin, imin = findmin(keys(truncdim)) do c
-            d = truncdim[c]
-            return by(S[c][d])
-        end
+        σmin, imin = findmin(mapped_keys)
         return σmin, keys(truncdim)[imin]
     else
-        σmax, imax = findmax(keys(truncdim)) do c
-            d = truncdim[c]
-            return by(S[c][d])
-        end
+        σmax, imax = findmax(mapped_keys)
         return σmax, keys(truncdim)[imax]
     end
 end
