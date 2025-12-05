@@ -222,6 +222,7 @@ end
 include("tensors/abstracttensor.jl")
 include("tensors/backends.jl")
 include("tensors/blockiterator.jl")
+include("tensors/sectorvector.jl")
 include("tensors/tensor.jl")
 include("tensors/adjoint.jl")
 include("tensors/linalg.jl")
