@@ -36,29 +36,6 @@ function ChainRulesTestUtils.test_approx(
     return nothing
 end
 
-# make sure that norms are computed correctly:
-function FiniteDifferences.to_vec(t::SectorDict)
-    T = scalartype(valtype(t))
-    vec = mapreduce(vcat, t; init = T[]) do (c, b)
-        return reshape(b, :) .* sqrt(dim(c))
-    end
-    vec_real = T <: Real ? vec : collect(reinterpret(real(T), vec))
-
-    function from_vec(x_real)
-        x = T <: Real ? x_real : reinterpret(T, x_real)
-        ctr = 0
-        return SectorDict(
-            c => (
-                    n = length(b);
-                    b′ = reshape(view(x, ctr .+ (1:n)), size(b)) ./ sqrt(dim(c));
-                    ctr += n;
-                    b′
-                ) for (c, b) in t
-        )
-    end
-    return vec_real, from_vec
-end
-
 # Float32 and finite differences don't mix well
 precision(::Type{<:Union{Float32, Complex{Float32}}}) = 1.0e-2
 precision(::Type{<:Union{Float64, Complex{Float64}}}) = 1.0e-5
