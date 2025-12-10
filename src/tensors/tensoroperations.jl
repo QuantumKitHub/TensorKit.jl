@@ -360,11 +360,11 @@ function blas_contract!(
     bstyle = BraidingStyle(sectortype(C))
     bstyle isa SymmetricBraiding ||
         throw(SectorMismatch("only tensors with symmetric braiding rules can be contracted; try `@planar` instead"))
-    TC = eltype(C)
+    TC = scalartype(C)
 
     # check which tensors have to be permuted/copied
-    copyA = !(TO.isblascontractable(A, pA) && eltype(A) === TC)
-    copyB = !(TO.isblascontractable(B, pB) && eltype(B) === TC)
+    copyA = !(TO.isblascontractable(A, pA) && scalartype(A) === TC)
+    copyB = !(TO.isblascontractable(B, pB) && scalartype(B) === TC)
 
     if bstyle isa Fermionic && any(isdual ∘ Base.Fix1(space, B), pB[1])
         # twist smallest object if neither or both already have to be permuted
