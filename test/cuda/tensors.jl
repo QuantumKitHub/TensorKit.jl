@@ -4,7 +4,6 @@ using TensorKit, Combinatorics
 ad = adapt(Array)
 const CUDAExt = Base.get_extension(TensorKit, :TensorKitCUDAExt)
 @assert !isnothing(CUDAExt)
-const CuTensorMap = getglobal(CUDAExt, :CuTensorMap)
 
 @isdefined(TestSetup) || include("../setup.jl")
 using .TestSetup
@@ -29,8 +28,8 @@ spacelist = try
         (Vtr, VU₁, VSU₂, Vfℤ₂)
     end
 catch
+    (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁) #, VSU₃)
     #(Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂) #, VSU₃)
-    (Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂) #, VSU₃)
 end
 
 for V in spacelist

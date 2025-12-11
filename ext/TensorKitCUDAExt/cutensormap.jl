@@ -3,72 +3,10 @@ const CuTensor{T, S, N} = CuTensorMap{T, S, N, 0}
 
 const AdjointCuTensorMap{T, S, N₁, N₂} = AdjointTensorMap{T, S, N₁, N₂, CuTensorMap{T, S, N₁, N₂}}
 
-function TensorKit.tensormaptype(S::Type{<:IndexSpace}, N₁, N₂, TorA::Type{<:StridedCuArray})
-    if TorA <: CuArray
-        return TensorMap{eltype(TorA), S, N₁, N₂, CuVector{eltype(TorA), CUDA.DeviceMemory}}
-    else
-        throw(ArgumentError("argument $TorA should specify a scalar type (`<:Number`) or a storage type `<:CuVector{<:Number}`"))
-    end
-end
+TensorKit._tensormap_storagetype(::Type{A}) where {T, A <: CuArray{T}} = CuVector{T, CUDA.DeviceMemory}
 
-function TensorKit.TensorMap{T, S, N₁, N₂, <:CuVector{T}}(t::TensorMap{T, S, N₁, N₂, A}) where {T, S, N₁, N₂, A}
+function CuTensorMap{T, S, N₁, N₂}(t::TensorMap{T, S, N₁, N₂, A}) where {T, S, N₁, N₂, A}
     return CuTensorMap{T, S, N₁, N₂}(CuArray(t.data), t.space)
-end
-
-function CuTensorMap{T}(::UndefInitializer, V::TensorMapSpace{S, N₁, N₂}) where {T, S, N₁, N₂}
-    return CuTensorMap{T, S, N₁, N₂}(undef, V)
-end
-
-function CuTensorMap{T}(
-        ::UndefInitializer, codomain::TensorSpace{S},
-        domain::TensorSpace{S}
-    ) where {T, S}
-    return CuTensorMap{T}(undef, codomain ← domain)
-end
-function CuTensor{T}(::UndefInitializer, V::TensorSpace{S}) where {T, S}
-    return CuTensorMap{T}(undef, V ← one(V))
-end
-# constructor starting from block data
-"""
-    CuTensorMap(data::AbstractDict{<:Sector,<:CuMatrix}, codomain::ProductSpace{S,N₁},
-                domain::ProductSpace{S,N₂}) where {S<:ElementarySpace,N₁,N₂}
-    CuTensorMap(data, codomain ← domain)
-    CuTensorMap(data, domain → codomain)
-
-Construct a `CuTensorMap` by explicitly specifying its block data.
-
-## Arguments
-- `data::AbstractDict{<:Sector,<:CuMatrix}`: dictionary containing the block data for
-  each coupled sector `c` as a matrix of size `(blockdim(codomain, c), blockdim(domain, c))`.
-- `codomain::ProductSpace{S,N₁}`: the codomain as a `ProductSpace` of `N₁` spaces of type
-  `S<:ElementarySpace`.
-- `domain::ProductSpace{S,N₂}`: the domain as a `ProductSpace` of `N₂` spaces of type
-  `S<:ElementarySpace`.
-
-Alternatively, the domain and codomain can be specified by passing a [`HomSpace`](@ref)
-using the syntax `codomain ← domain` or `domain → codomain`.
-"""
-function CuTensorMap(
-        data::AbstractDict{<:Sector, <:CuArray},
-        V::TensorMapSpace{S, N₁, N₂}
-    ) where {S, N₁, N₂}
-    T = eltype(valtype(data))
-    t = CuTensorMap{T}(undef, V)
-    for (c, b) in blocks(t)
-        haskey(data, c) || throw(SectorMismatch("no data for block sector $c"))
-        datac = data[c]
-        size(datac) == size(b) ||
-            throw(DimensionMismatch("wrong size of block for sector $c"))
-        copy!(b, datac)
-    end
-    for (c, b) in data
-        c ∈ blocksectors(t) || isempty(b) ||
-            throw(SectorMismatch("data for block sector $c not expected"))
-    end
-    return t
-end
-function CuTensorMap(data::CuArray{T}, V::TensorMapSpace{S, N₁, N₂}) where {T, S, N₁, N₂}
-    return CuTensorMap{T, S, N₁, N₂}(vec(data), V)
 end
 
 for (fname, felt) in ((:zeros, :zero), (:ones, :one))
@@ -215,10 +153,6 @@ end
 TensorKit.scalartype(A::StridedCuArray{T}) where {T} = T
 TensorKit.scalartype(::Type{<:CuTensorMap{T}}) where {T} = T
 TensorKit.scalartype(::Type{<:CuArray{T}}) where {T} = T
-TensorKit.densevectortype(::Type{<:TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A <: CuVector{T}} = A
-TensorKit.densevectortype(::Type{<:CuArray{T}}) where {T} = CuVector{T}
-TensorKit.matrixtype(::Type{<:TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A <: CuVector{T}} = CuMatrix{T}
-TensorKit.matrixtype(::Type{CuArray{T}}) where {T} = CuMatrix{T}
 
 function TensorKit.similarstoragetype(TT::Type{<:CuTensorMap{TTT, S, N₁, N₂}}, ::Type{T}) where {TTT, T, S, N₁, N₂}
     return CuVector{T, CUDA.DeviceMemory}
@@ -259,28 +193,6 @@ function Base.promote_rule(
     }
     T = TensorKit.VectorInterface.promote_add(TTT₁, TTT₂)
     return CuTensorMap{T, S, N₁, N₂}
-end
-
-# Conversion to CuArray:
-#----------------------
-# probably not optimized for speed, only for checking purposes
-function Base.convert(::Type{CuArray}, t::AbstractTensorMap)
-    I = sectortype(t)
-    if I === Trivial
-        CUDA.@allowscalar convert(CuArray, t[])
-    else
-        cod = codomain(t)
-        dom = domain(t)
-        T = sectorscalartype(I) <: Complex ? complex(scalartype(t)) :
-            sectorscalartype(I) <: Integer ? scalartype(t) : float(scalartype(t))
-        A = CUDA.zeros(T, dims(cod)..., dims(dom)...)
-        for (f₁, f₂) in fusiontrees(t)
-            F = convert(CuArray, (f₁, f₂))
-            Aslice = StridedView(A)[axes(cod, f₁.uncoupled)..., axes(dom, f₂.uncoupled)...]
-            CUDA.@allowscalar add!(Aslice, StridedView(TensorKit._kron(convert(CuArray, t[f₁, f₂]), F)))
-        end
-        return A
-    end
 end
 
 # CuTensorMap exponentation:

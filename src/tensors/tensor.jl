@@ -66,19 +66,6 @@ space(t::TensorMap) = t.space
 Return the type of the storage `A` of the tensor map.
 """
 storagetype(::Type{<:TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A <: DenseVector{T}} = A
-"""
-    densevectortype(::Union{T,Type{T}}) where {T<:TensorMap} -> Type{A<:Vector}
-
-Return the type of the storage `A` of the tensor map.
-"""
-densevectortype(::Type{<:TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A <: Vector{T}} = A
-densevectortype(::Type{<:Array{T}}) where {T} = Vector{T}
-
-"""
-    matrixtype(::Union{T,Type{T}}) where {T<:TensorMap} -> Type{A<:Vector}
-Return the matrix analogue type of the storage `A` of the tensor map.
-"""
-matrixtype(::Type{<:TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A <: Vector{T}} = Matrix{T}
 
 dim(t::TensorMap) = length(t.data)
 
@@ -439,7 +426,7 @@ function Base.convert(::Type{Dict}, t::AbstractTensorMap)
     d[:domain] = repr(domain(t))
     data = Dict{String, Any}()
     for (c, b) in blocks(t)
-        data[repr(c)] = matrixtype(t)(b)
+        data[repr(c)] = b
     end
     d[:data] = data
     return d

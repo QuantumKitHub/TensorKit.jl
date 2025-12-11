@@ -45,14 +45,6 @@ end
 Return the type of vector that stores the data of a tensor.
 """ storagetype
 
-@doc """
-    matrixtype(t::AbstractTensorMap) -> Type{A<:AbstractVector}
-    matrixtrype(T::Type{<:AbstractTensorMap}) -> Type{A<:AbstractVector}
-
-Return the type of matrix that stores the data of a tensor, for conversion
-to/from dictionaries.
-""" matrixtype
-
 similarstoragetype(TT::Type{<:AbstractTensorMap}) = similarstoragetype(TT, scalartype(TT))
 
 function similarstoragetype(TT::Type{<:AbstractTensorMap}, ::Type{T}) where {T}
@@ -183,7 +175,6 @@ end
 InnerProductStyle(t::AbstractTensorMap) = InnerProductStyle(typeof(t))
 storagetype(t::AbstractTensorMap) = storagetype(typeof(t))
 blocktype(t::AbstractTensorMap) = blocktype(typeof(t))
-matrixtype(t::AbstractTensorMap) = matrixtype(typeof(t))
 similarstoragetype(t::AbstractTensorMap, T = scalartype(t)) = similarstoragetype(typeof(t), T)
 
 numout(t::AbstractTensorMap) = numout(typeof(t))
@@ -634,8 +625,7 @@ function Base.convert(::Type{Array}, t::AbstractTensorMap)
         for (f₁, f₂) in fusiontrees(t)
             F = convert(Array, (f₁, f₂))
             Aslice = StridedView(A)[axes(cod, f₁.uncoupled)..., axes(dom, f₂.uncoupled)...]
-            tf₁f₂ = convert(Array, t[f₁, f₂])
-            add!(Aslice, StridedView(_kron(tf₁f₂, F)))
+            add!(Aslice, StridedView(_kron(convert(Array, t[f₁, f₂]), F)))
         end
         return A
     end
