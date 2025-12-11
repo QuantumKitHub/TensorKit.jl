@@ -11,6 +11,10 @@ function TensorKit.tensormaptype(S::Type{<:IndexSpace}, N₁, N₂, TorA::Type{<
     end
 end
 
+function TensorKit.TensorMap{T, S, N₁, N₂, <:CuVector{T}}(t::TensorMap{T, S, N₁, N₂, A}) where {T, S, N₁, N₂, A}
+    return CuTensorMap{T, S, N₁, N₂}(CuArray(t.data), t.space)
+end
+
 function CuTensorMap{T}(::UndefInitializer, V::TensorMapSpace{S, N₁, N₂}) where {T, S, N₁, N₂}
     return CuTensorMap{T, S, N₁, N₂}(undef, V)
 end
