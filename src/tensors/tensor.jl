@@ -73,6 +73,7 @@ dim(t::TensorMap) = length(t.data)
 #--------------------------------
 # hook for mapping input types to storage types -- to be implemented in extensions
 _tensormap_storagetype(::Type{A}) where {A <: AbstractArray} = _tensormap_storagetype(eltype(A))
+_tensormap_storagetype(::Type{A}) where {A <: DenseVector{<:Number}} = A
 _tensormap_storagetype(::Type{T}) where {T <: Number} = Vector{T}
 
 # utility type alias that makes constructors also work for type aliases that specify
