@@ -11,8 +11,6 @@ function TensorKit.tensormaptype(S::Type{<:IndexSpace}, N₁, N₂, TorA::Type{<
     end
 end
 
-TensorKit.matrixtype(::Type{<:TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A <: CuVector{T}} = CuMatrix{T}
-
 function CuTensorMap{T}(::UndefInitializer, V::TensorMapSpace{S, N₁, N₂}) where {T, S, N₁, N₂}
     return CuTensorMap{T, S, N₁, N₂}(undef, V)
 end
@@ -213,6 +211,10 @@ end
 TensorKit.scalartype(A::StridedCuArray{T}) where {T} = T
 TensorKit.scalartype(::Type{<:CuTensorMap{T}}) where {T} = T
 TensorKit.scalartype(::Type{<:CuArray{T}}) where {T} = T
+TensorKit.densevectortype(::Type{<:TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A <: CuVector{T}} = A
+TensorKit.densevectortype(::Type{<:CuArray{T}}) where {T} = CuVector{T}
+TensorKit.matrixtype(::Type{<:TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A <: CuVector{T}} = CuMatrix{T}
+TensorKit.matrixtype(::Type{CuArray{T}}) where {T} = CuMatrix{T}
 
 function TensorKit.similarstoragetype(TT::Type{<:CuTensorMap{TTT, S, N₁, N₂}}, ::Type{T}) where {TTT, T, S, N₁, N₂}
     return CuVector{T, CUDA.DeviceMemory}
@@ -261,7 +263,7 @@ end
 function Base.convert(::Type{CuArray}, t::AbstractTensorMap)
     I = sectortype(t)
     if I === Trivial
-        convert(CuArray, t[])
+        CUDA.@allowscalar convert(CuArray, t[])
     else
         cod = codomain(t)
         dom = domain(t)
@@ -271,8 +273,33 @@ function Base.convert(::Type{CuArray}, t::AbstractTensorMap)
         for (f₁, f₂) in fusiontrees(t)
             F = convert(CuArray, (f₁, f₂))
             Aslice = StridedView(A)[axes(cod, f₁.uncoupled)..., axes(dom, f₂.uncoupled)...]
-            add!(Aslice, StridedView(TensorKit._kron(convert(CuArray, t[f₁, f₂]), F)))
+            CUDA.@allowscalar add!(Aslice, StridedView(TensorKit._kron(convert(CuArray, t[f₁, f₂]), F)))
         end
         return A
+    end
+end
+
+# CuTensorMap exponentation:
+function TensorKit.exp!(t::CuTensorMap)
+    domain(t) == codomain(t) ||
+        error("Exponential of a tensor only exist when domain == codomain.")
+    for (c, b) in blocks(t)
+        copy!(b, parent(Base.exp(Hermitian(b))))
+    end
+    return t
+end
+
+# functions that don't map ℝ to (a subset of) ℝ
+for f in (:sqrt, :log, :asin, :acos, :acosh, :atanh, :acoth)
+    sf = string(f)
+    @eval function Base.$f(t::CuTensorMap)
+        domain(t) == codomain(t) ||
+            throw(SpaceMismatch("`$($sf)` of a tensor only exist when domain == codomain"))
+        T = complex(float(scalartype(t)))
+        tf = similar(t, T)
+        for (c, b) in blocks(t)
+            copy!(block(tf, c), parent($f(Hermitian(b))))
+        end
+        return tf
     end
 end

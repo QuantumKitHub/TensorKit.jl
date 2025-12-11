@@ -67,9 +67,16 @@ Return the type of the storage `A` of the tensor map.
 """
 storagetype(::Type{<:TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A <: DenseVector{T}} = A
 """
-    matrixtype(::Union{T,Type{T}}) where {T<:TensorMap} -> Type{A<:Vector}
+    densevectortype(::Union{T,Type{T}}) where {T<:TensorMap} -> Type{A<:Vector}
 
 Return the type of the storage `A` of the tensor map.
+"""
+densevectortype(::Type{<:TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A <: Vector{T}} = A
+densevectortype(::Type{<:Array{T}}) where {T} = Vector{T}
+
+"""
+    matrixtype(::Union{T,Type{T}}) where {T<:TensorMap} -> Type{A<:Vector}
+Return the matrix analogue type of the storage `A` of the tensor map.
 """
 matrixtype(::Type{<:TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A <: Vector{T}} = Matrix{T}
 

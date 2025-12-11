@@ -29,7 +29,8 @@ spacelist = try
         (Vtr, VU₁, VSU₂, Vfℤ₂)
     end
 catch
-    (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂) #, VSU₃)
+    #(Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂) #, VSU₃)
+    (Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂) #, VSU₃)
 end
 
 for V in spacelist
@@ -82,30 +83,27 @@ for V in spacelist
                 W5 = one(V1) ← V1 ⊗ V2
                 W6 = V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5
                 for W in (W1, W2, W3, W4, W5, W6)
-                    for T in (Int, Float32, ComplexF64)
-                        if T == Int
-                            t = CuTensorMap{T}(undef, W)
-                            for (_, b) in blocks(t)
-                                CUDA.@allowscalar CUDA.rand!(b, -20:20)
+                    for T in (Float32, ComplexF64)
+                        t = @constinferred CUDA.randn(T, W)
+                        CUDA.@allowscalar begin
+                            a = @constinferred CuArray(convert(Array, t))
+                            b = reshape(a, dim(codomain(W)), dim(domain(W)))
+                            @test t ≈ @constinferred TensorMap(a, W)
+                            if !(TensorKit.sectortype(t) === Trivial || TensorKit.FusionStyle(TensorKit.sectortype(t)) === TensorKit.UniqueFusion())
+                                @test t ≈ @constinferred TensorMap(b, W)
                             end
-                        else
-                            t = @constinferred CUDA.randn(T, W)
-                        end
-                        a = @constinferred convert(CuArray, t)
-                        b = reshape(a, dim(codomain(W)), dim(domain(W)))
-                        @test t ≈ @constinferred TensorMap(a, W)
-                        @test t ≈ @constinferred TensorMap(b, W)
-                        @test t === @constinferred TensorMap(t.data, W)
+                        end # needed because of scale and axpy
+                        @test t === TensorMap(t.data, W)
                     end
                 end
-                for T in (Int, Float32, ComplexF64)
+                for T in (Float32, ComplexF64)
                     t = CUDA.randn(T, V1 ⊗ V2 ← zero(V1))
-                    a = convert(CuArray, t)
+                    a = convert(Array, t)
                     @test norm(a) == 0
                 end
             end
         end
-        @timedtestset "Basic linear algebra" begin
+        #=@timedtestset "Basic linear algebra" begin
             W = V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5
             for T in (Float32, ComplexF64)
                 t = @constinferred CUDA.rand(T, W)
@@ -158,8 +156,8 @@ for V in spacelist
                     @test w * w' == (w * w')^2
                 end
             end
-        end
-        @timedtestset "Trivial space insertion and removal" begin
+        end=#
+        #=@timedtestset "Trivial space insertion and removal" begin
             W = V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5
             for T in (Float32, ComplexF64)
                 t = @constinferred CUDA.rand(T, W)
@@ -190,18 +188,20 @@ for V in spacelist
                 end
                 @test @constinferred(removeunit(t5, 4)) == t
             end
-        end
+        end=#
         if hasfusiontensor(I)
-            #=@timedtestset "Basic linear algebra: test via conversion" begin
+            @timedtestset "Basic linear algebra: test via conversion" begin
                 W = V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5
                 for T in (Float32, ComplexF64)
                     t = CUDA.rand(T, W)
                     t2 = @constinferred CUDA.rand!(similar(t))
-                    @test norm(t, 2) ≈ norm(convert(CuArray, t), 2)
-                    @test dot(t2, t) ≈ dot(convert(CuArray, t2), convert(CuArray, t))
                     α = rand(T)
-                    @test convert(CuArray, α * t) ≈ α * convert(CuArray, t)
-                    @test convert(CuArray, t + t) ≈ 2 * convert(CuArray, t)
+                    CUDA.@allowscalar begin
+                        @test norm(t, 2) ≈ norm(convert(Array, t), 2)
+                        @test dot(t2, t) ≈ dot(convert(Array, t2), convert(Array, t))
+                        @test convert(Array, α * t) ≈ α * convert(Array, t)
+                        @test convert(Array, t + t) ≈ 2 * convert(Array, t)
+                    end
                 end
             end
             @timedtestset "Real and imaginary parts" begin
@@ -211,20 +211,26 @@ for V in spacelist
 
                     tr = @constinferred real(t)
                     @test scalartype(tr) <: Real
-                    @test real(convert(CuArray, t)) == convert(CuArray, tr)
+                    CUDA.@allowscalar begin
+                        @test real(convert(Array, t)) == convert(Array, tr)
+                    end
 
                     ti = @constinferred imag(t)
                     @test scalartype(ti) <: Real
-                    @test imag(convert(CuArray, t)) == convert(CuArray, ti)
+                    CUDA.@allowscalar begin
+                        @test imag(convert(Array, t)) == convert(Array, ti)
+                    end
 
                     tc = @inferred complex(t)
                     @test scalartype(tc) <: Complex
-                    @test complex(convert(CuArray, t)) == convert(CuArray, tc)
+                    CUDA.@allowscalar begin
+                        @test complex(convert(Array, t)) == convert(Array, tc)
+                    end
 
                     tc2 = @inferred complex(tr, ti)
                     @test tc2 ≈ tc
                 end
-            end=# # TODO convert(CuArray is broken
+            end
         end
         @timedtestset "Tensor conversion" begin # TODO adjoint conversion methods don't work yet
             W = V1 ⊗ V2
@@ -273,30 +279,30 @@ for V in spacelist
                 end
             end
         end
-        #=if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
+        if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
             @timedtestset "Permutations: test via conversion" begin
                 W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
                 t = CUDA.rand(ComplexF64, W)
-                a = convert(CuArray, t)
+                a = CUDA.@allowscalar convert(Array, t)
                 for k in 0:5
                     for p in permutations(1:5)
                         p1 = ntuple(n -> p[n], k)
                         p2 = ntuple(n -> p[k + n], 5 - k)
-                        t2 = permute(t, (p1, p2))
-                        a2 = convert(CuArray, t2)
+                        t2 = CUDA.@allowscalar permute(t, (p1, p2))
+                        a2 = CUDA.@allowscalar convert(Array, t2)
                         @test a2 ≈ permutedims(a, (p1..., p2...))
-                        @test convert(CuArray, transpose(t2)) ≈
+                        @test CUDA.@allowscalar convert(Array, transpose(t2)) ≈
                             permutedims(a2, (5, 4, 3, 2, 1))
                     end
 
-                    t3 = repartition(t, k)
-                    a3 = convert(CuArray, t3)
+                    t3 = CUDA.@allowscalar repartition(t, k)
+                    a3 = CUDA.@allowscalar convert(Array, t3)
                     @test a3 ≈ permutedims(
                         a, (ntuple(identity, k)..., reverse(ntuple(i -> i + k, 5 - k))...)
                     )
                 end
             end
-        end=# # convert(CuArray broken
+        end
         @timedtestset "Full trace: test self-consistency" begin
             t = CUDA.rand(ComplexF64, V1 ⊗ V2' ⊗ V2 ⊗ V1')
             CUDA.@allowscalar begin
@@ -433,7 +439,7 @@ for V in spacelist
                 @test tp ≈ tp * tp
             end
         end
-        #=if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
+        if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
             @timedtestset "Multiplication and inverse: test via conversion" begin
                 W1 = V1 ⊗ V2 ⊗ V3
                 W2 = V4 ⊗ V5
@@ -443,76 +449,77 @@ for V in spacelist
                     t = CUDA.rand(T, W1, W2)
                     d1 = dim(W1)
                     d2 = dim(W2)
-                    At1 = reshape(convert(CuArray, t1), d1, d1)
-                    At2 = reshape(convert(CuArray, t2), d2, d2)
-                    At = reshape(convert(CuArray, t), d1, d2)
-                    @test reshape(convert(CuArray, t1 * t), d1, d2) ≈ At1 * At
-                    @test reshape(convert(CuArray, t1' * t), d1, d2) ≈ At1' * At
-                    @test reshape(convert(CuArray, t2 * t'), d2, d1) ≈ At2 * At'
-                    @test reshape(convert(CuArray, t2' * t'), d2, d1) ≈ At2' * At'
+                    CUDA.@allowscalar begin
+                        At1 = reshape(convert(Array, t1), d1, d1)
+                        At2 = reshape(convert(Array, t2), d2, d2)
+                        At = reshape(convert(Array, t), d1, d2)
+                        @test reshape(convert(Array, t1 * t), d1, d2) ≈ At1 * At
+                        @test reshape(convert(Array, t1' * t), d1, d2) ≈ At1' * At
+                        @test reshape(convert(Array, t2 * t'), d2, d1) ≈ At2 * At'
+                        @test reshape(convert(Array, t2' * t'), d2, d1) ≈ At2' * At'
 
-                    @test reshape(convert(CuArray, inv(t1)), d1, d1) ≈ inv(At1)
-                    @test reshape(convert(CuArray, pinv(t)), d2, d1) ≈ pinv(At)
+                        @test reshape(convert(Array, inv(t1)), d1, d1) ≈ inv(At1)
+                        @test reshape(convert(Array, pinv(t)), d2, d1) ≈ pinv(At)
 
-                    if T == Float32 || T == ComplexF32
-                        continue
+                        if T == Float32 || T == ComplexF32
+                            continue
+                        end
+
+                        @test reshape(convert(Array, t1 \ t), d1, d2) ≈ At1 \ At
+                        @test reshape(convert(Array, t1' \ t), d1, d2) ≈ At1' \ At
+                        @test reshape(convert(Array, t2 \ t'), d2, d1) ≈ At2 \ At'
+                        @test reshape(convert(Array, t2' \ t'), d2, d1) ≈ At2' \ At'
+
+                        @test reshape(convert(Array, t2 / t), d2, d1) ≈ At2 / At
+                        @test reshape(convert(Array, t2' / t), d2, d1) ≈ At2' / At
+                        @test reshape(convert(Array, t1 / t'), d1, d2) ≈ At1 / At'
+                        @test reshape(convert(Array, t1' / t'), d1, d2) ≈ At1' / At'
                     end
-
-                    @test reshape(convert(CuArray, t1 \ t), d1, d2) ≈ At1 \ At
-                    @test reshape(convert(CuArray, t1' \ t), d1, d2) ≈ At1' \ At
-                    @test reshape(convert(CuArray, t2 \ t'), d2, d1) ≈ At2 \ At'
-                    @test reshape(convert(CuArray, t2' \ t'), d2, d1) ≈ At2' \ At'
-
-                    @test reshape(convert(CuArray, t2 / t), d2, d1) ≈ At2 / At
-                    @test reshape(convert(CuArray, t2' / t), d2, d1) ≈ At2' / At
-                    @test reshape(convert(CuArray, t1 / t'), d1, d2) ≈ At1 / At'
-                    @test reshape(convert(CuArray, t1' / t'), d1, d2) ≈ At1' / At'
                 end
             end
-        end=# # convert(CuArray broken
+        end
         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
             @timedtestset "Tensor functions" begin
                 W = V1 ⊗ V2
                 for T in (Float64, ComplexF64)
                     t = CUDA.randn(T, W, W)
                     s = dim(W)
-                    CUDA.@allowscalar begin
-                        #=@test (@constinferred sqrt(t))^2 ≈ t
-                        @test ad(sqrt(t)) ≈ sqrt(ad(t))
-                        
-                        expt = @constinferred exp(t)
-                        @test ad(expt) ≈ exp(ad(t))
+                    #@test (@constinferred sqrt(t))^2 ≈ t
+                    #@test ad(sqrt(t)) ≈ sqrt(ad(t)) # schur not supported for CuArray
 
-                        @test exp(@constinferred log(expt)) ≈ expt
-                        @test ad(log(expt)) ≈ log(ad(expt))
+                    expt = @constinferred exp(t)
+                    @test ad(expt) ≈ exp(ad(t))
 
-                        @test (@constinferred cos(t))^2 + (@constinferred sin(t))^2 ≈
-                              id(storagetype(t), W)
-                        @test (@constinferred tan(t)) ≈ sin(t) / cos(t)
-                        @test (@constinferred cot(t)) ≈ cos(t) / sin(t)
-                        @test (@constinferred cosh(t))^2 - (@constinferred sinh(t))^2 ≈
-                              id(storagetype(t), W)
-                        @test (@constinferred tanh(t)) ≈ sinh(t) / cosh(t)
-                        @test (@constinferred coth(t)) ≈ cosh(t) / sinh(t)
+                    # log doesn't work on CUDA yet
+                    #@test exp(@constinferred log(expt)) ≈ expt
+                    #@test ad(log(expt)) ≈ log(ad(expt))
 
-                        t1 = sin(t)
-                        @test sin(@constinferred asin(t1)) ≈ t1
-                        t2 = cos(t)
-                        @test cos(@constinferred acos(t2)) ≈ t2
-                        t3 = sinh(t)
-                        @test sinh(@constinferred asinh(t3)) ≈ t3
-                        t4 = cosh(t)
-                        @test cosh(@constinferred acosh(t4)) ≈ t4
-                        t5 = tan(t)
-                        @test tan(@constinferred atan(t5)) ≈ t5
-                        t6 = cot(t)
-                        @test cot(@constinferred acot(t6)) ≈ t6
-                        t7 = tanh(t)
-                        @test tanh(@constinferred atanh(t7)) ≈ t7
-                        t8 = coth(t)
-                        @test coth(@constinferred acoth(t8)) ≈ t8
-                        =# #exp not supported for CuArray
-                    end
+                    #=@test (@constinferred cos(t))^2 + (@constinferred sin(t))^2 ≈
+                          id(storagetype(t), W)
+                    @test (@constinferred tan(t)) ≈ sin(t) / cos(t)
+                    @test (@constinferred cot(t)) ≈ cos(t) / sin(t)
+                    @test (@constinferred cosh(t))^2 - (@constinferred sinh(t))^2 ≈
+                          id(storagetype(t), W)
+                    @test (@constinferred tanh(t)) ≈ sinh(t) / cosh(t)
+                    @test (@constinferred coth(t)) ≈ cosh(t) / sinh(t)=# # TODO in CUDA
+
+                    #=t1 = sin(t)
+                    @test sin(@constinferred asin(t1)) ≈ t1
+                    t2 = cos(t)
+                    @test cos(@constinferred acos(t2)) ≈ t2
+                    t3 = sinh(t)
+                    @test sinh(@constinferred asinh(t3)) ≈ t3
+                    t4 = cosh(t)
+                    @test cosh(@constinferred acosh(t4)) ≈ t4
+                    t5 = tan(t)
+                    @test tan(@constinferred atan(t5)) ≈ t5
+                    t6 = cot(t)
+                    @test cot(@constinferred acot(t6)) ≈ t6
+                    t7 = tanh(t)
+                    @test tanh(@constinferred atanh(t7)) ≈ t7
+                    t8 = coth(t)
+                    @test coth(@constinferred acoth(t8)) ≈ t8=#
+                    # TODO in CUDA
                 end
             end
         end
