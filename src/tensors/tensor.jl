@@ -388,14 +388,19 @@ function project_symmetric!(t::TensorMap, data::DenseArray)
     else
         for (f₁, f₂) in fusiontrees(t)
             F = convert(Array, (f₁, f₂))
-            dataslice = sview(
-                data, axes(codomain(t), f₁.uncoupled)..., axes(domain(t), f₂.uncoupled)...
-            )
             if FusionStyle(I) === UniqueFusion()
+                dataslice = sview(
+                    data, axes(codomain(t), f₁.uncoupled)..., axes(domain(t), f₂.uncoupled)...
+                )
                 Fscalar = first(F) # contains a single element
                 scale!(t[f₁, f₂], dataslice, conj(Fscalar))
             else
-                subblock = t[f₁, f₂]
+                # do everything on CPU
+                dataslice = sview(
+                    Array(data), axes(codomain(t), f₁.uncoupled)..., axes(domain(t), f₂.uncoupled)...
+                )
+                arr_t = TensorMap{scalartype(t)}(Array(t.data), t.space)
+                subblock = arr_t[f₁, f₂]
                 szbF = _interleave(size(F), size(subblock))
                 indset1 = ntuple(identity, numind(t))
                 indset2 = 2 .* indset1
@@ -408,6 +413,7 @@ function project_symmetric!(t::TensorMap, data::DenseArray)
                     (indset1, ()),
                     inv(dim(f₁.coupled)), false
                 )
+                t[f₁, f₂] .= arr_t[f₁, f₂]
             end
         end
     end
