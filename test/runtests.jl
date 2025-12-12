@@ -2,8 +2,6 @@
 # ------------
 using ArgParse: ArgParse
 using SafeTestsets: @safetestset
-# using CUDA: CUDA
-# using AMDGPU: AMDGPU
 
 function parse_commandline(args = ARGS)
     s = ArgParse.ArgParseSettings()
@@ -49,9 +47,9 @@ istestfile(fn) = endswith(fn, ".jl") && !contains(fn, "setup")
 
     # handle GPU cases separately
     if group == "cuda"
-        # CUDA.functional() || continue
-    elseif group == "amd"
-        # AMDGPU.functional() || continue
+        using CUDA
+        CUDA.functional() || continue
+        @time include("cuda/tensors.jl")
     elseif is_buildkite
         continue
     end
