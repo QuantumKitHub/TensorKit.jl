@@ -629,8 +629,9 @@ end
     for V in (ℂ^2, Z2Space(0 => 2, 1 => 2), SU2Space(0 => 2, 1 => 2))
         t1 = ones(Float32, V ⊗ V, V)
         t2 = randn(ComplexF64, V ⊗ V ⊗ V)
+        t3 = randn(Float64, zero(V), zero(V))
         # test unlimited output
-        for t in (t1, t2, t1', t2')
+        for t in (t1, t2, t1', t2', t3)
             output = IOBuffer()
             summary(output, t)
             print(output, ":\n codomain: ")
