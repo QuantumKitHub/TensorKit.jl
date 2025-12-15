@@ -12,7 +12,8 @@ export Sector, AbstractIrrep, Irrep
 export FusionStyle, UniqueFusion, MultipleFusion, MultiplicityFreeFusion, SimpleFusion, GenericFusion
 export UnitStyle, SimpleUnit, GenericUnit
 export BraidingStyle, SymmetricBraiding, Bosonic, Fermionic, Anyonic, NoBraiding, HasBraiding
-export Trivial, Z2Irrep, Z3Irrep, Z4Irrep, ZNIrrep, U1Irrep, SU2Irrep, CU1Irrep
+export Trivial, Z2Irrep, Z3Irrep, Z4Irrep, ZNIrrep, LargeZNIrrep
+export ZNElement, Z2Element, Z3Element, Z4Element, A4Irrep, U1Irrep, SU2Irrep, CU1Irrep
 export ProductSector
 export FermionParity, FermionNumber, FermionSpin
 export FibonacciAnyon, IsingAnyon, IsingBimodule
@@ -42,7 +43,8 @@ export infimum, supremum, isisomorphic, ismonomorphic, isepimorphic
 # Reexport methods for sectors and properties thereof
 export sectortype, sectors, hassector
 export unit, rightunit, leftunit, allunits, isunit, otimes
-export Nsymbol, Fsymbol, Rsymbol, Bsymbol, frobenius_schur_phase, frobenius_schur_indicator, twist, sectorscalartype, deligneproduct
+export Nsymbol, Fsymbol, Rsymbol, Bsymbol, frobenius_schur_phase, frobenius_schur_indicator, twist, fusiontensor
+export sectorscalartype, deligneproduct
 
 # Export methods for fusion trees
 export fusiontrees, braid, permute, transpose
