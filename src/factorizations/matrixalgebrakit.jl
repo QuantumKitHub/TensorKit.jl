@@ -82,7 +82,8 @@ end
 function MAK.initialize_output(::typeof(svd_vals!), t::AbstractTensorMap, alg::AbstractAlgorithm)
     V_cod = infimum(fuse(codomain(t)), fuse(domain(t)))
     T = real(scalartype(t))
-    return SectorVector{T}(undef, V_cod)
+    A = similarstoragetype(t, T)
+    return SectorVector{T, sectortype(t), A}(undef, V_cod)
 end
 
 # Eigenvalue decomposition
@@ -105,13 +106,15 @@ end
 function MAK.initialize_output(::typeof(eigh_vals!), t::AbstractTensorMap, alg::AbstractAlgorithm)
     V_D = fuse(domain(t))
     T = real(scalartype(t))
-    return SectorVector{T}(undef, V_D)
+    A = similarstoragetype(t, T)
+    return SectorVector{T, sectortype(t), A}(undef, V_D)
 end
 
 function MAK.initialize_output(::typeof(eig_vals!), t::AbstractTensorMap, alg::AbstractAlgorithm)
     V_D = fuse(domain(t))
     Tc = complex(scalartype(t))
-    return SectorVector{Tc}(undef, V_D)
+    A = similarstoragetype(t, Tc)
+    return SectorVector{Tc, sectortype(t), A}(undef, V_D)
 end
 
 # QR decomposition
