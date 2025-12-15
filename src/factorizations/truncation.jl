@@ -67,7 +67,7 @@ function MAK.truncate(
 
     Ũ = similar(U, codomain(U) ← V_truncated)
     truncate_domain!(Ũ, U, ind)
-    S̃ = DiagonalTensorMap{scalartype(S)}(undef, V_truncated)
+    S̃ = similar_diagonal(S, V_truncated)
     truncate_diagonal!(S̃, S, ind)
     Ṽᴴ = similar(Vᴴ, V_truncated ← domain(Vᴴ))
     truncate_codomain!(Ṽᴴ, Vᴴ, ind)
@@ -132,7 +132,7 @@ for f! in (:eig_trunc!, :eigh_trunc!)
         ind = MAK.findtruncated(diagview(D), strategy)
         V_truncated = truncate_space(space(D, 1), ind)
 
-        D̃ = DiagonalTensorMap{scalartype(D)}(undef, V_truncated)
+        D = similar_diagonal(D, V_truncated)
         truncate_diagonal!(D̃, D, ind)
 
         Ṽ = similar(V, codomain(V) ← V_truncated)

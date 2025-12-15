@@ -74,7 +74,7 @@ end
 function MAK.initialize_output(::typeof(svd_compact!), t::AbstractTensorMap, ::AbstractAlgorithm)
     V_cod = V_dom = infimum(fuse(codomain(t)), fuse(domain(t)))
     U = similar(t, codomain(t) ← V_cod)
-    S = DiagonalTensorMap{real(scalartype(t))}(undef, V_cod)
+    S = similar_diagonal(t, real(scalartype(t)), V_cod)
     Vᴴ = similar(t, V_dom ← domain(t))
     return U, S, Vᴴ
 end
@@ -89,8 +89,7 @@ end
 # ------------------------
 function MAK.initialize_output(::typeof(eigh_full!), t::AbstractTensorMap, ::AbstractAlgorithm)
     V_D = fuse(domain(t))
-    T = real(scalartype(t))
-    D = DiagonalTensorMap{T}(undef, V_D)
+    D = similar_diagonal(t, real(scalartype(t)), V_D)
     V = similar(t, codomain(t) ← V_D)
     return D, V
 end
@@ -98,7 +97,7 @@ end
 function MAK.initialize_output(::typeof(eig_full!), t::AbstractTensorMap, ::AbstractAlgorithm)
     V_D = fuse(domain(t))
     Tc = complex(scalartype(t))
-    D = DiagonalTensorMap{Tc}(undef, V_D)
+    D = similar_diagonal(t, Tc, V_D)
     V = similar(t, Tc, codomain(t) ← V_D)
     return D, V
 end
