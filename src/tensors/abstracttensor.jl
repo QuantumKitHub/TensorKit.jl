@@ -656,8 +656,8 @@ function Base.imag(t::AbstractTensorMap)
     end
 end
 
-# Conversion to Array:
-#----------------------
+# Conversion to/from Array:
+#--------------------------
 # probably not optimized for speed, only for checking purposes
 function Base.convert(::Type{Array}, t::AbstractTensorMap)
     I = sectortype(t)
@@ -678,9 +678,55 @@ function Base.convert(::Type{Array}, t::AbstractTensorMap)
     end
 end
 
+"""
+    project_symmetric!(t::AbstractTensorMap, data::AbstractArray) -> t
+
+Project the data from a dense array `data` into the tensor map `t`. This function discards 
+any data that does not fit the symmetry structure of `t`.
+"""
+function project_symmetric!(t::AbstractTensorMap, data::AbstractArray)
+    # dimension check
+    codom, dom = codomain(t), domain(t)
+    arraysize = dims(t)
+    matsize = (dim(codom), dim(dom))
+    (size(data) == arraysize || size(data) == matsize) ||
+        throw(DimensionMismatch("input data has incompatible size for the given tensor"))
+    data = reshape(collect(data), arraysize)
+
+    I = sectortype(t)
+    if I === Trivial && t isa TensorMap
+        copy!(t.data, reshape(data, length(t.data)))
+        return t
+    end
+
+    for ((f₁, f₂), subblock) in subblocks(t)
+        F = convert(Array, (f₁, f₂))
+        dataslice = sview(
+            data, axes(codomain(t), f₁.uncoupled)..., axes(domain(t), f₂.uncoupled)...
+        )
+        if FusionStyle(I) === UniqueFusion()
+            Fscalar = only(F) # contains a single element
+            scale!(subblock, dataslice, conj(Fscalar))
+        else
+            szbF = _interleave(size(F), size(subblock))
+            indset1 = ntuple(identity, numind(t))
+            indset2 = 2 .* indset1
+            indset3 = indset2 .- 1
+            TensorOperations.tensorcontract!(
+                subblock,
+                F, ((), indset1), true,
+                sreshape(dataslice, szbF), (indset3, indset2), false,
+                (indset1, ()),
+                inv(dim(f₁.coupled)), false
+            )
+        end
+    end
+
+    return t
+end
+
 # Show and friends
 # ----------------
-
 function Base.dims2string(V::HomSpace)
     str_cod = numout(V) == 0 ? "()" : join(dim.(codomain(V)), '×')
     str_dom = numin(V) == 0 ? "()" : join(dim.(domain(V)), '×')
