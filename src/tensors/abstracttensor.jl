@@ -491,6 +491,8 @@ The structure may be specified either as a single `HomSpace` argument or as `cod
 
 By default, this will result in `TensorMap{T}(undef, V)` when custom objects do not
 specialize this method.
+
+See also [`similar_diagonal`](@ref).
 """ Base.similar(::AbstractTensorMap, args...)
 
 function Base.similar(
@@ -542,6 +544,70 @@ function Base.similar(
     ) where {TT <: AbstractTensorMap, S}
     return TensorMap{scalartype(TT)}(undef, cod, dom)
 end
+
+# similar diagonal
+# ----------------
+# The implementation is again written for similar_diagonal(t, TorA, V::TensorSpace) -> DiagonalTensorMap
+# and all other methods are just filling in default arguments
+@doc """
+    similar_diagonal(t::AbstractTensorMap, [AorT=storagetype(t)], [V=space(t)])
+    similar_diagonal(t::AbstractTensorMap, [AorT=storagetype(t)], codomain, domain)
+
+Creates an uninitialized mutable diagonal tensor with the given scalar or storagetype `AorT` and
+structure `V` or `codomain ← domain`, based on the source tensormap. The second and third
+arguments are both optional, defaulting to the given tensor's `storagetype` and `space`.
+The structure may be specified either as a single `HomSpace` argument or as `codomain` and
+`domain`.
+
+By default, this will result in `DiagonalTensorMap{T}(undef, V)` when custom objects do not
+specialize this method. Furthermore, the method will throw if the provided space is not compatible
+with a diagonal structure.
+
+See also [`Base.similar`](@ref).
+""" similar_diagonal(::AbstractTensorMap, args...)
+
+# 4 arguments
+function similar_diagonal(t::AbstractTensorMap, ::Type{T}, cod::TensorSpace, dom::TensorSpace) where {T}
+    length(cod) == length(dom) == 1 && cod == dom ||
+        throw(ArgumentError("requested space is not square"))
+    return similar_diagonal(t, T, cod)
+end
+
+# 3 arguments
+function similar_diagonal(t::AbstractTensorMap, ::Type{T}, V::TensorMapSpace) where {T}
+    numout(V) == numin(V) == 1 && domain(V) == codomain(V) ||
+        throw(ArgumentError("requested space is not square"))
+    return similar_diagonal(t, T, codomain(V))
+end
+function similar_diagonal(t::AbstractTensorMap, ::Type{T}, V::ProductSpace) where {T}
+    length(V) == 1 || throw(ArgumentError())
+    return similar_diagonal(t, T, only(V.spaces))
+end
+function similar_diagonal(t::AbstractTensorMap, ::Type{TorA}, V::ElementarySpace) where {TorA}
+    if TorA <: Number
+        T = TorA
+        A = similarstoragetype(t, T)
+    elseif TorA <: DenseVector
+        A = TorA
+        T = scalartype(A)
+    else
+        throw(ArgumentError("Type $TorA not supported for similar"))
+    end
+
+    return DiagonalTensorMap{T, spacetype(V), A}(undef, V)
+end
+
+# 2 arguments
+similar_diagonal(t::AbstractTensorMap, ::Type{T}) where {T} =
+    similar_diagonal(t, T, space(t))
+similar_diagonal(t::AbstractTensorMap, P::TensorMapSpace) =
+    similar_diagonal(t, similarstoragetype(t), P)
+similar_diagonal(t::AbstractTensorMap, P::TensorSpace) =
+    similar_diagonal(t, similarstoragetype(t), P)
+
+# 1 argument
+similar_diagonal(t::AbstractTensorMap) =
+    similar_diagonal(t, similarstoragetype(t), space(t))
 
 # Equality and approximality
 #----------------------------
