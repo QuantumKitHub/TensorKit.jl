@@ -78,9 +78,9 @@ dim(t::TensorMap) = length(t.data)
 # ==============================
 
 # INTERNAL: utility type alias that makes constructors also work for type aliases that specify
-# different storage types. (i.e. CuTensorMap = _TensorMap{T, CuVector{T}, ...})
-const _TensorMap{T, A <: DenseVector{T}, S, N₁, N₂} = TensorMap{T, S, N₁, N₂, A}
-const _Tensor{T, A <: DenseVector{T}, S, N} = Tensor{T, S, N, A}
+# different storage types. (i.e. CuTensorMap = TensorMapWithStorage{T, CuVector{T}, ...})
+const TensorMapWithStorage{T, A <: DenseVector{T}, S, N₁, N₂} = TensorMap{T, S, N₁, N₂, A}
+const TensorWithStorage{T, A <: DenseVector{T}, S, N} = Tensor{T, S, N, A}
 
 # undef constructors
 # ------------------
@@ -95,23 +95,23 @@ const _Tensor{T, A <: DenseVector{T}, S, N} = Tensor{T, S, N, A}
 Construct a `TensorMap` with uninitialized data with elements of type `T`.
 """
 TensorMap{T}(::UndefInitializer, V::TensorMapSpace) where {T} =
-    _TensorMap{T, _tensormap_storagetype(T)}(undef, V)
+    TensorMapWithStorage{T, _tensormap_storagetype(T)}(undef, V)
 TensorMap{T}(::UndefInitializer, codomain::TensorSpace, domain::TensorSpace) where {T} =
     TensorMap{T}(undef, codomain ← domain)
 Tensor{T}(::UndefInitializer, V::TensorSpace) where {T} = TensorMap{T}(undef, V ← one(V))
 
 """
-    (TensorMap{T, S, N₁, N₂, A} where {S, N₁, N₂})(undef, codomain, domain) where {T, A}
-    (TensorMap{T, S, N₁, N₂, A} where {S, N₁, N₂})(undef, codomain ← domain) where {T, A}
-    (TensorMap{T, S, N₁, N₂, A} where {S, N₁, N₂})(undef, domain → codomain) where {T, A}
+    TensorMapWithStorage{T, A}(undef, codomain, domain) where {T, A}
+    TensorMapWithStorage{T, A}(undef, codomain ← domain) where {T, A}
+    TensorMapWithStorage{T, A}(undef, domain → codomain) where {T, A}
 
 Construct a `TensorMap` with uninitialized data stored as `A <: DenseVector{T}`.
 """
-_TensorMap{T, A}(::UndefInitializer, V::TensorMapSpace) where {T, A} =
+TensorMapWithStorage{T, A}(::UndefInitializer, V::TensorMapSpace) where {T, A} =
     TensorMap{T, spacetype(V), numout(V), numin(V), A}(undef, V)
-_TensorMap{T, A}(::UndefInitializer, codomain::TensorSpace, domain::TensorSpace) where {T, A} =
-    _TensorMap{T, A}(undef, codomain ← domain)
-_Tensor{T, A}(::UndefInitializer, V::TensorSpace) where {T, A} = _TensorMap{T, A}(undef, V ← one(V))
+TensorMapWithStorage{T, A}(::UndefInitializer, codomain::TensorSpace, domain::TensorSpace) where {T, A} =
+    TensorMapWithStorage{T, A}(undef, codomain ← domain)
+TensorWithStorage{T, A}(::UndefInitializer, V::TensorSpace) where {T, A} = TensorMapWithStorage{T, A}(undef, V ← one(V))
 
 # raw data constructors
 # ---------------------
@@ -127,23 +127,23 @@ _Tensor{T, A}(::UndefInitializer, V::TensorSpace) where {T, A} = _TensorMap{T, A
 Construct a `TensorMap` from the given raw data.
 """
 TensorMap{T}(data::DenseVector{T}, V::TensorMapSpace) where {T} =
-    _TensorMap{T, typeof(data)}(data, V)
+    TensorMapWithStorage{T, typeof(data)}(data, V)
 TensorMap{T}(data::DenseVector{T}, codomain::TensorSpace, domain::TensorSpace) where {T} =
     TensorMap{T}(data, codomain ← domain)
 
 """
-    (TensorMap{T, S, N₁, N₂, A} where {S, N₁, N₂})(data::DenseVector{T}, codomain, domain) where {T, A}
-    (TensorMap{T, S, N₁, N₂, A} where {S, N₁, N₂})(data::DenseVector{T}, codomain ← domain) where {T, A}
-    (TensorMap{T, S, N₁, N₂, A} where {S, N₁, N₂})(data::DenseVector{T}, domain → codomain) where {T, A}
+    TensorMapWithStorage{T, A}(data::DenseVector{T}, codomain, domain) where {T, A}
+    TensorMapWithStorage{T, A}(data::DenseVector{T}, codomain ← domain) where {T, A}
+    TensorMapWithStorage{T, A}(data::DenseVector{T}, domain → codomain) where {T, A}
 
 Construct a `TensorMap` from the given raw data.
 """
-function _TensorMap{T, A}(data::DenseVector{T}, V::TensorMapSpace) where {T, A}
+function TensorMapWithStorage{T, A}(data::DenseVector{T}, V::TensorMapSpace) where {T, A}
     length(data) == dim(V) || throw(DimensionMismatch("invalid length of data"))
     return TensorMap{T, spacetype(V), numout(V), numin(V), A}(data, V)
 end
-_TensorMap{T, A}(data::DenseVector{T}, codomain::TensorSpace, domain::TensorSpace) where {T, A} =
-    _TensorMap{T, A}(data, codomain ← domain)
+TensorMapWithStorage{T, A}(data::DenseVector{T}, codomain::TensorSpace, domain::TensorSpace) where {T, A} =
+    TensorMapWithStorage{T, A}(data, codomain ← domain)
 
 # AbstractArray constructors
 # --------------------------
@@ -199,14 +199,14 @@ cases.
 function TensorMap(data::AbstractArray, V::TensorMapSpace; tol = sqrt(eps(real(float(eltype(data))))))
     T = eltype(data)
     A = _tensormap_storagetype(typeof(data))
-    return _TensorMap{T, A}(data, V; tol)
+    return TensorMapWithStorage{T, A}(data, V; tol)
 end
 TensorMap(data::AbstractArray, codom::TensorSpace, dom::TensorSpace; kwargs...) =
     TensorMap(data, codom ← dom; kwargs...)
 Tensor(data::AbstractArray, codom::TensorSpace; kwargs...) =
     TensorMap(data, codom ← one(codom); kwargs...)
 
-function _TensorMap{T, A}(
+function TensorMapWithStorage{T, A}(
         data::AbstractArray, V::TensorMapSpace; tol = sqrt(eps(real(float(eltype(data)))))
     ) where {T, A}
     # refer to specific raw data constructors if input is a vector of the correct length
@@ -218,7 +218,7 @@ function _TensorMap{T, A}(
         return TensorMap{T, spacetype(V), numout(V), numin(V), A}(reshape(data, length(data)), V)
 
     # do projection
-    t = _TensorMap{T, A}(undef, V)
+    t = TensorMapWithStorage{T, A}(undef, V)
     t = project_symmetric!(t, data)
 
     # verify result
@@ -227,10 +227,10 @@ function _TensorMap{T, A}(
 
     return t
 end
-_TensorMap{T, A}(data::AbstractArray, codom::TensorSpace, dom::TensorSpace; kwargs...) where {T, A} =
-    _TensorMap(data, codom ← dom; kwargs...)
-_Tensor{T, A}(data::AbstractArray, codom::TensorSpace; kwargs...) where {T, A} =
-    _TensorMap{T, A}(data, codom ← one(codom); kwargs...)
+TensorMapWithStorage{T, A}(data::AbstractArray, codom::TensorSpace, dom::TensorSpace; kwargs...) where {T, A} =
+    TensorMapWithStorage(data, codom ← dom; kwargs...)
+TensorWithStorage{T, A}(data::AbstractArray, codom::TensorSpace; kwargs...) where {T, A} =
+    TensorMapWithStorage{T, A}(data, codom ← one(codom); kwargs...)
 
 # block data constructors
 # -----------------------
@@ -256,13 +256,13 @@ Construct a `TensorMap` by explicitly specifying its block data.
 """
 function TensorMap(data::_BlockData, V::TensorMapSpace)
     A = _tensormap_storagetype(valtype(data))
-    return _TensorMap{scalartype(A), A}(data, V)
+    return TensorMapWithStorage{scalartype(A), A}(data, V)
 end
 TensorMap(data::_BlockData, codom::TensorSpace, dom::TensorSpace) =
     TensorMap(data, codom ← dom)
 
-function _TensorMap{T, A}(data::_BlockData, V::TensorMapSpace) where {T, A}
-    t = _TensorMap{T, A}(undef, V)
+function TensorMapWithStorage{T, A}(data::_BlockData, V::TensorMapSpace) where {T, A}
+    t = TensorMapWithStorage{T, A}(undef, V)
 
     # check that there aren't too many blocks
     for (c, b) in data
@@ -279,8 +279,8 @@ function _TensorMap{T, A}(data::_BlockData, V::TensorMapSpace) where {T, A}
 
     return t
 end
-_TensorMap{T, A}(data::_BlockData, codom::TensorSpace, dom::TensorSpace) where {T, A} =
-    _TensorMap{T, A}(data, codom ← dom)
+TensorMapWithStorage{T, A}(data::_BlockData, codom::TensorSpace, dom::TensorSpace) where {T, A} =
+    TensorMapWithStorage{T, A}(data, codom ← dom)
 
 # Higher-level constructors
 # =========================
