@@ -125,6 +125,7 @@ TensorWithStorage{T, A}(::UndefInitializer, V::TensorSpace) where {T, A} = Tenso
     TensorMap{T}(data::DenseVector{T}, domain → codomain)
 
 Construct a `TensorMap` from the given raw data.
+This constructor takes ownership of the provided vector, and will not make an independent copy.
 """
 TensorMap{T}(data::DenseVector{T}, V::TensorMapSpace) where {T} =
     TensorMapWithStorage{T, typeof(data)}(data, V)
@@ -137,6 +138,7 @@ TensorMap{T}(data::DenseVector{T}, codomain::TensorSpace, domain::TensorSpace) w
     TensorMapWithStorage{T, A}(data::DenseVector{T}, domain → codomain) where {T, A}
 
 Construct a `TensorMap` from the given raw data.
+This constructor takes ownership of the provided vector, and will not make an independent copy.
 """
 function TensorMapWithStorage{T, A}(data::A, V::TensorMapSpace) where {T, A}
     length(data) == dim(V) || throw(DimensionMismatch("invalid length of data"))
