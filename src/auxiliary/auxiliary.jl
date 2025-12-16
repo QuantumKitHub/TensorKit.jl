@@ -86,3 +86,6 @@ end
 else
     _allequal(f, xs) = allequal(f, xs)
 end
+
+Base.@assume_effects :foldable parenttype(::Type{T}) where {T} =
+    Core.Compiler.return_type(parent, Tuple{T})

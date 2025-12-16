@@ -31,6 +31,8 @@ struct TensorMap{T, S <: IndexSpace, N₁, N₂, A <: DenseVector{T}} <: Abstrac
         I = sectortype(S)
         T <: Real && !(sectorscalartype(I) <: Real) &&
             @warn("Tensors with real data might be incompatible with sector type $I", maxlog = 1)
+        d = fusionblockstructure(space).totaldim
+        length(data) == d || throw(DimensionMismatch("invalid length of data"))
         return new{T, S, N₁, N₂, A}(data, space)
     end
 end
@@ -47,19 +49,20 @@ i.e. a tensor map with only a non-trivial output space.
 const Tensor{T, S, N, A} = TensorMap{T, S, N, 0, A}
 
 function tensormaptype(S::Type{<:IndexSpace}, N₁, N₂, TorA::Type)
-    if TorA <: Number
-        return TensorMap{TorA, S, N₁, N₂, Vector{TorA}}
-    elseif TorA <: DenseVector
-        return TensorMap{scalartype(TorA), S, N₁, N₂, TorA}
-    else
-        throw(ArgumentError("argument $TorA should specify a scalar type (`<:Number`) or a storage type `<:DenseVector{<:Number}`"))
-    end
+    A = _tensormap_storagetype(TorA)
+    A <: DenseVector || throw(ArgumentError("Cannot determine a valid storage type from argument $TorA"))
+    return TensorMap{scalartype(A), S, N₁, N₂, A}
 end
 
 # hook for mapping input types to storage types -- to be implemented in extensions
-_tensormap_storagetype(::Type{A}) where {A <: AbstractArray} = _tensormap_storagetype(scalartype(A))
 _tensormap_storagetype(::Type{A}) where {A <: DenseVector{<:Number}} = A
+_tensormap_storagetype(::Type{A}) where {A <: Array} = _tensormap_storagetype(scalartype(A))
 _tensormap_storagetype(::Type{T}) where {T <: Number} = Vector{T}
+function _tensormap_storagetype(::Type{A}) where {A <: AbstractArray}
+    PA = parenttype(A)
+    PA === A && throw(MethodError(_tensormap_storagetype, A)) # avoid infinite recursion
+    return _tensormap_storagetype(PA)
+end
 
 # Basic methods for characterising a tensor:
 #--------------------------------------------
@@ -95,7 +98,7 @@ const TensorWithStorage{T, A <: DenseVector{T}, S, N} = Tensor{T, S, N, A}
 Construct a `TensorMap` with uninitialized data with elements of type `T`.
 """
 TensorMap{T}(::UndefInitializer, V::TensorMapSpace) where {T} =
-    TensorMapWithStorage{T, _tensormap_storagetype(T)}(undef, V)
+    tensormaptype(spacetype(V), numout(V), numin(V), T)(undef, V)
 TensorMap{T}(::UndefInitializer, codomain::TensorSpace, domain::TensorSpace) where {T} =
     TensorMap{T}(undef, codomain ← domain)
 Tensor{T}(::UndefInitializer, V::TensorSpace) where {T} = TensorMap{T}(undef, V ← one(V))
@@ -108,7 +111,7 @@ Tensor{T}(::UndefInitializer, V::TensorSpace) where {T} = TensorMap{T}(undef, V 
 Construct a `TensorMap` with uninitialized data stored as `A <: DenseVector{T}`.
 """
 TensorMapWithStorage{T, A}(::UndefInitializer, V::TensorMapSpace) where {T, A} =
-    TensorMap{T, spacetype(V), numout(V), numin(V), A}(undef, V)
+    tensormaptype(spacetype(V), numout(V), numin(V), A)(undef, V)
 TensorMapWithStorage{T, A}(::UndefInitializer, codomain::TensorSpace, domain::TensorSpace) where {T, A} =
     TensorMapWithStorage{T, A}(undef, codomain ← domain)
 TensorWithStorage{T, A}(::UndefInitializer, V::TensorSpace) where {T, A} = TensorMapWithStorage{T, A}(undef, V ← one(V))
@@ -128,7 +131,7 @@ Construct a `TensorMap` from the given raw data.
 This constructor takes ownership of the provided vector, and will not make an independent copy.
 """
 TensorMap{T}(data::DenseVector{T}, V::TensorMapSpace) where {T} =
-    TensorMapWithStorage{T, typeof(data)}(data, V)
+    tensormaptype(spacetype(V), numout(V), numin(V), typeof(data))(data, V)
 TensorMap{T}(data::DenseVector{T}, codomain::TensorSpace, domain::TensorSpace) where {T} =
     TensorMap{T}(data, codomain ← domain)
 
@@ -141,8 +144,7 @@ Construct a `TensorMap` from the given raw data.
 This constructor takes ownership of the provided vector, and will not make an independent copy.
 """
 function TensorMapWithStorage{T, A}(data::A, V::TensorMapSpace) where {T, A}
-    length(data) == dim(V) || throw(DimensionMismatch("invalid length of data"))
-    return TensorMap{T, spacetype(V), numout(V), numin(V), A}(data, V)
+    return tensormaptype(spacetype(V), numout(V), numin(V), typeof(data))(data, V)
 end
 TensorMapWithStorage{T, A}(data::A, codomain::TensorSpace, domain::TensorSpace) where {T, A} =
     TensorMapWithStorage{T, A}(data, codomain ← domain)
@@ -213,11 +215,11 @@ function TensorMapWithStorage{T, A}(
     ) where {T, A}
     # refer to specific raw data constructors if input is a vector of the correct length
     ndims(data) == 1 && length(data) == dim(V) &&
-        return TensorMap{T, spacetype(V), numout(V), numin(V), A}(data, V)
+        return tensormaptype(spacetype(V), numout(V), numin(V), A)(data, V)
 
     # special case trivial: refer to same method, but now with vector argument
     sectortype(V) === Trivial &&
-        return TensorMap{T, spacetype(V), numout(V), numin(V), A}(reshape(data, length(data)), V)
+        return tensormaptype(spacetype(V), numout(V), numin(V), A)(reshape(data, length(data)), V)
 
     # do projection
     t = TensorMapWithStorage{T, A}(undef, V)
@@ -230,7 +232,7 @@ function TensorMapWithStorage{T, A}(
     return t
 end
 TensorMapWithStorage{T, A}(data::AbstractArray, codom::TensorSpace, dom::TensorSpace; kwargs...) where {T, A} =
-    TensorMapWithStorage(data, codom ← dom; kwargs...)
+    TensorMapWithStorage{T, A}(data, codom ← dom; kwargs...)
 TensorWithStorage{T, A}(data::AbstractArray, codom::TensorSpace; kwargs...) where {T, A} =
     TensorMapWithStorage{T, A}(data, codom ← one(codom); kwargs...)
 

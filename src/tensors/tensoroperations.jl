@@ -6,14 +6,13 @@ function TO.tensorstructure(t::AbstractTensorMap, iA::Int, conjA::Bool)
 end
 
 function TO.tensoralloc(
-        ::Type{TT}, structure::TensorMapSpace{S, N₁, N₂},
-        istemp::Val, allocator = TO.DefaultAllocator()
-    ) where {T, S, N₁, N₂, TT <: AbstractTensorMap{T, S, N₁, N₂}}
+        ::Type{TT}, structure::TensorMapSpace, istemp::Val, allocator = TO.DefaultAllocator()
+    ) where {TT <: AbstractTensorMap}
     A = storagetype(TT)
     dim = fusionblockstructure(structure).totaldim
     data = TO.tensoralloc(A, dim, istemp, allocator)
-    # return TT(data, structure)
-    return TensorMap{T}(data, structure)
+    TT′ = tensormaptype(spacetype(structure), numout(structure), numin(structure), typeof(data))
+    return TT′(data, structure)
 end
 
 function TO.tensorfree!(t::TensorMap, allocator = TO.DefaultAllocator())

@@ -496,54 +496,39 @@ See also [`similar_diagonal`](@ref).
 """ Base.similar(::AbstractTensorMap, args...)
 
 function Base.similar(
-        t::AbstractTensorMap, ::Type{T}, codomain::TensorSpace{S}, domain::TensorSpace{S}
-    ) where {T, S}
+        t::AbstractTensorMap, ::Type{T}, codomain::TensorSpace, domain::TensorSpace
+    ) where {T}
     return similar(t, T, codomain ← domain)
 end
+
 # 3 arguments
-function Base.similar(
-        t::AbstractTensorMap, codomain::TensorSpace{S}, domain::TensorSpace{S}
-    ) where {S}
-    return similar(t, similarstoragetype(t), codomain ← domain)
-end
-function Base.similar(t::AbstractTensorMap, ::Type{T}, codomain::TensorSpace) where {T}
-    return similar(t, T, codomain ← one(codomain))
-end
+Base.similar(t::AbstractTensorMap, codomain::TensorSpace, domain::TensorSpace) =
+    similar(t, similarstoragetype(t), codomain ← domain)
+Base.similar(t::AbstractTensorMap, ::Type{T}, codomain::TensorSpace) where {T} =
+    similar(t, T, codomain ← one(codomain))
+
 # 2 arguments
-function Base.similar(t::AbstractTensorMap, codomain::TensorSpace)
-    return similar(t, similarstoragetype(t), codomain ← one(codomain))
-end
-Base.similar(t::AbstractTensorMap, P::TensorMapSpace) = similar(t, storagetype(t), P)
+Base.similar(t::AbstractTensorMap, codomain::TensorSpace) =
+    similar(t, similarstoragetype(t), codomain ← one(codomain))
+Base.similar(t::AbstractTensorMap, V::TensorMapSpace) = similar(t, similarstoragetype(t), V)
 Base.similar(t::AbstractTensorMap, ::Type{T}) where {T} = similar(t, T, space(t))
 # 1 argument
 Base.similar(t::AbstractTensorMap) = similar(t, similarstoragetype(t), space(t))
 
 # generic implementation for AbstractTensorMap -> returns `TensorMap`
-function Base.similar(t::AbstractTensorMap, ::Type{TorA}, P::TensorMapSpace{S}) where {TorA, S}
-    if TorA <: Number
-        T = TorA
-        A = similarstoragetype(t, T)
-    elseif TorA <: DenseVector
-        A = TorA
-        T = scalartype(A)
-    else
-        throw(ArgumentError("Type $TorA not supported for similar"))
-    end
-
-    N₁ = length(codomain(P))
-    N₂ = length(domain(P))
-    return TensorMap{T, S, N₁, N₂, A}(undef, P)
+function Base.similar(t::AbstractTensorMap, ::Type{TorA}, V::TensorMapSpace) where {TorA}
+    A = TorA <: Number ? similarstoragetype(t, TorA) : TorA
+    TT = tensormaptype(spacetype(V), numout(V), numin(V), A)
+    return TT(undef, V)
 end
 
 # implementation in type-domain
-function Base.similar(::Type{TT}, P::TensorMapSpace) where {TT <: AbstractTensorMap}
-    return TensorMap{scalartype(TT)}(undef, P)
+function Base.similar(::Type{TT}, V::TensorMapSpace) where {TT <: AbstractTensorMap}
+    TT′ = tensormaptype(spacetype(V), numout(V), numin(V), similarstoragetype(TT))
+    return TT′(undef, V)
 end
-function Base.similar(
-        ::Type{TT}, cod::TensorSpace{S}, dom::TensorSpace{S}
-    ) where {TT <: AbstractTensorMap, S}
-    return TensorMap{scalartype(TT)}(undef, cod, dom)
-end
+Base.similar(::Type{TT}, cod::TensorSpace, dom::TensorSpace) where {TT <: AbstractTensorMap} =
+    similar(TT, cod ← dom)
 
 # similar diagonal
 # ----------------
