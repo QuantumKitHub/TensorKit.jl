@@ -16,7 +16,7 @@ function SectorVector{T}(::UndefInitializer, V::ElementarySpace) where {T}
     structure = diagonalblockstructure(V ← V)
     return SectorVector(data, structure)
 end
-function SectorVector{T, I, A}(::UndefInitializer, V::ElementarySpace) where {T, I, A}
+function SectorVector{T, I, A}(::UndefInitializer, V::ElementarySpace) where {T, I, A <: AbstractVector{T}}
     data = A(undef, reduceddim(V))
     structure = diagonalblockstructure(V ← V)
     return SectorVector{T, I, A}(data, structure)
