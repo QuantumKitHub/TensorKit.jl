@@ -6,9 +6,12 @@ module Factorizations
 export copy_oftype, factorisation_scalartype, one!, truncspace
 
 using ..TensorKit
-using ..TensorKit: AdjointTensorMap, SectorDict, SectorVector, blocktype, foreachblock, one!, similar_diagonal
+using ..TensorKit: AdjointTensorMap, SectorDict, SectorVector,
+    blocktype, foreachblock, one!,
+    similar_diagonal, similarstoragetype
 
-using LinearAlgebra: LinearAlgebra, BlasFloat, Diagonal, svdvals, svdvals!, eigen, eigen!,
+using LinearAlgebra: LinearAlgebra, BlasFloat, Diagonal,
+    svdvals, svdvals!, eigen, eigen!,
     isposdef, isposdef!, ishermitian
 
 using TensorOperations: Index2Tuple
