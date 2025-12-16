@@ -72,7 +72,7 @@ function MAK.initialize_output(
     V_cod = fuse(codomain(t))
     V_dom = fuse(domain(t))
     U = similar(t, codomain(t) ← V_cod)
-    S = similar_diagonal(t, real(scalartype(t)), V_cod ← V_dom)
+    S = similar_diagonal(t, real(scalartype(t)), V_cod)
     Vᴴ = similar(t, V_dom ← domain(t))
     return U, S, Vᴴ
 end

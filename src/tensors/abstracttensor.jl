@@ -547,17 +547,15 @@ end
 
 # similar diagonal
 # ----------------
-# The implementation is again written for similar_diagonal(t, TorA, V::TensorSpace) -> DiagonalTensorMap
+# The implementation is again written for similar_diagonal(t, TorA, V::ElementarySpace) -> DiagonalTensorMap
 # and all other methods are just filling in default arguments
 @doc """
-    similar_diagonal(t::AbstractTensorMap, [AorT=storagetype(t)], [V=space(t)])
-    similar_diagonal(t::AbstractTensorMap, [AorT=storagetype(t)], codomain, domain)
+    similar_diagonal(t::AbstractTensorMap, [AorT=storagetype(t)], [V::ElementarySpace])
 
 Creates an uninitialized mutable diagonal tensor with the given scalar or storagetype `AorT` and
-structure `V` or `codomain ← domain`, based on the source tensormap. The second and third
-arguments are both optional, defaulting to the given tensor's `storagetype` and `space`.
-The structure may be specified either as a single `HomSpace` argument or as `codomain` and
-`domain`.
+structure `V ← V`, based on the source tensormap. The second argument is optional and defaults
+to the given tensor's `storagetype`, while the third argument can only be omitted for square
+input tensors of space `V ← V`, to conform with the diagonal structure.
 
 By default, this will result in `DiagonalTensorMap{T}(undef, V)` when custom objects do not
 specialize this method. Furthermore, the method will throw if the provided space is not compatible
@@ -566,23 +564,7 @@ with a diagonal structure.
 See also [`Base.similar`](@ref).
 """ similar_diagonal(::AbstractTensorMap, args...)
 
-# 4 arguments
-function similar_diagonal(t::AbstractTensorMap, ::Type{T}, cod::TensorSpace, dom::TensorSpace) where {T}
-    length(cod) == length(dom) == 1 && cod == dom ||
-        throw(ArgumentError("requested space is not square"))
-    return similar_diagonal(t, T, cod)
-end
-
 # 3 arguments
-function similar_diagonal(t::AbstractTensorMap, ::Type{T}, V::TensorMapSpace) where {T}
-    numout(V) == numin(V) == 1 && domain(V) == codomain(V) ||
-        throw(ArgumentError("requested space is not square"))
-    return similar_diagonal(t, T, codomain(V))
-end
-function similar_diagonal(t::AbstractTensorMap, ::Type{T}, V::ProductSpace) where {T}
-    length(V) == 1 || throw(ArgumentError())
-    return similar_diagonal(t, T, only(V.spaces))
-end
 function similar_diagonal(t::AbstractTensorMap, ::Type{TorA}, V::ElementarySpace) where {TorA}
     if TorA <: Number
         T = TorA
