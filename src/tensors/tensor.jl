@@ -138,11 +138,11 @@ TensorMap{T}(data::DenseVector{T}, codomain::TensorSpace, domain::TensorSpace) w
 
 Construct a `TensorMap` from the given raw data.
 """
-function TensorMapWithStorage{T, A}(data::DenseVector{T}, V::TensorMapSpace) where {T, A}
+function TensorMapWithStorage{T, A}(data::A, V::TensorMapSpace) where {T, A}
     length(data) == dim(V) || throw(DimensionMismatch("invalid length of data"))
     return TensorMap{T, spacetype(V), numout(V), numin(V), A}(data, V)
 end
-TensorMapWithStorage{T, A}(data::DenseVector{T}, codomain::TensorSpace, domain::TensorSpace) where {T, A} =
+TensorMapWithStorage{T, A}(data::A, codomain::TensorSpace, domain::TensorSpace) where {T, A} =
     TensorMapWithStorage{T, A}(data, codomain ← domain)
 
 # AbstractArray constructors
