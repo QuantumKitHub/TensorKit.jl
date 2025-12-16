@@ -597,17 +597,16 @@ function similar_diagonal(t::AbstractTensorMap, ::Type{TorA}, V::ElementarySpace
     return DiagonalTensorMap{T, spacetype(V), A}(undef, V)
 end
 
-# 2 arguments
-similar_diagonal(t::AbstractTensorMap, ::Type{T}) where {T} =
-    similar_diagonal(t, T, space(t))
-similar_diagonal(t::AbstractTensorMap, P::TensorMapSpace) =
-    similar_diagonal(t, similarstoragetype(t), P)
-similar_diagonal(t::AbstractTensorMap, P::TensorSpace) =
-    similar_diagonal(t, similarstoragetype(t), P)
+similar_diagonal(t::AbstractTensorMap) = similar_diagonal(t, similarstoragetype(t), _diagspace(t))
+similar_diagonal(t::AbstractTensorMap, V::ElementarySpace) = similar_diagonal(t, similarstoragetype(t), V)
+similar_diagonal(t::AbstractTensorMap, T::Type) = similar_diagonal(t, T, _diagspace(t))
 
-# 1 argument
-similar_diagonal(t::AbstractTensorMap) =
-    similar_diagonal(t, similarstoragetype(t), space(t))
+function _diagspace(t)
+    cod, dom = codomain(t), domain(t)
+    length(cod) == 1 && cod == dom ||
+        throw(ArgumentError("space does not support a diagonal TensorMap"))
+    return only(cod)
+end
 
 # Equality and approximality
 #----------------------------
