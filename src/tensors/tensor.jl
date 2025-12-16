@@ -48,20 +48,9 @@ i.e. a tensor map with only a non-trivial output space.
 """
 const Tensor{T, S, N, A} = TensorMap{T, S, N, 0, A}
 
-function tensormaptype(S::Type{<:IndexSpace}, N₁, N₂, TorA::Type)
-    A = _tensormap_storagetype(TorA)
-    A <: DenseVector || throw(ArgumentError("Cannot determine a valid storage type from argument $TorA"))
+function tensormaptype(::Type{S}, N₁, N₂, ::Type{TorA}) where {S <: IndexSpace, TorA}
+    A = similarstoragetype(TorA)
     return TensorMap{scalartype(A), S, N₁, N₂, A}
-end
-
-# hook for mapping input types to storage types -- to be implemented in extensions
-_tensormap_storagetype(::Type{A}) where {A <: DenseVector{<:Number}} = A
-_tensormap_storagetype(::Type{A}) where {A <: Array} = _tensormap_storagetype(scalartype(A))
-_tensormap_storagetype(::Type{T}) where {T <: Number} = Vector{T}
-function _tensormap_storagetype(::Type{A}) where {A <: AbstractArray}
-    PA = parenttype(A)
-    PA === A && throw(MethodError(_tensormap_storagetype, A)) # avoid infinite recursion
-    return _tensormap_storagetype(PA)
 end
 
 # Basic methods for characterising a tensor:
@@ -201,9 +190,8 @@ cases.
     the specified symmetry structure, up to a tolerance `tol`.
 """
 function TensorMap(data::AbstractArray, V::TensorMapSpace; tol = sqrt(eps(real(float(eltype(data))))))
-    T = eltype(data)
-    A = _tensormap_storagetype(typeof(data))
-    return TensorMapWithStorage{T, A}(data, V; tol)
+    A = similarstoragetype(data)
+    return TensorMapWithStorage{scalartype(A), A}(data, V; tol)
 end
 TensorMap(data::AbstractArray, codom::TensorSpace, dom::TensorSpace; kwargs...) =
     TensorMap(data, codom ← dom; kwargs...)
@@ -259,7 +247,7 @@ Construct a `TensorMap` by explicitly specifying its block data.
 - `domain::ProductSpace{S, N₂}`: the domain as a `ProductSpace` of `N₂` spaces of type `S <: ElementarySpace`.
 """
 function TensorMap(data::_BlockData, V::TensorMapSpace)
-    A = _tensormap_storagetype(valtype(data))
+    A = similarstoragetype(data)
     return TensorMapWithStorage{scalartype(A), A}(data, V)
 end
 TensorMap(data::_BlockData, codom::TensorSpace, dom::TensorSpace) =
