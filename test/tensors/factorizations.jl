@@ -282,13 +282,14 @@ for V in spacelist
                 @test norm(t - U3 * S3 * Vᴴ3) ≈ ϵ3 atol = eps(real(T))^(4 / 5)
                 @test space(S3, 1) ≾ space(S2, 1)
 
-                trunc = truncerror(; atol = ϵ2)
-                U4, S4, Vᴴ4, ϵ4 = @constinferred svd_trunc(t; trunc)
-                @test t * Vᴴ4' ≈ U4 * S4
-                @test isisometric(U4)
-                @test isisometric(Vᴴ4; side = :right)
-                @test norm(t - U4 * S4 * Vᴴ4) ≈ ϵ4 atol = eps(real(T))^(4 / 5)
-                @test ϵ4 ≤ ϵ2
+                for trunc in (truncerror(; atol = ϵ2), truncerror(; rtol = ϵ2 / norm(t)))
+                    U4, S4, Vᴴ4, ϵ4 = @constinferred svd_trunc(t; trunc)
+                    @test t * Vᴴ4' ≈ U4 * S4
+                    @test isisometric(U4)
+                    @test isisometric(Vᴴ4; side = :right)
+                    @test norm(t - U4 * S4 * Vᴴ4) ≈ ϵ4 atol = eps(real(T))^(4 / 5)
+                    @test ϵ4 ≤ ϵ2
+                end
 
                 trunc = truncrank(nvals) & trunctol(; atol = λ - 10eps(λ))
                 U5, S5, Vᴴ5, ϵ5 = @constinferred svd_trunc(t; trunc)
