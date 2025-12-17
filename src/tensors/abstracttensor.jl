@@ -586,7 +586,7 @@ Base.similar(::Type{TT}, cod::TensorSpace, dom::TensorSpace) where {TT <: Abstra
 # The implementation is again written for similar_diagonal(t, TorA, V::ElementarySpace) -> DiagonalTensorMap
 # and all other methods are just filling in default arguments
 @doc """
-    similar_diagonal(t::AbstractTensorMap, [AorT=storagetype(t)], [V::ElementarySpace])
+    similar_diagonal(t::AbstractTensorMap, [AorT=scalartype(t)], [V::ElementarySpace])
 
 Creates an uninitialized mutable diagonal tensor with the given scalar or storagetype `AorT` and
 structure `V ← V`, based on the source tensormap. The second argument is optional and defaults
@@ -602,21 +602,12 @@ See also [`Base.similar`](@ref).
 
 # 3 arguments
 function similar_diagonal(t::AbstractTensorMap, ::Type{TorA}, V::ElementarySpace) where {TorA}
-    if TorA <: Number
-        T = TorA
-        A = similarstoragetype(t, T)
-    elseif TorA <: DenseVector
-        A = TorA
-        T = scalartype(A)
-    else
-        throw(ArgumentError("Type $TorA not supported for similar"))
-    end
-
-    return DiagonalTensorMap{T, spacetype(V), A}(undef, V)
+    A = similarstoragetype(TorA <: Number ? similarstoragetype(t, TorA) : TorA)
+    return DiagonalTensorMap{scalartype(A), spacetype(V), A}(undef, V)
 end
 
-similar_diagonal(t::AbstractTensorMap) = similar_diagonal(t, similarstoragetype(t), _diagspace(t))
-similar_diagonal(t::AbstractTensorMap, V::ElementarySpace) = similar_diagonal(t, similarstoragetype(t), V)
+similar_diagonal(t::AbstractTensorMap) = similar_diagonal(t, scalartype(t), _diagspace(t))
+similar_diagonal(t::AbstractTensorMap, V::ElementarySpace) = similar_diagonal(t, scalartype(t), V)
 similar_diagonal(t::AbstractTensorMap, T::Type) = similar_diagonal(t, T, _diagspace(t))
 
 function _diagspace(t)
