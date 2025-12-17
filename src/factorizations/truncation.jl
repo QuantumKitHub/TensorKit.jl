@@ -132,7 +132,7 @@ for f! in (:eig_trunc!, :eigh_trunc!)
         ind = MAK.findtruncated(diagview(D), strategy)
         V_truncated = truncate_space(space(D, 1), ind)
 
-        D = similar_diagonal(D, V_truncated)
+        D̃ = similar_diagonal(D, V_truncated)
         truncate_diagonal!(D̃, D, ind)
 
         Ṽ = similar(V, codomain(V) ← V_truncated)
