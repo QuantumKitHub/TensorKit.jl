@@ -12,7 +12,7 @@ using ..TensorKit: AdjointTensorMap, SectorDict, SectorVector,
 
 using LinearAlgebra: LinearAlgebra, BlasFloat, Diagonal,
     svdvals, svdvals!, eigen, eigen!,
-    isposdef, isposdef!, ishermitian
+    isposdef, isposdef!
 
 using TensorOperations: Index2Tuple
 
@@ -37,10 +37,10 @@ TensorKit.one!(A::AbstractMatrix) = MatrixAlgebraKit.one!(A)
 #------------------------------#
 
 function LinearAlgebra.eigen(t::AbstractTensorMap; kwargs...)
-    return ishermitian(t) ? eigh_full(t; kwargs...) : eig_full(t; kwargs...)
+    return LinearAlgebra.ishermitian(t) ? eigh_full(t; kwargs...) : eig_full(t; kwargs...)
 end
 function LinearAlgebra.eigen!(t::AbstractTensorMap; kwargs...)
-    return ishermitian(t) ? eigh_full!(t; kwargs...) : eig_full!(t; kwargs...)
+    return LinearAlgebra.ishermitian(t) ? eigh_full!(t; kwargs...) : eig_full!(t; kwargs...)
 end
 
 function LinearAlgebra.eigvals(t::AbstractTensorMap; kwargs...)
