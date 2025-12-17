@@ -63,6 +63,12 @@ This function determines the type of newly allocated `TensorMap`s throughout Ten
 It does so by leveraging type inference and calls to `Base.similar` for automatically determining
 appropriate storage types. Additionally this registers the default storage type when only a type
 `T <: Number` is provided, which is `Vector{T}`.
+
+!!! note
+    There is a slight semantic difference in the single and two-argument version. The former is
+    used in constructor-like calls, and therefore will return the exact same type for a `DenseVector`
+    input. The latter is used in `similar`-like calls, and therefore will return the type of calling
+    `similar` on the given `DenseVector`, which need not coincide with the original type.
 """ similarstoragetype
 
 # implement in type domain
