@@ -586,7 +586,7 @@ similar_diagonal(t::AbstractTensorMap, T::Type) = similar_diagonal(t, T, _diagsp
 function _diagspace(t)
     cod, dom = codomain(t), domain(t)
     length(cod) == 1 && cod == dom ||
-        throw(ArgumentError("space does not support a diagonal TensorMap"))
+        throw(ArgumentError("space does not support a DiagonalTensorMap"))
     return only(cod)
 end
 
