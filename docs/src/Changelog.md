@@ -24,6 +24,7 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 - Extended support for selecting storage types in the `TensorMap` constructors ([#327](https://github.com/QuantumKitHub/TensorKit.jl/pull/327))
 - `similar_diagonal` to handle storage types when constructing diagonals ([#330](https://github.com/QuantumKitHub/TensorKit.jl/pull/330))
+- `LinearAlgebra.svd` overloads
 
 ### Fixed
 
