@@ -125,9 +125,9 @@ TensorMap{T}(data::DenseVector{T}, codomain::TensorSpace, domain::TensorSpace) w
     TensorMap{T}(data, codomain ← domain)
 
 """
-    TensorMapWithStorage{T, A}(data::DenseVector{T}, codomain, domain) where {T, A}
-    TensorMapWithStorage{T, A}(data::DenseVector{T}, codomain ← domain) where {T, A}
-    TensorMapWithStorage{T, A}(data::DenseVector{T}, domain → codomain) where {T, A}
+    TensorMapWithStorage{T, A}(data::A, codomain, domain) where {T, A<:DenseVector{T}}
+    TensorMapWithStorage{T, A}(data::A, codomain ← domain) where {T, A<:DenseVector{T}}
+    TensorMapWithStorage{T, A}(data::A, domain → codomain) where {T, A<:DenseVector{T}}
 
 Construct a `TensorMap` from the given raw data.
 This constructor takes ownership of the provided vector, and will not make an independent copy.

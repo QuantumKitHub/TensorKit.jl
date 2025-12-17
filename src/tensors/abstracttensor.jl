@@ -49,9 +49,9 @@ Return the type of vector that stores the data of a tensor.
 # the default implementation tries to leverarge inference and `similar`
 @doc """
     similarstoragetype(t, [T = scalartype(t)]) -> Type{<:DenseVector{T}}
-    similarstoragetype(TT, [T = scalartype(t)]) -> Type{<:DenseVector{T}}
-    similarstoragetype(A, [T = scalartype(t)]) -> Type{<:DenseVector{T}}
-    similarstoragetype(D, [T = scalartype(t)]) -> Type{<:DenseVector{T}}
+    similarstoragetype(TT, [T = scalartype(TT)]) -> Type{<:DenseVector{T}}
+    similarstoragetype(A, [T = scalartype(A)]) -> Type{<:DenseVector{T}}
+    similarstoragetype(D, [T = scalartype(D)]) -> Type{<:DenseVector{T}}
 
     similarstoragetype(T::Type{<:Number}) -> Vector{T}
 
