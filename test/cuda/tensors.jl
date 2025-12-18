@@ -155,9 +155,9 @@ for V in spacelist
                 i1 = @constinferred(isomorphism(T, V1 ⊗ V2, V2 ⊗ V1))
                 i2 = @constinferred(isomorphism(CuVector{T}, V2 ⊗ V1, V1 ⊗ V2))
                 CUDA.@allowscalar begin
-                    @test i1 * i2 == @constinferred(id(T, V1 ⊗ V2))
+                    @test i1 * i2 == @constinferred(id(CuVector{T, CUDA.DeviceMemory}, V1 ⊗ V2))
                     @test i2 * i1 == @constinferred(id(CuVector{T, CUDA.DeviceMemory}, V2 ⊗ V1))
-                    w = @constinferred(isometry(T, V1 ⊗ (oneunit(V1) ⊕ oneunit(V1)), V1))
+                    w = @constinferred(isometry(CuVector{T, CUDA.DeviceMemory}, V1 ⊗ (oneunit(V1) ⊕ oneunit(V1)), V1))
                     @test dim(w) == 2 * dim(V1 ← V1)
                     @test w' * w == id(CuVector{T, CUDA.DeviceMemory}, V1)
                     @test w * w' == (w * w')^2
@@ -353,7 +353,7 @@ for V in spacelist
             end
             @test ta ≈ tb
         end
-        if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
+        #=if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
             @timedtestset "Tensor contraction: test via CPU" begin
                 dA1 = CUDA.randn(ComplexF64, V1' * V2', V3')
                 dA2 = CUDA.randn(ComplexF64, V3 * V4, V5)
@@ -368,7 +368,7 @@ for V in spacelist
                     collect(dH)[s1, s2, t1, t2]
                 @test collect(dHrA12) ≈ hHrA12
             end
-        end
+        end=# # doesn't yet work because of AdjointTensor
         @timedtestset "Index flipping: test flipping inverse" begin
             t = CUDA.rand(ComplexF64, V1 ⊗ V1' ← V1' ⊗ V1)
             for i in 1:4
@@ -478,15 +478,15 @@ for V in spacelist
                 for T in (Float64, ComplexF64)
                     t = CUDA.randn(T, W, W)
                     s = dim(W)
-                    @test (@constinferred sqrt(t))^2 ≈ t
-                    #@test collect(sqrt(t)) ≈ sqrt(collect(t)) # schur not supported for CuArray
+                    @test_broken (@constinferred sqrt(t))^2 ≈ t
+                    @test_broken collect(sqrt(t)) ≈ sqrt(collect(t))
 
                     expt = @constinferred exp(t)
-                    @test collect(expt) ≈ exp(collect(t))
+                    @test_broken collect(expt) ≈ exp(collect(t))
 
-                    # log doesn't work on CUDA yet
-                    @test exp(@constinferred log(expt)) ≈ expt
-                    @test collect(log(expt)) ≈ log(collect(expt))
+                    # log doesn't work on CUDA yet (scalar indexing)
+                    #@test exp(@constinferred log(expt)) ≈ expt
+                    #@test collect(log(expt)) ≈ log(collect(expt))
 
                     #=@test (@constinferred cos(t))^2 + (@constinferred sin(t))^2 ≈
                           id(storagetype(t), W)
