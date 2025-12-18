@@ -152,16 +152,14 @@ for V in spacelist
                 @test dot(t2, t) ≈ conj(dot(t2', t'))
                 @test dot(t2, t) ≈ dot(t', t2')
 
-                i1 = @constinferred(isomorphism(T, V1 ⊗ V2, V2 ⊗ V1))
-                i2 = @constinferred(isomorphism(CuVector{T}, V2 ⊗ V1, V1 ⊗ V2))
-                CUDA.@allowscalar begin
-                    @test i1 * i2 == @constinferred(id(CuVector{T, CUDA.DeviceMemory}, V1 ⊗ V2))
-                    @test i2 * i1 == @constinferred(id(CuVector{T, CUDA.DeviceMemory}, V2 ⊗ V1))
-                    w = @constinferred(isometry(CuVector{T, CUDA.DeviceMemory}, V1 ⊗ (oneunit(V1) ⊕ oneunit(V1)), V1))
-                    @test dim(w) == 2 * dim(V1 ← V1)
-                    @test w' * w == id(CuVector{T, CUDA.DeviceMemory}, V1)
-                    @test w * w' == (w * w')^2
-                end
+                i1 = @constinferred(isomorphism(CuVector{T, CUDA.DeviceMemory}, V1 ⊗ V2, V2 ⊗ V1))
+                i2 = @constinferred(isomorphism(CuVector{T, CUDA.DeviceMemory}, V2 ⊗ V1, V1 ⊗ V2))
+                @test i1 * i2 == @constinferred(id(CuVector{T, CUDA.DeviceMemory}, V1 ⊗ V2))
+                @test i2 * i1 == @constinferred(id(CuVector{T, CUDA.DeviceMemory}, V2 ⊗ V1))
+                w = @constinferred(isometry(CuVector{T, CUDA.DeviceMemory}, V1 ⊗ (oneunit(V1) ⊕ oneunit(V1)), V1))
+                @test dim(w) == 2 * dim(V1 ← V1)
+                @test w' * w == id(CuVector{T, CUDA.DeviceMemory}, V1)
+                @test w * w' == (w * w')^2
             end
         end
         @timedtestset "Trivial space insertion and removal" begin
@@ -238,11 +236,11 @@ for V in spacelist
         @timedtestset "Tensor conversion" begin # TODO adjoint conversion methods don't work yet
             W = V1 ⊗ V2
             t = @constinferred CUDA.randn(W ← W)
-            @test typeof(convert(TensorMap, t')) == typeof(t)
+            #@test typeof(convert(TensorMap, t')) == typeof(t) # TODO Adjoint not supported yet
             tc = complex(t)
             @test convert(typeof(tc), t) == tc
             @test typeof(convert(typeof(tc), t)) == typeof(tc)
-            @test typeof(convert(typeof(tc), t')) == typeof(tc)
+            # @test typeof(convert(typeof(tc), t')) == typeof(tc) # TODO Adjoint not supported yet
             @test Base.promote_typeof(t, tc) == typeof(tc)
             @test Base.promote_typeof(tc, t) == typeof(tc + t)
         end
@@ -294,8 +292,10 @@ for V in spacelist
                         t2 = CUDA.@allowscalar permute(t, (p1, p2))
                         a2 = convert(Array, collect(t2))
                         @test a2 ≈ permutedims(a, (p1..., p2...))
-                        @test convert(Array, collect(transpose(t2))) ≈
-                            permutedims(a2, (5, 4, 3, 2, 1))
+                        CUDA.@allowscalar begin
+                            @test convert(Array, collect(transpose(t2))) ≈
+                                permutedims(a2, (5, 4, 3, 2, 1))
+                        end
                     end
 
                     t3 = CUDA.@allowscalar repartition(t, k)

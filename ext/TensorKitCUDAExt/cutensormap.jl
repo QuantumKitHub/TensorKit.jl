@@ -7,10 +7,6 @@ function CuTensorMap(t::TensorMap{T, S, N₁, N₂, A}) where {T, S, N₁, N₂,
     return CuTensorMap{T, S, N₁, N₂}(CuArray{T}(t.data), space(t))
 end
 
-function Base.collect(t::CuTensorMap{T}) where {T}
-    return convert(TensorKit.TensorMapWithStorage{T, Vector{T}}, t)
-end
-
 # project_symmetric! doesn't yet work for GPU types, so do this on the host, then copy
 function TensorKit.project_symmetric_and_check(::Type{T}, ::Type{A}, data::AbstractArray, V::TensorMapSpace; tol = sqrt(eps(real(float(eltype(data)))))) where {T, A <: CuVector{T}}
     h_t = TensorKit.TensorMapWithStorage{T, Vector{T}}(undef, V)

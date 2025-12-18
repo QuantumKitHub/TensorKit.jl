@@ -403,6 +403,10 @@ for randf in (:rand, :randn, :randexp, :randisometry)
     end
 end
 
+# Collecting arbitrary TensorMaps  
+#-----------------------------
+Base.collect(t::TensorMap) = convert(TensorMapWithStorage{scalartype(t), similarstoragetype(scalartype(t))}, t)
+
 # Efficient copy constructors
 #-----------------------------
 Base.copy(t::TensorMap) = typeof(t)(copy(t.data), t.space)
