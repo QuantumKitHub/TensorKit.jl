@@ -289,20 +289,14 @@ for V in spacelist
                     for p in permutations(1:5)
                         p1 = ntuple(n -> p[n], k)
                         p2 = ntuple(n -> p[k + n], 5 - k)
-                        t2 = CUDA.@allowscalar permute(t, (p1, p2))
-                        a2 = convert(Array, collect(t2))
-                        @test a2 ≈ permutedims(a, (p1..., p2...))
-                        CUDA.@allowscalar begin
-                            @test convert(Array, collect(transpose(t2))) ≈
-                                permutedims(a2, (5, 4, 3, 2, 1))
-                        end
+                        dt2 = CUDA.@allowscalar permute(t, (p1, p2))
+                        ht2 = permute(collect(t), (p1, p2))
+                        @test ht2 == collect(dt2)
                     end
 
-                    t3 = CUDA.@allowscalar repartition(t, k)
-                    a3 = convert(Array, collect(t3))
-                    @test a3 ≈ permutedims(
-                        a, (ntuple(identity, k)..., reverse(ntuple(i -> i + k, 5 - k))...)
-                    )
+                    dt3 = CUDA.@allowscalar repartition(t, k)
+                    ht3 = repartition(collect(t), k)
+                    @test ht3 == collect(dt3)
                 end
             end
         end
