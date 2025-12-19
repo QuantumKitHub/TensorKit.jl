@@ -441,7 +441,6 @@ for V in spacelist
                 @test tp ≈ tp * tp
             end
         end
-        if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
             @timedtestset "Multiplication and inverse: test via CPU" begin
                 W1 = V1 ⊗ V2 ⊗ V3
                 W2 = V4 ⊗ V5
