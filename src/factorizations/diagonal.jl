@@ -96,7 +96,8 @@ end
 
 # f_vals
 # ------
-for f! in (:eig_vals!, :eigh_vals!, :svd_vals!)
+# this is invalid for svd_vals since we cannot sort between blocks
+for f! in (:eig_vals!, :eigh_vals!)
     @eval function MAK.$f!(d::AbstractTensorMap, V, alg::DiagonalAlgorithm)
         $f!(_repack_diagonal(d), diagview(_repack_diagonal(V)), alg)
         return V
