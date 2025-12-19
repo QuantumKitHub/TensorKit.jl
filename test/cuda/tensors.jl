@@ -8,7 +8,7 @@ const CuTensorMap = getglobal(CUDAExt, :CuTensorMap)
 const curand = getglobal(CUDAExt, :curand)
 const curandn = getglobal(CUDAExt, :curandn)
 const curand! = getglobal(CUDAExt, :curand!)
-const curandn! = getglobal(CUDAExt, :curandn!)
+using CUDA: rand as curand, rand! as curand!, randn as curandn, randn! as curandn!
 
 @isdefined(TestSetup) || include("../setup.jl")
 using .TestSetup
