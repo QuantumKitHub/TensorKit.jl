@@ -90,6 +90,9 @@ end
 
 sectorlist = (
     Z2Irrep, Z3Irrep, Z4Irrep, Z3Irrep ⊠ Z4Irrep,
+    Z2Element{0}, Z3Element{0}, Z4Element{0},
+    # Z2Element{1}, Z3Element{2}, Z4Element{1}, Z4Element{2}, Z4Element{3},
+    DNIrrep{3}, DNIrrep{4}, A4Irrep,
     U1Irrep, CU1Irrep, SU2Irrep,
     FermionParity, FermionParity ⊠ FermionParity,
     FermionParity ⊠ U1Irrep ⊠ SU2Irrep, FermionParity ⊠ SU2Irrep ⊠ SU2Irrep, # Hubbard-like
@@ -120,6 +123,20 @@ Vℤ₃ = (
     Vect[Z3Irrep](0 => 1, 1 => 2, 2 => 1)',
     Vect[Z3Irrep](0 => 1, 1 => 2, 2 => 3),
     Vect[Z3Irrep](0 => 1, 1 => 3, 2 => 3)',
+)
+VZ2ω = (
+    Vect[Z2Element{1}](0 => 1, 1 => 1),
+    Vect[Z2Element{1}](0 => 1, 1 => 2)',
+    Vect[Z2Element{1}](0 => 2, 1 => 1)',
+    Vect[Z2Element{1}](0 => 2, 1 => 3),
+    Vect[Z2Element{1}](0 => 2, 1 => 5),
+)
+VA₄ = (
+    Vect[A4Irrep](0 => 1, 1 => 1, 2 => 1, 3 => 1),
+    Vect[A4Irrep](0 => 1, 1 => 2, 2 => 1, 3 => 1),
+    Vect[A4Irrep](0 => 1, 1 => 1, 2 => 2, 3 => 1)',
+    Vect[A4Irrep](0 => 1, 1 => 2, 2 => 2, 3 => 2),
+    Vect[A4Irrep](0 => 1, 1 => 2, 2 => 2, 3 => 3)',
 )
 VU₁ = (
     Vect[U1Irrep](0 => 1, 1 => 2, -1 => 2),
