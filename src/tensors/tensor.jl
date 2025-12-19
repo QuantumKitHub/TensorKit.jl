@@ -31,6 +31,8 @@ struct TensorMap{T, S <: IndexSpace, N₁, N₂, A <: DenseVector{T}} <: Abstrac
         I = sectortype(S)
         T <: Real && !(sectorscalartype(I) <: Real) &&
             @warn("Tensors with real data might be incompatible with sector type $I", maxlog = 1)
+        d = fusionblockstructure(space).totaldim
+        length(data) == d || throw(DimensionMismatch("invalid length of data"))
         return new{T, S, N₁, N₂, A}(data, space)
     end
 end
@@ -46,14 +48,9 @@ i.e. a tensor map with only a non-trivial output space.
 """
 const Tensor{T, S, N, A} = TensorMap{T, S, N, 0, A}
 
-function tensormaptype(S::Type{<:IndexSpace}, N₁, N₂, TorA::Type)
-    if TorA <: Number
-        return TensorMap{TorA, S, N₁, N₂, Vector{TorA}}
-    elseif TorA <: DenseVector
-        return TensorMap{scalartype(TorA), S, N₁, N₂, TorA}
-    else
-        throw(ArgumentError("argument $TorA should specify a scalar type (`<:Number`) or a storage type `<:DenseVector{<:Number}`"))
-    end
+function tensormaptype(::Type{S}, N₁, N₂, ::Type{TorA}) where {S <: IndexSpace, TorA}
+    A = similarstoragetype(TorA)
+    return TensorMap{scalartype(A), S, N₁, N₂, A}
 end
 
 # Basic methods for characterising a tensor:
@@ -70,89 +67,215 @@ storagetype(::Type{<:TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A
 dim(t::TensorMap) = length(t.data)
 
 # General TensorMap constructors
-#--------------------------------
+# ==============================
+
+# INTERNAL: utility type alias that makes constructors also work for type aliases that specify
+# different storage types. (i.e. CuTensorMap = TensorMapWithStorage{T, CuVector{T}, ...})
+const TensorMapWithStorage{T, A <: DenseVector{T}, S, N₁, N₂} = TensorMap{T, S, N₁, N₂, A}
+const TensorWithStorage{T, A <: DenseVector{T}, S, N} = Tensor{T, S, N, A}
+
 # undef constructors
+# ------------------
+# - dispatch start with TensorMap{T}
+# - select A and map to TensorMap{T, S, N₁, N₂, A} where {S, N₁, N₂}
+# - select S, N₁, N₂ and map to TensorMap{T, S, N₁, N₂, A}
 """
-    TensorMap{T}(undef, codomain::ProductSpace{S,N₁}, domain::ProductSpace{S,N₂})
-                where {T,S,N₁,N₂}
+    TensorMap{T}(undef, codomain::ProductSpace{S, N₁}, domain::ProductSpace{S, N₂}) where {T, S, N₁, N₂}
     TensorMap{T}(undef, codomain ← domain)
     TensorMap{T}(undef, domain → codomain)
-    # expert mode: select storage type `A`
-    TensorMap{T,S,N₁,N₂,A}(undef, codomain ← domain)
-    TensorMap{T,S,N₁,N₂,A}(undef, domain → domain)
 
-Construct a `TensorMap` with uninitialized data.
+Construct a `TensorMap` with uninitialized data with elements of type `T`.
 """
-function TensorMap{T}(::UndefInitializer, V::TensorMapSpace{S, N₁, N₂}) where {T, S, N₁, N₂}
-    return TensorMap{T, S, N₁, N₂, Vector{T}}(undef, V)
-end
-function TensorMap{T}(
-        ::UndefInitializer, codomain::TensorSpace{S}, domain::TensorSpace{S}
-    ) where {T, S}
-    return TensorMap{T}(undef, codomain ← domain)
-end
-function Tensor{T}(::UndefInitializer, V::TensorSpace{S}) where {T, S}
-    return TensorMap{T}(undef, V ← one(V))
-end
+TensorMap{T}(::UndefInitializer, V::TensorMapSpace) where {T} =
+    tensormaptype(spacetype(V), numout(V), numin(V), T)(undef, V)
+TensorMap{T}(::UndefInitializer, codomain::TensorSpace, domain::TensorSpace) where {T} =
+    TensorMap{T}(undef, codomain ← domain)
+Tensor{T}(::UndefInitializer, V::TensorSpace) where {T} = TensorMap{T}(undef, V ← one(V))
 
-# constructor starting from vector = independent data (N₁ + N₂ = 1 is special cased below)
-# documentation is captured by the case where `data` is a general array
-# here, we force the `T` argument to distinguish it from the more general constructor below
-function TensorMap{T}(
-        data::A, V::TensorMapSpace{S, N₁, N₂}
-    ) where {T, S, N₁, N₂, A <: DenseVector{T}}
-    return TensorMap{T, S, N₁, N₂, A}(data, V)
-end
-function TensorMap{T}(
-        data::DenseVector{T}, codomain::TensorSpace{S}, domain::TensorSpace{S}
-    ) where {T, S}
-    return TensorMap(data, codomain ← domain)
-end
-
-# constructor starting from block data
 """
-    TensorMap(data::AbstractDict{<:Sector,<:AbstractMatrix}, codomain::ProductSpace{S,N₁},
-                domain::ProductSpace{S,N₂}) where {S<:ElementarySpace,N₁,N₂}
+    TensorMapWithStorage{T, A}(undef, codomain, domain) where {T, A}
+    TensorMapWithStorage{T, A}(undef, codomain ← domain) where {T, A}
+    TensorMapWithStorage{T, A}(undef, domain → codomain) where {T, A}
+
+Construct a `TensorMap` with uninitialized data stored as `A <: DenseVector{T}`.
+"""
+TensorMapWithStorage{T, A}(::UndefInitializer, V::TensorMapSpace) where {T, A} =
+    tensormaptype(spacetype(V), numout(V), numin(V), A)(undef, V)
+TensorMapWithStorage{T, A}(::UndefInitializer, codomain::TensorSpace, domain::TensorSpace) where {T, A} =
+    TensorMapWithStorage{T, A}(undef, codomain ← domain)
+TensorWithStorage{T, A}(::UndefInitializer, V::TensorSpace) where {T, A} = TensorMapWithStorage{T, A}(undef, V ← one(V))
+
+# raw data constructors
+# ---------------------
+# - dispatch starts with TensorMap{T}(::DenseVector{T}, ...)
+# - select A and map to (TensorMap{T, S, N₁, N₂, A} where {S, N₁, N₂})(::DenseVector{T}, ...)
+# - select S, N₁, N₂ and map to TensorMap{T, S, N₁, N₂, A}(::DenseVector{T}, ...)
+
+"""
+    TensorMap{T}(data::DenseVector{T}, codomain::ProductSpace{S, N₁}, domain::ProductSpace{S, N₂}) where {T, S, N₁, N₂}
+    TensorMap{T}(data::DenseVector{T}, codomain ← domain)
+    TensorMap{T}(data::DenseVector{T}, domain → codomain)
+
+Construct a `TensorMap` from the given raw data.
+This constructor takes ownership of the provided vector, and will not make an independent copy.
+"""
+TensorMap{T}(data::DenseVector{T}, V::TensorMapSpace) where {T} =
+    tensormaptype(spacetype(V), numout(V), numin(V), typeof(data))(data, V)
+TensorMap{T}(data::DenseVector{T}, codomain::TensorSpace, domain::TensorSpace) where {T} =
+    TensorMap{T}(data, codomain ← domain)
+
+"""
+    TensorMapWithStorage{T, A}(data::A, codomain, domain) where {T, A<:DenseVector{T}}
+    TensorMapWithStorage{T, A}(data::A, codomain ← domain) where {T, A<:DenseVector{T}}
+    TensorMapWithStorage{T, A}(data::A, domain → codomain) where {T, A<:DenseVector{T}}
+
+Construct a `TensorMap` from the given raw data.
+This constructor takes ownership of the provided vector, and will not make an independent copy.
+"""
+function TensorMapWithStorage{T, A}(data::A, V::TensorMapSpace) where {T, A}
+    return tensormaptype(spacetype(V), numout(V), numin(V), typeof(data))(data, V)
+end
+TensorMapWithStorage{T, A}(data::A, codomain::TensorSpace, domain::TensorSpace) where {T, A} =
+    TensorMapWithStorage{T, A}(data, codomain ← domain)
+
+# AbstractArray constructors
+# --------------------------
+# array can either be a multi-dimensional array, or a matrix representation of the
+# corresponding linear map.
+#
+# - dispatch starts with TensorMap(array::AbstractArray, ...)
+# - select T and A and map to (TensorMap{T, S, N₁, N₂, A} where {S, N₁, N₂})(array::AbstractArray, ...)
+# - map to project_symmetric!(tdst, array)
+#
+# !!! note
+#   Have to be careful about dispatch collision between data::DenseVector and
+#   array::AbstractArray case for N₁ + N₂ == 1
+
+"""
+    TensorMap(data::AbstractArray, codomain::ProductSpace{S,N₁}, domain::ProductSpace{S,N₂};
+                    tol=sqrt(eps(real(float(eltype(data)))))) where {S<:ElementarySpace,N₁,N₂}
+    TensorMap(data, codomain ← domain; tol=sqrt(eps(real(float(eltype(data))))))
+    TensorMap(data, domain → codomain; tol=sqrt(eps(real(float(eltype(data))))))
+
+Construct a `TensorMap` from a plain multidimensional array.
+
+## Arguments
+- `data::DenseArray`: tensor data as a plain array.
+- `codomain::ProductSpace{S,N₁}`: the codomain as a `ProductSpace` of `N₁` spaces of type `S<:ElementarySpace`.
+- `domain::ProductSpace{S,N₂}`: the domain as a `ProductSpace` of `N₂` spaces of type `S<:ElementarySpace`.
+- `tol=sqrt(eps(real(float(eltype(data)))))::Float64`: 
+    
+Here, `data` can be specified in three ways:
+1) `data` can be a `DenseVector` of length `dim(codomain ← domain)`; in that case it represents
+   the actual independent entries of the tensor map. An instance will be created that directly
+   references `data`.
+2) `data` can be an `AbstractMatrix` of size `(dim(codomain), dim(domain))`
+3) `data` can be an `AbstractArray` of rank `N₁ + N₂` with a size matching that of the domain
+   and codomain spaces, i.e. `size(data) == (dims(codomain)..., dims(domain)...)`
+
+In cases 2 and 3, the `TensorMap` constructor will reconstruct the tensor data such that the
+resulting tensor `t` satisfies `data == convert(Array, t)`, up to an error specified by `tol`.
+For the case where `sectortype(S) == Trivial` and `data isa DenseArray`, the `data` array is
+simply reshaped into a vector and used as in case 1 so that the memory will still be shared.
+In other cases, new memory will be allocated.
+
+Note that in the case of `N₁ + N₂ = 1`, case 3 also amounts to `data` being a vector, whereas
+when `N₁ + N₂ == 2`, case 2 and case 3 both require `data` to be a matrix. Such ambiguous cases
+are resolved by checking the size of `data` in an attempt to support all possible
+cases.
+
+!!! note
+    This constructor for case 2 and 3 only works for `sectortype` values for which conversion
+    to a plain array is possible, and only in the case where the `data` actually respects
+    the specified symmetry structure, up to a tolerance `tol`.
+"""
+function TensorMap(data::AbstractArray, V::TensorMapSpace; tol = sqrt(eps(real(float(eltype(data))))))
+    A = similarstoragetype(data)
+    return TensorMapWithStorage{scalartype(A), A}(data, V; tol)
+end
+TensorMap(data::AbstractArray, codom::TensorSpace, dom::TensorSpace; kwargs...) =
+    TensorMap(data, codom ← dom; kwargs...)
+Tensor(data::AbstractArray, codom::TensorSpace; kwargs...) =
+    TensorMap(data, codom ← one(codom); kwargs...)
+
+function TensorMapWithStorage{T, A}(
+        data::AbstractArray, V::TensorMapSpace; tol = sqrt(eps(real(float(eltype(data)))))
+    ) where {T, A}
+    # refer to specific raw data constructors if input is a vector of the correct length
+    ndims(data) == 1 && length(data) == dim(V) &&
+        return tensormaptype(spacetype(V), numout(V), numin(V), A)(data, V)
+
+    # special case trivial: refer to same method, but now with vector argument
+    sectortype(V) === Trivial &&
+        return tensormaptype(spacetype(V), numout(V), numin(V), A)(reshape(data, length(data)), V)
+
+    # do projection
+    t = TensorMapWithStorage{T, A}(undef, V)
+    t = project_symmetric!(t, data)
+
+    # verify result
+    isapprox(reshape(data, dims(t)), convert(Array, t); atol = tol) ||
+        throw(ArgumentError("Data has non-zero elements at incompatible positions"))
+
+    return t
+end
+TensorMapWithStorage{T, A}(data::AbstractArray, codom::TensorSpace, dom::TensorSpace; kwargs...) where {T, A} =
+    TensorMapWithStorage{T, A}(data, codom ← dom; kwargs...)
+TensorWithStorage{T, A}(data::AbstractArray, codom::TensorSpace; kwargs...) where {T, A} =
+    TensorMapWithStorage{T, A}(data, codom ← one(codom); kwargs...)
+
+# block data constructors
+# -----------------------
+# - dispatch starts with TensorMap(::AbstractDict{<:Sector, <:AbstractMatrix}, ...)
+# - select T and A and map to (TensorMap{T, S, N₁, N₂, A} where {S, N₁, N₂})(::AbstractDict{<:Sector, <:AbstractMatrix}
+# - extract/construct raw data and map to raw data constructor
+
+# private: allowed block data types
+const _BlockData{I <: Sector, A <: AbstractMatrix} = AbstractDict{I, A}
+
+"""
+    TensorMap(data::AbstractDict{<:Sector, <:AbstractMatrix}, codomain::ProductSpace, domain::ProductSpace)
     TensorMap(data, codomain ← domain)
     TensorMap(data, domain → codomain)
 
 Construct a `TensorMap` by explicitly specifying its block data.
 
 ## Arguments
-- `data::AbstractDict{<:Sector,<:AbstractMatrix}`: dictionary containing the block data for
+- `data::AbstractDict{<:Sector, <:AbstractMatrix}`: dictionary containing the block data for
   each coupled sector `c` as a matrix of size `(blockdim(codomain, c), blockdim(domain, c))`.
-- `codomain::ProductSpace{S,N₁}`: the codomain as a `ProductSpace` of `N₁` spaces of type
-  `S<:ElementarySpace`.
-- `domain::ProductSpace{S,N₂}`: the domain as a `ProductSpace` of `N₂` spaces of type
-  `S<:ElementarySpace`.
-
-Alternatively, the domain and codomain can be specified by passing a [`HomSpace`](@ref)
-using the syntax `codomain ← domain` or `domain → codomain`.
+- `codomain::ProductSpace{S, N₁}`: the codomain as a `ProductSpace` of `N₁` spaces of type `S <: ElementarySpace`.
+- `domain::ProductSpace{S, N₂}`: the domain as a `ProductSpace` of `N₂` spaces of type `S <: ElementarySpace`.
 """
-function TensorMap(
-        data::AbstractDict{<:Sector, <:AbstractMatrix}, V::TensorMapSpace{S, N₁, N₂}
-    ) where {S, N₁, N₂}
-    T = eltype(valtype(data))
-    t = TensorMap{T}(undef, V)
+function TensorMap(data::_BlockData, V::TensorMapSpace)
+    A = similarstoragetype(data)
+    return TensorMapWithStorage{scalartype(A), A}(data, V)
+end
+TensorMap(data::_BlockData, codom::TensorSpace, dom::TensorSpace) =
+    TensorMap(data, codom ← dom)
+
+function TensorMapWithStorage{T, A}(data::_BlockData, V::TensorMapSpace) where {T, A}
+    t = TensorMapWithStorage{T, A}(undef, V)
+
+    # check that there aren't too many blocks
+    for (c, b) in data
+        c ∈ blocksectors(t) || isempty(b) || throw(SectorMismatch("data for block sector $c not expected"))
+    end
+
+    # fill in the blocks -- rely on conversion in copy
     for (c, b) in blocks(t)
         haskey(data, c) || throw(SectorMismatch("no data for block sector $c"))
         datac = data[c]
-        size(datac) == size(b) ||
-            throw(DimensionMismatch("wrong size of block for sector $c"))
+        size(datac) == size(b) || throw(DimensionMismatch("wrong size of block for sector $c"))
         copy!(b, datac)
     end
-    for (c, b) in data
-        c ∈ blocksectors(t) || isempty(b) ||
-            throw(SectorMismatch("data for block sector $c not expected"))
-    end
+
     return t
 end
-function TensorMap(
-        data::AbstractDict{<:Sector, <:AbstractMatrix}, codom::TensorSpace{S}, dom::TensorSpace{S}
-    ) where {S}
-    return TensorMap(data, codom ← dom)
-end
+TensorMapWithStorage{T, A}(data::_BlockData, codom::TensorSpace, dom::TensorSpace) where {T, A} =
+    TensorMapWithStorage{T, A}(data, codom ← dom)
 
+# Higher-level constructors
+# =========================
 @doc """
     zeros([T=Float64,], codomain::ProductSpace{S,N₁}, domain::ProductSpace{S,N₂}) where {S,N₁,N₂,T}
     zeros([T=Float64,], codomain ← domain)
@@ -274,130 +397,6 @@ for randf in (:rand, :randn, :randexp, :randisometry)
             return t
         end
     end
-end
-
-# constructor starting from an AbstractArray
-"""
-    TensorMap(data::AbstractArray, codomain::ProductSpace{S,N₁}, domain::ProductSpace{S,N₂};
-                    tol=sqrt(eps(real(float(eltype(data)))))) where {S<:ElementarySpace,N₁,N₂}
-    TensorMap(data, codomain ← domain; tol=sqrt(eps(real(float(eltype(data))))))
-    TensorMap(data, domain → codomain; tol=sqrt(eps(real(float(eltype(data))))))
-
-Construct a `TensorMap` from a plain multidimensional array.
-
-## Arguments
-- `data::DenseArray`: tensor data as a plain array.
-- `codomain::ProductSpace{S,N₁}`: the codomain as a `ProductSpace` of `N₁` spaces of type
-  `S<:ElementarySpace`.
-- `domain::ProductSpace{S,N₂}`: the domain as a `ProductSpace` of `N₂` spaces of type
-  `S<:ElementarySpace`.
-- `tol=sqrt(eps(real(float(eltype(data)))))::Float64`: 
-    
-Here, `data` can be specified in three ways:
-1) `data` can be a `DenseVector` of length `dim(codomain ← domain)`; in that case it represents
-   the actual independent entries of the tensor map. An instance will be created that directly
-   references `data`.
-2) `data` can be an `AbstractMatrix` of size `(dim(codomain), dim(domain))`
-3) `data` can be an `AbstractArray` of rank `N₁ + N₂` with a size matching that of the domain
-   and codomain spaces, i.e. `size(data) == (dims(codomain)..., dims(domain)...)`
-
-In case 2 and 3, the `TensorMap` constructor will reconstruct the tensor data such that the
-resulting tensor `t` satisfies `data == convert(Array, t)`, up to an error specified by `tol`.
-For the case where `sectortype(S) == Trivial` and `data isa DenseArray`, the `data` array is
-simply reshaped into a vector and used as in case 1 so that the memory will still be shared.
-In other cases, new memory will be allocated.
-
-Note that in the case of `N₁ + N₂ = 1`, case 3 also amounts to `data` being a vector, whereas
-when `N₁ + N₂ == 2`, case 2 and case 3 both require `data` to be a matrix. Such ambiguous cases
-are resolved by checking the size of `data` in an attempt to support all possible
-cases.
-
-!!! note
-    This constructor for case 2 and 3 only works for `sectortype` values for which conversion
-    to a plain array is possible, and only in the case where the `data` actually respects
-    the specified symmetry structure, up to a tolerance `tol`.
-"""
-function TensorMap(
-        data::AbstractArray, V::TensorMapSpace{S, N₁, N₂};
-        tol = sqrt(eps(real(float(eltype(data)))))
-    ) where {S <: IndexSpace, N₁, N₂}
-    T = eltype(data)
-    if ndims(data) == 1 && length(data) == dim(V)
-        if data isa DenseVector # refer to specific data-capturing constructor
-            return TensorMap{T}(data, V)
-        else
-            return TensorMap{T}(collect(data), V)
-        end
-    end
-
-    # dimension check
-    codom = codomain(V)
-    dom = domain(V)
-    arraysize = dims(V)
-    matsize = (dim(codom), dim(dom))
-
-    if !(size(data) == arraysize || size(data) == matsize)
-        throw(DimensionMismatch())
-    end
-
-    if sectortype(S) === Trivial # refer to same method, but now with vector argument
-        return TensorMap(reshape(data, length(data)), V)
-    end
-
-    t = TensorMap{T}(undef, codom, dom)
-    arraydata = reshape(collect(data), arraysize)
-    t = project_symmetric!(t, arraydata)
-    if !isapprox(arraydata, convert(Array, t); atol = tol)
-        throw(ArgumentError("Data has non-zero elements at incompatible positions"))
-    end
-    return t
-end
-function TensorMap(
-        data::AbstractArray, codom::TensorSpace{S}, dom::TensorSpace{S}; kwargs...
-    ) where {S}
-    return TensorMap(data, codom ← dom; kwargs...)
-end
-function Tensor(data::AbstractArray, codom::TensorSpace, ; kwargs...)
-    return TensorMap(data, codom ← one(codom); kwargs...)
-end
-
-"""
-    project_symmetric!(t::TensorMap, data::DenseArray) -> TensorMap
-
-Project the data from a dense array `data` into the tensor map `t`. This function discards 
-any data that does not fit the symmetry structure of `t`.
-"""
-function project_symmetric!(t::TensorMap, data::DenseArray)
-    I = sectortype(t)
-    if I === Trivial # cannot happen when called from above, but for generality we keep this
-        copy!(t.data, reshape(data, length(t.data)))
-    else
-        for (f₁, f₂) in fusiontrees(t)
-            F = convert(Array, (f₁, f₂))
-            dataslice = sview(
-                data, axes(codomain(t), f₁.uncoupled)..., axes(domain(t), f₂.uncoupled)...
-            )
-            if FusionStyle(I) === UniqueFusion()
-                Fscalar = first(F) # contains a single element
-                scale!(t[f₁, f₂], dataslice, conj(Fscalar))
-            else
-                subblock = t[f₁, f₂]
-                szbF = _interleave(size(F), size(subblock))
-                indset1 = ntuple(identity, numind(t))
-                indset2 = 2 .* indset1
-                indset3 = indset2 .- 1
-                TensorOperations.tensorcontract!(
-                    subblock,
-                    F, ((), indset1), true,
-                    sreshape(dataslice, szbF),
-                    (indset3, indset2), false,
-                    (indset1, ()),
-                    inv(dim(f₁.coupled)), false
-                )
-            end
-        end
-    end
-    return t
 end
 
 # Efficient copy constructors

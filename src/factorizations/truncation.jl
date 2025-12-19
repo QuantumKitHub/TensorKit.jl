@@ -21,7 +21,7 @@ Truncation strategy to keep the first values for each sector when sorted accordi
 such that the resulting vector space is no greater than `V`.
 """
 function truncspace(space::ElementarySpace; by = abs, rev::Bool = true)
-    isdual(space) && throw(ArgumentError("resulting vector space is never dual"))
+    isdual(space) && throw(ArgumentError("truncation space should not be dual"))
     return TruncationSpace(space, by, rev)
 end
 
@@ -37,7 +37,7 @@ function truncate_domain!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, inds
     for (c, b) in blocks(tdst)
         I = get(inds, c, nothing)
         @assert !isnothing(I)
-        copy!(b, @view(block(tsrc, c)[:, I]))
+        copy!(b, view(block(tsrc, c), :, I))
     end
     return tdst
 end
@@ -45,7 +45,7 @@ function truncate_codomain!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, in
     for (c, b) in blocks(tdst)
         I = get(inds, c, nothing)
         @assert !isnothing(I)
-        copy!(b, @view(block(tsrc, c)[I, :]))
+        copy!(b, view(block(tsrc, c), I, :))
     end
     return tdst
 end
@@ -67,7 +67,7 @@ function MAK.truncate(
 
     Ũ = similar(U, codomain(U) ← V_truncated)
     truncate_domain!(Ũ, U, ind)
-    S̃ = DiagonalTensorMap{scalartype(S)}(undef, V_truncated)
+    S̃ = similar_diagonal(S, V_truncated)
     truncate_diagonal!(S̃, S, ind)
     Ṽᴴ = similar(Vᴴ, V_truncated ← domain(Vᴴ))
     truncate_codomain!(Ṽᴴ, Vᴴ, ind)
@@ -76,19 +76,51 @@ function MAK.truncate(
 end
 
 function MAK.truncate(
-        ::typeof(left_null!),
-        (U, S)::Tuple{AbstractTensorMap, AbstractTensorMap},
-        strategy::MatrixAlgebraKit.TruncationStrategy
+        ::typeof(left_null!), (U, S)::NTuple{2, AbstractTensorMap}, strategy::TruncationStrategy
     )
-    extended_S = SectorDict(
-        c => vcat(diagview(b), zeros(eltype(b), max(0, size(b, 2) - size(b, 1))))
-            for (c, b) in blocks(S)
-    )
+    extended_S = zerovector!(SectorVector{eltype(S)}(undef, fuse(codomain(U))))
+    for (c, b) in blocks(S)
+        copyto!(extended_S[c], diagview(b)) # copyto! since `b` might be shorter
+    end
     ind = MAK.findtruncated(extended_S, strategy)
     V_truncated = truncate_space(space(S, 1), ind)
     Ũ = similar(U, codomain(U) ← V_truncated)
     truncate_domain!(Ũ, U, ind)
     return Ũ, ind
+end
+function MAK.truncate(
+        ::typeof(right_null!), (S, Vᴴ)::NTuple{2, AbstractTensorMap}, strategy::TruncationStrategy
+    )
+    extended_S = zerovector!(SectorVector{eltype(S)}(undef, fuse(domain(Vᴴ))))
+    for (c, b) in blocks(S)
+        copyto!(extended_S[c], diagview(b)) # copyto! since `b` might be shorter
+    end
+    ind = MAK.findtruncated(extended_S, strategy)
+    V_truncated = truncate_space(dual(space(S, 2)), ind)
+    Ṽᴴ = similar(Vᴴ, V_truncated ← domain(Vᴴ))
+    truncate_codomain!(Ṽᴴ, Vᴴ, ind)
+    return Ṽᴴ, ind
+end
+
+# special case `NoTruncation` for null: should keep exact zeros due to rectangularity
+# need to specialize to avoid ambiguity with special case in MatrixAlgebraKit
+function MAK.truncate(
+        ::typeof(left_null!), (U, S)::NTuple{2, AbstractTensorMap}, strategy::NoTruncation
+    )
+    ind = SectorDict(c => (size(b, 2) + 1):size(b, 1) for (c, b) in blocks(S))
+    V_truncated = truncate_space(space(S, 1), ind)
+    Ũ = similar(U, codomain(U) ← V_truncated)
+    truncate_domain!(Ũ, U, ind)
+    return Ũ, ind
+end
+function MAK.truncate(
+        ::typeof(right_null!), (S, Vᴴ)::NTuple{2, AbstractTensorMap}, strategy::NoTruncation
+    )
+    ind = SectorDict(c => (size(b, 1) + 1):size(b, 2) for (c, b) in blocks(S))
+    V_truncated = truncate_space(dual(space(S, 2)), ind)
+    Ṽᴴ = similar(Vᴴ, V_truncated ← domain(Vᴴ))
+    truncate_codomain!(Ṽᴴ, Vᴴ, ind)
+    return Ṽᴴ, ind
 end
 
 for f! in (:eig_trunc!, :eigh_trunc!)
@@ -100,7 +132,7 @@ for f! in (:eig_trunc!, :eigh_trunc!)
         ind = MAK.findtruncated(diagview(D), strategy)
         V_truncated = truncate_space(space(D, 1), ind)
 
-        D̃ = DiagonalTensorMap{scalartype(D)}(undef, V_truncated)
+        D̃ = similar_diagonal(D, V_truncated)
         truncate_diagonal!(D̃, D, ind)
 
         Ṽ = similar(V, codomain(V) ← V_truncated)
@@ -113,7 +145,7 @@ end
 # Find truncation
 # ---------------
 # auxiliary functions
-rtol_to_atol(S, p, atol, rtol) = rtol > 0 ? max(atol, TensorKit._norm(S, p) * rtol) : atol
+rtol_to_atol(S, p, atol, rtol) = rtol == 0 ? atol : max(atol, norm(S, p) * rtol)
 
 function _compute_truncerr(Σdata, truncdim, p = 2)
     I = keytype(Σdata)
@@ -144,26 +176,40 @@ function _findnexttruncvalue(
     end
 end
 
+function _sort_and_perm(values::SectorVector; by = identity, rev::Bool = false)
+    values_sorted = similar(values)
+    perms = SectorDict(
+        (
+                begin
+                    p = sortperm(v; by, rev)
+                    vs = values_sorted[c]
+                    vs .= view(v, p)
+                    c => p
+                end
+            ) for (c, v) in pairs(values)
+    )
+    return values_sorted, perms
+end
+
 # findtruncated
 # -------------
 # Generic fallback
-function MAK.findtruncated_svd(values::SectorDict, strategy::TruncationStrategy)
+function MAK.findtruncated_svd(values::SectorVector, strategy::TruncationStrategy)
     return MAK.findtruncated(values, strategy)
 end
 
-function MAK.findtruncated(values::SectorDict, ::NoTruncation)
-    return SectorDict(c => Colon() for (c, b) in values)
+function MAK.findtruncated(values::SectorVector, ::NoTruncation)
+    return SectorDict(c => Colon() for c in keys(values))
 end
 
-function MAK.findtruncated(values::SectorDict, strategy::TruncationByOrder)
-    perms = SectorDict(c => (sortperm(d; strategy.by, strategy.rev)) for (c, d) in values)
-    values_sorted = SectorDict(c => d[perms[c]] for (c, d) in values)
+function MAK.findtruncated(values::SectorVector, strategy::TruncationByOrder)
+    values_sorted, perms = _sort_and_perm(values; strategy.by, strategy.rev)
     inds = MAK.findtruncated_svd(values_sorted, truncrank(strategy.howmany))
     return SectorDict(c => perms[c][I] for (c, I) in inds)
 end
-function MAK.findtruncated_svd(values::SectorDict, strategy::TruncationByOrder)
+function MAK.findtruncated_svd(values::SectorVector, strategy::TruncationByOrder)
     I = keytype(values)
-    truncdim = SectorDict{I, Int}(c => length(d) for (c, d) in values)
+    truncdim = SectorDict{I, Int}(c => length(d) for (c, d) in pairs(values))
     totaldim = sum(dim(c) * d for (c, d) in truncdim; init = 0)
     while totaldim > strategy.howmany
         next = _findnexttruncvalue(values, truncdim; strategy.by, strategy.rev)
@@ -176,32 +222,31 @@ function MAK.findtruncated_svd(values::SectorDict, strategy::TruncationByOrder)
     return SectorDict(c => Base.OneTo(d) for (c, d) in truncdim)
 end
 
-function MAK.findtruncated(values::SectorDict, strategy::TruncationByFilter)
-    return SectorDict(c => findall(strategy.filter, d) for (c, d) in values)
+function MAK.findtruncated(values::SectorVector, strategy::TruncationByFilter)
+    return SectorDict(c => findall(strategy.filter, d) for (c, d) in pairs(values))
 end
 
-function MAK.findtruncated(values::SectorDict, strategy::TruncationByValue)
+function MAK.findtruncated(values::SectorVector, strategy::TruncationByValue)
     atol = rtol_to_atol(values, strategy.p, strategy.atol, strategy.rtol)
     strategy′ = trunctol(; atol, strategy.by, strategy.keep_below)
-    return SectorDict(c => MAK.findtruncated(d, strategy′) for (c, d) in values)
+    return SectorDict(c => MAK.findtruncated(d, strategy′) for (c, d) in pairs(values))
 end
-function MAK.findtruncated_svd(values::SectorDict, strategy::TruncationByValue)
+function MAK.findtruncated_svd(values::SectorVector, strategy::TruncationByValue)
     atol = rtol_to_atol(values, strategy.p, strategy.atol, strategy.rtol)
     strategy′ = trunctol(; atol, strategy.by, strategy.keep_below)
-    return SectorDict(c => MAK.findtruncated_svd(d, strategy′) for (c, d) in values)
+    return SectorDict(c => MAK.findtruncated_svd(d, strategy′) for (c, d) in pairs(values))
 end
 
-function MAK.findtruncated(values::SectorDict, strategy::TruncationByError)
-    perms = SectorDict(c => sortperm(d; by = abs, rev = true) for (c, d) in values)
-    values_sorted = SectorDict(c => d[perms[c]] for (c, d) in Sd)
+function MAK.findtruncated(values::SectorVector, strategy::TruncationByError)
+    values_sorted, perms = _sort_and_perm(values; strategy.by, strategy.rev)
     inds = MAK.findtruncated_svd(values_sorted, truncrank(strategy.howmany))
     return SectorDict(c => perms[c][I] for (c, I) in inds)
 end
-function MAK.findtruncated_svd(values::SectorDict, strategy::TruncationByError)
+function MAK.findtruncated_svd(values::SectorVector, strategy::TruncationByError)
     I = keytype(values)
-    truncdim = SectorDict{I, Int}(c => length(d) for (c, d) in values)
+    truncdim = SectorDict{I, Int}(c => length(d) for (c, d) in pairs(values))
     by(c, v) = abs(v)^strategy.p * dim(c)
-    Nᵖ = sum(((c, v),) -> sum(Base.Fix1(by, c), v), values)
+    Nᵖ = sum(((c, v),) -> sum(Base.Fix1(by, c), v), pairs(values))
     ϵᵖ = max(strategy.atol^strategy.p, strategy.rtol^strategy.p * Nᵖ)
     truncerrᵖ = zero(real(scalartype(valtype(values))))
     next = _findnexttruncvalue(values, truncdim)
@@ -215,16 +260,16 @@ function MAK.findtruncated_svd(values::SectorDict, strategy::TruncationByError)
     return SectorDict{I, Base.OneTo{Int}}(c => Base.OneTo(d) for (c, d) in truncdim)
 end
 
-function MAK.findtruncated(values::SectorDict, strategy::TruncationSpace)
+function MAK.findtruncated(values::SectorVector, strategy::TruncationSpace)
     blockstrategy(c) = truncrank(dim(strategy.space, c); strategy.by, strategy.rev)
     return SectorDict(c => MAK.findtruncated(d, blockstrategy(c)) for (c, d) in values)
 end
-function MAK.findtruncated_svd(values::SectorDict, strategy::TruncationSpace)
+function MAK.findtruncated_svd(values::SectorVector, strategy::TruncationSpace)
     blockstrategy(c) = truncrank(dim(strategy.space, c); strategy.by, strategy.rev)
-    return SectorDict(c => MAK.findtruncated_svd(d, blockstrategy(c)) for (c, d) in values)
+    return SectorDict(c => MAK.findtruncated_svd(d, blockstrategy(c)) for (c, d) in pairs(values))
 end
 
-function MAK.findtruncated(values::SectorDict, strategy::TruncationIntersection)
+function MAK.findtruncated(values::SectorVector, strategy::TruncationIntersection)
     inds = map(Base.Fix1(MAK.findtruncated, values), strategy.components)
     return SectorDict(
         c => mapreduce(
@@ -233,7 +278,7 @@ function MAK.findtruncated(values::SectorDict, strategy::TruncationIntersection)
             ) for c in intersect(map(keys, inds)...)
     )
 end
-function MAK.findtruncated_svd(values::SectorDict, strategy::TruncationIntersection)
+function MAK.findtruncated_svd(values::SectorVector, strategy::TruncationIntersection)
     inds = map(Base.Fix1(MAK.findtruncated_svd, values), strategy.components)
     return SectorDict(
         c => mapreduce(
@@ -241,4 +286,16 @@ function MAK.findtruncated_svd(values::SectorDict, strategy::TruncationIntersect
                 init = trues(length(values[c]))
             ) for c in intersect(map(keys, inds)...)
     )
+end
+
+# Truncation error
+# ----------------
+MAK.truncation_error(values::SectorVector, ind) = MAK.truncation_error!(copy(values), ind)
+
+function MAK.truncation_error!(values::SectorVector, ind)
+    for (c, ind_c) in ind
+        v = values[c]
+        v[ind_c] .= zero(eltype(v))
+    end
+    return norm(values)
 end

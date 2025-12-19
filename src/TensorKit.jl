@@ -11,11 +11,11 @@ module TensorKit
 export Sector, AbstractIrrep, Irrep
 export FusionStyle, UniqueFusion, MultipleFusion, MultiplicityFreeFusion, SimpleFusion, GenericFusion
 export UnitStyle, SimpleUnit, GenericUnit
-export BraidingStyle, SymmetricBraiding, Bosonic, Fermionic, Anyonic, NoBraiding
+export BraidingStyle, SymmetricBraiding, Bosonic, Fermionic, Anyonic, NoBraiding, HasBraiding
 export Trivial, Z2Irrep, Z3Irrep, Z4Irrep, ZNIrrep, U1Irrep, SU2Irrep, CU1Irrep
 export ProductSector
 export FermionParity, FermionNumber, FermionSpin
-export FibonacciAnyon, IsingAnyon
+export FibonacciAnyon, IsingAnyon, IsingBimodule
 
 # Export common vector space, fusion tree and tensor types
 export VectorSpace, Field, ElementarySpace # abstract vector spaces
@@ -28,13 +28,15 @@ export FusionTree
 export IndexSpace, HomSpace, TensorSpace, TensorMapSpace
 export AbstractTensorMap, AbstractTensor, TensorMap, Tensor # tensors and tensor properties
 export DiagonalTensorMap, BraidingTensor
-export TruncationScheme
 export SpaceMismatch, SectorMismatch, IndexError # error types
 
 # Export general vector space methods
 export space, field, dual, dim, reduceddim, dims, fuse, flip, isdual
 export unitspace, zerospace, oplus, ominus
+export leftunitspace, rightunitspace, isunitspace
 export insertleftunit, insertrightunit, removeunit
+
+# partial order for vector spaces
 export infimum, supremum, isisomorphic, ismonomorphic, isepimorphic
 
 # Reexport methods for sectors and properties thereof
@@ -77,12 +79,15 @@ export left_orth, right_orth, left_null, right_null,
     left_polar, left_polar!, right_polar, right_polar!,
     qr_full, qr_compact, qr_null, lq_full, lq_compact, lq_null,
     qr_full!, qr_compact!, qr_null!, lq_full!, lq_compact!, lq_null!,
-    svd_compact!, svd_full!, svd_trunc!, svd_compact, svd_full, svd_trunc,
+    svd_compact!, svd_full!, svd_trunc!, svd_compact, svd_full, svd_trunc, svd_vals, svd_vals!,
     exp, exp!,
-    eigh_full!, eigh_full, eigh_trunc!, eigh_trunc, eig_full!, eig_full, eig_trunc!,
-    eig_trunc,
-    eigh_vals!, eigh_vals, eig_vals!, eig_vals,
-    isposdef, isposdef!, ishermitian, isisometry, isunitary, sylvester, rank, cond
+    eigh_full!, eigh_full, eigh_trunc!, eigh_trunc, eigh_vals!, eigh_vals,
+    eig_full!, eig_full, eig_trunc!, eig_trunc, eig_vals!, eig_vals,
+    eigen, eigen!,
+    ishermitian, project_hermitian, project_hermitian!,
+    isantihermitian, project_antihermitian, project_antihermitian!,
+    isisometric, isunitary, project_isometric, project_isometric!,
+    isposdef, isposdef!, sylvester, rank, cond
 
 export braid, braid!, permute, permute!, transpose, transpose!, twist, twist!, repartition,
     repartition!
@@ -135,15 +140,13 @@ using LinearAlgebra: norm, dot, normalize, normalize!, tr,
     adjoint, adjoint!, transpose, transpose!,
     lu, pinv, sylvester,
     eigen, eigen!, svd, svd!,
-    isposdef, isposdef!, ishermitian, rank, cond,
+    isposdef, isposdef!, rank, cond,
     Diagonal, Hermitian
 using MatrixAlgebraKit
 
 import Base.Meta
 
 using Random: Random, rand!, randn!
-
-using PackageExtensionCompat
 
 # Auxiliary files
 #-----------------
@@ -176,8 +179,11 @@ struct SpaceMismatch{S <: Union{Nothing, AbstractString}} <: TensorException
     message::S
 end
 SpaceMismatch() = SpaceMismatch{Nothing}(nothing)
-Base.showerror(io::IO, ::SpaceMismatch{Nothing}) = print(io, "SpaceMismatch()")
-Base.showerror(io::IO, e::SpaceMismatch) = print(io, "SpaceMismatch(\"", e.message, "\")")
+function Base.showerror(io::IO, err::SpaceMismatch)
+    print(io, "SpaceMismatch: ")
+    isnothing(err.message) || print(io, err.message)
+    return nothing
+end
 
 # Exception type for all errors related to invalid tensor index specification.
 struct IndexError{S <: Union{Nothing, AbstractString}} <: TensorException
@@ -229,6 +235,7 @@ end
 include("tensors/abstracttensor.jl")
 include("tensors/backends.jl")
 include("tensors/blockiterator.jl")
+include("tensors/sectorvector.jl")
 include("tensors/tensor.jl")
 include("tensors/adjoint.jl")
 include("tensors/linalg.jl")
@@ -252,14 +259,5 @@ include("planar/postprocessors.jl")
 include("planar/macros.jl")
 @specialize
 include("planar/planaroperations.jl")
-
-# deprecations: to be removed in version 1.0 or sooner
-include("auxiliary/deprecate.jl")
-
-# Extensions
-# ----------
-function __init__()
-    return @require_extensions
-end
 
 end

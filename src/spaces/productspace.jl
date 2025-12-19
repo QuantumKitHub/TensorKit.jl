@@ -1,6 +1,6 @@
 """
-    struct ProductSpace{S<:ElementarySpace, N} <: CompositeSpace{S}
-    ProductSpace(spaces::NTuple{N, S}) where {S<:ElementarySpace, N}
+    struct ProductSpace{S <: ElementarySpace, N} <: CompositeSpace{S}
+    ProductSpace(spaces::NTuple{N, S}) where {S <: ElementarySpace, N}
 
 A `ProductSpace` is a tensor product space of `N` vector spaces of type `S <: ElementarySpace`.
 Only tensor products between [`ElementarySpace`](@ref) objects of the same type are allowed.
@@ -87,7 +87,7 @@ end
 
 # more specific methods
 """
-    sectors(P::ProductSpace{S, N}) where {S<:ElementarySpace}
+    sectors(P::ProductSpace{S, N}) where {S <: ElementarySpace}
 
 Return an iterator over all possible combinations of sectors (represented as an
 `NTuple{N, sectortype(S)}`) that can appear within the tensor product space `P`.
@@ -151,7 +151,7 @@ function blocksectors(P::ProductSpace{S, N}) where {S, N}
     end
     bs = Vector{I}()
     if N == 0
-        push!(bs, unit(I))
+        append!(bs, allunits(I))
     elseif N == 1
         for s in sectors(P)
             push!(bs, first(s))
@@ -196,7 +196,7 @@ hasblock(P::ProductSpace, c::Sector) = !isempty(fusiontrees(P, c))
     blockdim(P::ProductSpace, c::Sector)
 
 Return the total dimension of a coupled sector `c` in the product space, by summing over
-all `dim(P, s)` for all tuples of sectors `s::NTuple{N, <:Sector}` that can fuse to  `c`,
+all `dim(P, s)` for all tuples of sectors `s::NTuple{N, Sector}` that can fuse to  `c`,
 counted with the correct multiplicity (i.e. number of ways in which `s` can fuse to `c`).
 
 See also [`hasblock`](@ref) and [`blocksectors`](@ref).
@@ -228,8 +228,8 @@ end
 
 # unit element with respect to the monoidal structure of taking tensor products
 """
-    one(::S) where {S<:ElementarySpace} -> ProductSpace{S, 0}
-    one(::ProductSpace{S}) where {S<:ElementarySpace} -> ProductSpace{S, 0}
+    one(::S) where {S <: ElementarySpace} -> ProductSpace{S, 0}
+    one(::ProductSpace{S}) where {S <: ElementarySpace} -> ProductSpace{S, 0}
 
 Return a tensor product of zero spaces of type `S`, i.e. this is the unit object under the
 tensor product operation, such that `V ⊗ one(V) == V`.
@@ -248,7 +248,7 @@ fuse(P::ProductSpace{S, 0}) where {S <: ElementarySpace} = unitspace(S)
 fuse(P::ProductSpace{S}) where {S <: ElementarySpace} = fuse(P.spaces...)
 
 """
-    insertleftunit(P::ProductSpace, i::Int=length(P) + 1; conj=false, dual=false)
+    insertleftunit(P::ProductSpace, i::Int = length(P) + 1; conj = false, dual = false)
 
 Insert a trivial vector space, isomorphic to the underlying field, at position `i`,
 which can be specified as an `Int` or as `Val(i)` for improved type stability.
@@ -260,7 +260,18 @@ function insertleftunit(
         P::ProductSpace, ::Val{i} = Val(length(P) + 1);
         conj::Bool = false, dual::Bool = false
     ) where {i}
-    u = unitspace(spacetype(P))
+    N = length(P)
+    I = sectortype(P)
+    if UnitStyle(I) isa SimpleUnit
+        u = unitspace(spacetype(P))
+    else
+        N > 0 || throw(ArgumentError("cannot insert a sensible unit space in the empty product space"))
+        if i == N + 1
+            u = rightunitspace(P[N])
+        else
+            u = leftunitspace(P[i])
+        end
+    end
     if dual
         u = TensorKit.dual(u)
     end
@@ -271,7 +282,7 @@ function insertleftunit(
 end
 
 """
-    insertrightunit(P::ProductSpace, i=lenght(P); conj=false, dual=false)
+    insertrightunit(P::ProductSpace, i = length(P); conj = false, dual = false)
 
 Insert a trivial vector space, isomorphic to the underlying field, after position `i`,
 which can be specified as an `Int` or as `Val(i)` for improved type stability.
@@ -283,7 +294,14 @@ function insertrightunit(
         P::ProductSpace, ::Val{i} = Val(length(P));
         conj::Bool = false, dual::Bool = false
     ) where {i}
-    u = unitspace(spacetype(P))
+    N = length(P)
+    I = sectortype(P)
+    if UnitStyle(I) isa SimpleUnit
+        u = unitspace(spacetype(P))
+    else
+        N > 0 || throw(ArgumentError("cannot insert a sensible unit space in the empty product space"))
+        u = rightunitspace(P[i])
+    end
     if dual
         u = TensorKit.dual(u)
     end
@@ -305,7 +323,8 @@ and [`insertrightunit`](@ref insertrightunit(::ProductSpace, ::Val{i}) where {i}
 """
 function removeunit(P::ProductSpace, ::Val{i}) where {i}
     1 ≤ i ≤ length(P) || _boundserror(P, i)
-    isisomorphic(P[i], unitspace(P[i])) || _nontrivialspaceerror(P, i)
+    I = sectortype(P)
+    isunitspace(P[i]) || _nontrivialspaceerror(P, i)
     return ProductSpace{spacetype(P)}(TupleTools.deleteat(P.spaces, i))
 end
 

@@ -6,14 +6,13 @@ function TO.tensorstructure(t::AbstractTensorMap, iA::Int, conjA::Bool)
 end
 
 function TO.tensoralloc(
-        ::Type{TT}, structure::TensorMapSpace{S, N₁, N₂},
-        istemp::Val, allocator = TO.DefaultAllocator()
-    ) where {T, S, N₁, N₂, TT <: AbstractTensorMap{T, S, N₁, N₂}}
+        ::Type{TT}, structure::TensorMapSpace, istemp::Val, allocator = TO.DefaultAllocator()
+    ) where {TT <: AbstractTensorMap}
     A = storagetype(TT)
     dim = fusionblockstructure(structure).totaldim
     data = TO.tensoralloc(A, dim, istemp, allocator)
-    # return TT(data, structure)
-    return TensorMap{T}(data, structure)
+    TT′ = tensormaptype(spacetype(structure), numout(structure), numin(structure), typeof(data))
+    return TT′(data, structure)
 end
 
 function TO.tensorfree!(t::TensorMap, allocator = TO.DefaultAllocator())
@@ -90,6 +89,35 @@ function TO.tensortrace!(
 end
 
 # tensorcontract!
+function spacecheck_contract(
+        C::AbstractTensorMap,
+        A::AbstractTensorMap, pA::Index2Tuple, conjA::Bool,
+        B::AbstractTensorMap, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple
+    )
+    return spacecheck_contract(space(C), space(A), pA, conjA, space(B), pB, conjB, pAB)
+end
+@noinline function spacecheck_contract(
+        VC::TensorMapSpace,
+        VA::TensorMapSpace, pA::Index2Tuple, conjA::Bool,
+        VB::TensorMapSpace, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple
+    )
+    spacetype(VC) == spacetype(VA) == spacetype(VB) || throw(SectorMismatch("incompatible sector types"))
+    TO.tensorcontract(VA, pA, conjA, VB, pB, conjB, pAB) == VC ||
+        throw(
+        SpaceMismatch(
+            lazy"""
+            incompatible spaces for `tensorcontract(VA, $pA, $conjA, VB, $pB, $conjB, $pAB) -> VC`
+            VA = $VA
+            VB = $VB
+            VC = $VC
+            """
+        )
+    )
+    return nothing
+end
+
 function TO.tensorcontract!(
         C::AbstractTensorMap,
         A::AbstractTensorMap, pA::Index2Tuple, conjA::Bool,
@@ -98,6 +126,7 @@ function TO.tensorcontract!(
         backend, allocator
     )
     pAB′ = _canonicalize(pAB, C)
+    @boundscheck spacecheck_contract(C, A, pA, conjA, B, pB, conjB, pAB′)
     if conjA && conjB
         A′ = A'
         pA′ = adjointtensorindices(A, pA)
@@ -126,10 +155,14 @@ function TO.tensorcontract_type(
     ) where {N₁, N₂}
     spacetype(A) == spacetype(B) || throw(SpaceMismatch("incompatible space types"))
     I = sectortype(A)
-    M = similarstoragetype(A, sectorscalartype(I) <: Real ? TC : complex(TC))
-    MB = similarstoragetype(B, sectorscalartype(I) <: Real ? TC : complex(TC))
-    M == MB || throw(ArgumentError("incompatible storage types:\n$(M) ≠ $(MB)"))
+    TC′ = isreal(I) ? TC : complex(TC)
+    M = promote_storagetype(similarstoragetype(A, TC′), similarstoragetype(B, TC′))
     return tensormaptype(spacetype(A), N₁, N₂, M)
+end
+
+# TODO: handle actual promotion rule system
+function promote_storagetype(::Type{M₁}, ::Type{M₂}) where {M₁, M₂}
+    return M₁ === M₂ ? M₁ : throw(ArgumentError("Cannot determine storage type for combining `$M₁` and `$M₂`"))
 end
 
 function TO.tensorcontract_structure(
@@ -355,11 +388,11 @@ function blas_contract!(
     bstyle = BraidingStyle(sectortype(C))
     bstyle isa SymmetricBraiding ||
         throw(SectorMismatch("only tensors with symmetric braiding rules can be contracted; try `@planar` instead"))
-    TC = eltype(C)
+    TC = scalartype(C)
 
     # check which tensors have to be permuted/copied
-    copyA = !(TO.isblascontractable(A, pA) && eltype(A) === TC)
-    copyB = !(TO.isblascontractable(B, pB) && eltype(B) === TC)
+    copyA = !(TO.isblascontractable(A, pA) && scalartype(A) === TC)
+    copyB = !(TO.isblascontractable(B, pB) && scalartype(B) === TC)
 
     if bstyle isa Fermionic && any(isdual ∘ Base.Fix1(space, B), pB[1])
         # twist smallest object if neither or both already have to be permuted
@@ -419,8 +452,9 @@ end
 
 # Scalar implementation
 #-----------------------
-function scalar(t::AbstractTensorMap)
-    # TODO: should scalar only work if N₁ == N₂ == 0?
-    return dim(codomain(t)) == dim(domain(t)) == 1 ?
-        first(blocks(t))[2][1, 1] : throw(DimensionMismatch())
+function scalar(t::AbstractTensorMap{T, S, 0, 0}) where {T, S}
+    Bs = collect(blocks(t))
+    inds = findall(!iszero ∘ last, Bs)
+    isempty(inds) && return zero(scalartype(t))
+    return only(last(Bs[only(inds)]))
 end

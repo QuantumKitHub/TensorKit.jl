@@ -6,10 +6,13 @@ module Factorizations
 export copy_oftype, factorisation_scalartype, one!, truncspace
 
 using ..TensorKit
-using ..TensorKit: AdjointTensorMap, SectorDict, blocktype, foreachblock, one!
+using ..TensorKit: AdjointTensorMap, SectorDict, SectorVector,
+    blocktype, foreachblock, one!,
+    similar_diagonal, similarstoragetype
 
-using LinearAlgebra: LinearAlgebra, BlasFloat, Diagonal, svdvals, svdvals!, eigen, eigen!,
-    isposdef, isposdef!, ishermitian
+using LinearAlgebra: LinearAlgebra, BlasFloat, Diagonal,
+    svdvals, svdvals!, eigen, eigen!,
+    isposdef, isposdef!
 
 using TensorOperations: Index2Tuple
 
@@ -18,8 +21,7 @@ import MatrixAlgebraKit as MAK
 using MatrixAlgebraKit: AbstractAlgorithm, TruncatedAlgorithm, DiagonalAlgorithm
 using MatrixAlgebraKit: TruncationStrategy, NoTruncation, TruncationByValue,
     TruncationByError, TruncationIntersection, TruncationByFilter, TruncationByOrder
-using MatrixAlgebraKit: left_orth_polar!, right_orth_polar!, left_orth_svd!,
-    right_orth_svd!, left_null_svd!, right_null_svd!, diagview
+using MatrixAlgebraKit: diagview
 
 include("utility.jl")
 include("matrixalgebrakit.jl")
@@ -30,45 +32,54 @@ include("pullbacks.jl")
 
 TensorKit.one!(A::AbstractMatrix) = MatrixAlgebraKit.one!(A)
 
-function MatrixAlgebraKit.isisometry(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple)
-    t = permute(t, (p₁, p₂); copy = false)
-    return isisometry(t)
-end
-
 #------------------------------#
 # LinearAlgebra overloads
 #------------------------------#
 
 function LinearAlgebra.eigen(t::AbstractTensorMap; kwargs...)
-    return ishermitian(t) ? eigh_full(t; kwargs...) : eig_full(t; kwargs...)
+    return LinearAlgebra.ishermitian(t) ? eigh_full(t; kwargs...) : eig_full(t; kwargs...)
 end
 function LinearAlgebra.eigen!(t::AbstractTensorMap; kwargs...)
-    return ishermitian(t) ? eigh_full!(t; kwargs...) : eig_full!(t; kwargs...)
+    return LinearAlgebra.ishermitian(t) ? eigh_full!(t; kwargs...) : eig_full!(t; kwargs...)
 end
 
 function LinearAlgebra.eigvals(t::AbstractTensorMap; kwargs...)
-    tcopy = copy_oftype(t, factorisation_scalartype(eigen, t))
+    tcopy = copy_oftype(t, factorisation_scalartype(LinearAlgebra.eigen, t))
     return LinearAlgebra.eigvals!(tcopy; kwargs...)
 end
-LinearAlgebra.eigvals!(t::AbstractTensorMap; kwargs...) = diagview(eig_vals!(t))
+LinearAlgebra.eigvals!(t::AbstractTensorMap; kwargs...) = eig_vals!(t)
+
+LinearAlgebra.svd(t::AbstractTensorMap; full::Bool = false) =
+    full ? svd_full(t) : svd_compact(t)
+LinearAlgebra.svd!(t::AbstractTensorMap; full::Bool = false) =
+    full ? svd_full!(t) : svd_compact!(t)
 
 function LinearAlgebra.svdvals(t::AbstractTensorMap)
-    tcopy = copy_oftype(t, factorisation_scalartype(tsvd, t))
+    tcopy = copy_oftype(t, factorisation_scalartype(svd_vals!, t))
     return LinearAlgebra.svdvals!(tcopy)
 end
-LinearAlgebra.svdvals!(t::AbstractTensorMap) = diagview(svd_vals!(t))
+LinearAlgebra.svdvals!(t::AbstractTensorMap) = svd_vals!(t)
 
 #--------------------------------------------------#
 # Checks for hermiticity and positive definiteness #
 #--------------------------------------------------#
-function LinearAlgebra.ishermitian(t::AbstractTensorMap)
-    domain(t) == codomain(t) || return false
-    InnerProductStyle(t) === EuclideanInnerProduct() || return false # hermiticity only defined for euclidean
-    for (c, b) in blocks(t)
-        ishermitian(b) || return false
+function _blockmap(f; kwargs...)
+    return function ((c, b))
+        return f(b; kwargs...)
     end
-    return true
 end
+
+function MAK.ishermitian(t::AbstractTensorMap; kwargs...)
+    return InnerProductStyle(t) === EuclideanInnerProduct() &&
+        domain(t) == codomain(t) &&
+        all(_blockmap(MAK.ishermitian; kwargs...), blocks(t))
+end
+function MAK.isantihermitian(t::AbstractTensorMap; kwargs...)
+    return InnerProductStyle(t) === EuclideanInnerProduct() &&
+        domain(t) == codomain(t) &&
+        all(_blockmap(MAK.isantihermitian; kwargs...), blocks(t))
+end
+LinearAlgebra.ishermitian(t::AbstractTensorMap) = MAK.ishermitian(t)
 
 function LinearAlgebra.isposdef(t::AbstractTensorMap)
     return isposdef!(copy_oftype(t, factorisation_scalartype(isposdef, t)))
@@ -77,22 +88,17 @@ function LinearAlgebra.isposdef!(t::AbstractTensorMap)
     domain(t) == codomain(t) ||
         throw(SpaceMismatch("`isposdef` requires domain and codomain to be the same"))
     InnerProductStyle(spacetype(t)) === EuclideanInnerProduct() || return false
-    for (c, b) in blocks(t)
-        isposdef!(b) || return false
-    end
-    return true
+    return all(_blockmap(isposdef!), blocks(t))
 end
 
 # TODO: tolerances are per-block, not global or weighted - does that matter?
-function MatrixAlgebraKit.is_left_isometry(t::AbstractTensorMap; kwargs...)
+function MAK.is_left_isometric(t::AbstractTensorMap; kwargs...)
     domain(t) ≾ codomain(t) || return false
-    f((c, b)) = MatrixAlgebraKit.is_left_isometry(b; kwargs...)
-    return all(f, blocks(t))
+    return all(_blockmap(MAK.is_left_isometric; kwargs...), blocks(t))
 end
-function MatrixAlgebraKit.is_right_isometry(t::AbstractTensorMap; kwargs...)
+function MAK.is_right_isometric(t::AbstractTensorMap; kwargs...)
     domain(t) ≿ codomain(t) || return false
-    f((c, b)) = MatrixAlgebraKit.is_right_isometry(b; kwargs...)
-    return all(f, blocks(t))
+    return all(_blockmap(MAK.is_right_isometric; kwargs...), blocks(t))
 end
 
 end

@@ -39,15 +39,14 @@ end
 
 spacetype(::Type{<:HomSpace{S}}) where {S} = S
 
-numout(W::HomSpace) = length(codomain(W))
-numin(W::HomSpace) = length(domain(W))
-numind(W::HomSpace) = numin(W) + numout(W)
-
 const TensorSpace{S <: ElementarySpace} = Union{S, ProductSpace{S}}
 const TensorMapSpace{S <: ElementarySpace, N₁, N₂} = HomSpace{
     S, ProductSpace{S, N₁},
     ProductSpace{S, N₂},
 }
+
+numout(::Type{TensorMapSpace{S, N₁, N₂}}) where {S, N₁, N₂} = N₁
+numin(::Type{TensorMapSpace{S, N₁, N₂}}) where {S, N₁, N₂} = N₂
 
 function Base.getindex(W::TensorMapSpace{<:IndexSpace, N₁, N₂}, i) where {N₁, N₂}
     return i <= N₁ ? codomain(W)[i] : dual(domain(W)[i - N₁])
@@ -94,11 +93,16 @@ function blocksectors(W::HomSpace)
     N₁ = length(codom)
     N₂ = length(dom)
     I = sectortype(W)
-    # TODO: is sort! still necessary now that blocksectors of ProductSpace is sorted?
-    if N₂ <= N₁
-        return sort!(filter!(c -> hasblock(codom, c), blocksectors(dom)))
+    if N₁ == N₂ == 0
+        return allunits(I)
+    elseif N₁ == 0
+        return filter!(isunit, collect(blocksectors(dom))) # module space cannot end in empty space
+    elseif N₂ == 0
+        return filter!(isunit, collect(blocksectors(codom)))
+    elseif N₂ <= N₁
+        return filter!(c -> hasblock(codom, c), collect(blocksectors(dom)))
     else
-        return sort!(filter!(c -> hasblock(dom, c), blocksectors(codom)))
+        return filter!(c -> hasblock(dom, c), collect(blocksectors(codom)))
     end
 end
 
@@ -156,15 +160,30 @@ end
 # Operations on HomSpaces
 # -----------------------
 """
-    permute(W::HomSpace, (p₁, p₂)::Index2Tuple{N₁,N₂})
+    permute(W::HomSpace, (p₁, p₂)::Index2Tuple)
 
 Return the `HomSpace` obtained by permuting the indices of the domain and codomain of `W`
 according to the permutation `p₁` and `p₂` respectively.
 """
-function permute(W::HomSpace{S}, (p₁, p₂)::Index2Tuple{N₁, N₂}) where {S, N₁, N₂}
+function permute(W::HomSpace, (p₁, p₂)::Index2Tuple)
     p = (p₁..., p₂...)
     TupleTools.isperm(p) && length(p) == numind(W) ||
         throw(ArgumentError("$((p₁, p₂)) is not a valid permutation for $(W)"))
+    return select(W, (p₁, p₂))
+end
+
+_transpose_indices(W::HomSpace) = (reverse(domainind(W)), reverse(codomainind(W)))
+
+function LinearAlgebra.transpose(W::HomSpace, (p₁, p₂)::Index2Tuple = _transpose_indices(W))
+    p = linearizepermutation(p₁, p₂, numout(W), numin(W))
+    iscyclicpermutation(p) || throw(ArgumentError(lazy"$((p₁, p₂)) is not a cyclic permutation for $W"))
+    return select(W, (p₁, p₂))
+end
+
+function braid(W::HomSpace, (p₁, p₂)::Index2Tuple, levels::IndexTuple)
+    p = (p₁..., p₂...)
+    TupleTools.isperm(p) && length(p) == numind(W) == length(levels) ||
+        throw(ArgumentError("$((p₁, p₂)), $levels is not a valid braiding for $(W)"))
     return select(W, (p₁, p₂))
 end
 
@@ -207,8 +226,32 @@ function compose(W::HomSpace{S}, V::HomSpace{S}) where {S}
     return HomSpace(codomain(W), domain(V))
 end
 
+function TensorOperations.tensorcontract(
+        A::HomSpace, pA::Index2Tuple, conjA::Bool,
+        B::HomSpace, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple
+    )
+    return if conjA && conjB
+        A′ = A'
+        pA′ = adjointtensorindices(A, pA)
+        B′ = B'
+        pB′ = adjointtensorindices(B, pB)
+        TensorOperations.tensorcontract(A′, pA′, false, B′, pB′, false, pAB)
+    elseif conjA
+        A′ = A'
+        pA′ = adjointtensorindices(A, pA)
+        TensorOperations.tensorcontract(A′, pA′, false, B, pB, false, pAB)
+    elseif conjB
+        B′ = B'
+        pB′ = adjointtensorindices(B, pB)
+        TensorOperations.tensorcontract(A, pA, false, B′, pB′, false, pAB)
+    else
+        return permute(compose(permute(A, pA), permute(B, pB)), pAB)
+    end
+end
+
 """
-    insertleftunit(W::HomSpace, i=numind(W) + 1; conj=false, dual=false)
+    insertleftunit(W::HomSpace, i = numind(W) + 1; conj = false, dual = false)
 
 Insert a trivial vector space, isomorphic to the underlying field, at position `i`,
 which can be specified as an `Int` or as `Val(i)` for improved type stability.
@@ -218,7 +261,8 @@ See also [`insertrightunit`](@ref insertrightunit(::HomSpace, ::Val{i}) where {i
 [`removeunit`](@ref removeunit(::HomSpace, ::Val{i}) where {i}).
 """
 function insertleftunit(
-        W::HomSpace, ::Val{i} = Val(numind(W) + 1); conj::Bool = false, dual::Bool = false
+        W::HomSpace, ::Val{i} = Val(numind(W) + 1);
+        conj::Bool = false, dual::Bool = false
     ) where {i}
     if i ≤ numout(W)
         return insertleftunit(codomain(W), Val(i); conj, dual) ← domain(W)
@@ -228,7 +272,7 @@ function insertleftunit(
 end
 
 """
-    insertrightunit(W::HomSpace, i=numind(W); conj=false, dual=false)
+    insertrightunit(W::HomSpace, i = numind(W); conj = false, dual = false)
 
 Insert a trivial vector space, isomorphic to the underlying field, after position `i`,
 which can be specified as an `Int` or as `Val(i)` for improved type stability.
@@ -238,7 +282,8 @@ See also [`insertleftunit`](@ref insertleftunit(::HomSpace, ::Val{i}) where {i})
 [`removeunit`](@ref removeunit(::HomSpace, ::Val{i}) where {i}).
 """
 function insertrightunit(
-        W::HomSpace, ::Val{i} = Val(numind(W)); conj::Bool = false, dual::Bool = false
+        W::HomSpace, ::Val{i} = Val(numind(W));
+        conj::Bool = false, dual::Bool = false
     ) where {i}
     if i ≤ numout(W)
         return insertrightunit(codomain(W), Val(i); conj, dual) ← domain(W)

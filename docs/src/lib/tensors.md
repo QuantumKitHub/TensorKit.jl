@@ -34,7 +34,7 @@ Tensor
 
 A `TensorMap` with undefined data can be constructed by specifying its domain and codomain:
 ```@docs
-TensorMap{T}(::UndefInitializer, V::TensorMapSpace{S,N₁,N₂}) where {T,S,N₁,N₂}
+TensorMap{T}(::UndefInitializer, V::TensorMapSpace)
 ```
 
 The resulting object can then be filled with data using the `setindex!` method as discussed
@@ -45,8 +45,8 @@ in an `@tensor output[...] = ...` expression.
 Alternatively, a `TensorMap` can be constructed by specifying its data, codmain and domain
 in one of the following ways:
 ```@docs
-TensorMap(data::AbstractDict{<:Sector,<:AbstractMatrix}, V::TensorMapSpace{S,N₁,N₂}) where {S,N₁,N₂}
-TensorMap(data::AbstractArray, V::TensorMapSpace{S,N₁,N₂}; tol) where {S<:IndexSpace,N₁,N₂}
+TensorMap(data::AbstractDict{<:Sector,<:AbstractMatrix}, V::TensorMapSpace)
+TensorMap(data::AbstractArray, V::TensorMapSpace; tol)
 ```
 
 Finally, we also support the following `Array`-like constructors
@@ -114,6 +114,12 @@ Data can be accessed (and modified) in a number of ways. To access the full matr
 ```@docs
 block
 blocks
+```
+
+To access the reduced tensor elements associated to fusion tree pairs, you can use:
+```@docs
+subblock
+subblocks
 ```
 
 To access the data associated with a specific fusion tree pair, you can use:

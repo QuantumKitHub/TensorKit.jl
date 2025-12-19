@@ -92,7 +92,7 @@ function FusionTree{I}(
         uncoupled::NTuple{N}, coupled = unit(I), isdual = ntuple(Returns(false), N)
     ) where {I <: Sector, N}
     FusionStyle(I) isa UniqueFusion ||
-        error("fusion tree requires inner lines if `FusionStyle(I) <: MultipleFusion`")
+        throw(ArgumentError("fusion tree requires inner lines if `FusionStyle(I) <: MultipleFusion`"))
     return FusionTree{I}(
         map(s -> convert(I, s), uncoupled), convert(I, coupled), isdual,
         _abelianinner(map(s -> convert(I, s), (uncoupled..., dual(coupled))))

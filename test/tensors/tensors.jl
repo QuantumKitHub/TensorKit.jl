@@ -11,22 +11,23 @@ spacelist = try
     if get(ENV, "CI", "false") == "true"
         println("Detected running on CI")
         if Sys.iswindows()
-            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂)
+            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VIB_diag)
         elseif Sys.isapple()
-            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VfU₁, VfSU₂, VSU₂U₁) #, VSU₃)
+            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VfU₁, VfSU₂, VSU₂U₁, VIB_M) #, VSU₃)
         else
-            (Vtr, Vℤ₂, Vfℤ₂, VU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁) #, VSU₃)
+            (Vtr, Vℤ₂, Vfℤ₂, VU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M) #, VSU₃)
         end
     else
-        (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁) #, VSU₃)
+        (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M) #, VSU₃)
     end
 catch
-    (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁) #, VSU₃)
+    (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M) #, VSU₃)
 end
 
 for V in spacelist
     I = sectortype(first(V))
     Istr = type_repr(I)
+    symmetricbraiding = BraidingStyle(I) isa SymmetricBraiding
     println("---------------------------------------")
     println("Tensors with symmetry: $Istr")
     println("---------------------------------------")
@@ -45,18 +46,20 @@ for V in spacelist
                 @test typeof(t) == TensorMap{T, spacetype(t), 5, 0, Vector{T}}
                 # blocks
                 bs = @constinferred blocks(t)
-                (c, b1), state = @constinferred Nothing iterate(bs)
-                @test c == first(blocksectors(W))
-                next = @constinferred Nothing iterate(bs, state)
-                b2 = @constinferred block(t, first(blocksectors(t)))
-                @test b1 == b2
-                @test eltype(bs) === Pair{typeof(c), typeof(b1)}
-                @test typeof(b1) === TensorKit.blocktype(t)
-                @test typeof(c) === sectortype(t)
+                if !isempty(blocksectors(t)) # multifusion space ending on module gives empty data
+                    (c, b1), state = @constinferred Nothing iterate(bs)
+                    @test c == first(blocksectors(W))
+                    next = @constinferred Nothing iterate(bs, state)
+                    b2 = @constinferred block(t, first(blocksectors(t)))
+                    @test b1 == b2
+                    @test eltype(bs) === Pair{typeof(c), typeof(b1)}
+                    @test typeof(b1) === TensorKit.blocktype(t)
+                    @test typeof(c) === sectortype(t)
+                end
             end
         end
         @timedtestset "Tensor Dict conversion" begin
-            W = V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5
+            W = V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5
             for T in (Int, Float32, ComplexF64)
                 t = @constinferred rand(T, W)
                 d = convert(Dict, t)
@@ -96,7 +99,7 @@ for V in spacelist
             end
         end
         @timedtestset "Basic linear algebra" begin
-            W = V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5
+            W = V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5
             for T in (Float32, ComplexF64)
                 t = @constinferred rand(T, W)
                 @test scalartype(t) == T
@@ -134,41 +137,47 @@ for V in spacelist
                 @test dot(t2, t) ≈ conj(dot(t2', t'))
                 @test dot(t2, t) ≈ dot(t', t2')
 
-                i1 = @constinferred(isomorphism(T, V1 ⊗ V2, V2 ⊗ V1))
-                i2 = @constinferred(isomorphism(Vector{T}, V2 ⊗ V1, V1 ⊗ V2))
-                @test i1 * i2 == @constinferred(id(T, V1 ⊗ V2))
-                @test i2 * i1 == @constinferred(id(Vector{T}, V2 ⊗ V1))
+                if UnitStyle(I) isa SimpleUnit || !isempty(blocksectors(V2 ⊗ V1))
+                    i1 = @constinferred(isomorphism(T, V1 ⊗ V2, V2 ⊗ V1)) # can't reverse fusion here when modules are involved
+                    i2 = @constinferred(isomorphism(Vector{T}, V2 ⊗ V1, V1 ⊗ V2))
+                    @test i1 * i2 == @constinferred(id(T, V1 ⊗ V2))
+                    @test i2 * i1 == @constinferred(id(Vector{T}, V2 ⊗ V1))
+                end
 
-                w = @constinferred(isometry(T, V1 ⊗ (oneunit(V1) ⊕ oneunit(V1)), V1))
+                w = @constinferred isometry(T, V1 ⊗ (rightunitspace(V1) ⊕ rightunitspace(V1)), V1)
                 @test dim(w) == 2 * dim(V1 ← V1)
                 @test w' * w == id(Vector{T}, V1)
                 @test w * w' == (w * w')^2
             end
         end
         @timedtestset "Trivial space insertion and removal" begin
-            W = V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5
+            W = V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5
             for T in (Float32, ComplexF64)
                 t = @constinferred rand(T, W)
                 t2 = @constinferred insertleftunit(t)
                 @test t2 == @constinferred insertrightunit(t)
-                @test numind(t2) == numind(t) + 1
                 @test space(t2) == insertleftunit(space(t))
-                @test scalartype(t2) === T
-                @test t.data === t2.data
                 @test @constinferred(removeunit(t2, $(numind(t2)))) == t
                 t3 = @constinferred insertleftunit(t; copy = true)
                 @test t3 == @constinferred insertrightunit(t; copy = true)
+                @test @constinferred(removeunit(t3, $(numind(t3)))) == t
+
+                @test numind(t2) == numind(t) + 1
+                @test scalartype(t2) === T
+                @test t.data === t2.data
+
                 @test t.data !== t3.data
                 for (c, b) in blocks(t)
                     @test b == block(t3, c)
                 end
-                @test @constinferred(removeunit(t3, $(numind(t3)))) == t
+
                 t4 = @constinferred insertrightunit(t, 3; dual = true)
-                @test numin(t4) == numin(t) && numout(t4) == numout(t) + 1
+                @test numin(t4) == numin(t) + 1 && numout(t4) == numout(t)
                 for (c, b) in blocks(t)
                     @test b == block(t4, c)
                 end
                 @test @constinferred(removeunit(t4, 4)) == t
+
                 t5 = @constinferred insertleftunit(t, 4; dual = true)
                 @test numin(t5) == numin(t) + 1 && numout(t5) == numout(t)
                 for (c, b) in blocks(t)
@@ -223,7 +232,7 @@ for V in spacelist
             @test Base.promote_typeof(t, tc) == typeof(tc)
             @test Base.promote_typeof(tc, t) == typeof(tc + t)
         end
-        @timedtestset "Permutations: test via inner product invariance" begin
+        symmetricbraiding && @timedtestset "Permutations: test via inner product invariance" begin
             W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
             t = rand(ComplexF64, W)
             t′ = randn!(similar(t))
@@ -237,7 +246,7 @@ for V in spacelist
                     @test dot(t2′, t2) ≈ dot(t′, t) ≈ dot(transpose(t2′), transpose(t2))
                 end
 
-                t3 = VERSION < v"1.7" ? repartition(t, k) : @constinferred repartition(t, $k)
+                t3 = @constinferred repartition(t, $k)
                 @test norm(t3) ≈ norm(t)
                 t3′ = @constinferred repartition!(similar(t3), t′)
                 @test norm(t3′) ≈ norm(t′)
@@ -269,28 +278,46 @@ for V in spacelist
             end
         end
         @timedtestset "Full trace: test self-consistency" begin
-            t = rand(ComplexF64, V1 ⊗ V2' ⊗ V2 ⊗ V1')
-            t2 = permute(t, ((1, 2), (4, 3)))
-            s = @constinferred tr(t2)
-            @test conj(s) ≈ tr(t2')
-            if !isdual(V1)
-                t2 = twist!(t2, 1)
+            if symmetricbraiding
+                t = rand(ComplexF64, V1 ⊗ V2' ⊗ V2 ⊗ V1')
+                t2 = permute(t, ((1, 2), (4, 3)))
+                s = @constinferred tr(t2)
+                @test conj(s) ≈ tr(t2')
+                if !isdual(V1)
+                    t2 = twist!(t2, 1)
+                end
+                if isdual(V2)
+                    t2 = twist!(t2, 2)
+                end
+                ss = tr(t2)
+                @tensor s2 = t[a, b, b, a]
+                @tensor t3[a, b] := t[a, c, c, b]
+                @tensor s3 = t3[a, a]
+                @test ss ≈ s2
+                @test ss ≈ s3
             end
-            if isdual(V2)
-                t2 = twist!(t2, 2)
-            end
-            ss = tr(t2)
-            @tensor s2 = t[a, b, b, a]
-            @tensor t3[a, b] := t[a, c, c, b]
-            @tensor s3 = t3[a, a]
+            t = rand(ComplexF64, V1 ⊗ V2 ← V1 ⊗ V2) # avoid permutes
+            ss = @constinferred tr(t)
+            @test conj(ss) ≈ tr(t')
+            @planar s2 = t[a b; a b]
+            @planar t3[a; b] := t[a c; b c]
+            @planar s3 = t3[a; a]
+
             @test ss ≈ s2
             @test ss ≈ s3
         end
         @timedtestset "Partial trace: test self-consistency" begin
-            t = rand(ComplexF64, V1 ⊗ V2' ⊗ V3 ⊗ V2 ⊗ V1' ⊗ V3')
-            @tensor t2[a, b] := t[c, d, b, d, c, a]
-            @tensor t4[a, b, c, d] := t[d, e, b, e, c, a]
-            @tensor t5[a, b] := t4[a, b, c, c]
+            if symmetricbraiding
+                t = rand(ComplexF64, V1 ⊗ V2 ⊗ V3 ← V1 ⊗ V2 ⊗ V3)
+                @tensor t2[a; b] := t[c d b; c d a]
+                @tensor t4[a b; c d] := t[e d c; e b a]
+                @tensor t5[a; b] := t4[a c; b c]
+                @test t2 ≈ t5
+            end
+            t = rand(ComplexF64, V3 ⊗ V4 ⊗ V5 ← V3 ⊗ V4 ⊗ V5) # compatible with module fusion
+            @planar t2[a; b] := t[c a d; c b d]
+            @planar t4[a b; c d] := t[e a b; e c d]
+            @planar t5[a; b] := t4[a c; b c]
             @test t2 ≈ t5
         end
         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
@@ -301,7 +328,8 @@ for V in spacelist
                 @test t3 ≈ convert(Array, t2)
             end
         end
-        @timedtestset "Trace and contraction" begin
+        #TODO: find version that works for all multifusion cases
+        symmetricbraiding && @timedtestset "Trace and contraction" begin
             t1 = rand(ComplexF64, V1 ⊗ V2 ⊗ V3)
             t2 = rand(ComplexF64, V2' ⊗ V4 ⊗ V1')
             t3 = t1 ⊗ t2
@@ -326,14 +354,14 @@ for V in spacelist
                 @test HrA12array ≈ convert(Array, HrA12)
             end
         end
-        @timedtestset "Index flipping: test flipping inverse" begin
+        (BraidingStyle(I) isa HasBraiding) && @timedtestset "Index flipping: test flipping inverse" begin
             t = rand(ComplexF64, V1 ⊗ V1' ← V1' ⊗ V1)
             for i in 1:4
                 @test t ≈ flip(flip(t, i), i; inv = true)
                 @test t ≈ flip(flip(t, i; inv = true), i)
             end
         end
-        @timedtestset "Index flipping: test via explicit flip" begin
+        symmetricbraiding && @timedtestset "Index flipping: test via explicit flip" begin
             t = rand(ComplexF64, V1 ⊗ V1' ← V1' ⊗ V1)
             F1 = unitary(flip(V1), V1)
 
@@ -346,7 +374,7 @@ for V in spacelist
             @tensor tf[a, b; c, d] := conj(F1[d, d']) * t[a, b; c, d']
             @test twist!(flip(t, 4), 4) ≈ tf
         end
-        @timedtestset "Index flipping: test via contraction" begin
+        symmetricbraiding && @timedtestset "Index flipping: test via contraction" begin
             t1 = rand(ComplexF64, V1 ⊗ V2 ⊗ V3 ← V4)
             t2 = rand(ComplexF64, V2' ⊗ V5 ← V4' ⊗ V1)
             @tensor ta[a, b] := t1[x, y, a, z] * t2[y, b, z, x]
@@ -360,11 +388,11 @@ for V in spacelist
         end
         @timedtestset "Multiplication of isometries: test properties" begin
             W2 = V4 ⊗ V5
-            W1 = W2 ⊗ (oneunit(V1) ⊕ oneunit(V1))
+            W1 = W2 ⊗ (unitspace(V1) ⊕ unitspace(V1))
             for T in (Float64, ComplexF64)
                 t1 = randisometry(T, W1, W2)
                 t2 = randisometry(T, W2 ← W2)
-                @test isisometry(t1)
+                @test isisometric(t1)
                 @test isunitary(t2)
                 P = t1 * t1'
                 @test P * P ≈ P
@@ -426,7 +454,7 @@ for V in spacelist
             end
         end
         @timedtestset "diag/diagm" begin
-            W = V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5
+            W = V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5
             t = randn(ComplexF64, W)
             d = LinearAlgebra.diag(t)
             D = LinearAlgebra.diagm(codomain(t), domain(t), d)
@@ -505,8 +533,13 @@ for V in spacelist
         end
         @timedtestset "Tensor product: test via norm preservation" begin
             for T in (Float32, ComplexF64)
-                t1 = rand(T, V2 ⊗ V3 ⊗ V1, V1 ⊗ V2)
-                t2 = rand(T, V2 ⊗ V1 ⊗ V3, V1 ⊗ V1)
+                if UnitStyle(I) isa SimpleUnit || !isempty(blocksectors(V2 ⊗ V1))
+                    t1 = rand(T, V2 ⊗ V3 ⊗ V1, V1 ⊗ V2)
+                    t2 = rand(T, V2 ⊗ V1 ⊗ V3, V1 ⊗ V1)
+                else
+                    t1 = rand(T, V3 ⊗ V4 ⊗ V5, V1 ⊗ V2)
+                    t2 = rand(T, V5' ⊗ V4' ⊗ V3', V2' ⊗ V1')
+                end
                 t = @constinferred (t1 ⊗ t2)
                 @test norm(t) ≈ norm(t1) * norm(t2)
             end
@@ -528,7 +561,7 @@ for V in spacelist
                 end
             end
         end
-        @timedtestset "Tensor product: test via tensor contraction" begin
+        symmetricbraiding && @timedtestset "Tensor product: test via tensor contraction" begin
             for T in (Float32, ComplexF64)
                 t1 = rand(T, V2 ⊗ V3 ⊗ V1)
                 t2 = rand(T, V2 ⊗ V1 ⊗ V3)
@@ -537,10 +570,15 @@ for V in spacelist
                 @test t ≈ t′
             end
         end
-        @timedtestset "Tensor absorpsion" begin
+        @timedtestset "Tensor absorption" begin
             # absorbing small into large
-            t1 = zeros(V1 ⊕ V1, V2 ⊗ V3)
-            t2 = rand(V1, V2 ⊗ V3)
+            if UnitStyle(I) isa SimpleUnit || !isempty(blocksectors(V2 ⊗ V3))
+                t1 = zeros(V1 ⊕ V1, V2 ⊗ V3)
+                t2 = rand(V1, V2 ⊗ V3)
+            else
+                t1 = zeros(V1 ⊕ V2, V3 ⊗ V4 ⊗ V5)
+                t2 = rand(V1, V3 ⊗ V4 ⊗ V5)
+            end
             t3 = @constinferred absorb(t1, t2)
             @test norm(t3) ≈ norm(t2)
             @test norm(t1) == 0
@@ -549,8 +587,13 @@ for V in spacelist
             @test t3 ≈ t4
 
             # absorbing large into small
-            t1 = rand(V1 ⊕ V1, V2 ⊗ V3)
-            t2 = zeros(V1, V2 ⊗ V3)
+            if UnitStyle(I) isa SimpleUnit || !isempty(blocksectors(V2 ⊗ V3))
+                t1 = rand(V1 ⊕ V1, V2 ⊗ V3)
+                t2 = zeros(V1, V2 ⊗ V3)
+            else
+                t1 = rand(V1 ⊕ V2, V3 ⊗ V4 ⊗ V5)
+                t2 = zeros(V1, V3 ⊗ V4 ⊗ V5)
+            end
             t3 = @constinferred absorb(t2, t1)
             @test norm(t3) < norm(t1)
             @test norm(t2) == 0
@@ -579,5 +622,55 @@ end
                 reshape(convert(Array, t1), (d1, 1, d3, 1)) .*
                 reshape(convert(Array, t2), (1, d2, 1, d4))
         end
+    end
+end
+
+@timedtestset "show tensors" begin
+    for V in (ℂ^2, Z2Space(0 => 2, 1 => 2), SU2Space(0 => 2, 1 => 2))
+        t1 = ones(Float32, V ⊗ V, V)
+        t2 = randn(ComplexF64, V ⊗ V ⊗ V)
+        t3 = randn(Float64, zero(V), zero(V))
+        # test unlimited output
+        for t in (t1, t2, t1', t2', t3)
+            output = IOBuffer()
+            summary(output, t)
+            print(output, ":\n codomain: ")
+            show(output, MIME("text/plain"), codomain(t))
+            print(output, "\n domain: ")
+            show(output, MIME("text/plain"), domain(t))
+            print(output, "\n blocks: \n")
+            first = true
+            for (c, b) in blocks(t)
+                first || print(output, "\n\n")
+                print(output, " * ")
+                show(output, MIME("text/plain"), c)
+                print(output, " => ")
+                show(output, MIME("text/plain"), b)
+                first = false
+            end
+            outputstr = String(take!(output))
+            @test outputstr == sprint(show, MIME("text/plain"), t)
+        end
+
+        # test limited output with a single block
+        t = randn(Float64, V ⊗ V, V)' # we know there is a single space in the codomain, so that blocks have 2 rows
+        output = IOBuffer()
+        summary(output, t)
+        print(output, ":\n codomain: ")
+        show(output, MIME("text/plain"), codomain(t))
+        print(output, "\n domain: ")
+        show(output, MIME("text/plain"), domain(t))
+        print(output, "\n blocks: \n")
+        c = unit(sectortype(t))
+        b = block(t, c)
+        print(output, " * ")
+        show(output, MIME("text/plain"), c)
+        print(output, " => ")
+        show(output, MIME("text/plain"), b)
+        if length(blocks(t)) > 1
+            print(output, "\n\n *   …   [output of 1 more block(s) truncated]")
+        end
+        outputstr = String(take!(output))
+        @test outputstr == sprint(show, MIME("text/plain"), t; context = (:limit => true, :displaysize => (12, 100)))
     end
 end

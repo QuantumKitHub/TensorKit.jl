@@ -106,18 +106,6 @@ function ChainRulesCore.rrule(
     return TensorKit.copy_oftype(t, T), copy_oftype_pullback
 end
 
-function ChainRulesCore.rrule(
-        ::typeof(TensorKit.permutedcopy_oftype), t::AbstractTensorMap, T::Type{<:Number}, p::Index2Tuple
-    )
-    project = ProjectTo(t)
-    function permutedcopy_oftype_pullback(Δt)
-        invp = TensorKit._canonicalize(TupleTools.invperm(linearize(p)), t)
-        return NoTangent(), project(TensorKit.permute(unthunk(Δt), invp)), NoTangent(),
-            NoTangent()
-    end
-    return TensorKit.permutedcopy_oftype(t, T, p), permutedcopy_oftype_pullback
-end
-
 function ChainRulesCore.rrule(::typeof(Base.convert), T::Type{<:Array}, t::AbstractTensorMap)
     A = convert(T, t)
     function convert_pullback(ΔA)

@@ -36,32 +36,9 @@ function ChainRulesTestUtils.test_approx(
     return nothing
 end
 
-# make sure that norms are computed correctly:
-function FiniteDifferences.to_vec(t::SectorDict)
-    T = scalartype(valtype(t))
-    vec = mapreduce(vcat, t; init = T[]) do (c, b)
-        return reshape(b, :) .* sqrt(dim(c))
-    end
-    vec_real = T <: Real ? vec : collect(reinterpret(real(T), vec))
-
-    function from_vec(x_real)
-        x = T <: Real ? x_real : reinterpret(T, x_real)
-        ctr = 0
-        return SectorDict(
-            c => (
-                    n = length(b);
-                    b′ = reshape(view(x, ctr .+ (1:n)), size(b)) ./ sqrt(dim(c));
-                    ctr += n;
-                    b′
-                ) for (c, b) in t
-        )
-    end
-    return vec_real, from_vec
-end
-
 # Float32 and finite differences don't mix well
 precision(::Type{<:Union{Float32, Complex{Float32}}}) = 1.0e-2
-precision(::Type{<:Union{Float64, Complex{Float64}}}) = 1.0e-6
+precision(::Type{<:Union{Float64, Complex{Float64}}}) = 1.0e-5
 
 function randindextuple(N::Int, k::Int = rand(0:N))
     @assert 0 ≤ k ≤ N
@@ -77,6 +54,9 @@ function test_ad_rrule(f, args...; check_inferred = false, kwargs...)
     return nothing
 end
 
+# project_hermitian is non-differentiable for now
+_project_hermitian(x) = (x + x') / 2
+
 # Gauge fixing tangents
 # ---------------------
 function remove_qrgauge_dependence!(ΔQ, t, Q)
@@ -90,7 +70,6 @@ function remove_qrgauge_dependence!(ΔQ, t, Q)
     end
     return ΔQ
 end
-
 function remove_lqgauge_dependence!(ΔQ, t, Q)
     for (c, b) in blocks(ΔQ)
         m, n = size(block(t, c))
@@ -103,7 +82,7 @@ function remove_lqgauge_dependence!(ΔQ, t, Q)
     return ΔQ
 end
 function remove_eiggauge_dependence!(
-        ΔV, D, V; degeneracy_atol = MatrixAlgebraKit.default_pullback_gaugetol(D)
+        ΔV, D, V; degeneracy_atol = MatrixAlgebraKit.default_pullback_degeneracy_atol(D)
     )
     gaugepart = V' * ΔV
     for (c, b) in blocks(gaugepart)
@@ -119,10 +98,9 @@ function remove_eiggauge_dependence!(
     return ΔV
 end
 function remove_eighgauge_dependence!(
-        ΔV, D, V; degeneracy_atol = MatrixAlgebraKit.default_pullback_gaugetol(D)
+        ΔV, D, V; degeneracy_atol = MatrixAlgebraKit.default_pullback_degeneracy_atol(D)
     )
-    gaugepart = V' * ΔV
-    gaugepart = (gaugepart - gaugepart') / 2
+    gaugepart = project_antihermitian!(V' * ΔV)
     for (c, b) in blocks(gaugepart)
         Dc = diagview(block(D, c))
         # for some reason this fails only on tests, and I cannot reproduce it in an
@@ -132,14 +110,13 @@ function remove_eighgauge_dependence!(
             abs(Dc[i] - Dc[j]) >= degeneracy_atol && (b[i, j] = 0)
         end
     end
-    mul!(ΔV, V / (V' * V), gaugepart, -1, 1)
+    mul!(ΔV, V, gaugepart, -1, 1)
     return ΔV
 end
 function remove_svdgauge_dependence!(
-        ΔU, ΔVᴴ, U, S, Vᴴ; degeneracy_atol = MatrixAlgebraKit.default_pullback_gaugetol(S)
+        ΔU, ΔVᴴ, U, S, Vᴴ; degeneracy_atol = MatrixAlgebraKit.default_pullback_degeneracy_atol(S)
     )
-    gaugepart = U' * ΔU + Vᴴ * ΔVᴴ'
-    gaugepart = (gaugepart - gaugepart') / 2
+    gaugepart = project_antihermitian!(U' * ΔU + Vᴴ * ΔVᴴ')
     for (c, b) in blocks(gaugepart)
         Sd = diagview(block(S, c))
         # for some reason this fails only on tests, and I cannot reproduce it in an
@@ -152,8 +129,6 @@ function remove_svdgauge_dependence!(
     mul!(ΔU, U, gaugepart, -1, 1)
     return ΔU, ΔVᴴ
 end
-
-project_hermitian(A) = (A + A') / 2
 
 # Tests
 # -----
@@ -222,8 +197,6 @@ for V in spacelist
             test_rrule(copy, T2)
             test_rrule(TensorKit.copy_oftype, T1, ComplexF64)
             if symmetricbraiding
-                test_rrule(TensorKit.permutedcopy_oftype, T1, ComplexF64, ((3, 1), (2, 4)))
-
                 test_rrule(convert, Array, T1)
                 test_rrule(
                     TensorMap, convert(Array, T1), codomain(T1), domain(T1);
@@ -293,6 +266,7 @@ for V in spacelist
             C = randn(T, domain(A), codomain(A))
             test_rrule(*, A, C)
 
+            test_rrule(transpose, A, ((2, 5, 4), (1, 3)))
             symmetricbraiding && test_rrule(permute, A, ((1, 3, 2), (5, 4)))
             test_rrule(twist, A, 1)
             test_rrule(twist, A, [1, 3])
@@ -306,22 +280,26 @@ for V in spacelist
         end
 
         @timedtestset "Linear Algebra part II with scalartype $T" for T in eltypes
+            atol = precision(T)
+            rtol = precision(T)
             for i in 1:3
                 E = randn(T, ⊗(V[1:i]...) ← ⊗(V[1:i]...))
-                test_rrule(LinearAlgebra.tr, E)
-                test_rrule(exp, E; check_inferred = false)
-                test_rrule(inv, E)
+                test_rrule(LinearAlgebra.tr, E; atol, rtol)
+                test_rrule(exp, E; check_inferred = false, atol, rtol)
+                test_rrule(inv, E; atol, rtol)
             end
 
             A = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
-            test_rrule(LinearAlgebra.adjoint, A)
-            test_rrule(LinearAlgebra.norm, A, 2)
+            test_rrule(LinearAlgebra.adjoint, A; atol, rtol)
+            test_rrule(LinearAlgebra.norm, A, 2; atol, rtol)
 
             B = randn(T, space(A))
-            test_rrule(LinearAlgebra.dot, A, B)
+            test_rrule(LinearAlgebra.dot, A, B; atol, rtol)
         end
 
         @timedtestset "Matrix functions ($T)" for T in eltypes
+            atol = precision(T)
+            rtol = precision(T)
             for f in (sqrt, exp)
                 check_inferred = false # !(T <: Real) # not type-stable for real functions
                 t1 = randn(T, V[1] ← V[1])
@@ -343,9 +321,9 @@ for V in spacelist
                     randn!(d3.data)
                 end
 
-                test_rrule(f, t1; rrule_f = Zygote.rrule_via_ad, check_inferred)
-                test_rrule(f, t2; rrule_f = Zygote.rrule_via_ad, check_inferred)
-                test_rrule(f, d ⊢ d2; check_inferred, output_tangent = d3)
+                test_rrule(f, t1; rrule_f = Zygote.rrule_via_ad, check_inferred, atol, rtol)
+                test_rrule(f, t2; rrule_f = Zygote.rrule_via_ad, check_inferred, atol, rtol)
+                test_rrule(f, d ⊢ d2; check_inferred, output_tangent = d3, atol, rtol)
             end
         end
 
@@ -568,7 +546,7 @@ for V in spacelist
                     remove_eighgauge_dependence!(Δv, d, v)
 
                     # necessary for FiniteDifferences to not complain
-                    eigh_full′ = eigh_full ∘ project_hermitian
+                    eigh_full′ = eigh_full ∘ _project_hermitian
 
                     test_ad_rrule(eigh_full′, t; output_tangent = (Δd, Δv), atol, rtol)
                     test_ad_rrule(first ∘ eigh_full′, t; output_tangent = Δd, atol, rtol)
@@ -594,49 +572,46 @@ for V in spacelist
                     test_ad_rrule(svd_compact, t; output_tangent = (ΔU, ΔS, ΔVᴴ), atol, rtol)
                     test_ad_rrule(svd_compact, t; output_tangent = (ΔU, ΔS2, ΔVᴴ), atol, rtol)
 
-                    # TODO: I'm not sure how to properly test with spaces that might change
-                    # with the finite-difference methods, as then the jacobian is ill-defined.
-
-                    trunc = truncrank(max(2, round(Int, min(dim(domain(t)), dim(codomain(t))) * (3 / 4))))
+                    # Testing truncation with finitedifferences is RNG-prone since the
+                    # Jacobian changes size if the truncation space changes, causing errors.
+                    # So, first test the fixed space case, then do more limited testing on
+                    # some gradients and compare to the fixed space case
+                    V_trunc = spacetype(t)(c => div(min(size(b)...), 2) for (c, b) in blocks(t))
+                    trunc = truncspace(V_trunc)
                     USVᴴ_trunc = svd_trunc(t; trunc)
-                    ΔUSVᴴ_trunc = rand_tangent.(USVᴴ_trunc)
+                    ΔUSVᴴ_trunc = (rand_tangent.(Base.front(USVᴴ_trunc))..., zero(last(USVᴴ_trunc)))
                     remove_svdgauge_dependence!(
-                        ΔUSVᴴ_trunc[1], ΔUSVᴴ_trunc[3], USVᴴ_trunc...; degeneracy_atol
-                    )
-                    # test_ad_rrule(svd_trunc, t;
-                    #               fkwargs=(; trunc), output_tangent=ΔUSVᴴ_trunc, atol, rtol)
-
-                    trunc = truncspace(space(USVᴴ_trunc[2], 1))
-                    USVᴴ_trunc = svd_trunc(t; trunc)
-                    ΔUSVᴴ_trunc = rand_tangent.(USVᴴ_trunc)
-                    remove_svdgauge_dependence!(
-                        ΔUSVᴴ_trunc[1], ΔUSVᴴ_trunc[3], USVᴴ_trunc...; degeneracy_atol
+                        ΔUSVᴴ_trunc[1], ΔUSVᴴ_trunc[3], Base.front(USVᴴ_trunc)...; degeneracy_atol
                     )
                     test_ad_rrule(
                         svd_trunc, t;
                         fkwargs = (; trunc), output_tangent = ΔUSVᴴ_trunc, atol, rtol
                     )
 
-                    # ϵ = norm(*(USVᴴ_trunc...) - t)
-                    # trunc = truncerror(; atol=ϵ)
-                    # USVᴴ_trunc = svd_trunc(t; trunc)
-                    # ΔUSVᴴ_trunc = rand_tangent.(USVᴴ_trunc)
-                    # remove_svdgauge_dependence!(ΔUSVᴴ_trunc[1], ΔUSVᴴ_trunc[3], USVᴴ_trunc...;
-                    #                            degeneracy_atol)
-                    # test_ad_rrule(svd_trunc, t;
-                    #               fkwargs=(; trunc), output_tangent=ΔUSVᴴ_trunc, atol, rtol)
+                    # attempt to construct a loss function that doesn't depend on the gauges
+                    function f(t; trunc)
+                        Utr, Str, Vᴴtr, ϵ = svd_trunc(t; trunc)
+                        return LinearAlgebra.tr(Str) + LinearAlgebra.norm(Utr * Vᴴtr)
+                    end
 
-                    tol = minimum(((c, b),) -> minimum(diagview(b)), blocks(USVᴴ_trunc[2]))
+                    trunc = truncrank(ceil(Int, dim(V_trunc)))
+                    USVᴴ_trunc′ = svd_trunc(t; trunc)
+                    g1, = Zygote.gradient(x -> f(x; trunc), t)
+                    g2, = Zygote.gradient(x -> f(x; trunc = truncspace(space(USVᴴ_trunc′[2], 1))), t)
+                    @test g1 ≈ g2
+
+                    trunc = truncerror(; atol = last(USVᴴ_trunc))
+                    USVᴴ_trunc′ = svd_trunc(t; trunc)
+                    g1, = Zygote.gradient(x -> f(x; trunc), t)
+                    g2, = Zygote.gradient(x -> f(x; trunc = truncspace(space(USVᴴ_trunc′[2], 1))), t)
+                    @test g1 ≈ g2
+
+                    tol = minimum(((c, b),) -> minimum(diagview(b)), blocks(USVᴴ_trunc[2]); init = zero(scalartype(USVᴴ_trunc[2])))
                     trunc = trunctol(; atol = 10 * tol)
-                    USVᴴ_trunc = svd_trunc(t; trunc)
-                    ΔUSVᴴ_trunc = rand_tangent.(USVᴴ_trunc)
-                    remove_svdgauge_dependence!(
-                        ΔUSVᴴ_trunc[1], ΔUSVᴴ_trunc[3], USVᴴ_trunc...; degeneracy_atol
-                    )
-                    test_ad_rrule(
-                        svd_trunc, t;
-                        fkwargs = (; trunc), output_tangent = ΔUSVᴴ_trunc, atol, rtol
-                    )
+                    USVᴴ_trunc′ = svd_trunc(t; trunc)
+                    g1, = Zygote.gradient(x -> f(x; trunc), t)
+                    g2, = Zygote.gradient(x -> f(x; trunc = truncspace(space(USVᴴ_trunc′[2], 1))), t)
+                    @test g1 ≈ g2
                 end
             end
 

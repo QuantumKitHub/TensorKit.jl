@@ -1,15 +1,16 @@
 module TestSetup
 
 export smallset, randsector, hasfusiontensor, force_planar
+export random_fusion
 export sectorlist
-export Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, Vfib
+export Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, Vfib, VIB_diag, VIB_M
 
 using Random
 using TensorKit
 using TensorKit: ℙ, PlanarTrivial
 using Base.Iterators: take, product
 
-Random.seed!(1234)
+Random.seed!(123456)
 
 smallset(::Type{I}) where {I <: Sector} = take(values(I), 5)
 function smallset(::Type{ProductSector{Tuple{I1, I2}}}) where {I1, I2}
@@ -25,14 +26,15 @@ end
 function randsector(::Type{I}) where {I <: Sector}
     s = collect(smallset(I))
     a = rand(s)
-    while a == one(a) # don't use trivial label
+    while isunit(a) # don't use trivial label
         a = rand(s)
     end
     return a
 end
 function hasfusiontensor(I::Type{<:Sector})
+    isa(UnitStyle(I), GenericUnit) && return false
     try
-        TensorKit.fusiontensor(one(I), one(I), one(I))
+        TensorKit.fusiontensor(unit(I), unit(I), unit(I))
         return true
     catch e
         if e isa MethodError
@@ -74,6 +76,18 @@ function force_planar(tsrc::TensorMap{<:Any, <:GradedSpace})
     return tdst
 end
 
+function random_fusion(I::Type{<:Sector}, ::Val{N}) where {N} # for fusion tree tests
+    N == 1 && return (randsector(I),)
+    tail = random_fusion(I, Val(N - 1))
+    s = randsector(I)
+    counter = 0
+    while isempty(⊗(s, first(tail))) && counter < 20
+        counter += 1
+        s = (counter < 20) ? randsector(I) : leftunit(first(tail))
+    end
+    return (s, tail...)
+end
+
 sectorlist = (
     Z2Irrep, Z3Irrep, Z4Irrep, Z3Irrep ⊠ Z4Irrep,
     U1Irrep, CU1Irrep, SU2Irrep,
@@ -81,6 +95,7 @@ sectorlist = (
     FermionParity ⊠ U1Irrep ⊠ SU2Irrep, FermionParity ⊠ SU2Irrep ⊠ SU2Irrep, # Hubbard-like
     FibonacciAnyon, IsingAnyon,
     Z2Irrep ⊠ FibonacciAnyon ⊠ FibonacciAnyon,
+    IsingBimodule, IsingBimodule ⊠ SU2Irrep, IsingBimodule ⊠ IsingBimodule,
 )
 
 # spaces
@@ -157,6 +172,27 @@ Vfib = (
     Vect[FibonacciAnyon](:I => 3, :τ => 2)',
     Vect[FibonacciAnyon](:I => 2, :τ => 3),
     Vect[FibonacciAnyon](:I => 2, :τ => 2),
+)
+
+C0, C1 = IsingBimodule(1, 1, 0), IsingBimodule(1, 1, 1)
+D0, D1 = IsingBimodule(2, 2, 0), IsingBimodule(2, 2, 1)
+M, Mop = IsingBimodule(1, 2, 0), IsingBimodule(2, 1, 0)
+VIB_diag = (
+    Vect[IsingBimodule](C0 => 1, C1 => 2),
+    Vect[IsingBimodule](C0 => 2, C1 => 1),
+    Vect[IsingBimodule](C0 => 3, C1 => 1),
+    Vect[IsingBimodule](C0 => 2, C1 => 3),
+    Vect[IsingBimodule](C0 => 3, C1 => 2),
+)
+
+# not a random ordering! designed to make V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5 work (tensors)
+# while V1 ⊗ V2 ← V4 isn't empty (factorizations)
+VIB_M = (
+    Vect[IsingBimodule](C0 => 1, C1 => 2),
+    Vect[IsingBimodule](M => 3),
+    Vect[IsingBimodule](C0 => 2, C1 => 3),
+    Vect[IsingBimodule](M => 4),
+    Vect[IsingBimodule](D0 => 3, D1 => 4),
 )
 
 end

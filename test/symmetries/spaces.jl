@@ -87,7 +87,9 @@ end
     @test @constinferred(axes(V)) == Base.OneTo(d)
     @test ℝ^d == ℝ[](d) == CartesianSpace(d) == typeof(V)(d)
     W = @constinferred ℝ^1
+    @test @constinferred(isunitspace(W))
     @test @constinferred(unitspace(V)) == W == unitspace(typeof(V))
+    @test @constinferred(leftunitspace(V)) == W == @constinferred(rightunitspace(V))
     @test @constinferred(zerospace(V)) == ℝ^0 == zerospace(typeof(V))
     @test @constinferred(⊕(V, zerospace(V))) == V
     @test @constinferred(⊕(V, V)) == ℝ^(2d)
@@ -133,7 +135,9 @@ end
     @test @constinferred(axes(V)) == Base.OneTo(d)
     @test ℂ^d == Vect[Trivial](d) == Vect[](Trivial() => d) == ℂ[](d) == typeof(V)(d)
     W = @constinferred ℂ^1
+    @test @constinferred(isunitspace(W))
     @test @constinferred(unitspace(V)) == W == unitspace(typeof(V))
+    @test @constinferred(leftunitspace(V)) == W == @constinferred(rightunitspace(V))
     @test @constinferred(zerospace(V)) == ℂ^0 == zerospace(typeof(V))
     @test @constinferred(⊕(V, zerospace(V))) == V
     @test @constinferred(⊕(V, V)) == ℂ^(2d)
@@ -187,7 +191,7 @@ end
 
 @timedtestset "ElementarySpace: $(type_repr(Vect[I]))" for I in sectorlist
     if Base.IteratorSize(values(I)) === Base.IsInfinite()
-        set = unique(vcat(unit(I), [randsector(I) for k in 1:10]))
+        set = unique(vcat(allunits(I)..., [randsector(I) for k in 1:10]))
         gen = (c => 2 for c in set)
     else
         gen = (values(I)[k] => (k + 1) for k in 1:length(values(I)))
@@ -220,13 +224,23 @@ end
     @test eval_show(typeof(V)) == typeof(V)
     # space with no sectors
     @test dim(@constinferred(zerospace(V))) == 0
-    # space with a single sector
-    W = @constinferred GradedSpace(unit(I) => 1)
-    @test W == GradedSpace(unit(I) => 1, randsector(I) => 0)
+    # space with unit(s), always test as if multifusion
+    W = @constinferred GradedSpace(unit => 1 for unit in allunits(I))
+    dict = Dict(unit => 1 for unit in allunits(I))
+    @test W == GradedSpace(dict)
+    @test W == GradedSpace(push!(dict, randsector(I) => 0))
+    @test @constinferred(zerospace(V)) == GradedSpace(unit => 0 for unit in allunits(I))
+    randunit = rand(collect(allunits(I)))
+    @test_throws ArgumentError("Sector $(randunit) appears multiple times") GradedSpace(randunit => 1, randunit => 3)
+
+    @test isunitspace(W)
     @test @constinferred(unitspace(V)) == W == unitspace(typeof(V))
-    @test @constinferred(zerospace(V)) == GradedSpace(unit(I) => 0)
-    # randsector never returns trivial sector, so this cannot error
-    @test_throws ArgumentError GradedSpace(unit(I) => 1, randsector(I) => 0, unit(I) => 3)
+    if UnitStyle(I) isa SimpleUnit
+        @test @constinferred(leftunitspace(V)) == W == @constinferred(rightunitspace(V))
+    else
+        @test_throws ArgumentError leftunitspace(V)
+        @test_throws ArgumentError rightunitspace(V)
+    end
     @test eval_show(W) == W
     @test isa(V, VectorSpace)
     @test isa(V, ElementarySpace)
@@ -265,7 +279,9 @@ end
     @test V == @constinferred infimum(V, ⊕(V, V))
     @test V ≺ ⊕(V, V)
     @test !(V ≻ ⊕(V, V))
-    @test infimum(V, GradedSpace(unit(I) => 3)) == GradedSpace(unit(I) => 2)
+
+    u = first(allunits(I))
+    @test infimum(V, GradedSpace(u => 3)) == GradedSpace(u => 2)
     @test_throws SpaceMismatch (⊕(V, V'))
 end
 

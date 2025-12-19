@@ -294,11 +294,11 @@ function LinearAlgebra.rank(
         t::AbstractTensorMap;
         atol::Real = 0, rtol::Real = atol > 0 ? 0 : _default_rtol(t)
     )
-    r = dim(one(sectortype(t))) * 0
+    r = 0 * dim(first(allunits(sectortype(t))))
     dim(t) == 0 && return r
     S = LinearAlgebra.svdvals(t)
     tol = max(atol, rtol * maximum(first, values(S)))
-    for (c, b) in S
+    for (c, b) in pairs(S)
         if !isempty(b)
             r += dim(c) * count(>(tol), b)
         end

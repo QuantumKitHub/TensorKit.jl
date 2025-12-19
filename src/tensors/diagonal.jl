@@ -78,10 +78,12 @@ function DiagonalTensorMap(t::AbstractTensorMap{T, S, 1, 1}) where {T, S}
     return d
 end
 
-Base.similar(d::DiagonalTensorMap) = DiagonalTensorMap(similar(d.data), d.domain)
-function Base.similar(d::DiagonalTensorMap, ::Type{T}) where {T <: Number}
-    return DiagonalTensorMap(similar(d.data, T), d.domain)
-end
+Base.similar(d::DiagonalTensorMap) = similar_diagonal(d)
+Base.similar(d::DiagonalTensorMap, ::Type{T}) where {T} = similar_diagonal(d, T)
+
+similar_diagonal(d::DiagonalTensorMap) = DiagonalTensorMap(similar(d.data), d.domain)
+similar_diagonal(d::DiagonalTensorMap, ::Type{T}) where {T <: Number} =
+    DiagonalTensorMap(similar(d.data, T), d.domain)
 
 # TODO: more constructors needed?
 
@@ -314,7 +316,7 @@ function LinearAlgebra.pinv(d::DiagonalTensorMap; kwargs...)
     if iszero(atol)
         rtol = get(kwargs, :rtol, zero(real(T)))
     else
-        rtol = sqrt(eps(real(float(oneunit(T))))) * length(d.data)
+        rtol = sqrt(eps(real(float(one(T))))) * length(d.data)
     end
     pdata = let tol = max(atol, rtol * maximum(abs, d.data))
         map(x -> abs(x) < tol ? zero(x) : pinv(x), d.data)

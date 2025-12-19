@@ -1,2 +1,0 @@
-# Factorizations rules
-# --------------------
