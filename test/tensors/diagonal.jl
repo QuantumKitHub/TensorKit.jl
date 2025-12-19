@@ -4,6 +4,8 @@ using TensorKit
 diagspacelist = (
     (ℂ^4)',
     Vect[Z2Irrep](0 => 2, 1 => 3),
+    Vect[Z3Element{1}](0 => 2, 1 => 3, 2 => 1),
+    Vect[A4Irrep](0 => 1, 1 => 2, 2 => 2, 3 => 2),
     Vect[FermionNumber](0 => 2, 1 => 2, -1 => 1),
     Vect[SU2Irrep](0 => 2, 1 => 1)',
     Vect[FibonacciAnyon](:I => 2, :τ => 2),
