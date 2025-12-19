@@ -291,7 +291,7 @@ for V in spacelist
                 end
             end
         end
-        if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
+        if BraidingStyle(I) isa SymmetricBraiding
             @timedtestset "Permutations: test via CPU" begin
                 W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
                 t = CUDA.rand(ComplexF64, W)
