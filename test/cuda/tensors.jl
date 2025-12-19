@@ -7,6 +7,8 @@ const CUDAExt = Base.get_extension(TensorKit, :TensorKitCUDAExt)
 const CuTensorMap = getglobal(CUDAExt, :CuTensorMap)
 const curand = getglobal(CUDAExt, :curand)
 const curandn = getglobal(CUDAExt, :curandn)
+const curand! = getglobal(CUDAExt, :curand!)
+const curandn! = getglobal(CUDAExt, :curandn!)
 
 @isdefined(TestSetup) || include("../setup.jl")
 using .TestSetup
@@ -55,6 +57,15 @@ for V in spacelist
             end
             for f in (rand, randn)
                 t = @constinferred f(CuVector{Float64, CUDA.DeviceMemory}, W)
+                @test scalartype(t) == Float64
+                @test codomain(t) == W
+                @test space(t) == (W ← one(W))
+                @test domain(t) == one(W)
+                @test typeof(t) == TensorMap{Float64, spacetype(t), 5, 0, CuVector{Float64, CUDA.DeviceMemory}}
+            end
+            for f! in (curand!, curandn!)
+                t = @constinferred CUDA.zeros(W)
+                f!(t)
                 @test scalartype(t) == Float64
                 @test codomain(t) == W
                 @test space(t) == (W ← one(W))

@@ -12,7 +12,7 @@ using TensorKit.Factorizations: AbstractAlgorithm
 using TensorKit: SectorDict, tensormaptype, scalar, similarstoragetype, AdjointTensorMap, scalartype, project_symmetric_and_check
 import TensorKit: randisometry, rand, randn
 
-using TensorKit.MatrixAlgebraKit
+using TensorKit: MatrixAlgebraKit
 
 using Random
 

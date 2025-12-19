@@ -84,6 +84,13 @@ for randfun in (:curand, :curandn)
             $randfun!(rng, t)
             return t
         end
+
+        function $randfun!(rng::Random.AbstractRNG, t::CuTensorMap)
+            for (_, b) in blocks(t)
+                $randfun!(rng, b)
+            end
+            return t
+        end
     end
 end
 
@@ -112,7 +119,7 @@ function LinearAlgebra.isposdef(t::CuTensorMap)
     InnerProductStyle(spacetype(t)) === EuclideanInnerProduct() || return false
     for (c, b) in blocks(t)
         # do our own hermitian check
-        isherm = TensorKit.MatrixAlgebraKit.ishermitian(b; atol = eps(real(eltype(b))), rtol = eps(real(eltype(b))))
+        isherm = MatrixAlgebraKit.ishermitian(b; atol = eps(real(eltype(b))), rtol = eps(real(eltype(b))))
         isherm || return false
         isposdef(Hermitian(b)) || return false
     end
@@ -135,6 +142,7 @@ end
 function TensorKit.exp!(t::CuTensorMap)
     domain(t) == codomain(t) ||
         error("Exponential of a tensor only exist when domain == codomain.")
+    !MatrixAlgebraKit.ishermitian(t) && throw(ArgumentError("`exp!` is only supported on hermitian CUDA tensors"))
     for (c, b) in blocks(t)
         copy!(b, parent(Base.exp(Hermitian(b))))
     end
@@ -146,7 +154,8 @@ for f in (:sqrt, :log, :asin, :acos, :acosh, :atanh, :acoth)
     sf = string(f)
     @eval function Base.$f(t::CuTensorMap)
         domain(t) == codomain(t) ||
-            throw(SpaceMismatch("`$($sf)` of a tensor only exist when domain == codomain"))
+            throw(SpaceMismatch("`$($sf)` of a tensor only exists when domain == codomain"))
+        !MatrixAlgebraKit.ishermitian(t) && throw(ArgumentError("`$($sf)` is only supported on hermitian CUDA tensors"))
         T = complex(float(scalartype(t)))
         tf = similar(t, T)
         for (c, b) in blocks(t)
