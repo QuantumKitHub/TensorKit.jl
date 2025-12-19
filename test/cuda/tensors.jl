@@ -295,7 +295,6 @@ for V in spacelist
             @timedtestset "Permutations: test via CPU" begin
                 W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
                 t = CUDA.rand(ComplexF64, W)
-                a = convert(Array, TensorKit.to_cpu(t))
                 for k in 0:5
                     for p in permutations(1:5)
                         p1 = ntuple(n -> p[n], k)
