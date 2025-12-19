@@ -289,7 +289,7 @@ function LinearAlgebra.rank(
     )
     r = 0 * dim(first(allunits(sectortype(t))))
     dim(t) == 0 && return r
-    S = svd_vals(t)
+    S = MatrixAlgebraKit.svd_vals(t)
     tol = max(atol, rtol * maximum(parent(S)))
     for (c, b) in pairs(S)
         if !isempty(b)
@@ -307,7 +307,7 @@ function LinearAlgebra.cond(t::AbstractTensorMap, p::Real = 2)
                 throw(SpaceMismatch("`cond` requires domain and codomain to be the same"))
             return zero(real(float(scalartype(t))))
         end
-        S = svd_vals(t)
+        S = MatrixAlgebraKit.svd_vals(t)
         maxS = maximum(parent(S))
         minS = minimum(parent(S))
         return iszero(maxS) ? oftype(maxS, Inf) : (maxS / minS)

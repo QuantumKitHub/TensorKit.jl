@@ -404,9 +404,10 @@ for randf in (:rand, :randn, :randexp, :randisometry)
     end
 end
 
-# Collecting arbitrary TensorMaps
+# Moving arbitrary TensorMaps to CPU
 #-----------------------------
-Base.collect(t::TensorMap) = convert(TensorMapWithStorage{scalartype(t), similarstoragetype(scalartype(t))}, t)
+to_cpu(t::TensorMapWithStorage{T, Vector{T}}) where {T} = t # no op
+to_cpu(t::TensorMap) = convert(TensorMapWithStorage{scalartype(t), similarstoragetype(scalartype(t))}, t)
 
 # Efficient copy constructors
 #-----------------------------

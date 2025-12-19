@@ -142,7 +142,7 @@ end
 function TensorKit.exp!(t::CuTensorMap)
     domain(t) == codomain(t) ||
         error("Exponential of a tensor only exist when domain == codomain.")
-    !MatrixAlgebraKit.ishermitian(t) && throw(ArgumentError("`exp!` is only supported on hermitian CUDA tensors"))
+    !MatrixAlgebraKit.ishermitian(t) && throw(ArgumentError("`exp!` is currently only supported on hermitian CUDA tensors"))
     for (c, b) in blocks(t)
         copy!(b, parent(Base.exp(Hermitian(b))))
     end
@@ -155,7 +155,7 @@ for f in (:sqrt, :log, :asin, :acos, :acosh, :atanh, :acoth)
     @eval function Base.$f(t::CuTensorMap)
         domain(t) == codomain(t) ||
             throw(SpaceMismatch("`$($sf)` of a tensor only exists when domain == codomain"))
-        !MatrixAlgebraKit.ishermitian(t) && throw(ArgumentError("`$($sf)` is only supported on hermitian CUDA tensors"))
+        !MatrixAlgebraKit.ishermitian(t) && throw(ArgumentError("`$($sf)` is currently only supported on hermitian CUDA tensors"))
         T = complex(float(scalartype(t)))
         tf = similar(t, T)
         for (c, b) in blocks(t)
