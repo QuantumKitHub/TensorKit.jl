@@ -11,17 +11,17 @@ spacelist = try
     if get(ENV, "CI", "false") == "true"
         println("Detected running on CI")
         if Sys.iswindows()
-            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VIB_diag)
+            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VA₄, VU₁, VfU₁, VCU₁, VSU₂, VIB_diag)
         elseif Sys.isapple()
-            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VfU₁, VfSU₂, VSU₂U₁, VIB_M) #, VSU₃)
+            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VA₄, VfU₁, VfSU₂, VSU₂U₁, VIB_M) #, VSU₃)
         else
-            (Vtr, Vℤ₂, Vfℤ₂, VU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M) #, VSU₃)
+            (Vtr, Vℤ₂, Vfℤ₂, VA₄, VU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M) #, VSU₃)
         end
     else
-        (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M) #, VSU₃)
+        (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VA₄, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M) #, VSU₃)
     end
 catch
-    (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M) #, VSU₃)
+    (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VA₄, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M) #, VSU₃)
 end
 
 for V in spacelist
