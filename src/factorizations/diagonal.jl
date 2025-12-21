@@ -94,16 +94,6 @@ function MAK.svd_compact!(t::AbstractTensorMap, USVᴴ, alg::DiagonalAlgorithm)
     return svd_full!(t, USVᴴ, alg)
 end
 
-# f_vals
-# ------
-# this is invalid for svd_vals since we cannot sort between blocks
-for f! in (:eig_vals!, :eigh_vals!)
-    @eval function MAK.$f!(d::AbstractTensorMap, V, alg::DiagonalAlgorithm)
-        $f!(_repack_diagonal(d), diagview(_repack_diagonal(V)), alg)
-        return V
-    end
-end
-
 # For diagonal inputs we don't have to promote the scalartype since we know they are symmetric
 function MAK.initialize_output(::typeof(eig_vals!), t::AbstractTensorMap, alg::DiagonalAlgorithm)
     V_D = fuse(domain(t))
