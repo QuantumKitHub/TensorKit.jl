@@ -475,20 +475,20 @@ for V in spacelist
             end
         end
         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
-            #=@timedtestset "Tensor functions" begin
+            @timedtestset "Tensor functions" begin
                 W = V1 ⊗ V2
                 for T in (Float64, ComplexF64)
-                    t = CUDA.randn(T, W, W)
+                    t = project_hermitian!(CUDA.randn(T, W, W))
                     s = dim(W)
-                    @test_broken (@constinferred sqrt(t))^2 ≈ t
-                    @test_broken TensorKit.to_cpu(sqrt(t)) ≈ sqrt(TensorKit.to_cpu(t))
+                    #@test (@constinferred sqrt(t))^2 ≈ t
+                    #@test TensorKit.to_cpu(sqrt(t)) ≈ sqrt(TensorKit.to_cpu(t))
 
                     expt = @constinferred exp(t)
-                    @test_broken TensorKit.to_cpu(expt) ≈ exp(TensorKit.to_cpu(t))
+                    @test TensorKit.to_cpu(expt) ≈ exp(TensorKit.to_cpu(t))
 
                     # log doesn't work on CUDA yet (scalar indexing)
-                    #@test exp(@constinferred log(expt)) ≈ expt
-                    #@test TensorKit.to_cpu(log(expt)) ≈ log(TensorKit.to_cpu(expt))
+                    #@test exp(@constinferred log(project_hermitian!(expt))) ≈ expt
+                    #@test TensorKit.to_cpu(log(project_hermitian!(expt))) ≈ log(TensorKit.to_cpu(expt))
 
                     #=@test (@constinferred cos(t))^2 + (@constinferred sin(t))^2 ≈
                           id(storagetype(t), W)
@@ -517,7 +517,7 @@ for V in spacelist
                     @test coth(@constinferred acoth(t8)) ≈ t8=#
                     # TODO in CUDA
                 end
-            end=#
+            end
         end
         # Sylvester not defined for CUDA
         # @timedtestset "Sylvester equation" begin
