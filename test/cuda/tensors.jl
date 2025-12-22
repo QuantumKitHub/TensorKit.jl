@@ -441,38 +441,37 @@ for V in spacelist
                 @test tp ≈ tp * tp
             end
         end
-            @timedtestset "Multiplication and inverse: test via CPU" begin
-                W1 = V1 ⊗ V2 ⊗ V3
-                W2 = V4 ⊗ V5
-                for T in (Float32, Float64, ComplexF32, ComplexF64)
-                    t1 = CUDA.rand(T, W1, W1)
-                    t2 = CUDA.rand(T, W2, W2)
-                    t = CUDA.rand(T, W1, W2)
-                    ht1 = TensorKit.to_cpu(t1)
-                    ht2 = TensorKit.to_cpu(t2)
-                    ht = TensorKit.to_cpu(t)
-                    @test TensorKit.to_cpu(t1 * t) ≈ ht1 * ht
-                    @test TensorKit.to_cpu(t1' * t) ≈ ht1' * ht
-                    @test TensorKit.to_cpu(t2 * t') ≈ ht2 * ht'
-                    @test TensorKit.to_cpu(t2' * t') ≈ ht2' * ht'
+        @timedtestset "Multiplication and inverse: test via CPU" begin
+            W1 = V1 ⊗ V2 ⊗ V3
+            W2 = V4 ⊗ V5
+            for T in (Float32, Float64, ComplexF32, ComplexF64)
+                t1 = CUDA.rand(T, W1, W1)
+                t2 = CUDA.rand(T, W2, W2)
+                t = CUDA.rand(T, W1, W2)
+                ht1 = TensorKit.to_cpu(t1)
+                ht2 = TensorKit.to_cpu(t2)
+                ht = TensorKit.to_cpu(t)
+                @test TensorKit.to_cpu(t1 * t) ≈ ht1 * ht
+                @test TensorKit.to_cpu(t1' * t) ≈ ht1' * ht
+                @test TensorKit.to_cpu(t2 * t') ≈ ht2 * ht'
+                @test TensorKit.to_cpu(t2' * t') ≈ ht2' * ht'
 
-                    @test TensorKit.to_cpu(inv(t1)) ≈ inv(ht1)
-                    @test TensorKit.to_cpu(pinv(t)) ≈ pinv(ht)
+                @test TensorKit.to_cpu(inv(t1)) ≈ inv(ht1)
+                @test TensorKit.to_cpu(pinv(t)) ≈ pinv(ht)
 
-                    if T == Float32 || T == ComplexF32
-                        continue
-                    end
-
-                    @test TensorKit.to_cpu(t1 \ t) ≈ ht1 \ ht
-                    @test TensorKit.to_cpu(t1' \ t) ≈ ht1' \ ht
-                    @test TensorKit.to_cpu(t2 \ t') ≈ ht2 \ ht'
-                    @test TensorKit.to_cpu(t2' \ t') ≈ ht2' \ ht'
-
-                    @test TensorKit.to_cpu(t2 / t) ≈ ht2 / ht
-                    @test TensorKit.to_cpu(t2' / t) ≈ ht2' / ht
-                    @test TensorKit.to_cpu(t1 / t') ≈ ht1 / ht'
-                    @test TensorKit.to_cpu(t1' / t') ≈ ht1' / ht'
+                if T == Float32 || T == ComplexF32
+                    continue
                 end
+
+                @test TensorKit.to_cpu(t1 \ t) ≈ ht1 \ ht
+                @test TensorKit.to_cpu(t1' \ t) ≈ ht1' \ ht
+                @test TensorKit.to_cpu(t2 \ t') ≈ ht2 \ ht'
+                @test TensorKit.to_cpu(t2' \ t') ≈ ht2' \ ht'
+
+                @test TensorKit.to_cpu(t2 / t) ≈ ht2 / ht
+                @test TensorKit.to_cpu(t2' / t) ≈ ht2' / ht
+                @test TensorKit.to_cpu(t1 / t') ≈ ht1 / ht'
+                @test TensorKit.to_cpu(t1' / t') ≈ ht1' / ht'
             end
         end
         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
