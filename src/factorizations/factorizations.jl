@@ -49,15 +49,6 @@ function LinearAlgebra.eigvals(t::AbstractTensorMap; kwargs...)
 end
 LinearAlgebra.eigvals!(t::AbstractTensorMap; kwargs...) = eig_vals!(t)
 
-function LinearAlgebra.svd(t::AbstractTensorMap; full::Bool = false)
-    U, S, Vᴴ = full ? svd_full(t) : svd_compact(t)
-    return U, diagview(S), adjoint(Vᴴ)
-end
-function LinearAlgebra.svd!(t::AbstractTensorMap; full::Bool = false)
-    U, S, Vᴴ = full ? svd_full!(t) : svd_compact!(t)
-    return U, diagview(S), adjoint(Vᴴ)
-end
-
 function LinearAlgebra.svdvals(t::AbstractTensorMap)
     tcopy = copy_oftype(t, factorisation_scalartype(svd_vals!, t))
     return LinearAlgebra.svdvals!(tcopy)
