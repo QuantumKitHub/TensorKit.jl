@@ -11,6 +11,9 @@ vector space that is implicitly assumed in most of matrix algebra.
 """
 struct CartesianSpace <: ElementarySpace
     d::Int
+
+    # required to avoid CartesianSpace(::Any) default constructor:
+    CartesianSpace(d::Int) = new(d)
 end
 
 CartesianSpace(d::Integer = 0; dual = false) = CartesianSpace(Int(d))
