@@ -119,23 +119,26 @@ diagspacelist = (
     if BraidingStyle(I) isa SymmetricBraiding
         @timedtestset "Permutations" begin
             t = DiagonalTensorMap(randn(ComplexF64, reduceddim(V)), V)
+            t_tm = convert(TensorMap, t)
+
             # preserving diagonal
             t1 = @constinferred permute(t, $(((2,), (1,))))
             @test t1 isa DiagonalTensorMap
-            @test convert(TensorMap, t1) == permute(convert(TensorMap, t), (((2,), (1,))))
+            @test convert(TensorMap, t1) == permute(t_tm, (((2,), (1,))))
             t1′ = @constinferred transpose(t)
             @test t1′ isa DiagonalTensorMap
-            @test t1 ≈ t1′
+            @test convert(TensorMap, t1′) == transpose(t_tm)
+            BraidingStyle(I) isa Bosonic && @test t1 ≈ t1′
 
             # not preserving diagonal
             t2 = @constinferred permute(t, $(((1, 2), ())))
-            @test convert(TensorMap, t2) == permute(convert(TensorMap, t), (((1, 2), ())))
+            @test convert(TensorMap, t2) == permute(t_tm, (((1, 2), ())))
             t3 = @constinferred permute(t, $(((2, 1), ())))
-            @test convert(TensorMap, t3) == permute(convert(TensorMap, t), (((2, 1), ())))
+            @test convert(TensorMap, t3) == permute(t_tm, (((2, 1), ())))
             t4 = @constinferred permute(t, $(((), (1, 2))))
-            @test convert(TensorMap, t4) == permute(convert(TensorMap, t), (((), (1, 2))))
+            @test convert(TensorMap, t4) == permute(t_tm, (((), (1, 2))))
             t5 = @constinferred permute(t, $(((), (2, 1))))
-            @test convert(TensorMap, t5) == permute(convert(TensorMap, t), (((), (2, 1))))
+            @test convert(TensorMap, t5) == permute(t_tm, (((), (2, 1))))
         end
     end
     @timedtestset "Trace, Multiplication and inverse" begin
