@@ -211,7 +211,29 @@ function permute(
         end
         return d′
     else
-        throw(ArgumentError("invalid permutation $((p₁, p₂)) for tensor in space $(space(d))"))
+        throw(ArgumentError(lazy"invalid permutation $((p₁, p₂)) for tensor in space $(space(d))"))
+    end
+end
+
+function LinearAlgebra.transpose(
+        d::DiagonalTensorMap, (p₁, p₂)::Index2Tuple{1, 1}; copy::Bool = false
+    )
+    if p₁ === (1,) && p₂ === (2,)
+        return copy ? Base.copy(d) : d
+    elseif p₁ === (2,) && p₂ === (1,) # transpose
+        if has_shared_permute(d, (p₁, p₂)) # tranpose for bosonic sectors
+            return DiagonalTensorMap(copy ? Base.copy(d.data) : d.data, dual(d.domain))
+        end
+        d′ = typeof(d)(undef, dual(d.domain))
+        for (c, b) in blocks(d)
+            f = only(fusiontrees(codomain(d), c))
+            ((f′, _), coeff) = only(transpose(f, f, p₁, p₂))
+            c′ = f′.coupled
+            scale!(block(d′, c′), b, coeff)
+        end
+        return d′
+    else
+        throw(ArgumentError(lazy"invalid transposition $((p₁, p₂)) for tensor in space $(space(d))"))
     end
 end
 
