@@ -164,3 +164,11 @@ for f in (:sqrt, :log, :asin, :acos, :acosh, :atanh, :acoth)
         return tf
     end
 end
+
+function Base.copy!(tdst::CuTensorMap, tsrc::AdjointTensorMap)
+    space(tdst) == space(tsrc) || throw(SpaceMismatch("$(space(tdst)) ≠ $(space(tsrc))"))
+    for ((c, bdst), (_, bsrc)) in zip(blocks(tdst), blocks(tsrc))
+        copy!(bdst, bsrc)
+    end
+    return tdst
+end
