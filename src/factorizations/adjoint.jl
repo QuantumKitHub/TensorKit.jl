@@ -9,6 +9,9 @@ _adjoint(alg::MAK.LAPACK_HouseholderRQ) = MAK.LAPACK_HouseholderQL(; alg.kwargs.
 _adjoint(alg::MAK.PolarViaSVD) = MAK.PolarViaSVD(_adjoint(alg.svd_alg))
 _adjoint(alg::AbstractAlgorithm) = alg
 
+_adjoint(alg::MAK.CUSOLVER_HouseholderQR) = MAK.LQViaTransposedQR(alg)
+_adjoint(alg::MAK.LQViaTransposedQR) = alg.qr_alg
+
 for f in
     [
         :svd_compact, :svd_full, :svd_vals,

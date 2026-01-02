@@ -49,9 +49,9 @@ for V in spacelist
             for T in eltypes,
                     t in (
                         CUDA.rand(T, W, W),
-                        #CUDA.rand(T, W, W)',
+                        CUDA.rand(T, W, W)',
                         CUDA.rand(T, W, V4),
-                        #CUDA.rand(T, V4, W)',
+                        CUDA.rand(T, V4, W)',
                         DiagonalTensorMap(CUDA.rand(T, reduceddim(V1)), V1),
                     )
 
@@ -105,9 +105,9 @@ for V in spacelist
             for T in eltypes,
                     t in (
                         CUDA.rand(T, W, W),
-                        #CUDA.rand(T, W, W)',
+                        CUDA.rand(T, W, W)',
                         CUDA.rand(T, W, V4),
-                        #CUDA.rand(T, V4, W)',
+                        CUDA.rand(T, V4, W)',
                         DiagonalTensorMap(CUDA.rand(T, reduceddim(V1)), V1),
                     )
 
@@ -157,9 +157,9 @@ for V in spacelist
             for T in eltypes,
                     t in (
                         CUDA.rand(T, W, W),
-                        #CUDA.rand(T, W, W)',
+                        CUDA.rand(T, W, W)',
                         CUDA.rand(T, W, V4),
-                        #CUDA.rand(T, V4, W)',
+                        CUDA.rand(T, V4, W)',
                         DiagonalTensorMap(CUDA.rand(T, reduceddim(V1)), V1),
                     )
 
@@ -167,7 +167,7 @@ for V in spacelist
                 w, p = @constinferred left_polar(t)
                 @test w * p ≈ t
                 @test isisometric(w)
-                @test isposdef(p)
+                @test isposdef(project_hermitian!(p))
 
                 w, p = @constinferred left_orth(t; alg = :polar)
                 @test w * p ≈ t
@@ -177,16 +177,16 @@ for V in spacelist
             for T in eltypes,
                     t in (
                         CUDA.rand(T, W, W),
-                        #CUDA.rand(T, W, W)',
+                        CUDA.rand(T, W, W)',
                         CUDA.rand(T, V4, W),
-                        #CUDA.rand(T, W, V4)',
+                        CUDA.rand(T, W, V4)',
                     )
 
                 @assert codomain(t) ≾ domain(t)
                 p, wᴴ = @constinferred right_polar(t)
                 @test p * wᴴ ≈ t
                 @test isisometric(wᴴ; side = :right)
-                @test isposdef(p)
+                @test isposdef(project_hermitian!(p))
 
                 p, wᴴ = @constinferred right_orth(t; alg = :polar)
                 @test p * wᴴ ≈ t
@@ -198,11 +198,11 @@ for V in spacelist
             for T in eltypes,
                     t in (
                         CUDA.rand(T, W, W),
-                        #CUDA.rand(T, W, W)',
+                        CUDA.rand(T, W, W)',
                         CUDA.rand(T, W, V4),
                         CUDA.rand(T, V4, W),
-                        #CUDA.rand(T, W, V4)',
-                        #CUDA.rand(T, V4, W)',
+                        CUDA.rand(T, W, V4)',
+                        CUDA.rand(T, V4, W)',
                         DiagonalTensorMap(CUDA.rand(T, reduceddim(V1)), V1),
                     )
 
@@ -338,7 +338,7 @@ for V in spacelist
                     t in (
                         CUDA.rand(T, V1, V1),
                         CUDA.rand(T, W, W),
-                        #CUDA.rand(T, W, W)',
+                        CUDA.rand(T, W, W)',
                         DiagonalTensorMap(CUDA.rand(T, reduceddim(V1)), V1),
                     )
 
@@ -395,11 +395,11 @@ for V in spacelist
             for T in eltypes,
                     t in (
                         CUDA.rand(T, W, W),
-                        #CUDA.rand(T, W, W)',
+                        CUDA.rand(T, W, W)',
                         CUDA.rand(T, W, V4),
                         CUDA.rand(T, V4, W),
-                        #CUDA.rand(T, W, V4)',
-                        #CUDA.rand(T, V4, W)',
+                        CUDA.rand(T, W, V4)',
+                        CUDA.rand(T, V4, W)',
                         DiagonalTensorMap(CUDA.rand(T, reduceddim(V1)), V1),
                     )
 
@@ -425,7 +425,7 @@ for V in spacelist
             end
             for T in eltypes, t in (
                         CUDA.rand(T, W, W),
-                        #CUDA.rand(T, W, W)',
+                        CUDA.rand(T, W, W)',
                     )
                 project_hermitian!(t)
                 vals = @constinferred LinearAlgebra.eigvals(t)
@@ -440,7 +440,7 @@ for V in spacelist
                     t in (
                         CUDA.rand(T, V1, V1),
                         CUDA.rand(T, W, W),
-                        #CUDA.rand(T, W, W)',
+                        CUDA.rand(T, W, W)',
                         DiagonalTensorMap(CUDA.rand(T, reduceddim(V1)), V1),
                     )
                 normalize!(t)
@@ -472,9 +472,9 @@ for V in spacelist
             for T in eltypes,
                     t in (
                         CUDA.randn(T, W, W),
-                        #CUDA.randn(T, W, W)',
+                        CUDA.randn(T, W, W)',
                         CUDA.randn(T, W, V4),
-                        #CUDA.randn(T, V4, W)',
+                        CUDA.randn(T, V4, W)',
                     )
                 t2 = project_isometric(t)
                 @test isisometric(t2)
