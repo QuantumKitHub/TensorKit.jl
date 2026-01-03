@@ -1,6 +1,7 @@
 using Test, TestExtras
 using TensorKit
 using LinearAlgebra: LinearAlgebra
+using MatrixAlgebraKit: diagview
 
 @isdefined(TestSetup) || include("../setup.jl")
 using .TestSetup
@@ -191,10 +192,9 @@ for V in spacelist
                 @test isposdef(s)
                 @test isisometric(vᴴ; side = :right)
 
-                s′ = LinearAlgebra.diag(s)
-                for (c, b) in pairs(LinearAlgebra.svdvals(t))
-                    @test b ≈ s′[c]
-                end
+                s′ = @constinferred svd_vals(t)
+                @test s′ ≈ diagview(s)
+                @test s′ isa TensorKit.SectorVector
 
                 v, c = @constinferred left_orth(t; alg = :svd)
                 @test v * c ≈ t
@@ -261,14 +261,14 @@ for V in spacelist
                 @test norm(t - U1 * S1 * Vᴴ1) ≈ ϵ1 atol = eps(real(T))^(4 / 5)
                 @test dim(domain(S1)) <= nvals
 
-                λ = minimum(minimum, values(LinearAlgebra.diag(S1)))
+                λ = minimum(diagview(S1))
                 trunc = trunctol(; atol = λ - 10eps(λ))
                 U2, S2, Vᴴ2, ϵ2 = @constinferred svd_trunc(t; trunc)
                 @test t * Vᴴ2' ≈ U2 * S2
                 @test isisometric(U2)
                 @test isisometric(Vᴴ2; side = :right)
                 @test norm(t - U2 * S2 * Vᴴ2) ≈ ϵ2 atol = eps(real(T))^(4 / 5)
-                @test minimum(minimum, values(LinearAlgebra.diag(S1))) >= λ
+                @test minimum(diagview(S1)) >= λ
                 @test U2 ≈ U1
                 @test S2 ≈ S1
                 @test Vᴴ2 ≈ Vᴴ1
@@ -297,7 +297,7 @@ for V in spacelist
                 @test isisometric(U5)
                 @test isisometric(Vᴴ5; side = :right)
                 @test norm(t - U5 * S5 * Vᴴ5) ≈ ϵ5 atol = eps(real(T))^(4 / 5)
-                @test minimum(minimum, values(LinearAlgebra.diag(S5))) >= λ
+                @test minimum(diagview(S5)) >= λ
                 @test dim(domain(S5)) ≤ nvals
             end
         end
@@ -312,13 +312,11 @@ for V in spacelist
                 d, v = @constinferred eig_full(t)
                 @test t * v ≈ v * d
 
-                d′ = LinearAlgebra.diag(d)
-                for (c, b) in pairs(LinearAlgebra.eigvals(t))
-                    @test sort(b; by = abs) ≈ sort(d′[c]; by = abs)
-                end
+                d′ = @constinferred eig_vals(t)
+                @test d′ ≈ diagview(d)
+                @test d′ isa TensorKit.SectorVector
 
-                vdv = v' * v
-                vdv = (vdv + vdv') / 2
+                vdv = project_hermitian!(v' * v)
                 @test @constinferred isposdef(vdv)
                 t isa DiagonalTensorMap || @test !isposdef(t) # unlikely for non-hermitian map
 
@@ -327,35 +325,34 @@ for V in spacelist
                 @test t * v ≈ v * d
                 @test dim(domain(d)) ≤ nvals
 
-                t2 = (t + t')
+                t2 = @constinferred project_hermitian(t)
                 D, V = eigen(t2)
                 @test isisometric(V)
                 D̃, Ṽ = @constinferred eigh_full(t2)
                 @test D ≈ D̃
                 @test V ≈ Ṽ
-                λ = minimum(
-                    minimum(real(LinearAlgebra.diag(b)))
-                        for (c, b) in blocks(D)
-                )
+                λ = minimum(real, diagview(D))
                 @test cond(Ṽ) ≈ one(real(T))
                 @test isposdef(t2) == isposdef(λ)
                 @test isposdef(t2 - λ * one(t2) + 0.1 * one(t2))
                 @test !isposdef(t2 - λ * one(t2) - 0.1 * one(t2))
 
-                add!(t, t')
-
-                d, v = @constinferred eigh_full(t)
-                @test t * v ≈ v * d
+                d, v = @constinferred eigh_full(t2)
+                @test t2 * v ≈ v * d
                 @test isunitary(v)
 
-                λ = minimum(minimum(real(LinearAlgebra.diag(b))) for (c, b) in blocks(d))
-                @test cond(v) ≈ one(real(T))
-                @test isposdef(t) == isposdef(λ)
-                @test isposdef(t - λ * one(t) + 0.1 * one(t))
-                @test !isposdef(t - λ * one(t) - 0.1 * one(t))
+                d′ = @constinferred eigh_vals(t2)
+                @test d′ ≈ diagview(d)
+                @test d′ isa TensorKit.SectorVector
 
-                d, v = @constinferred eigh_trunc(t; trunc = truncrank(nvals))
-                @test t * v ≈ v * d
+                λ = minimum(real, diagview(d))
+                @test cond(v) ≈ one(real(T))
+                @test isposdef(t2) == isposdef(λ)
+                @test isposdef(t2 - λ * one(t) + 0.1 * one(t2))
+                @test !isposdef(t2 - λ * one(t) - 0.1 * one(t2))
+
+                d, v = @constinferred eigh_trunc(t2; trunc = truncrank(nvals))
+                @test t2 * v ≈ v * d
                 @test dim(domain(d)) ≤ nvals
             end
         end
@@ -390,7 +387,7 @@ for V in spacelist
                 @test cond(t2) == 0.0
             end
             for T in eltypes, t in (rand(T, W, W), rand(T, W, W)')
-                add!(t, t')
+                project_hermitian!(t)
                 vals = @constinferred LinearAlgebra.eigvals(t)
                 λmax = maximum(s -> maximum(abs, s), values(vals))
                 λmin = minimum(s -> minimum(abs, s), values(vals))

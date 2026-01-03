@@ -24,13 +24,13 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 - Extended support for selecting storage types in the `TensorMap` constructors ([#327](https://github.com/QuantumKitHub/TensorKit.jl/pull/327))
 - `similar_diagonal` to handle storage types when constructing diagonals ([#330](https://github.com/QuantumKitHub/TensorKit.jl/pull/330))
-- `LinearAlgebra.svd` overloads
 
 ### Fixed
 
 - Issue with using relative tolerances in truncation schemes ([#314](https://github.com/QuantumKitHub/TensorKit.jl/issues/314))
 - Using `scalartype` instead of `eltype` in BLAS contraction ([#326](https://github.com/QuantumKitHub/TensorKit.jl/pull/326))
 - Divide by zero error in `show` for empty tensors ([#329](https://github.com/QuantumKitHub/TensorKit.jl/pull/329))
+- `svd_vals(::DiagonalTensorMap)` correctly outputs `SectorVector` and implementation fix. ([#333](https://github.com/QuantumKitHub/TensorKit.jl/pull/329))
 
 ## [0.16.0](https://github.com/QuantumKitHub/TensorKit.jl/releases/tag/v0.16.0) - 2025-12-08
 

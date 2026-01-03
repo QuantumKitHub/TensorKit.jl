@@ -1,6 +1,7 @@
 # DiagonalTensorMap
 # -----------------
 _repack_diagonal(d::DiagonalTensorMap) = Diagonal(d.data)
+_repack_diagonal(d::SectorVector) = Diagonal(parent(d))
 
 MAK.diagview(t::DiagonalTensorMap) = SectorVector(t.data, TensorKit.diagonalblockstructure(space(t)))
 
@@ -93,17 +94,10 @@ function MAK.svd_compact!(t::AbstractTensorMap, USVᴴ, alg::DiagonalAlgorithm)
     return svd_full!(t, USVᴴ, alg)
 end
 
-# f_vals
-# ------
-for f! in (:eig_vals!, :eigh_vals!, :svd_vals!)
-    @eval function MAK.$f!(d::AbstractTensorMap, V, alg::DiagonalAlgorithm)
-        $f!(_repack_diagonal(d), diagview(_repack_diagonal(V)), alg)
-        return V
-    end
-    @eval function MAK.initialize_output(
-            ::typeof($f!), d::DiagonalTensorMap, alg::DiagonalAlgorithm
-        )
-        data = MAK.initialize_output($f!, _repack_diagonal(d), alg)
-        return DiagonalTensorMap(data, d.domain)
-    end
+# For diagonal inputs we don't have to promote the scalartype since we know they are symmetric
+function MAK.initialize_output(::typeof(eig_vals!), t::AbstractTensorMap, alg::DiagonalAlgorithm)
+    V_D = fuse(domain(t))
+    Tc = scalartype(t)
+    A = similarstoragetype(t, Tc)
+    return SectorVector{Tc, sectortype(t), A}(undef, V_D)
 end

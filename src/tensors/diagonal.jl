@@ -199,7 +199,7 @@ function permute(
     # special cases handled first
     p₁ === (1,) && p₂ === (2,) && return copy ? Base.copy(d) : d
     (p₁, p₂) === ((2,), (1,)) || # has to be transpose
-        throw(ArgumentError("invalid permutation $((p₁, p₂)) for tensor in space $(space(d))"))
+        throw(ArgumentError(lazy"invalid permutation $((p₁, p₂)) for tensor in space $(space(d))"))
     has_shared_permute(d, (p₁, p₂)) && # tranpose for bosonic sectors
         return DiagonalTensorMap(copy ? Base.copy(d.data) : d.data, dual(d.domain))
 
@@ -219,7 +219,35 @@ function permute(
             scale!(block(d′, c′), block(d, c), only(U))
         end
     end
+    return d′
+end
 
+function LinearAlgebra.transpose(
+        d::DiagonalTensorMap, (p₁, p₂)::Index2Tuple{1, 1}; copy::Bool = false
+    )
+    # special cases handled first
+    p₁ === (1,) && p₂ === (2,) && return copy ? Base.copy(d) : d
+    (p₁, p₂) === ((2,), (1,)) || # has to be transpose
+        throw(ArgumentError(lazy"invalid transposition $((p₁, p₂)) for tensor in space $(space(d))"))
+    has_shared_permute(d, (p₁, p₂)) && # tranpose for bosonic sectors
+        return DiagonalTensorMap(copy ? Base.copy(d.data) : d.data, dual(d.domain))
+
+    d′ = typeof(d)(undef, dual(d.domain))
+    if FusionStyle(sectortype(d)) === UniqueFusion()
+        for (c, b) in blocks(d)
+            f = only(fusiontrees(codomain(d), c))
+            (f′, _), coeff = transpose((f, f), (p₁, p₂))
+            c′ = f′.coupled
+            scale!(block(d′, c′), b, coeff)
+        end
+    else
+        for src in fusionblocks(d)
+            dst, U = transpose(src, (p₁, p₂))
+            c = only(fusiontrees(src))[1].coupled
+            c′ = only(fusiontrees(dst))[1].coupled
+            scale!(block(d′, c′), block(d, c), only(U))
+        end
+    end
     return d′
 end
 
