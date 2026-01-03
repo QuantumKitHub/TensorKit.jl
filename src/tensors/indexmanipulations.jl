@@ -586,7 +586,12 @@ function add_kernel_nonthreaded!(
     end
     return nothing
 end
-
+# ambiguity resolution
+function add_kernel_nonthreaded!(
+        ::UniqueFusion, tdst, tsrc, p, transformer::GenericTreeTransformer, α, β, backend...
+    )
+    throw(ArgumentError("Cannot combine `GenericTreeTransformer` with `UniqueFusion`"))
+end
 # Threaded implementations
 # ------------------------
 function add_kernel_threaded!(
@@ -683,6 +688,14 @@ function add_kernel_threaded!(
 
     return nothing
 end
+# ambiguity resolution
+function add_kernel_threaded!(
+        ::UniqueFusion, tdst, tsrc, p, transformer::GenericTreeTransformer, α, β, backend...;
+        ntasks::Int = get_num_transformer_threads()
+    )
+    throw(ArgumentError("Cannot combine `GenericTreeTransformer` with `UniqueFusion`"))
+end
+
 
 # Auxiliary methods
 # -----------------
