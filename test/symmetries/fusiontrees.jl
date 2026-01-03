@@ -372,7 +372,7 @@ using .TestSetup
                     perm = ((N .+ (1:N))..., (1:N)...)
                     levels = ntuple(identity, 2 * N)
                     for (t, coeff) in trees1
-                        t′, coeff′ = braid(t, levels, perm)
+                        t′, coeff′ = braid(t, perm, levels)
                         trees3[t′] = get(trees3, t′, zero(valtype(trees3))) + coeff * coeff′
                     end
                     for (t, coeff) in trees3
