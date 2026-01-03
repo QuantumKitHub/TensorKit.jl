@@ -80,6 +80,7 @@ end
 
 function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where {I, N}
     1 <= i < N || throw(ArgumentError("Cannot swap outputs i=$i and i+1 out of only $N outputs"))
+    isempty(src) && return src => zeros(sectorscalartype(I), 0, 0)
 
     uncoupled = src.uncoupled[1]
     a, b = uncoupled[i], uncoupled[i + 1]

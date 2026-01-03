@@ -174,6 +174,7 @@ Base.length(::Type{<:FusionTree{<:Sector, N}}) where {N} = N
 # Base.length(::Type{<:FusionTreePair{<:Sector, N₁, N₂}}) where {N₁, N₂} = N₁ + N₂
 # Base.length(f::FusionTreePair) = length(typeof(f))
 Base.length(block::FusionTreeBlock) = length(fusiontrees(block))
+Base.isempty(block::FusionTreeBlock) = isempty(fusiontrees(block))
 
 numout(fs::Union{FusionTreePair, FusionTreeBlock}) = numout(typeof(fs))
 numout(::Type{<:FusionTreePair{I, N₁}}) where {I, N₁} = N₁
