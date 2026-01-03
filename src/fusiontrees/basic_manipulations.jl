@@ -242,7 +242,7 @@ function flip((f₁, f₂)::FusionTreePair{I, N₁, N₂}, i::Int; inv::Bool = f
         if !inv
             factor = f₁.isdual[i] ? χₐ * θₐ : one(θₐ)
         else
-            factor = f₁.isdual[i] ? one(θₐ) : χₐ * conj(θₐ)
+            factor = f₁.isdual[i] ? one(θₐ) : conj(χₐ * θₐ)
         end
         isdual′ = TupleTools.setindex(f₁.isdual, !f₁.isdual[i], i)
         f₁′ = FusionTree{I}(f₁.uncoupled, f₁.coupled, isdual′, f₁.innerlines, f₁.vertices)
@@ -253,7 +253,7 @@ function flip((f₁, f₂)::FusionTreePair{I, N₁, N₂}, i::Int; inv::Bool = f
         χₐ = frobenius_schur_phase(a)
         θₐ = twist(a)
         if !inv
-            factor = f₂.isdual[i] ? χₐ * one(θₐ) : θₐ
+            factor = f₂.isdual[i] ? conj(χₐ) * one(θₐ) : θₐ
         else
             factor = f₂.isdual[i] ? conj(θₐ) : χₐ * one(θₐ)
         end
