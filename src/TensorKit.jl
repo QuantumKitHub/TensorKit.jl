@@ -123,7 +123,7 @@ using OhMyThreads
 using ScopedValues
 
 using TensorKitSectors
-import TensorKitSectors: dim, BraidingStyle, FusionStyle, ⊠, ⊗
+import TensorKitSectors: dim, BraidingStyle, FusionStyle, ⊠, ⊗, ×
 import TensorKitSectors: dual, type_repr, fusiontensor
 import TensorKitSectors: twist
 

@@ -1,6 +1,6 @@
 using Test, TestExtras
 using TensorKit
-using TensorKit: FusionTreeBlock
+using TensorKit: FusionTreeBlock, ×
 import TensorKit as TK
 using Random: randperm
 using TensorOperations
