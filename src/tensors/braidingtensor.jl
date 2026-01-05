@@ -88,8 +88,16 @@ end
         data = sreshape(StridedView(Matrix{eltype(b)}(undef, n1, n2)), d)
         fill!(data, zero(eltype(b)))
         if f₁.uncoupled == reverse(f₂.uncoupled)
-            braiddict = artin_braid(f₂, 1; inv = b.adjoint)
-            r = get(braiddict, f₁, zero(valtype(braiddict)))
+            a, b = f₂.uncoupled
+            c = f₂.coupled
+            if FusionStyle(I) isa MultiplicityFreeFusion
+                r = b.adjoint ? conj(Rsymbol(b, a, c)) : Rsymbol(a, b, c)
+            else
+                Rmat = inv ? Rsymbol(b, a, c)' : Rsymbol(a, b, c)
+                μ = only(f₂.vertices)
+                ν = only(f₁.vertices)
+                r = Rmat[μ, ν]
+            end
             @inbounds for i in axes(data, 1), j in axes(data, 2)
                 data[i, j, j, i] = r
             end
