@@ -293,38 +293,8 @@ function planarcontract!(
 
     p = (oindA, reverse(cindA))
     N = length(oindA)
-    levels = (ntuple(identity, N), B.adjoint ? (N + 1, N + 2) : (N + 2, N + 1))
-    return add_braid!(C, A, p, levels, α, β, backend, allocator)
-
-    if BraidingStyle(sectortype(A)) isa Bosonic
-        return add_permute!(C, A, (oindA, reverse(cindA)), α, β, backend)
-    end
-
-    scale!(C, β)
-    τ_levels = B.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
-    inv_braid = τ_levels[cindB[1]] > τ_levels[cindB[2]]
-
-    for (f₁, f₂) in fusiontrees(A)
-        local newtrees
-        for ((f₁′, f₂′), coeff′) in transpose((f₁, f₂), (oindA, cindA))
-            for (f₂′′, coeff′′) in artin_braid(f₂′, 1; inv = inv_braid)
-                f12 = (f₁′, f₂′′)
-                coeff = coeff′ * conj(coeff′′)
-                if @isdefined newtrees
-                    newtrees[f12] = get(newtrees, f12, zero(coeff)) + coeff
-                else
-                    newtrees = Dict(f12 => coeff)
-                end
-            end
-        end
-        for ((f₁′, f₂′), coeff) in newtrees
-            TO.tensoradd!(
-                C[f₁′, f₂′], A[f₁, f₂], (oindA, reverse(cindA)), false, α * coeff,
-                One(), backend, allocator
-            )
-        end
-    end
-    return C
+    levels = (ntuple(identity, N)..., (B.adjoint ? (N + 1, N + 2) : (N + 2, N + 1))...)
+    return add_braid!(C, A, p, levels, α, β, backend)
 end
 
 # ambiguity fix:
