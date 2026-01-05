@@ -122,7 +122,8 @@ function Base.complex(b::BraidingTensor)
 end
 
 function block(b::BraidingTensor, s::Sector)
-    sectortype(b) == typeof(s) || throw(SectorMismatch())
+    I = sectortype(b)
+    I == typeof(s) || throw(SectorMismatch())
 
     # TODO: probably always square?
     m = blockdim(codomain(b), s)
@@ -146,15 +147,21 @@ function block(b::BraidingTensor, s::Sector)
     structure = fusionblockstructure(b)
     base_offset = first(structure.blockstructure[s][2]) - 1
 
-    for ((f1, f2), (sz, str, off)) in
-        zip(structure.fusiontreelist, structure.fusiontreestructure)
-        if (f1.uncoupled != reverse(f2.uncoupled)) || !(f1.coupled == f2.coupled == s)
+    for ((f₁, f₂), (sz, str, off)) in zip(structure.fusiontreelist, structure.fusiontreestructure)
+        if (f₁.uncoupled != reverse(f₂.uncoupled)) || !(f₁.coupled == f₂.coupled == s)
             continue
         end
 
-        braiddict = artin_braid(f2, 1; inv = b.adjoint)
-        haskey(braiddict, f1) || continue
-        r = braiddict[f1]
+        a, b = f₂.uncoupled
+        c = f₂.coupled
+        if FusionStyle(I) isa MultiplicityFreeFusion
+            r = b.adjoint ? conj(Rsymbol(b, a, c)) : Rsymbol(a, b, c)
+        else
+            Rmat = inv ? Rsymbol(b, a, c)' : Rsymbol(a, b, c)
+            μ = only(f₂.vertices)
+            ν = only(f₁.vertices)
+            r = Rmat[μ, ν]
+        end
 
         # change offset to account for single block
         subblock = StridedView(data, sz, str, off - base_offset)
