@@ -53,15 +53,15 @@ for V in spacelist
                 @test codomain(t) == W
                 @test space(t) == (W ← one(W))
                 @test domain(t) == one(W)
-                @test typeof(t) == TensorMap{Float64, spacetype(t), 5, 0, ROCVector{Float64, AMDGPU.DeviceMemory}}
+                @test typeof(t) == TensorMap{Float64, spacetype(t), 5, 0, ROCVector{Float64, AMDGPU.Mem.HIPBuffer}}
             end
             for f in (rand, randn)
-                t = @constinferred f(ROCVector{Float64, AMDGPU.DeviceMemory}, W)
+                t = @constinferred f(ROCVector{Float64, AMDGPU.Mem.HIPBuffer}, W)
                 @test scalartype(t) == Float64
                 @test codomain(t) == W
                 @test space(t) == (W ← one(W))
                 @test domain(t) == one(W)
-                @test typeof(t) == TensorMap{Float64, spacetype(t), 5, 0, ROCVector{Float64, AMDGPU.DeviceMemory}}
+                @test typeof(t) == TensorMap{Float64, spacetype(t), 5, 0, ROCVector{Float64, AMDGPU.Mem.HIPBuffer}}
             end
             for f! in (rocrand!, rocrandn!)
                 t = @constinferred AMDGPU.zeros(W)
@@ -70,7 +70,7 @@ for V in spacelist
                 @test codomain(t) == W
                 @test space(t) == (W ← one(W))
                 @test domain(t) == one(W)
-                @test typeof(t) == TensorMap{Float64, spacetype(t), 5, 0, ROCVector{Float64, AMDGPU.DeviceMemory}}
+                @test typeof(t) == TensorMap{Float64, spacetype(t), 5, 0, ROCVector{Float64, AMDGPU.Mem.HIPBuffer}}
             end
             for T in (Int, Float32, Float64, ComplexF32, ComplexF64)
                 t = @constinferred AMDGPU.zeros(T, W)
@@ -82,7 +82,7 @@ for V in spacelist
                 @test codomain(t) == W
                 @test space(t) == (W ← one(W))
                 @test domain(t) == one(W)
-                @test typeof(t) == TensorMap{T, spacetype(t), 5, 0, ROCVector{T, AMDGPU.DeviceMemory}}
+                @test typeof(t) == TensorMap{T, spacetype(t), 5, 0, ROCVector{T, AMDGPU.Mem.HIPBuffer}}
                 # blocks
                 bs = @constinferred blocks(t)
                 (c, b1), state = @constinferred Nothing iterate(bs)
@@ -163,13 +163,13 @@ for V in spacelist
                 @test dot(t2, t) ≈ conj(dot(t2', t'))
                 @test dot(t2, t) ≈ dot(t', t2')
 
-                i1 = @constinferred(isomorphism(ROCVector{T, AMDGPU.DeviceMemory}, V1 ⊗ V2, V2 ⊗ V1))
-                i2 = @constinferred(isomorphism(ROCVector{T, AMDGPU.DeviceMemory}, V2 ⊗ V1, V1 ⊗ V2))
-                @test i1 * i2 == @constinferred(id(ROCVector{T, AMDGPU.DeviceMemory}, V1 ⊗ V2))
-                @test i2 * i1 == @constinferred(id(ROCVector{T, AMDGPU.DeviceMemory}, V2 ⊗ V1))
-                w = @constinferred(isometry(ROCVector{T, AMDGPU.DeviceMemory}, V1 ⊗ (oneunit(V1) ⊕ oneunit(V1)), V1))
+                i1 = @constinferred(isomorphism(ROCVector{T, AMDGPU.Mem.HIPBuffer}, V1 ⊗ V2, V2 ⊗ V1))
+                i2 = @constinferred(isomorphism(ROCVector{T, AMDGPU.Mem.HIPBuffer}, V2 ⊗ V1, V1 ⊗ V2))
+                @test i1 * i2 == @constinferred(id(ROCVector{T, AMDGPU.Mem.HIPBuffer}, V1 ⊗ V2))
+                @test i2 * i1 == @constinferred(id(ROCVector{T, AMDGPU.Mem.HIPBuffer}, V2 ⊗ V1))
+                w = @constinferred(isometry(ROCVector{T, AMDGPU.Mem.HIPBuffer}, V1 ⊗ (oneunit(V1) ⊕ oneunit(V1)), V1))
                 @test dim(w) == 2 * dim(V1 ← V1)
-                @test w' * w == id(ROCVector{T, AMDGPU.DeviceMemory}, V1)
+                @test w' * w == id(ROCVector{T, AMDGPU.Mem.HIPBuffer}, V1)
                 @test w * w' == (w * w')^2
             end
         end
@@ -226,21 +226,21 @@ for V in spacelist
                     tr = @constinferred real(t)
                     @test scalartype(tr) <: Real
                     @test real(TensorKit.to_cpu(t)) == TensorKit.to_cpu(tr)
-                    @test storagetype(tr) == ROCVector{real(T), AMDGPU.DeviceMemory}
+                    @test storagetype(tr) == ROCVector{real(T), AMDGPU.Mem.HIPBuffer}
 
                     ti = @constinferred imag(t)
                     @test scalartype(ti) <: Real
                     @test imag(TensorKit.to_cpu(t)) == TensorKit.to_cpu(ti)
-                    @test storagetype(ti) == ROCVector{real(T), AMDGPU.DeviceMemory}
+                    @test storagetype(ti) == ROCVector{real(T), AMDGPU.Mem.HIPBuffer}
 
                     tc = @inferred complex(t)
                     @test scalartype(tc) <: Complex
                     @test complex(TensorKit.to_cpu(t)) == TensorKit.to_cpu(tc)
-                    @test storagetype(tc) == ROCVector{complex(T), AMDGPU.DeviceMemory}
+                    @test storagetype(tc) == ROCVector{complex(T), AMDGPU.Mem.HIPBuffer}
 
                     tc2 = @inferred complex(tr, ti)
                     @test tc2 ≈ tc
-                    @test storagetype(tc2) == ROCVector{complex(T), AMDGPU.DeviceMemory}
+                    @test storagetype(tc2) == ROCVector{complex(T), AMDGPU.Mem.HIPBuffer}
                 end
             end
         end
