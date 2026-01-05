@@ -628,3 +628,45 @@ for V in spacelist
         end
     end
 end
+
+# https://github.com/quantumkithub/TensorKit.jl/issues/201
+@testset "Issue #201" begin
+    function f(A::AbstractTensorMap)
+        U, S, V, = svd_compact(A)
+        return tr(S)
+    end
+    function f(A::AbstractMatrix)
+        S = LinearAlgebra.svdvals(A)
+        return sum(S)
+    end
+    A₀ = randn(Z2Space(4, 4) ← Z2Space(4, 4))
+    grad1, = Zygote.gradient(f, A₀)
+    grad2, = Zygote.gradient(f, convert(Array, A₀))
+    @test convert(Array, grad1) ≈ grad2
+
+    function g(A::AbstractTensorMap)
+        U, S, V, = svd_compact(A)
+        return tr(U * V)
+    end
+    function g(A::AbstractMatrix)
+        U, S, V, = LinearAlgebra.svd(A)
+        return tr(U * V')
+    end
+    B₀ = randn(ComplexSpace(4) ← ComplexSpace(4))
+    grad3, = Zygote.gradient(g, B₀)
+    grad4, = Zygote.gradient(g, convert(Array, B₀))
+    @test convert(Array, grad3) ≈ grad4
+end
+
+# https://github.com/quantumkithub/TensorKit.jl/issues/209
+@testset "Issue #209" begin
+    function f(T, D)
+        @tensor T[1, 4, 1, 3] * D[3, 4]
+    end
+    V = Z2Space(2, 2)
+    D = DiagonalTensorMap(randn(4), V)
+    T = randn(V ⊗ V ← V ⊗ V)
+    g1, = Zygote.gradient(f, T, D)
+    g2, = Zygote.gradient(f, T, TensorMap(D))
+    @test g1 ≈ g2
+end
