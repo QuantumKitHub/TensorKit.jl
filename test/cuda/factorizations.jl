@@ -429,8 +429,8 @@ for V in spacelist
                     )
                 project_hermitian!(t)
                 vals = @constinferred LinearAlgebra.eigvals(t)
-                λmax = maximum(s -> maximum(abs, s), values(vals))
-                λmin = minimum(s -> minimum(abs, s), values(vals))
+                λmax = maximum(abs, parent(vals))
+                λmin = minimum(abs, parent(vals))
                 @test cond(t) ≈ λmax / λmin
             end
         end
