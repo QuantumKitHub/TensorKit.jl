@@ -275,7 +275,7 @@ Perform a permutation of the uncoupled indices of the fusion tree `f` and return
 as a `<:AbstractDict` of output trees and corresponding coefficients; this requires that
 `BraidingStyle(sectortype(f)) isa SymmetricBraiding`.
 """
-function permute(f::FusionTree{I, N}, p::NTuple{N, Int}) where {I, N}
+function permute(f::FusionTree{I, N}, p::IndexTuple{N}) where {I, N}
     @assert BraidingStyle(I) isa SymmetricBraiding
     return braid(f, p, ntuple(identity, Val(N)))
 end
