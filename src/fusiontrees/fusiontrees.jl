@@ -133,13 +133,18 @@ function FusionTreeBlock{I}(
     sizehint > 0 && sizehint!(trees, sizehint)
 
     if N₁ == N₂ == 0
+        f = FusionTree{I}(())
+        push!(trees, (f, f))
         return FusionTreeBlock(trees)
-    elseif N₁ == 0
-        cs = sort!(collect(filter(isone, ⊗(uncoupled[2]...))))
+    end
+
+    # note: cs is unique due to ⊗ returning unique fusion results
+    cs = if N₁ == 0
+        sort!(collect(filter(isunit, ⊗(uncoupled[2]...))))
     elseif N₂ == 0
-        cs = sort!(collect(filter(isone, ⊗(uncoupled[1]...))))
+        sort!(collect(filter(isunit, ⊗(uncoupled[1]...))))
     else
-        cs = sort!(collect(intersect(⊗(uncoupled[1]...), ⊗(uncoupled[2]...))))
+        sort!(collect(intersect(⊗(uncoupled[1]...), ⊗(uncoupled[2]...))))
     end
 
     for c in cs
