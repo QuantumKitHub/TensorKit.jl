@@ -1,3 +1,10 @@
+# To avoid computing rrules for α and β when these aren't needed, we want to have a
+# type-stable quick bail-out
+_needs_tangent(x) = _needs_tangent(typeof(x))
+_needs_tangent(::Type{<:Number}) = true
+_needs_tangent(::Type{<:Integer}) = false
+_needs_tangent(::Type{<:Union{One, Zero}}) = false
+
 function ChainRulesCore.rrule(
         ::typeof(TensorOperations.tensoradd!),
         C::AbstractTensorMap,
@@ -13,7 +20,7 @@ function ChainRulesCore.rrule(
 
     function pullback(ΔC′)
         ΔC = unthunk(ΔC′)
-        dC = @thunk projectC(scale(ΔC, conj(β)))
+        dC = β === Zero() ? ZeroTangent() : @thunk projectC(scale(ΔC, conj(β)))
         dA = @thunk let
             ipA = invperm(linearize(pA))
             pdA = _repartition(ipA, A)
@@ -21,24 +28,28 @@ function ChainRulesCore.rrule(
             # TODO: allocator
             _dA = tensoralloc_add(TA, ΔC, pdA, conjA, Val(false))
             _dA = tensoradd!(_dA, ΔC, pdA, conjA, conjA ? α : conj(α), Zero(), ba...)
-            return projectA(_dA)
+            projectA(_dA)
         end
-        dα = @thunk let
-            # TODO: this is an inner product implemented as a contraction
-            # for non-symmetric tensors this might be more efficient like this,
-            # but for symmetric tensors an intermediate object will anyways be created
-            # and then it might be more efficient to use an addition and inner product
-            tΔC = _twist_nocopy(ΔC, filter(x -> isdual(space(ΔC, x)), allind(ΔC)))
-            _dα = tensorscalar(
-                tensorcontract(
-                    A, ((), linearize(pA)), !conjA,
-                    tΔC, (trivtuple(TO.numind(pA)), ()), false,
-                    ((), ()), One(), ba...
+        dα = if _needs_tangent(α)
+            @thunk let
+                # TODO: this is an inner product implemented as a contraction
+                # for non-symmetric tensors this might be more efficient like this,
+                # but for symmetric tensors an intermediate object will anyways be created
+                # and then it might be more efficient to use an addition and inner product
+                tΔC = _twist_nocopy(ΔC, filter(x -> isdual(space(ΔC, x)), allind(ΔC)))
+                _dα = tensorscalar(
+                    tensorcontract(
+                        A, ((), linearize(pA)), !conjA,
+                        tΔC, (trivtuple(TO.numind(pA)), ()), false,
+                        ((), ()), One(), ba...
+                    )
                 )
-            )
-            return projectα(_dα)
+                projectα(_dα)
+            end
+        else
+            ZeroTangent()
         end
-        dβ = @thunk projectβ(inner(C, ΔC))
+        dβ = _needs_tangent(β) ? @thunk(projectβ(inner(C, ΔC))) : ZeroTangent()
         dba = map(_ -> NoTangent(), ba)
         return NoTangent(), dC, dA, NoTangent(), NoTangent(), dα, dβ, dba...
     end
@@ -67,7 +78,7 @@ function ChainRulesCore.rrule(
         ipAB = invperm(linearize(pAB))
         pΔC = _repartition(ipAB, TO.numout(pA))
 
-        dC = @thunk projectC(scale(ΔC, conj(β)))
+        dC = β === Zero() ? ZeroTangent() : @thunk projectC(scale(ΔC, conj(β)))
         dA = @thunk let
             ipA = _repartition(invperm(linearize(pA)), A)
             conjΔC = conjA
@@ -91,7 +102,7 @@ function ChainRulesCore.rrule(
                 ipA,
                 conjA ? α : conj(α), Zero(), ba...
             )
-            return projectA(_dA)
+            projectA(_dA)
         end
         dB = @thunk let
             ipB = _repartition(invperm(linearize(pB)), B)
@@ -116,14 +127,18 @@ function ChainRulesCore.rrule(
                 ipB,
                 conjB ? α : conj(α), Zero(), ba...
             )
-            return projectB(_dB)
+            projectB(_dB)
         end
-        dα = @thunk let
-            # TODO: this result should be AB = (C′ - βC) / α as C′ = βC + αAB
-            AB = tensorcontract(A, pA, conjA, B, pB, conjB, pAB, One(), ba...)
-            return projectα(inner(AB, ΔC))
+        dα = if _needs_tangent(α)
+            @thunk let
+                # TODO: this result should be AB = (C′ - βC) / α as C′ = βC + αAB
+                AB = tensorcontract(A, pA, conjA, B, pB, conjB, pAB, One(), ba...)
+                projectα(inner(AB, ΔC))
+            end
+        else
+            ZeroTangent()
         end
-        dβ = @thunk projectβ(inner(C, ΔC))
+        dβ = _needs_tangent(β) ? @thunk(projectβ(inner(C, ΔC))) : ZeroTangent()
         dba = map(_ -> NoTangent(), ba)
         return NoTangent(), dC,
             dA, NoTangent(), NoTangent(),
@@ -149,7 +164,7 @@ function ChainRulesCore.rrule(
 
     function pullback(ΔC′)
         ΔC = unthunk(ΔC′)
-        dC = @thunk projectC(scale(ΔC, conj(β)))
+        dC = β === Zero() ? ZeroTangent() : @thunk projectC(scale(ΔC, conj(β)))
         dA = @thunk let
             ip = invperm((linearize(p)..., q[1]..., q[2]...))
             pdA = _repartition(ip, A)
@@ -163,15 +178,19 @@ function ChainRulesCore.rrule(
             _dA = tensorproduct!(
                 _dA, ΔC, pΔC, conjA, E, pE, conjA, pdA, conjA ? α : conj(α), Zero(), ba...
             )
-            return projectA(_dA)
+            projectA(_dA)
         end
-        dα = @thunk let
-            # TODO: this result might be easier to compute as:
-            # C′ = βC + α * trace(A) ⟹ At = (C′ - βC) / α
-            At = tensortrace(A, p, q, conjA)
-            return projectα(inner(At, ΔC))
+        dα = if _needs_tangent(α)
+            @thunk let
+                # TODO: this result might be easier to compute as:
+                # C′ = βC + α * trace(A) ⟹ At = (C′ - βC) / α
+                At = tensortrace(A, p, q, conjA)
+                projectα(inner(At, ΔC))
+            end
+        else
+            ZeroTangent()
         end
-        dβ = @thunk projectβ(inner(C, ΔC))
+        dβ = _needs_tangent(β) ? @thunk(projectβ(inner(C, ΔC))) : ZeroTangent()
         dba = map(_ -> NoTangent(), ba)
         return NoTangent(), dC, dA, NoTangent(), NoTangent(), NoTangent(), dα, dβ, dba...
     end
