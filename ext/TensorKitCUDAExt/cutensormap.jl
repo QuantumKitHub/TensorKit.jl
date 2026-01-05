@@ -119,15 +119,11 @@ function LinearAlgebra.isposdef(t::CuTensorMap)
     InnerProductStyle(spacetype(t)) === EuclideanInnerProduct() || return false
     for (c, b) in blocks(t)
         # do our own hermitian check
-        isherm = MatrixAlgebraKit.ishermitian(b; atol = eps(real(eltype(b))), rtol = eps(real(eltype(b))))
+        isherm = MatrixAlgebraKit.ishermitian(b)
         isherm || return false
-        isposdef(project_hermitian!(b)) || return false
+        isposdef(Hermitian(b)) || return false
     end
     return true
-end
-
-function LinearAlgebra.isposdef(t::TensorKit.AdjointTensorMap{T, S, N₁, N₂, <:CuTensorMap}) where {T, S, N₁, N₂}
-    return isposdef(adjoint(t))
 end
 
 function Base.promote_rule(
