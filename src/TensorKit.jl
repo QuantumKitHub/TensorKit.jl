@@ -13,7 +13,7 @@ export FusionStyle, UniqueFusion, MultipleFusion, MultiplicityFreeFusion, Simple
 export UnitStyle, SimpleUnit, GenericUnit
 export BraidingStyle, SymmetricBraiding, Bosonic, Fermionic, Anyonic, NoBraiding, HasBraiding
 export Trivial, Z2Irrep, Z3Irrep, Z4Irrep, ZNIrrep, U1Irrep, SU2Irrep, CU1Irrep
-export ProductSector
+export ProductSector, TimeReversed
 export FermionParity, FermionNumber, FermionSpin
 export FibonacciAnyon, IsingAnyon, IsingBimodule
 
