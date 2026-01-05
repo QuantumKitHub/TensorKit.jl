@@ -564,7 +564,7 @@ function add_kernel_nonthreaded!(::FusionStyle, tdst, tsrc, p, transformer, α, 
         if length(src) == 1
             _add_transform_single!(tdst, tsrc, p, src, transformer, α, β, backend...)
         else
-            _add_transform_multi!(tdst, tsrc, p, src, transformer, α, β, backend...)
+            _add_transform_multi!(tdst, tsrc, p, src, buffers, transformer, α, β, backend...)
         end
     end
     return nothing
@@ -743,7 +743,7 @@ function _add_transform_multi!(tdst, tsrc, p, src::FusionTreeBlock, transformer,
     )
 
     # Filling up a buffer with contiguous data
-    buffer_src = StridedView(buffers2, (blocksize, cols), (1, blocksize), 0)
+    buffer_src = StridedView(buffer2, (blocksize, cols), (1, blocksize), 0)
     for (i, (f₁, f₂)) in enumerate(fusiontrees(src))
         subblock_src = sreshape(tsrc[f₁, f₂], matsize)
         _copyto!(buffer_src[:, i], subblock_src)
