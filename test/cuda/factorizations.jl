@@ -150,7 +150,7 @@ for V in spacelist
         end
 
         @testset "Polar decomposition" begin
-            for T in eltypes,
+            @testset for T in eltypes,
                     t in (
                         CUDA.rand(T, W, W),
                         CUDA.rand(T, W, W)',
@@ -163,14 +163,14 @@ for V in spacelist
                 w, p = @constinferred left_polar(t)
                 @test w * p ≈ t
                 @test isisometric(w)
-                @test isposdef(project_hermitian!(p))
+                @test isposdef(p)
 
                 w, p = @constinferred left_orth(t; alg = :polar)
                 @test w * p ≈ t
                 @test isisometric(w)
             end
 
-            for T in eltypes,
+            @testset for T in eltypes,
                     t in (
                         CUDA.rand(T, W, W),
                         CUDA.rand(T, W, W)',
@@ -182,7 +182,7 @@ for V in spacelist
                 p, wᴴ = @constinferred right_polar(t)
                 @test p * wᴴ ≈ t
                 @test isisometric(wᴴ; side = :right)
-                @test isposdef(project_hermitian!(p))
+                @test isposdef(p)
 
                 p, wᴴ = @constinferred right_orth(t; alg = :polar)
                 @test p * wᴴ ≈ t
