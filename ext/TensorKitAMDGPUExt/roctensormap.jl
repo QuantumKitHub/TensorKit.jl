@@ -40,7 +40,7 @@ for (fname, felt) in ((:zeros, :zero), (:ones, :one))
     end
 end
 
-for randfun in (:curand, :curandn)
+for randfun in (:rocrand, :rocrandn)
     randfun! = Symbol(randfun, :!)
     @eval begin
         # converting `codomain` and `domain` into `HomSpace`
