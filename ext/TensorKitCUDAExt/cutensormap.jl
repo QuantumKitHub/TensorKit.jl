@@ -121,9 +121,13 @@ function LinearAlgebra.isposdef(t::CuTensorMap)
         # do our own hermitian check
         isherm = MatrixAlgebraKit.ishermitian(b; atol = eps(real(eltype(b))), rtol = eps(real(eltype(b))))
         isherm || return false
-        isposdef(Hermitian(b)) || return false
+        isposdef(project_hermitian!(b)) || return false
     end
     return true
+end
+
+function LinearAlgebra.isposdef(t::TensorKit.AdjointTensorMap{T, S, N₁, N₂, <:CuTensorMap}) where {T, S, N₁, N₂}
+    return isposdef(adjoint(t))
 end
 
 function Base.promote_rule(
@@ -163,12 +167,4 @@ for f in (:sqrt, :log, :asin, :acos, :acosh, :atanh, :acoth)
         end
         return tf
     end
-end
-
-function Base.copy!(tdst::CuTensorMap, tsrc::AdjointTensorMap)
-    space(tdst) == space(tsrc) || throw(SpaceMismatch("$(space(tdst)) ≠ $(space(tsrc))"))
-    for ((c, bdst), (_, bsrc)) in zip(blocks(tdst), blocks(tsrc))
-        copy!(bdst, bsrc)
-    end
-    return tdst
 end
