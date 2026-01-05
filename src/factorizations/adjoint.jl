@@ -111,3 +111,7 @@ function MAK.svd_compact!(t::AdjointTensorMap, F, alg::DiagonalAlgorithm)
     F′ = svd_compact!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
     return reverse(adjoint.(F′))
 end
+
+function LinearAlgebra.isposdef(t::AdjointTensorMap)
+    return isposdef(adjoint(t))
+end
