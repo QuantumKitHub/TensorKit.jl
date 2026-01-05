@@ -133,8 +133,10 @@ function FusionTreeBlock{I}(
     sizehint > 0 && sizehint!(trees, sizehint)
 
     if N₁ == N₂ == 0
-        f = FusionTree{I}(())
-        push!(trees, (f, f))
+        for c in allunits(I)
+            f = FusionTree{I}((), c)
+            push!(trees, (f, f))
+        end
         return FusionTreeBlock(trees)
     end
 
