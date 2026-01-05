@@ -299,7 +299,7 @@ const StridedStructure{N} = Tuple{NTuple{N, Int}, NTuple{N, Int}, Int}
 
 struct FusionBlockStructure{I, N, F₁, F₂}
     totaldim::Int
-    blockstructure::SectorDict{I, Tuple{Tuple{Int, Int}, UnitRange{Int}}}
+    blockstructure::SectorDict{I, StridedStructure{2}}
     fusiontreelist::Vector{Tuple{F₁, F₂}}
     fusiontreestructure::Vector{StridedStructure{N}}
     fusiontreeindices::FusionTreeDict{Tuple{F₁, F₂}, Int}
@@ -325,9 +325,9 @@ end
     F₂ = fusiontreetype(I, N₂)
 
     # output structure
-    blockstructure = SectorDict{I, Tuple{Tuple{Int, Int}, UnitRange{Int}}}() # size, range
+    blockstructure = SectorDict{I, StridedStructure{2}}() # size, strides, offset
     fusiontreelist = Vector{Tuple{F₁, F₂}}()
-    fusiontreestructure = Vector{Tuple{NTuple{N₁ + N₂, Int}, NTuple{N₁ + N₂, Int}, Int}}() # size, strides, offset
+    fusiontreestructure = Vector{StridedStructure{N₁ + N₂}}() # size, strides, offset
 
     # temporary data structures
     splittingtrees = Vector{F₁}()
@@ -367,8 +367,8 @@ end
         blocksize = (blockdim₁, blockdim₂)
         blocklength = blockdim₁ * blockdim₂
         blockrange = (blockoffset + 1):(blockoffset + blocklength)
+        blockstructure[c] = (blocksize, strides, blockoffset)
         blockoffset = last(blockrange)
-        blockstructure[c] = (blocksize, blockrange)
     end
 
     fusiontreeindices = sizehint!(
