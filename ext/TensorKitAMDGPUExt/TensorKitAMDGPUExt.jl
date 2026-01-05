@@ -1,6 +1,6 @@
 module TensorKitAMDGPUExt
 
-using AMDGPU, AMDGPU.CUBLAS, AMDGPU.ROCSOLVER, LinearAlgebra
+using AMDGPU, AMDGPU.ROCBLAS, AMDGPU.ROCSOLVER, LinearAlgebra
 using AMDGPU: @allowscalar
 import AMDGPU: rand as rocrand, rand! as rocrand!, randn as rocrandn, randn! as rocrandn!
 
