@@ -121,7 +121,6 @@ using MatrixAlgebraKit
 using LRUCache
 using OhMyThreads
 using ScopedValues
-using Adapt
 
 using TensorKitSectors
 import TensorKitSectors: dim, BraidingStyle, FusionStyle, ⊠, ⊗
