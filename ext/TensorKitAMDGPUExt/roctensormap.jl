@@ -1,4 +1,4 @@
-const ROCTensorMap{T, S, N₁, N₂} = TensorMap{T, S, N₁, N₂, ROCVector{T, AMDGPU.DeviceMemory}}
+const ROCTensorMap{T, S, N₁, N₂} = TensorMap{T, S, N₁, N₂, ROCVector{T, AMDGPU.Mem.HIPBuffer}}
 const ROCTensor{T, S, N} = ROCTensorMap{T, S, N, 0}
 
 const AdjointROCTensorMap{T, S, N₁, N₂} = AdjointTensorMap{T, S, N₁, N₂, ROCTensorMap{T, S, N₁, N₂}}
