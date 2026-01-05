@@ -36,7 +36,7 @@ function ChainRulesCore.rrule(
                 # for non-symmetric tensors this might be more efficient like this,
                 # but for symmetric tensors an intermediate object will anyways be created
                 # and then it might be more efficient to use an addition and inner product
-                tΔC = _twist_nocopy(ΔC, filter(x -> isdual(space(ΔC, x)), allind(ΔC)))
+                tΔC = twist(ΔC, filter(x -> isdual(space(ΔC, x)), allind(ΔC)); copy = false)
                 _dα = tensorscalar(
                     tensorcontract(
                         A, ((), linearize(pA)), !conjA,
@@ -85,12 +85,12 @@ function ChainRulesCore.rrule(
             conjB′ = conjA ? conjB : !conjB
             TA = promote_contract(scalartype(ΔC), scalartype(B), scalartype(α))
             # TODO: allocator
-            tB = _twist_nocopy(
+            tB = twist(
                 B,
                 TupleTools.vcat(
                     filter(x -> !isdual(space(B, x)), pB[1]),
                     filter(x -> isdual(space(B, x)), pB[2])
-                )
+                ); copy = false
             )
             _dA = tensoralloc_contract(
                 TA, ΔC, pΔC, conjΔC, tB, reverse(pB), conjB′, ipA, Val(false)
@@ -110,12 +110,12 @@ function ChainRulesCore.rrule(
             conjA′ = conjB ? conjA : !conjA
             TB = promote_contract(scalartype(ΔC), scalartype(A), scalartype(α))
             # TODO: allocator
-            tA = _twist_nocopy(
+            tA = twist(
                 A,
                 TupleTools.vcat(
                     filter(x -> isdual(space(A, x)), pA[1]),
                     filter(x -> !isdual(space(A, x)), pA[2])
-                )
+                ); copy = false
             )
             _dB = tensoralloc_contract(
                 TB, tA, reverse(pA), conjA′, ΔC, pΔC, conjΔC, ipB, Val(false)
@@ -206,11 +206,4 @@ function ChainRulesCore.rrule(::typeof(TensorKit.scalar), t::AbstractTensorMap)
         return NoTangent(), dt
     end
     return val, scalar_pullback
-end
-
-# temporary function to avoid copies when not needed
-# TODO: remove once `twist(t; copy=false)` is defined
-function _twist_nocopy(t, inds; kwargs...)
-    (BraidingStyle(sectortype(t)) isa Bosonic || isempty(inds)) && return t
-    return twist(t, inds; kwargs...)
 end
