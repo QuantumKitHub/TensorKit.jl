@@ -688,7 +688,7 @@ end
 
 # trace two neighbouring indices of a single fusion tree
 """
-    elementary_trace(f::FusionTree{I,N}, i) where {I,N} -> <:AbstractDict{FusionTree{I,N-2}, <:Number}
+    elementary_trace(f::FusionTree{I, N}, i) where {I,N} -> <:AbstractDict{FusionTree{I,N-2}, <:Number}
 
 Perform an elementary trace of neighbouring uncoupled indices `i` and
 `i+1` on a fusion tree `f`, and returns the result as a dictionary of output trees and
