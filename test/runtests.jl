@@ -52,7 +52,7 @@ istestfile(fn) = endswith(fn, ".jl") && !contains(fn, "setup")
         @time include("cuda/tensors.jl")
         @time include("cuda/factorizations.jl")
     elseif group == "amd"
-        using AMDGPU 
+        using AMDGPU
         AMDGPU.functional() || continue
         @time include("amd/tensors.jl")
     elseif is_buildkite
