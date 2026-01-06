@@ -244,12 +244,22 @@ function foldright((f₁, f₂)::FusionTreePair)
     isduala = f₁.isdual[1]
     c1 = dual(a)
     c2 = f₁.coupled
-    c = first(c1 ⊗ c2)
-    fl = FusionTree{I}(Base.tail(f₁.uncoupled), c, Base.tail(f₁.isdual))
-    fr = FusionTree{I}((c1, f₂.uncoupled...), c, (!isduala, f₂.isdual...))
+    c = only(c1 ⊗ c2)
+    uncoupled = Base.tail(f₁.uncoupled)
+    isdual = Base.tail(f₁.isdual)
+    fc = FusionTree((c1, c2), c, (!isduala, false), ())
+
+    fl′, coeff1 = only(insertat(fc, 2, f₁))
+    coupled = fl′.coupled
+    uncoupled = Base.tail(Base.tail(fl′.uncoupled))
+    isdual = Base.tail(Base.tail(fl′.isdual))
+    fl = FusionTree{I}(uncoupled, coupled, isdual)
+
+    fr, coeff2 = only(insertat(fc, 2, f₂))
+    coeff = coeff1 * conj(coeff2)
 
     # compute new coefficients
-    factor = sqrtdim(a)
+    factor = sqrtdim(a) * coeff
     isduala || (factor *= conj(frobenius_schur_phase(a)))
 
     return (fl, fr) => factor
