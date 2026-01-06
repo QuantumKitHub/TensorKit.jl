@@ -14,10 +14,9 @@ details as strictly necessary to understand each example. When considering a dif
 physical system of interest, you should then be able to adapt these recipes and the
 intuition behind them to your specific problem at hand.
 
-!!! note
-    Many of these examples are readily implemented in the
-    [TensorKitTensors.jl package](https://github.com/QuantumKitHub/TensorKitTensors.jl), in
-    which case we basically provide a narrated walk-through of the corresponding code.
+!!! note Many of these examples are readily implemented in the
+[TensorKitTensors.jl package](https://github.com/QuantumKitHub/TensorKitTensors.jl), in
+which case we basically provide a narrated walk-through of the corresponding code.
 
 #### Contents of the tutorial
 
@@ -166,13 +165,12 @@ irreps $a$ and $b$. These fusion rules are called *Abelian* if the tensor produc
 irreps corresponds to exactly one irrep. We will return to the implications of irreps with
 *non-Abelian* fusion rules [later](@ref ss_non_abelian).
 
-!!! note
-    Within TensorKit.jl, the nature of the fusion rules for charges of a given symmetry are
-    represented by the [`FusionStyle`](@ref) of the corresponding `Sector` subtype. What we
-    refer to as "Abelian" fusion rules in this tutorial corresponds to
-    `UniqueFusion <: FusionStyle`. We will also consider [examples](@ref ss_non_abelian) of
-    two different kinds of non-Abelian" fusion rules, corresponding to
-    `MultipleFusion <: FusionStyle` styles.
+!!! note Within TensorKit.jl, the nature of the fusion rules for charges of a given symmetry
+are represented by the [`FusionStyle`](@ref) of the corresponding `Sector` subtype. What we
+refer to as "Abelian" fusion rules in this tutorial corresponds to
+`UniqueFusion <: FusionStyle`. We will also consider [examples](@ref ss_non_abelian) of two
+different kinds of non-Abelian" fusion rules, corresponding to
+`MultipleFusion <: FusionStyle` styles.
 
 For the case of the $\mathbb{Z}_2$ irreps, the fusion rules are Abelian, and are given by
 addition modulo 2,
@@ -220,13 +218,12 @@ corresponds a certain reduced tensor element**. In TensorKit.jl, these reduced t
 elements corresponding to the fusion trees of a `TensorMap` can be accessed through the
 [`subblocks`](@ref) method.
 
-!!! note
-    In general, such a reduced tensor element is not necessarily a scalar, but rather an array
-    whose size is determined by the degeneracy of the irreps in the codomain and domain of the
-    fusion tree. For this reason, a reduced tensor element associated to a given fusion tree is
-    also referred to as a *subblock*. In the following we will always use terms 'reduced tensor
-    element' or 'subblock' for the reduced tensor elements, to make it clear that these are
-    distinct from the matrix blocks in the block-diagonal decomposition of the tensor.
+!!! note In general, such a reduced tensor element is not necessarily a scalar, but rather
+an array whose size is determined by the degeneracy of the irreps in the codomain and domain
+of the fusion tree. For this reason, a reduced tensor element associated to a given fusion
+tree is also referred to as a *subblock*. In the following we will always use terms 'reduced
+tensor element' or 'subblock' for the reduced tensor elements, to make it clear that these
+are distinct from the matrix blocks in the block-diagonal decomposition of the tensor.
 
 
 ### [Fusion trees and how to use them](@id sss_fusion_trees)
@@ -257,7 +254,8 @@ fields:
 
 - `uncoupled::NTuple{N,I}`: a list of `N` uncoupled charges of type `I<:Sector`
 - `coupled::I`: a single coupled charge of type `I<:Sector`
-- `isdual::NTuple{N,Bool}`: a list of booleans indicating whether the corresponding uncoupled charge is dual
+- `isdual::NTuple{N,Bool}`: a list of booleans indicating whether the corresponding
+  uncoupled charge is dual
 - `innerlines::NTuple{M,I}`: a list of inner lines of type `I<:Sector` of length `M = N - 2`
 - `vertices::NTuple{L,T}`: list of fusion vertex labels of type `T` and length `L = N - 1`
 
@@ -334,12 +332,12 @@ subblocks(ZZ)
 While all entries are zero, we see that all eight valid fusion trees with two incoming
 irreps and two outgoing irreps [of the type above](fusiontree) are listed with their
 corresponding subblock data. Each of these subblocks is an array of shape $(1, 1, 1, 1)$
-since each irrep occuring in the space $V$ has degeneracy 1. Using the [`fusiontrees`](@ref)
-method and the fact that we can index a `TensorMap` using a splitting/fusion tree pair, we
-can now fill in the nonzero subblocks of the operator by observing that the $ZZ$ operator
-flips the irreps of the uncoupled charges in the domain with respect to the codomain, as
-shown in the diagrams above. Flipping a given `Z2Irrep` in the codomain can be implemented
-by fusing them with the sign irrep `Z2Irrep(1)`, giving:
+since each irrep occuring in the space $V$ has degeneracy 1. Using the
+[`fusiontrees`](@ref) method and the fact that we can index a `TensorMap` using a
+splitting/fusion tree pair, we can now fill in the nonzero subblocks of the operator by
+observing that the $ZZ$ operator flips the irreps of the uncoupled charges in the domain
+with respect to the codomain, as shown in the diagrams above. Flipping a given `Z2Irrep` in
+the codomain can be implemented by fusing them with the sign irrep `Z2Irrep(1)`, giving:
 
 ```@example symmetric_tutorial
 flip_charge(charge::Z2Irrep) = only(charge ⊗ Z2Irrep(1))
@@ -395,9 +393,9 @@ describes interacting bosons on a lattice. The Hamiltonian of this model is give
 H = -t \sum_{\langle i,j \rangle} \left( a_{i}^+ a_{j}^- + a_{i}^- a_{j}^+ \right) - \mu \sum_i N_i + \frac{U}{2} \sum_i N_i(N_i - 1).
 \end{equation}
 ```
-This Hamiltonian is defined on the [Fock space](https://en.wikipedia.org/wiki/Fock_space) associated to a chain of bosons,
-where the action bosonic creation, annihilation and number operators $a^+$, $a^-$ and $N =
-a^+ a^-$ in the local occupation number basis is given by
+This Hamiltonian is defined on the [Fock space](https://en.wikipedia.org/wiki/Fock_space)
+associated to a chain of bosons, where the action bosonic creation, annihilation and number
+operators $a^+$, $a^-$ and $N = a^+ a^-$ in the local occupation number basis is given by
 ```math
 \begin{align}
 \label{eq:bosonopmatel}
@@ -610,8 +608,8 @@ that tensor indices can be permuted freely without any 'strange' side effects.
 
 In the following we will consider examples with fermionic and even anyonic exchange
 statistics, and non-Abelian fusion rules. In going through these examples it will become
-clear that the fusion trees labeling the subblocks of a symmetric tensor imply more information
-than just a labeling.
+clear that the fusion trees labeling the subblocks of a symmetric tensor imply more
+information than just a labeling.
 
 
 ### Fermion parity symmetry
@@ -783,16 +781,15 @@ subblocks(N)
 
 We can easily all the reduced tensor elements are indeed correct.
 
-!!! note
-    Working with fermionic systems is inherently tricky, as can already be seen from something
-    as simple as computing matrix elements of fermionic operators. Similarly, while constructing
-    symmetric tensors that correspond to the symmetric Hamiltonian terms was still quite
-    straightforward, it is far less clear in this case how to construct these terms as
-    contractions of local symmetric tensors representing individual creation and annihilation
-    operators. While such a decomposition can always be in principle obtained using
-    a (now explicitly fermionic) SVD, manually constructing such tensors as we did in the
-    bosonic case is far from trivial. Trying this would be a good exercise in working with
-    fermionic symmetries, but it is not something we will do here.
+!!! note Working with fermionic systems is inherently tricky, as can already be seen from
+something as simple as computing matrix elements of fermionic operators. Similarly, while
+constructing symmetric tensors that correspond to the symmetric Hamiltonian terms was still
+quite straightforward, it is far less clear in this case how to construct these terms as
+contractions of local symmetric tensors representing individual creation and annihilation
+operators. While such a decomposition can always be in principle obtained using a (now
+explicitly fermionic) SVD, manually constructing such tensors as we did in the bosonic case
+is far from trivial. Trying this would be a good exercise in working with fermionic
+symmetries, but it is not something we will do here.
 
 
 ## [Level 4: Non-Abelian symmetries and the quantum Heisenberg model](@id ss_non_abelian)
@@ -801,21 +798,21 @@ We will now move on to systems which have more complicated *non-Abelian* symmetr
 non-Abelian symmetry group $G$, the fact that its elements do not all commute has a profound
 impact on its representation theory. In particular, the irreps of such a group can be higher
 dimensional, and the fusion of two irreps can give rise to multiple different irreps. On the
-one hand, this means that fusion trees of these irreps are no longer completely determined by
-the uncoupled charges. Indeed, in this case some of the [internal structure of the
+one hand, this means that fusion trees of these irreps are no longer completely determined
+by the uncoupled charges. Indeed, in this case some of the [internal structure of the
 `FusionTree` type](@ref sss_fusion_trees) we have ignored before will become relevant (of
 which we will give an [example below](@ref sss_sun_heisenberg)). On the other hand, it
 follows that fusion trees of irreps now not only label reduced tensor elements, but also
 encode a certain *nontrivial symmetry structure*. We will make this statement more precise
 in the following, but the fact that this is necessary is quite intuitive. If we recall our
-original statement that symmetric tensors consist of subblocks associated to fusion trees which
-carry irrep labels, then for higher-dimensional irreps the corresponding fusion trees must
-encode some additional information that implicitly takes into account the internal structure
-of the representation spaces. In particular, this means that the conversion of an operator,
-given its matrix elements in the irrep basis, to the subblocks of the corresponding symmetric
-`TensorMap` is less straightforward since it requires an understanding of exactly what this
-implied internal structure is. Therefore, we require some more discussion before we can
-actually move on to an example.
+original statement that symmetric tensors consist of subblocks associated to fusion trees
+which carry irrep labels, then for higher-dimensional irreps the corresponding fusion trees
+must encode some additional information that implicitly takes into account the internal
+structure of the representation spaces. In particular, this means that the conversion of an
+operator, given its matrix elements in the irrep basis, to the subblocks of the
+corresponding symmetric `TensorMap` is less straightforward since it requires an
+understanding of exactly what this implied internal structure is. Therefore, we require some
+more discussion before we can actually move on to an example.
 
 We'll start by discussing the general structure of a `TensorMap` which is symmetric under a
 non-Abelian group symmetry. We then given an example based on $\mathrm{SU}(2)$, where we
@@ -1018,8 +1015,8 @@ We can now explicitly verify that this `fusiontensor` indeed does what we expect
 @test ta ≈ f[:, :, :, 1]
 ```
 Of course, in this case `fusiontensor` just calls `Wignersymbols.clebschgordan` under the
-hood. However, `TensorKitSectors.fusiontensor` works for general symmetries, and makes it
-so that we never have to manually assemble the coefficients into an array.
+hood. However, `TensorKitSectors.fusiontensor` works for general symmetries, and makes it so
+that we never have to manually assemble the coefficients into an array.
 
 
 ### The 'generic' approach to the spin-1 Heisenberg model: Wigner-Eckart in action
@@ -1051,8 +1048,8 @@ nothing #hide
 The next step is to project out the reduced tensor elements by taking the overlap with the
 appropriate Clebsch-Gordan coefficients. In our current case of a spin-1 physical space, we
 have $l_1 = l_2 = l_3 = l_4 = 1$, and the coupled irrep $k$ can therefore take the values
-$0, 1, 2$. The reduced tensor element for a given $k$ can be implemented in the
-following way:
+$0, 1, 2$. The reduced tensor element for a given $k$ can be implemented in the following
+way:
 ```@example symmetric_tutorial
 function get_reduced_element(k::SU2Irrep)
     # construct Clebsch-Gordan coefficients for coupling 1 ⊗ 1 to k   
@@ -1185,10 +1182,9 @@ subblocks(SS)
 ```
 which gives exactly the same result as the previous approach.
 
-!!! note
-    This last construction for the exchange interaction immediatly generalizes to any value of
-    the physical spin. All we need is to fill in the appropriate values for the uncoupled irreps
-    $l_1$, $l_2$, $l_3$ and $l_4$.
+!!! note This last construction for the exchange interaction immediatly generalizes to any
+value of the physical spin. All we need is to fill in the appropriate values for the
+uncoupled irreps $l_1$, $l_2$, $l_3$ and $l_4$.
 
 
 ### [$\mathrm{SU}(N)$ generalization](@id sss_sun_heisenberg)
@@ -1222,10 +1218,8 @@ by
 ```math
 \mathbf{8} \otimes \mathbf{8} = \mathbf{1} \oplus \mathbf{3} \oplus 2 \cdot \mathbf{8} \oplus \mathbf{10} \oplus \mathbf{\overline{10}} \oplus \mathbf{27}
 ```
-This fusion multiplicity can be detected by using
-[`Nsymbol`](@ref)
-method from TensorKit.jl to inspect the number of times `l` appears in the fusion product
-`l ⊗ l`,
+This fusion multiplicity can be detected by using [`Nsymbol`](@ref) method from TensorKit.jl
+to inspect the number of times `l` appears in the fusion product `l ⊗ l`,
 ```@example symmetric_tutorial
 Nsymbol(l, l, l)
 ```
@@ -1243,7 +1237,8 @@ as a symmetric `TensorMap` by first rewriting it as
 ```math
 \vec{T}_i \cdot \vec{T}_j = \frac{1}{2} \left( \left( \vec{T}_i + \vec{T}_j \right)^2 - \vec{T}_i^2 - \vec{T}_j^2 \right).
 ```
-For any $N$, the [quadratic Casimir](https://en.wikipedia.org/wiki/Casimir_element#Quadratic_Casimir_element)
+For any $N$, the
+[quadratic Casimir](https://en.wikipedia.org/wiki/Casimir_element#Quadratic_Casimir_element)
 ```math
 \Omega = \sum_k T^k T^k
 ```
@@ -1305,12 +1300,11 @@ f.vertices
 
 While we have focussed exclusively on group-like symmetries in our discussion so far, the
 framework of symmetric tensors actually extends beyond groups to so-called
-[*categorical symmetries*](@ref ss_representationtheory).
-These are quite exotic symmetries characterized in terms of
-[the topological data of a unitary fusion category](@ref ss_topologicalfusion).
-While the precise details of all the terms in these statements fall beyond the scope of this
-tutorial, we can give a simple example of a Hamiltonian model with a categorical symmetry
-called [the golden chain](https://arxiv.org/abs/cond-mat/0612341).
+[*categorical symmetries*](@ref ss_representationtheory). These are quite exotic symmetries
+characterized in terms of [the topological data of a unitary fusion category](@ref
+ss_topologicalfusion). While the precise details of all the terms in these statements fall
+beyond the scope of this tutorial, we can give a simple example of a Hamiltonian model with
+a categorical symmetry called [the golden chain](https://arxiv.org/abs/cond-mat/0612341).
 
 This is a one-dimensional system defined as a spin chain, where each physical 'spin'
 corresponds to a so-called [Fibonacci anyon](https://arxiv.org/abs/0902.3275). There are two
@@ -1351,12 +1345,11 @@ end
 subblocks(h)
 ```
 
-!!! note
-    In the previous section we have stressed the role of Clebsch-Gordan coefficients in
-    the structure of symmetric tensors, and how they can be used to map between the
-    representation of an operator in the irrep basis and its symmetric tensor representation.
-    However, for categorical symmetries such as the Fibonacci anyons, there are no
-    Clebsch-Gordan coefficients. Therefore, the 'matrix elements of the operator in the irrep
-    basis' are not well-defined, meaning that a Fibonacci-symmetric tensor cannot actually be
-    converted to a plain array in a straightforward way.
+!!! note In the previous section we have stressed the role of Clebsch-Gordan coefficients in
+the structure of symmetric tensors, and how they can be used to map between the
+representation of an operator in the irrep basis and its symmetric tensor representation.
+However, for categorical symmetries such as the Fibonacci anyons, there are no
+Clebsch-Gordan coefficients. Therefore, the 'matrix elements of the operator in the irrep
+basis' are not well-defined, meaning that a Fibonacci-symmetric tensor cannot actually be
+converted to a plain array in a straightforward way.
 
