@@ -35,7 +35,7 @@ whereas support for distributed arrays is planned for the future.
 ## Contents of the manual
 
 ```@contents
-Pages = ["man/intro.md", "man/spaces.md", "man/sectors.md", "man/tensors.md"]
+Pages = ["man/intro.md", "man/spaces.md", "man/symmetries.md", "man/sectors.md", "man/gradedspaces.md", "man/fusiontrees.md", "man/tensors.md", "man/tensormanipulations.md"]
 Depth = 2
 ```
 
