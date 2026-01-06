@@ -134,7 +134,7 @@ function FusionTreeBlock{I}(
 
     if N₁ == N₂ == 0
         for c in allunits(I)
-            f = FusionTree{I}((), c)
+            f = FusionTree{I}((), c, (), (), ())
             push!(trees, (f, f))
         end
         return FusionTreeBlock(trees)
