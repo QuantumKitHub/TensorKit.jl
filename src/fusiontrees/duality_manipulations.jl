@@ -311,7 +311,7 @@ function foldright(src::FusionTreeBlock)
                     fc = FusionTree((c1, c2), c, (!isduala, false), (), (μ,))
                     frs_coeffs = insertat(fc, 2, f₂)
                     for (fl′, coeff1) in insertat(fc, 2, f₁)
-                        N₁ > 1 && !isone(fl′.innerlines[1]) && continue
+                        N₁ > 1 && !isunit(fl′.innerlines[1]) && continue
                         coupled = fl′.coupled
                         uncoupled = Base.tail(Base.tail(fl′.uncoupled))
                         isdual = Base.tail(Base.tail(fl′.isdual))

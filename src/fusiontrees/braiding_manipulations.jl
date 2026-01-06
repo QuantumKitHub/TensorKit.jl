@@ -98,7 +98,7 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
     indexmap = treeindex_map(dst)
     U = zeros(sectorscalartype(I), length(dst), length(src))
 
-    if isone(a) || isone(b) # braiding with trivial sector: simple and always possible
+    if isunit(a) || isunit(b) # braiding with trivial sector: simple and always possible
         for (col, (f, f₂)) in enumerate(fusiontrees(src))
             inner = f.innerlines
             inner_extended = (uncoupled[1], inner..., coupled′)
@@ -107,7 +107,7 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
             vertices′ = vertices
             if i > 1 # we also need to alter innerlines and vertices
                 inner′ = TupleTools.setindex(
-                    inner, inner_extended[isone(a) ? (i + 1) : (i - 1)], i - 1
+                    inner, inner_extended[isunit(a) ? (i + 1) : (i - 1)], i - 1
                 )
                 vertices′ = TupleTools.setindex(vertices′, vertices[i], i - 1)
                 vertices′ = TupleTools.setindex(vertices′, vertices[i - 1], i)
