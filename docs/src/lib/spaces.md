@@ -21,8 +21,8 @@ ProductSpace
 HomSpace
 ```
 
-together with the following specific type for encoding the inner product structure of
-a space:
+together with the following specific type for encoding the inner product structure of a
+space:
 
 ```@docs
 InnerProductStyle
@@ -110,16 +110,16 @@ isepimorphic
 isisomorphic
 ```
 
-Inserting trivial space factors or removing such factors for `ProductSpace` instances
-can be done with the following methods.
+Inserting trivial space factors or removing such factors for `ProductSpace` instances can be
+done with the following methods.
 ```@docs
 insertleftunit(::ProductSpace, ::Val{i}) where {i}
 insertrightunit(::ProductSpace, ::Val{i}) where {i}
 removeunit(::ProductSpace, ::Val{i}) where {i}
 ```
 
-There are also specific methods for `HomSpace` instances, that are used in determining
-the resuling `HomSpace` after applying certain tensor operations.
+There are also specific methods for `HomSpace` instances, that are used in determining the
+resuling `HomSpace` after applying certain tensor operations.
 
 ```@docs
 flip(W::HomSpace{S}, I) where {S}

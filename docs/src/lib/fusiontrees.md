@@ -45,8 +45,8 @@ TensorKit.cycleanticlockwise
 ```
 
 Finally, these are used to define large manipulations of fusion-splitting tree pairs, which
-are then used in the index manipulation of `AbstractTensorMap` objects. The following methods
-defined on fusion splitting tree pairs have an associated definition for tensors.
+are then used in the index manipulation of `AbstractTensorMap` objects. The following
+methods defined on fusion splitting tree pairs have an associated definition for tensors.
 ```@docs
 repartition(::FusionTree{I,N₁}, ::FusionTree{I,N₂}, ::Int) where {I<:Sector,N₁,N₂}
 transpose(::FusionTree{I}, ::FusionTree{I}, ::IndexTuple{N₁}, ::IndexTuple{N₂}) where {I<:Sector,N₁,N₂}

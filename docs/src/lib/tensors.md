@@ -38,9 +38,9 @@ TensorMap{T}(::UndefInitializer, V::TensorMapSpace)
 ```
 
 The resulting object can then be filled with data using the `setindex!` method as discussed
-below, using functions such as `VectorInterface.zerovector!`, `rand!` or `fill!`, or it can 
-be used as an output argument in one of the many methods that accept output arguments, or
-in an `@tensor output[...] = ...` expression.
+below, using functions such as `VectorInterface.zerovector!`, `rand!` or `fill!`, or it can
+be used as an output argument in one of the many methods that accept output arguments, or in
+an `@tensor output[...] = ...` expression.
 
 Alternatively, a `TensorMap` can be constructed by specifying its data, codmain and domain
 in one of the following ways:
@@ -98,8 +98,9 @@ domainind
 allind
 ```
 
-In `TensorMap` instances, all data is gathered in a single `AbstractVector`, which has an internal structure into blocks associated to total coupled charge, within which live subblocks
-associated with the different possible fusion-splitting tree pairs.
+In `TensorMap` instances, all data is gathered in a single `AbstractVector`, which has an
+internal structure into blocks associated to total coupled charge, within which live
+subblocks associated with the different possible fusion-splitting tree pairs.
 
 To obtain information about the structure of the data, you can use:
 ```@docs
@@ -110,7 +111,8 @@ hasblock(::AbstractTensorMap, ::Sector)
 fusiontrees(t::AbstractTensorMap)
 ```
 
-Data can be accessed (and modified) in a number of ways. To access the full matrix block associated with the coupled charges, you can use:
+Data can be accessed (and modified) in a number of ways. To access the full matrix block
+associated with the coupled charges, you can use:
 ```@docs
 block
 blocks
@@ -128,7 +130,7 @@ Base.getindex(::AbstractTensorMap, ::FusionTree, ::FusionTree)
 Base.setindex!(::AbstractTensorMap, ::Any, ::FusionTree, ::FusionTree)
 ```
 
-For a tensor `t` with `FusionType(sectortype(t)) isa UniqueFusion`, fusion trees are 
+For a tensor `t` with `FusionType(sectortype(t)) isa UniqueFusion`, fusion trees are
 completely determined by the outcoming sectors, and the data can be accessed in a more
 straightforward way:
 ```@docs
@@ -155,8 +157,8 @@ Random.randexp!
 The operations that can be performed on an `AbstractTensorMap` can be organized into the
 following categories:
 
-* *vector operations*: these do not change the `space` or index strucure of a tensor and
-  can be straightforwardly implemented on on the full data. All the methods described in
+* *vector operations*: these do not change the `space` or index strucure of a tensor and can
+  be straightforwardly implemented on on the full data. All the methods described in
   [VectorInterface.jl](https://github.com/Jutho/VectorInterface.jl) are supported. For
   compatibility reasons, we also provide implementations for equivalent methods from
   LinearAlgebra.jl, such as `axpy!`, `axpby!`.
@@ -164,16 +166,16 @@ following categories:
 * *index manipulations*: these change (permute) the index structure of a tensor, which
   affects the data in a way that is fully determined by the categorical data of the
   `sectortype` of the tensor.
-  
+          
 * *(planar) contractions* and *(planar) traces* (i.e., contractions with identity tensors).
-  Tensor contractions correspond to a combination of some index manipulations followed by
-  a composition or multiplication of the tensors in their role as linear maps.
-  Tensor contractions are however of such important and frequency that they require a
-  dedicated implementation.
+  Tensor contractions correspond to a combination of some index manipulations followed by a
+  composition or multiplication of the tensors in their role as linear maps. Tensor
+  contractions are however of such important and frequency that they require a dedicated
+  implementation.
 
 * *tensor factorisations*, which relies on their identification of tensors with linear maps
-  between tensor spaces. The factorisations are applied as ordinary matrix factorisations
-  to the matrix blocks associated with the coupled charges.
+  between tensor spaces. The factorisations are applied as ordinary matrix factorisations to
+  the matrix blocks associated with the coupled charges.
 
 ### Index manipulations
 
@@ -220,20 +222,22 @@ contract!
 
 ## `TensorMap` factorizations
 
-The factorisation methods are powered by [MatrixAlgebraKit.jl](https://github.com/QuantumKitHub/MatrixAlgebraKit.jl)
-and all follow the same strategy. The idea is that the `TensorMap` is interpreted as a linear
-map based on the current partition of indices between `domain` and `codomain`, and then the
-entire range of MatrixAlgebraKit functions can be called.
-Factorizing a tensor according to a different partition of the indices is possible
-by prepending the factorization step with an explicit call to [`permute`](@ref) or [`transpose`](@ref).
+The factorisation methods are powered by
+[MatrixAlgebraKit.jl](https://github.com/QuantumKitHub/MatrixAlgebraKit.jl) and all follow
+the same strategy. The idea is that the `TensorMap` is interpreted as a linear map based on
+the current partition of indices between `domain` and `codomain`, and then the entire range
+of MatrixAlgebraKit functions can be called. Factorizing a tensor according to a different
+partition of the indices is possible by prepending the factorization step with an explicit
+call to [`permute`](@ref) or [`transpose`](@ref).
 
 For the full list of factorizations, see [Decompositions](@extref MatrixAlgebraKit).
 
 Additionally, it is possible to obtain truncated versions of some of these factorizations
 through the [`MatrixAlgebraKit.TruncationStrategy`](@ref) objects.
 
-The exact truncation strategy can be controlled through the strategies defined in [Truncations](@extref MatrixAlgebraKit),
-but for `TensorMap`s there is also the special-purpose scheme:
+The exact truncation strategy can be controlled through the strategies defined in
+[Truncations](@extref MatrixAlgebraKit), but for `TensorMap`s there is also the
+special-purpose scheme:
 
 ```@docs
 truncspace

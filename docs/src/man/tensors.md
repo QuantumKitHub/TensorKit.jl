@@ -17,15 +17,15 @@ domain (a `ProductSpace{S,N₂}`) to a codomain (another `ProductSpace{S,N₁}`)
 `S<:ElementarySpace` that labels the type of spaces associated with the individual tensor
 indices. The overall type for all such tensor maps is `AbstractTensorMap{S, N₁, N₂}`. Note
 that we place information about the codomain before that of the domain. Indeed, we have
-already encountered the constructor for the concrete parametric type `TensorMap` in the
-form `TensorMap(..., codomain, domain)`. This convention is opposite to the mathematical
+already encountered the constructor for the concrete parametric type `TensorMap` in the form
+`TensorMap(..., codomain, domain)`. This convention is opposite to the mathematical
 notation, e.g. ``\mathrm{Hom}(W,V)`` or ``f:W→V``, but originates from the fact that a
 normal matrix is also denoted as having size `m × n` or is constructed in Julia as
 `Array(..., (m, n))`, where the first integer `m` refers to the codomain being `m`-
 dimensional, and the seond integer `n` to the domain being `n`-dimensional. This also
 explains why we have consistently used the symbol ``W`` for spaces in the domain and ``V``
-for spaces in the codomain. A tensor map ``t:(W_1 ⊗ … ⊗ W_{N_2}) → (V_1 ⊗ … ⊗ V_{N_1})`` will
-be created in Julia as `TensorMap(..., V1 ⊗ ... ⊗ VN₁, W1 ⊗ ... ⊗ WN₂)`.
+for spaces in the codomain. A tensor map ``t:(W_1 ⊗ … ⊗ W_{N_2}) → (V_1 ⊗ … ⊗ V_{N_1})``
+will be created in Julia as `TensorMap(..., V1 ⊗ ... ⊗ VN₁, W1 ⊗ ... ⊗ WN₂)`.
 
 Furthermore, the abstract type `AbstractTensor{S,N}` is just a synonym for
 `AbstractTensorMap{S,N,0}`, i.e. for tensor maps with an empty domain, which is equivalent
@@ -35,15 +35,15 @@ Currently, `AbstractTensorMap` has three subtypes. `TensorMap` provides the actu
 implementation, where the data of the tensor is stored in a `DenseArray` (more specifically
 a `DenseMatrix` as will be explained below). `AdjointTensorMap` is a simple wrapper type to
 denote the adjoint of an existing `TensorMap` object. `DiagonalTensorMap` provides an
-efficient representations of diagonal tensor maps. In the future, additional types could
-be defined, to deal with sparse data, static data, diagonal data, etc...
+efficient representations of diagonal tensor maps. In the future, additional types could be
+defined, to deal with sparse data, static data, diagonal data, etc...
 
 ## [Storage of tensor data](@id ss_tensor_storage)
 
-Before discussion how to construct and initalize a `TensorMap`, let us discuss what is
-meant by 'tensor data' and how it can efficiently and compactly be stored. Let us first
-discuss the case `sectortype(S) == Trivial` sector, i.e. the case of no symmetries. In that
-case the data of a tensor `t = TensorMap(..., V1 ⊗ ... ⊗ VN₁, W₁ ⊗ ... ⊗ WN₂)` can just be
+Before discussion how to construct and initalize a `TensorMap`, let us discuss what is meant
+by 'tensor data' and how it can efficiently and compactly be stored. Let us first discuss
+the case `sectortype(S) == Trivial` sector, i.e. the case of no symmetries. In that case the
+data of a tensor `t = TensorMap(..., V1 ⊗ ... ⊗ VN₁, W₁ ⊗ ... ⊗ WN₂)` can just be
 represented as a multidimensional array of size
 
 `(dim(V1), dim(V2), …, dim(VN₁), dim(W1), …, dim(WN₂))`
@@ -58,14 +58,12 @@ function composition amounts to multiplication of their corresponding data matri
 Similarly, tensor factorizations such as the singular value decomposition, which we discuss
 below, can act directly on this matrix representation.
 
-!!! note
-    One might wonder if it would not have been more natural to represent the tensor data as
-    `(dim(V1), dim(V2), …, dim(VN₁), dim(WN₂), …, dim(W1))` given how employing the duality
-    naturally reverses the tensor product, as encountered with the interface of
-    [`repartition`](@ref) for [fusion trees](@ref ss_fusiontrees). However, such a
-    representation, when plainly `reshape`d to a matrix, would not have the above
-    properties and would thus not constitute the matrix representation of the tensor in a
-    compatible basis.
+!!! note One might wonder if it would not have been more natural to represent the tensor
+data as `(dim(V1), dim(V2), …, dim(VN₁), dim(WN₂), …, dim(W1))` given how employing the
+duality naturally reverses the tensor product, as encountered with the interface of
+[`repartition`](@ref) for [fusion trees](@ref ss_fusiontrees). However, such a
+representation, when plainly `reshape`d to a matrix, would not have the above properties and
+would thus not constitute the matrix representation of the tensor in a compatible basis.
 
 Now consider the case where `sectortype(S) == I` for some `I` which has
 `FusionStyle(I) == UniqueFusion()`, i.e. the representations of an Abelian group, e.g.
@@ -160,9 +158,9 @@ been drawn as squares. They represent the unitary basis transform. In this pictu
 white regions are zero. The center matrix is most easy to interpret. It is the block
 diagonal matrix ``⨁_{c} B_c ⊗ 𝟙_{c}`` with diagonal blocks labeled by the coupled charge
 `c`, in this case it takes two values. Every single small square in between the dotted or
-dashed lines has size ``d_c × d_c`` and corresponds to a single element of ``B_c``,
-tensored with the identity ``\mathrm{id}_c``. Instead of ``B_c``, a more accurate labelling
-is ``t^c_{(a_1 … a_{N₁})α, (b_1 … b_{N₂})β}`` where ``α`` labels different fusion trees from
+dashed lines has size ``d_c × d_c`` and corresponds to a single element of ``B_c``, tensored
+with the identity ``\mathrm{id}_c``. Instead of ``B_c``, a more accurate labelling is
+``t^c_{(a_1 … a_{N₁})α, (b_1 … b_{N₂})β}`` where ``α`` labels different fusion trees from
 ``(a_1 … a_{N₁})`` to ``c``. The dashed horizontal lines indicate regions corresponding to
 different fusion (actually splitting) trees, either because of different sectors
 ``(a_1 … a_{N₁})`` or different labels ``α`` within the same sector. Similarly, the dashed
@@ -201,11 +199,11 @@ In particular, for a given sector ``(a…)`` and a specific fusion tree
 corresponds to the diagonal green blocks in this drawing where the same matrix
 ``X^{(a…)}_{c,α}`` (the fusion tree) is repeated along the diagonal. Note that the fusion
 tree is not a vector or single column, but a matrix with number of rows equal to
-``\mathrm{dim}(R_{(a\ldots)}) = d_{a_1} d_{a_2} … d_{a_{N_1}} `` and number of columns
-equal to ``d_c``. A similar interpretation can be given to the basis transform on the
-right, by taking its adjoint. In this particular example, it has two different combinations
-of sectors ``(b…)`` and ``(b…)'``, where both have a single fusion tree to ``c`` as well as
-to ``c'``, and ``n_{(b…)}=2``, ``n_{(b…)'}=3``.
+``\mathrm{dim}(R_{(a\ldots)}) = d_{a_1} d_{a_2} … d_{a_{N_1}} `` and number of columns equal
+to ``d_c``. A similar interpretation can be given to the basis transform on the right, by
+taking its adjoint. In this particular example, it has two different combinations of sectors
+``(b…)`` and ``(b…)'``, where both have a single fusion tree to ``c`` as well as to ``c'``,
+and ``n_{(b…)}=2``, ``n_{(b…)'}=3``.
 
 Note that we never explicitly store or act with the basis transformations on the left and
 the right. For composing tensor maps (i.e. multiplying them), these basis transforms just
@@ -222,8 +220,8 @@ Hence, as before, we only store the diagonal blocks ``B_c`` of size
 ``t^c_{(a_1 … a_{N₁})α, (b_1 … b_{N₂})β}`` associated with a pair of fusion trees
 ``X^{(a_1 … a_{N₁})}_{c,α}`` and ``X^{(b_1 … b_{N₂})}_{c,β}``, henceforth again denoted as
 `f₁` and `f₂`, with `f₁.coupled == f₂.coupled == c`. The ranges where this subblock is
-living are managed within the tensor implementation, and these subblocks can be accessed
-via `t[f₁, f₂]`, and is returned as a `StridedArray` of size
+living are managed within the tensor implementation, and these subblocks can be accessed via
+`t[f₁, f₂]`, and is returned as a `StridedArray` of size
 ``n_{a_1} × n_{a_2} × … × n_{a_{N_1}} × n_{b_1} × … n_{b_{N₂}}``, or in code,
 `(dim(V1, a1), dim(V2, a2), …, dim(VN₁, aN₁), dim(W1, b1), …, dim(WN₂, bN₂))`. While the
 implementation does not distinguish between `FusionStyle isa UniqueFusion` or
@@ -242,8 +240,8 @@ implementation.
 
 ### Random and uninitialized tensor maps
 
-The most convenient set of constructors are those that construct  tensors or tensor maps
-with random or uninitialized data. They take the form
+The most convenient set of constructors are those that construct tensors or tensor maps with
+random or uninitialized data. They take the form
 
 ```julia
 f(codomain, domain = one(codomain))
@@ -274,17 +272,17 @@ block(t1, Trivial()) |> disp
 reshape(t1[], dim(codomain(t1)), dim(domain(t1))) |> disp
 ```
 
-Finally, all constructors can also be replaced by `Tensor(..., codomain)`, in which case
-the domain is assumed to be the empty `ProductSpace{S,0}()`, which can easily be obtained
-as `one(codomain)`. Indeed, the empty product space is the unit object of the monoidal
+Finally, all constructors can also be replaced by `Tensor(..., codomain)`, in which case the
+domain is assumed to be the empty `ProductSpace{S,0}()`, which can easily be obtained as
+`one(codomain)`. Indeed, the empty product space is the unit object of the monoidal
 category, equivalent to the field of scalars `𝕜`, and thus the multiplicative identity
 (especially since `*` also acts as tensor product on vector spaces).
 
-The matrices created by `f` are the matrices ``B_c`` discussed above, i.e. those returned
-by `block(t, c)`. Only numerical matrices of type `DenseMatrix` are accepted, which in
-practice just means Julia's intrinsic `Matrix{T}` for some `T<:Number`. In the future, we
-will add support for `CuMatrix` from [CuArrays.jl](https://github.com/JuliaGPU/CuArrays.jl)
-to harness GPU computing power, and maybe `SharedArray` from the Julia's `SharedArrays`
+The matrices created by `f` are the matrices ``B_c`` discussed above, i.e. those returned by
+`block(t, c)`. Only numerical matrices of type `DenseMatrix` are accepted, which in practice
+just means Julia's intrinsic `Matrix{T}` for some `T<:Number`. In the future, we will add
+support for `CuMatrix` from [CuArrays.jl](https://github.com/JuliaGPU/CuArrays.jl) to
+harness GPU computing power, and maybe `SharedArray` from the Julia's `SharedArrays`
 standard library.
 
 Support for static or sparse data is currently unavailable, and if it would be implemented,
@@ -293,9 +291,9 @@ Future implementations of e.g. `SparseTensorMap` or `StaticTensorMap` could be u
 
 ### Tensor maps from existing data
 
-To create a `TensorMap` with existing data, one can use the aforementioned form but with
-the function `f` replaced with the actual data, i.e. `TensorMap(data, codomain, domain)` or
-any of its equivalents.
+To create a `TensorMap` with existing data, one can use the aforementioned form but with the
+function `f` replaced with the actual data, i.e. `TensorMap(data, codomain, domain)` or any
+of its equivalents.
 
 Here, `data` can be of two types. It can be a dictionary (any `AbstractDict` subtype) which
 has blocksectors `c` of type `sectortype(codomain)` as keys, and the corresponding matrix
@@ -352,9 +350,9 @@ zero sector (`SU2Irrep(0)`), and eigenvalue ``+1`` in the coupled spin 1 sector
 `U1Irrep(+1)` and `U1Irrep(-1)` have eigenvalue ``+1``. The coupled charge `U1Irrep(0)`
 sector is two-dimensional, and has an eigenvalue ``+1`` and an eigenvalue ``-1``.
 
-To construct the proper `data` in more complicated cases, one has to know where to find
-each sector in the range `1:dim(V)` of every index `i` with associated space `V`, as well
-as the internal structure of the representation space when the corresponding sector `c` has
+To construct the proper `data` in more complicated cases, one has to know where to find each
+sector in the range `1:dim(V)` of every index `i` with associated space `V`, as well as the
+internal structure of the representation space when the corresponding sector `c` has
 `dim(c) > 1`, i.e. in the case of `FusionStyle(c) isa MultipleFusion`. Currently, the only
 non-abelian sectors are `Irrep[SU₂]` and `Irrep[CU₁]`, for which the internal structure is
 the natural one.
@@ -460,7 +458,7 @@ ss_tensor_linalg), we denote composition of tensor maps with the multiplication 
 `id(V)` with `V` the relevant vector space, e.g. `one(t) == id(domain(t))`. The identity
 tensor is currently represented with dense data, and one can use
 `id(A::Type{<:DenseMatrix}, V)` to specify the type of `DenseMatrix` (and its `eltype`),
-e.g. `A = Matrix{Float64}`.  Finally, it often occurs that we want to construct a specific
+e.g. `A = Matrix{Float64}`. Finally, it often occurs that we want to construct a specific
 isomorphism between two spaces that are isomorphic but not equal, and for which there is no
 canonical choice. Hereto, one can use the method
 `u = isomorphism([A::Type{<:DenseMatrix}, ] codomain, domain)`, which will explicitly check
@@ -471,13 +469,13 @@ currently used to store the rather trivial data of this tensor. If
 `u = unitary([A::Type{<:DenseMatrix}, ] codomain, domain)`. Note that reversing the domain
 and codomain yields the inverse morphism, which in the case of `EuclideanProduct` coincides
 with the adjoint morphism, i.e. `isomorphism(A, domain, codomain) == adjoint(u) == inv(u)`,
-where `inv` and `adjoint` will be further discussed [below](@ref ss_tensor_linalg).
-Finally, if two spaces `V1` and `V2` are such that `V2` can be embedded in `V1`, i.e. there
-exists an inclusion with a left inverse, and furthermore they represent tensor products of
-some `ElementarySpace` with `EuclideanProduct`, the function
+where `inv` and `adjoint` will be further discussed [below](@ref ss_tensor_linalg). Finally,
+if two spaces `V1` and `V2` are such that `V2` can be embedded in `V1`, i.e. there exists an
+inclusion with a left inverse, and furthermore they represent tensor products of some
+`ElementarySpace` with `EuclideanProduct`, the function
 `w = isometry([A::Type{<:DenseMatrix}, ], V1, V2)` creates one specific isometric embedding,
 such that `adjoint(w) * w == id(V2)` and `w * adjoint(w)` is some hermitian idempotent
-(a.k.a.  orthogonal projector) acting on `V1`. An error will be thrown if such a map cannot
+(a.k.a. orthogonal projector) acting on `V1`. An error will be thrown if such a map cannot
 be constructed for the given domain and codomain.
 
 Let's conclude this section with some examples with `GradedSpace`.
@@ -517,11 +515,12 @@ and `N₂`. Here, we use the operation `fuse(V)`, which creates an `ElementarySp
 isomorphic to a given space `V` (of type `ProductSpace` or `ElementarySpace`). The specific
 map between those two spaces constructed using the specific method `unitary` implements
 precisely the basis change from the product basis to the coupled basis. In this case, for a
-group `G` with `FusionStyle(Irrep[G]) isa UniqueFusion`, it is a permutation matrix. Specifically
-choosing `V` equal to the codomain and domain of `t`, we can construct the explicit basis
-transforms that bring `t` into block diagonal form.
+group `G` with `FusionStyle(Irrep[G]) isa UniqueFusion`, it is a permutation matrix.
+Specifically choosing `V` equal to the codomain and domain of `t`, we can construct the
+explicit basis transforms that bring `t` into block diagonal form.
 
-Let's repeat the same exercise for `I = Irrep[SU₂]`, which has `FusionStyle(I) isa MultipleFusion`.
+Let's repeat the same exercise for `I = Irrep[SU₂]`, which has
+`FusionStyle(I) isa MultipleFusion`.
 ```@repl tensors
 V1 = SU₂Space(0=>2,1=>1)
 V2 = SU₂Space(0=>1,1=>1)
@@ -546,11 +545,10 @@ block(t, SU2Irrep(0)) |> disp
 block(t, SU2Irrep(1)) |> disp
 block(t, SU2Irrep(2)) |> disp
 ```
-Note that the basis transforms `u` and `v` are no longer permutation matrices, but are
-still unitary. Furthermore, note that they render the tensor block diagonal, but that now
-every element of the diagonal blocks labeled by `c` comes itself in a tensor product with
-an identity matrix of size `dim(c)`, i.e. `dim(SU2Irrep(1)) = 3` and
-`dim(SU2Irrep(2)) = 5`.
+Note that the basis transforms `u` and `v` are no longer permutation matrices, but are still
+unitary. Furthermore, note that they render the tensor block diagonal, but that now every
+element of the diagonal blocks labeled by `c` comes itself in a tensor product with an
+identity matrix of size `dim(c)`, i.e. `dim(SU2Irrep(1)) = 3` and `dim(SU2Irrep(2)) = 5`.
 
 ## [Tensor properties](@id ss_tensor_properties)
 
@@ -567,15 +565,15 @@ and `N₂ == numin(t)`, the number of outgoing and incoming indices. There are a
 unexported methods `TensorKit.codomainind(t)` and `TensorKit.domainind(t)` which return the
 tuples `(1, 2, …, N₁)` and `(N₁+1, …, N₁+N₂)`, and are useful for internal purposes. The
 type parameter `S<:ElementarySpace` can be obtained as `spacetype(t)`; the corresponding
-sector can directly obtained as `sectortype(t)` and is `Trivial` when
-`S != GradedSpace`. The underlying field scalars of `S` can also directly be obtained as
-`field(t)`. This is different from `eltype(t)`, which returns the type of `Number` in the
-tensor data, i.e. the type parameter `T` in the (subtype of) `DenseVector{T}` in which the
-matrix blocks are stored. Note that during construction, a (one-time) warning is printed if
-`!(T ⊂ field(S))`. The specific `DenseVector{T}` subtype in which the tensor data is stored
-is obtained as `storagetype(t)`. Each of the methods `numind`, `numout`, `numin`,
-`TensorKit.codomainind`, `TensorKit.domainind`, `spacetype`, `sectortype`, `field`, `eltype`
-and `storagetype` work in the type domain as well, i.e. they are encoded in `typeof(t)`.
+sector can directly obtained as `sectortype(t)` and is `Trivial` when `S != GradedSpace`.
+The underlying field scalars of `S` can also directly be obtained as `field(t)`. This is
+different from `eltype(t)`, which returns the type of `Number` in the tensor data, i.e. the
+type parameter `T` in the (subtype of) `DenseVector{T}` in which the matrix blocks are
+stored. Note that during construction, a (one-time) warning is printed if `!(T ⊂ field(S))`.
+The specific `DenseVector{T}` subtype in which the tensor data is stored is obtained as
+`storagetype(t)`. Each of the methods `numind`, `numout`, `numin`, `TensorKit.codomainind`,
+`TensorKit.domainind`, `spacetype`, `sectortype`, `field`, `eltype` and `storagetype` work
+in the type domain as well, i.e. they are encoded in `typeof(t)`.
 
 Finally, there are methods to probe the data, which we already encountered.
 `blocksectors(t)` returns an iterator over the different coupled sectors that can be
@@ -628,8 +626,7 @@ sector associated with each data block, as a `String` obtained with `repr`. This
 the flexibility to still change the internal structure of such objects, without this
 breaking the ability to load older data files. The resulting dictionary can then be stored
 using any of the provided Julia packages such as
-[JLD.jl](https://github.com/JuliaIO/JLD.jl),
-[JLD2.jl](https://github.com/JuliaIO/JLD2.jl),
+[JLD.jl](https://github.com/JuliaIO/JLD.jl), [JLD2.jl](https://github.com/JuliaIO/JLD2.jl),
 [BSON.jl](https://github.com/JuliaIO/BSON.jl),
 [JSON.jl](https://github.com/JuliaIO/JSON.jl), ...
 
