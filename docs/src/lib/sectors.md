@@ -121,6 +121,14 @@ Furthermore, we also have one specific method acting on groups, represented as t
 ×
 ```
 
+Mapping between sectors and linear indices is only used for sectors `I` for
+which `Base.IteratorSize(values(I)) == HasLength()`.
+In that case, we map an index `i` to a sector `c` via `c = getindex(values(I), i)`,
+and provide an inverse mapping
+```@docs
+TensorKitSectors.findindex
+```
+
 Because we sometimes want to customize the string representation of our sector types,
 we also have the following method:
 
