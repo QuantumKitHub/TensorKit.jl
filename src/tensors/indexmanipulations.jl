@@ -751,7 +751,7 @@ function _add_transform_multi!(tdst, tsrc, p, src::FusionTreeBlock, transformer,
 
     # Resummation into a second buffer using BLAS
     buffer_dst = StridedView(buffer1, (blocksize, rows), (1, blocksize), 0)
-    mul!(buffer_dst, buffer_src, U, α, Zero())
+    mul!(buffer_dst, buffer_src, StridedView(U), α, Zero())
 
     # Filling up the output
     for (i, (f₃, f₄)) in enumerate(fusiontrees(dst))
@@ -782,7 +782,7 @@ function _add_transform_multi!(
 
     # Resummation into a second buffer using BLAS
     buffer_dst = StridedView(buffer1, (blocksize, rows), (1, blocksize), 0)
-    mul!(buffer_dst, buffer_src, basistransform, α, Zero())
+    mul!(buffer_dst, buffer_src, StridedView(basistransform), α, Zero())
 
     # Filling up the output
     for (i, struct_dst) in enumerate(structs_dst)
