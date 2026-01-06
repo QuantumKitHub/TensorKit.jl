@@ -42,7 +42,7 @@ function ChainRulesCore.rrule(::typeof(⊗), A::AbstractTensorMap, B::AbstractTe
             ipA = (codomainind(A), domainind(A))
             pB = (allind(B), ())
             dA = zerovector(A, promote_contract(scalartype(ΔC), scalartype(B)))
-            tB = _twist_nocopy(B, filter(x -> isdual(space(B, x)), allind(B)))
+            tB = twist(B, filter(x -> isdual(space(B, x)), allind(B)); copy = false)
             dA = tensorcontract!(dA, ΔC, pΔC, false, tB, pB, true, ipA)
             return projectA(dA)
         end
@@ -50,7 +50,7 @@ function ChainRulesCore.rrule(::typeof(⊗), A::AbstractTensorMap, B::AbstractTe
             ipB = (codomainind(B), domainind(B))
             pA = ((), allind(A))
             dB = zerovector(B, promote_contract(scalartype(ΔC), scalartype(A)))
-            tA = _twist_nocopy(A, filter(x -> isdual(space(A, x)), allind(A)))
+            tA = twist(A, filter(x -> isdual(space(A, x)), allind(A)); copy = false)
             dB = tensorcontract!(dB, tA, pA, true, ΔC, pΔC, false, ipB)
             return projectB(dB)
         end
