@@ -330,7 +330,7 @@ for V in spacelist
             @test ss ≈ s2
             @test ss ≈ s3
         end
-        @timedtestset "Partial trace: test self-consistency" begin
+        #=@timedtestset "Partial trace: test self-consistency" begin
             t = AMDGPU.rand(ComplexF64, V1 ⊗ V2' ⊗ V3 ⊗ V2 ⊗ V1' ⊗ V3')
             @tensor t2[a, b] := t[c, d, b, d, c, a]
             @tensor t4[a, b, c, d] := t[d, e, b, e, c, a]
@@ -410,7 +410,7 @@ for V in spacelist
                 @tensor tb[a, b] := flip(t1, (1, 3))[x, y, a, z] * flip(t2, (2, 4))[y, b, z, x]
                 @test flip(ta, (1, 2)) ≈ tb
             end
-        end=# # TODO
+        end=# # TODO =# # None of this works due to lack of HIPTensor support
         @timedtestset "Multiplication of isometries: test properties" begin
             W2 = V4 ⊗ V5
             W1 = W2 ⊗ (oneunit(V1) ⊕ oneunit(V1))
@@ -567,7 +567,7 @@ for V in spacelist
                 end
             end
         end
-        @timedtestset "Tensor product: test via tensor contraction" begin
+        #=@timedtestset "Tensor product: test via tensor contraction" begin
             for T in (Float32, ComplexF64)
                 t1 = AMDGPU.rand(T, V2 ⊗ V3 ⊗ V1)
                 t2 = AMDGPU.rand(T, V2 ⊗ V1 ⊗ V3)
@@ -577,7 +577,7 @@ for V in spacelist
                     # @test t ≈ t′ # TODO broken for symmetry: Irrep[ℤ₃]
                 end
             end
-        end
+        end=# # broken due to no HIPTensor
     end
     TensorKit.empty_globalcaches!()
 end
