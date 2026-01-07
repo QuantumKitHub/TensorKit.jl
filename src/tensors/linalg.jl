@@ -196,14 +196,12 @@ LinearAlgebra.isdiag(t::AbstractTensorMap) = all(LinearAlgebra.isdiag ∘ last, 
 
 # In-place methods
 #------------------
-# Wrapping the blocks in a StridedView enables multithreading if JULIA_NUM_THREADS > 1
-# TODO: reconsider this strategy, consider spawning different threads for different blocks
 
 # Copy, adjoint and fill:
 function Base.copy!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap)
     space(tdst) == space(tsrc) || throw(SpaceMismatch("$(space(tdst)) ≠ $(space(tsrc))"))
     for ((c, bdst), (_, bsrc)) in zip(blocks(tdst), blocks(tsrc))
-        copy!(StridedView(bdst), StridedView(bsrc))
+        copy!(bdst, bsrc)
     end
     return tdst
 end
