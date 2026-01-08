@@ -75,6 +75,7 @@ end
 # used in indexmanipulations: avoids the overhead of Strided.jl
 function _copyto!(A::StridedView{<:Any, 1}, B::StridedView{<:Any, 2})
     length(A) == length(B) || throw(DimensionMismatch())
+    @assert A.op === identity
 
     Adata = parent(A)
     Astr = stride(A, 1)
@@ -87,7 +88,7 @@ function _copyto!(A::StridedView{<:Any, 1}, B::StridedView{<:Any, 2})
     @inbounds for _ in axes(B, 2)
         IB = IB_1
         for _ in axes(B, 1)
-            Adata[IA += Astr] = Bdata[IB += Bstr[1]]
+            Adata[IA += Astr] = B.op(Bdata[IB += Bstr[1]])
         end
         IB_1 += Bstr[2]
     end
