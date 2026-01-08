@@ -564,7 +564,7 @@ function add_kernel_nonthreaded!(::FusionStyle, tdst, tsrc, p, transformer, α, 
         if length(src) == 1
             _add_transform_single!(tdst, tsrc, p, src, transformer, α, β, backend...)
         else
-            _add_transform_multi!(tdst, tsrc, p, src, buffers, transformer, α, β, backend...)
+            _add_transform_multi!(tdst, tsrc, p, src, transformer, buffers, α, β, backend...)
         end
     end
     return nothing
