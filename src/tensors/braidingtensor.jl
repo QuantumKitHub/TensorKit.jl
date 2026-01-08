@@ -73,6 +73,13 @@ function _braiding_factor(f₁, f₂, inv::Bool = false)
     I = sectortype(f₁)
     a, b = f₂.uncoupled
     c = f₂.coupled
+
+    # braiding with unit is always possible
+    # valid fusiontree pairs don't have to check Nsymbol(a, b, c)
+    (isunit(a) || isunit(b)) && return one(sectorscalartype(I))
+
+    BraidingStyle(I) isa NoBraiding && throw(SectorMismatch(lazy"Cannot braid sectors $a and $b"))
+
     if FusionStyle(I) isa MultiplicityFreeFusion
         r = inv ? conj(Rsymbol(b, a, c)) : Rsymbol(a, b, c)
     else
@@ -104,8 +111,10 @@ end
     fill!(data, zero(eltype(b)))
 
     r = _braiding_factor(f₁, f₂, b.adjoint)
-    isnothing(r) || @inbounds for i in axes(data, 1), j in axes(data, 2)
-        data[i, j, j, i] = r
+    if !isnothing(r)
+        @inbounds for i in axes(data, 1), j in axes(data, 2)
+            data[i, j, j, i] = r
+        end
     end
     return data
 end
