@@ -115,6 +115,20 @@ for V in spacelist
                 @test domain(t2) == one(W)
             end
         end
+        @timedtestset "Adapt" begin
+            W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
+            for T in (Int, Float32, ComplexF64)
+                t = rand(T, W)
+                t_gpu = @constinferred adapt(CuArray, t)
+                @test storagetype(t_gpu) <: CuArray{T}
+                @test scalartype(t_gpu) === scalartype(t)
+                @test collect(t_gpu.data) == t.data
+
+                t_cpu = @constinferred adapt(Array, t_gpu)
+                @test t_cpu == t
+                @test storagetype(t_cpu) <: Array{T}
+            end
+        end
         @timedtestset "Tensor Dict conversion" begin
             W = V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5
             for T in (Int, Float32, ComplexF64)

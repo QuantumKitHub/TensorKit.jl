@@ -142,7 +142,6 @@ using LinearAlgebra: norm, dot, normalize, normalize!, tr,
     eigen, eigen!, svd, svd!,
     isposdef, isposdef!, rank, cond,
     Diagonal, Hermitian
-using MatrixAlgebraKit
 
 import Base.Meta
 
