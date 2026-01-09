@@ -737,16 +737,13 @@ function _add_transform_multi!(tdst, tsrc, p, src::FusionTreeBlock, transformer,
     rows, cols = size(U)
     sz_src = size(tsrc[first(fusiontrees(src))...])
     blocksize = prod(sz_src)
-    matsize = (
-        prod(TupleTools.getindices(sz_src, codomainind(tsrc))),
-        prod(TupleTools.getindices(sz_src, domainind(tsrc))),
-    )
 
     # Filling up a buffer with contiguous data
     buffer_src = StridedView(buffer2, (blocksize, cols), (1, blocksize), 0)
     for (i, (f₁, f₂)) in enumerate(fusiontrees(src))
-        subblock_src = sreshape(tsrc[f₁, f₂], matsize)
-        _copyto!(buffer_src[:, i], subblock_src)
+        subblock_src = tsrc[f₁, f₂]
+        subblock_dst = sreshape(buffer_src[:, i], sz_src)
+        copy!(subblock_dst, subblock_src)
     end
 
     # Resummation into a second buffer using BLAS
