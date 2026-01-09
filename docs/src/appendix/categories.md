@@ -281,7 +281,7 @@ In particular, one could choose ``\tilde{ϵ}_{{}^{∨}V} = ϵ_V`` and thus defin
 right dual of ``{}^{∨}V``. While there might be other choices, this choice must at least be
 isomorphic, such that ``({}^{∨}V)^{∨} ≂ V``.
 
-If objects ``V`` and ``W`` have left (respectively right) duals, than for a morphism
+If objects ``V`` and ``W`` have left (respectively right) duals, then for a morphism
 ``f ∈ \mathrm{Hom}(W,V)``, we furthermore define the left (respectively right) *transpose*
 ``{}^{∨}f ∈ \mathrm{Hom}({}^{∨}V, {}^{∨}W)`` (respectively
 ``f^{∨} ∈ \mathrm{Hom}(V^{∨}, W^{∨})``) as
@@ -367,7 +367,7 @@ object ``V``, referred to as `dim(V)` in TensorKit.jl.
 For further information and a more detailed treatment of rigid and pivotal categories, we
 refer to [^turaev] and [^selinger]. We conclude this section by studying the example of
 ``\mathbf{SVect}``. Let us, in every super vector space ``V``, define a basis ``|n⟩`` that
-is compatible with the grading, such ``|n|=0,1`` indicates that ``|n⟩ ∈ V_{|n|}``. We again
+is compatible with the grading. The value ``|n|=0,1`` indicates that ``|n⟩ ∈ V_{|n|}``. We again
 define a dual basis ``{⟨m|}`` for ``V^*`` (such that ``⟨m|n⟩ = δ_{m,n}``), and then define
 the left evaluation by ``⁠ϵ_V:V^* ⊗ V → ℂ: ⟨m| ⊗_\mathrm{g} |n⟩ → ⟨m|n⟩ = δ_{m,n}`` and the
 left coevaluation by ``η_V:ℂ→ V ⊗ V^*:α → α ∑_n |n⟩ ⊗_\mathrm{g} ⟨n|``. Note that this does
@@ -442,7 +442,7 @@ i.e.
 
 **Balanced categories** ``C`` are braided categories that come with a **twist** ``θ``, a
 natural transformation from the identity functor ``1_C`` to itself, such that
-``θ_V ∘ f = f ∘ θ_W`` for all morphisms ``f ∈ \mathrm{Hom}(W,V)``, and for which main
+``θ_V ∘ f = f ∘ θ_W`` for all morphisms ``f ∈ \mathrm{Hom}(W,V)``, and for which the main
 requirement is that
 
 ``θ_{V⊗W} = τ_{W,V} ∘ (θ_W ⊗ θ_V) ∘ τ_{V,W} = (θ_V ⊗ θ_W) ∘ τ_{W,V} ∘ τ_{V,W}.``
@@ -525,7 +525,7 @@ together with an involutive functor ``†:C→C^{\mathrm{op}}``, i.e. it acts as
 objects, whereas on morphisms ``f:W→V`` it defines a morphism ``f^†:V→W`` such that
 * ``\mathrm{id}_V^† = \mathrm{id}_V``
 * ``(f ∘ g)^† = f^† ∘^{\mathrm{op}} g^† = g^† ∘ f^†``
-* ``(f^†)^† = f`` Sometimes also the symbol ``*`` is used instead of ``†``, however we have
+* ``(f^†)^† = f``. Sometimes also the symbol ``*`` is used instead of ``†``. However, we have
   already used ``*`` to denote dual objects and transposed morphisms in the case of a
   pivotal category.
 
@@ -583,7 +583,7 @@ morphisms from any ``𝕜``-linear monoidal category, but assumes categories wit
 pivotal and in fact spherical, and categories with a braiding to be ribbon categories. A
 dagger ribbon category where the braiding is symmetric, i.e. a dagger category which is also
 a compact closed category and where the right (co)evaluation is given via the dagger of the
-left (co)evaluation is called a **dagger compact** category. This is the playground of
+left (co)evaluation, is called a **dagger compact** category. This is the playground of
 quantum mechanics of bosonic and fermionic systems. However, we also allow for non-
 symmetric braiding in TensorKit.jl, though this functionality is currently much more
 limited.
@@ -799,13 +799,12 @@ Next up is duality. Since we are assuming a dagger category, it can be assumed p
 where the left dual objects are identical to the right dual objects, and the left and right
 (co)evaluation are related via the dagger. We have already pointed out above that the dual
 object ``a^*`` of a simple object ``a`` is simple, and thus, it must be isomorphic to one of
-the representives ``\bar{a}`` of the different isomorphism classes of simple objects that we
+the representatives ``\bar{a}`` of the different isomorphism classes of simple objects that we
 have chosen. Note that it can happen that ``\bar{a}=a``. Duality implies an isomorphism
 between ``\mathrm{Hom}(W,V)`` and ``\mathrm{Hom}(I,V⊗W^*)``, and thus, for a simple object
 ``a``, ``\mathrm{End}(a) ≂ 𝕜`` is isomorphic to ``\mathrm{Hom}(1,a⊗a^*)``, such that the
 latter is also isomorphic to ``𝕜``, or thus ``N^{a\bar{a}}_1 = 1``. Also, all possible
-duals of ``a`` must be isomorphic, and thus there is a single representive ``\bar{a}``,
-meaning that ``N^{ab}_1 = δ^{b,\bar{a}}``, i.e. for all other ``b ≠ \bar{a}``,
+duals of ``a`` must be isomorphic, and thus there is a single representative ``\bar{a}`` such that ``N^{ab}_1 = δ^{b,\bar{a}}``, i.e. for all other ``b ≠ \bar{a}``,
 ``\mathrm{Hom}(1,a⊗b) ≂ \mathrm{Hom}(b^*,a) = 0``. Note that also ``\bar{\bar{a}}=a``.
 
 Let us now be somewhat careful with respect to the isomorphism between ``a^*`` and
