@@ -56,7 +56,7 @@ and, if `FusionStyle(I) isa GenericFusion`, ``N-1`` additional multiplicity labe
 the vertices of the splitting tree. In the case of `FusionStyle(I) isa UniqueFusion`, the
 internal sectors ``e_1``, …, ``e_{N-2}`` are completely fixed, for
 `FusionStyle(I) isa MultipleFusion` they can also take different values. In our abstract
-notation of the splitting basis ``X^{a_1a_2…a_N}_{c,α}`` used above, ``α`` can be consided a
+notation of the splitting basis ``X^{a_1a_2…a_N}_{c,α}`` used above, ``α`` can be considered a
 collective label, i.e. ``α = (e_1, …, e_{N-2}; μ₁, … ,μ_{N-1})``. Indeed, we can check the
 orthogonality condition
 ``(X^{a_1a_2…a_N}_{c,α})^† ∘ X^{a_1a_2…a_N}_{c′,α′} = δ_{c,c′} δ_{α,α′} \mathrm{id}_c``,
@@ -99,7 +99,7 @@ struct FusionTree{I<:Sector,N,M,L}
     vertices::NTuple{L,Int} # fixed to L = N-1
 end
 ```
-Here, the fields are probably self-explanotary. The `isdual` field indicates whether an
+Here, the fields are probably self-explanatory. The `isdual` field indicates whether an
 isomorphism is present (if the corresponding value is `true`) or not. Note that the field
 `uncoupled` contains the sectors coming out of the splitting trees, before the possible
 ``Z`` isomorphism, i.e. the splitting tree in the above example would have
@@ -111,7 +111,7 @@ tensor.
 
 `FusionTree` instances are not checked for consistency (i.e. valid fusion rules etc) upon
 creation, hence, they are assumed to be created correctly. The most natural way to create
-them is by using the `fusiontrees(uncoupled::NTuple{N,I}, coupled::I = one(I))` method,
+them is by using the `fusiontrees(uncoupled::NTuple{N,I}, coupled::I = unit(I))` method,
 which returns an iterator over all possible fusion trees from a set of `N` uncoupled sectors
 to a given coupled sector, which by default is assumed to be the trivial sector of that
 group or fusion category (i.e. the identity object in categorical nomenclature). The return
@@ -232,7 +232,7 @@ Other manipulations which are sometimes needed are
     and `f2` the remaining `N - M`. This function is type stable if `M` is a compile time
     constant.
 
-    `split(f, M)` is the inverse of `insertat` in the sence that `insertat(f2, 1, f1)`
+    `split(f, M)` is the inverse of `insertat` in the sense that `insertat(f2, 1, f1)`
     should return a dictionary with a single key-value pair `f=>1`. Diagrammatically, for
     `M = 4`, the function `split` returns
 

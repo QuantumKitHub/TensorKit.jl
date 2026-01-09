@@ -76,7 +76,7 @@ details.
 package, [TensorKitSectors.jl](https://github.com/QuantumKitHub/TensorKitSectors.jl), that
 is imported and reexported by TensorKit.jl.
 
-!!! note On this and the next page of the manual, we assume some famliarity with the
+!!! note On this and the next page of the manual, we assume some familiarity with the
 representation theory of non-abelian groups, and the structure of a symmetric tensor. For a
 more pedagogical introduction based on physical examples, we recommend reading the first
 appendix, which provides a
