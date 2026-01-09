@@ -42,7 +42,7 @@ below, using functions such as `VectorInterface.zerovector!`, `rand!` or `fill!`
 be used as an output argument in one of the many methods that accept output arguments, or in
 an `@tensor output[...] = ...` expression.
 
-Alternatively, a `TensorMap` can be constructed by specifying its data, codmain and domain
+Alternatively, a `TensorMap` can be constructed by specifying its data, codomain and domain
 in one of the following ways:
 ```@docs
 TensorMap(data::AbstractDict{<:Sector,<:AbstractMatrix}, V::TensorMapSpace)
