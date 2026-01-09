@@ -1,7 +1,7 @@
 # [Introduction](@id s_intro)
 
-Before providing a typical "user guide" and discussing the implementation of TensorKit.jl
-on the next pages, let us discuss some of the rationale behind this package.
+Before providing a typical "user guide" and discussing the implementation of TensorKit.jl on
+the next pages, let us discuss some of the rationale behind this package.
 
 ## [What is a tensor?](@id ss_whatistensor)
 
@@ -37,8 +37,8 @@ matrix (or more correctly, a linear map) in order to decompose tensors using lin
 factorisations (e.g. eigenvalue or singular value decomposition). Henceforth, we use the
 term "tensor map" as follows:
 
-*   A tensor map ``t`` is a linear map from a source or *domain*
-    ``W_1 ⊗ W_2 ⊗ … ⊗ W_{N_2}`` to a target or *codomain* ``V_1 ⊗ V_2 ⊗ … ⊗ V_{N_1}``, i.e.
+*   A tensor map ``t`` is a linear map from a source or *domain* ``W_1 ⊗ W_2 ⊗ … ⊗ W_{N_2}``
+    to a target or *codomain* ``V_1 ⊗ V_2 ⊗ … ⊗ V_{N_1}``, i.e.
 
     ``t:W_1 ⊗ W_2 ⊗ … ⊗ W_{N_2} → V_1 ⊗ V_2 ⊗ … ⊗ V_{N_1}.``
 
@@ -56,9 +56,9 @@ to the dual space of ``W``. This simple example introduces two new concepts.
 
 1.  Typical vector spaces can appear in the domain and codomain in different related forms,
     e.g. as normal space or dual space. In fact, the most generic case is that every vector
-    space ``V`` has associated with it
-    a [dual space](https://en.wikipedia.org/wiki/Dual_space) ``V^*``,
-    a [conjugate space](https://en.wikipedia.org/wiki/Complex_conjugate_vector_space)
+    space ``V`` has associated with it a
+    [dual space](https://en.wikipedia.org/wiki/Dual_space) ``V^*``, a
+    [conjugate space](https://en.wikipedia.org/wiki/Complex_conjugate_vector_space)
     ``\overline{V}`` and a conjugate dual space ``\overline{V}^*``. The four different
     vector spaces ``V``, ``V^*``, ``\overline{V}`` and ``\overline{V}^*`` correspond to the
     representation spaces of respectively the fundamental, dual or contragredient, complex
@@ -68,8 +68,8 @@ to the dual space of ``W``. This simple example introduces two new concepts.
     indices.
 
     For real vector spaces, the conjugate (dual) space is identical to the normal (dual)
-    space and we only have upper and lower indices, i.e. this is the setting of e.g.
-    general relativity. For (complex) vector spaces with a sesquilinear inner product
+    space and we only have upper and lower indices, i.e. this is the setting of e.g. general
+    relativity. For (complex) vector spaces with a sesquilinear inner product
     ``\overline{V} ⊗ V → ℂ``, the inner product allows to define an isomorphism from the
     conjugate space to the dual space (known as
     [Riesz representation theorem](https://en.wikipedia.org/wiki/Riesz_representation_theorem)
@@ -93,8 +93,8 @@ to the dual space of ``W``. This simple example introduces two new concepts.
     ``V ⊗ W^*`` is not an equivalence but an isomorphism, which needs to be defined.
     Similarly, there is an isomorphism between between ``V ⊗ W`` and ``W ⊗ V`` that can be
     non-trivial (e.g. in the case of fermions / super vector spaces). The correct formalism
-    here is provided by theory of monoidal categories, the details of which are explained
-    in the appendix. Nonetheless, we try to hide these canonical isomorphisms from the user
+    here is provided by theory of monoidal categories, the details of which are explained in
+    the appendix. Nonetheless, we try to hide these canonical isomorphisms from the user
     wherever possible, and one does not need to know category theory to be able to use this
     package.
 
@@ -119,8 +119,8 @@ i.e.
 ``V = \bigoplus_{a} ℂ^{n_a} ⊗ R_a``
 
 with ``R_a`` the space associated with irrep ``a`` of ``\mathsf{G}``, which itself has
-dimension ``d_a`` (often called the quantum dimension), and ``n_a`` the number of times
-this irrep appears in ``V``. If the unitary irrep ``a`` for ``g ∈ \mathsf{G}`` is given by
+dimension ``d_a`` (often called the quantum dimension), and ``n_a`` the number of times this
+irrep appears in ``V``. If the unitary irrep ``a`` for ``g ∈ \mathsf{G}`` is given by
 ``u_a(g)``, then there exists a specific basis for ``V`` such that the group action of
 ``\mathsf{G}`` on ``V`` is given by the unitary representation
 
