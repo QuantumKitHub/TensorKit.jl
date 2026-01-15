@@ -269,8 +269,9 @@ function _norm(blockiter, p::Real, init::Real)
             return isempty(b) ? init : oftype(init, LinearAlgebra.normInf(b))
         end
     elseif p > 0 # finite positive p
-        np = sum(blockiter; init) do (c, b)
-            return oftype(init, dim(c) * norm(b, p)^p)
+        np = init
+        for (c, b) in blockiter
+            np += oftype(init, dim(c) * norm(b, p)^p)
         end
         return np^(inv(oftype(np, p)))
     else
