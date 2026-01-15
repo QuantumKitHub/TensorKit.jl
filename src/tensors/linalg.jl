@@ -278,6 +278,12 @@ function _norm(blockiter, p::Real, init::Real)
         throw(ArgumentError(msg))
     end
 end
+function LinearAlgebra.norm(t::TensorMap, p::Real = 2)
+    InnerProductStyle(t) === EuclideanInnerProduct() || throw_invalid_innerproduct(:norm)
+    # performance specialization:
+    FusionStyle(sectortype(t)) isa UniqueFusion && return norm(t.data, p)
+    return _norm(blocks(t), p, float(zero(real(scalartype(t)))))
+end
 
 _default_rtol(t) = eps(real(float(scalartype(t)))) * min(dim(domain(t)), dim(codomain(t)))
 
