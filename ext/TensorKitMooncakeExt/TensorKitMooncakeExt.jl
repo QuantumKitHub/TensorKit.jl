@@ -3,7 +3,7 @@ module TensorKitMooncakeExt
 using Mooncake
 using Mooncake: @zero_derivative, DefaultCtx, ReverseMode, NoRData, CoDual, arrayify, primal
 using TensorKit
-using TensorOperations: TensorOperations, tensorcontract!, IndexTuple, Index2Tuple, linearize
+using TensorOperations: TensorOperations, IndexTuple, Index2Tuple, linearize
 import TensorOperations as TO
 using VectorInterface: One, Zero
 using TupleTools
