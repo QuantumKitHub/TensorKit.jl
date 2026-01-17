@@ -68,6 +68,31 @@ for V in spacelist
     println("Mooncake with symmetry: $Istr")
     println("---------------------------------------")
     eltypes = (Float64,) # no complex support yet
+
+    @timedtestset "VectorInterface with scalartype $T" for T in eltypes
+        atol = precision(T)
+        rtol = precision(T)
+
+        C = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
+        A = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
+        α = randn(T)
+        β = randn(T)
+
+        Mooncake.TestUtils.test_rule(rng, scale!, C, α; atol, rtol, mode)
+        Mooncake.TestUtils.test_rule(rng, scale!, C', α; atol, rtol, mode)
+        Mooncake.TestUtils.test_rule(rng, scale!, C, A, α; atol, rtol, mode)
+        Mooncake.TestUtils.test_rule(rng, scale!, C', A', α; atol, rtol, mode)
+        Mooncake.TestUtils.test_rule(rng, scale!, copy(C'), A', α; atol, rtol, mode)
+        Mooncake.TestUtils.test_rule(rng, scale!, C', copy(A'), α; atol, rtol, mode)
+
+        Mooncake.TestUtils.test_rule(rng, add!, C, A; atol, rtol, mode, is_primitive = false)
+        Mooncake.TestUtils.test_rule(rng, add!, C, A, α; atol, rtol, mode, is_primitive = false)
+        Mooncake.TestUtils.test_rule(rng, add!, C, A, α, β; atol, rtol, mode)
+
+        Mooncake.TestUtils.test_rule(rng, inner, C, A; atol, rtol, mode)
+        Mooncake.TestUtils.test_rule(rng, inner, C', A'; atol, rtol, mode)
+    end
+
     symmetricbraiding && @timedtestset "TensorOperations with scalartype $T" for T in eltypes
         atol = precision(T)
         rtol = precision(T)
