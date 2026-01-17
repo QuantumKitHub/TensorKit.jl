@@ -97,6 +97,25 @@ for V in spacelist
         atol = precision(T)
         rtol = precision(T)
 
+        @timedtestset "tensoradd!" begin
+            A = randn(T, V[1] ⊗ V[2] ← V[4] ⊗ V[5])
+            α = randn(T)
+            β = randn(T)
+
+            # repeat a couple times to get some distribution of arrows
+            for _ in 1:5
+                p = randindextuple(numind(A))
+
+                C1 = randn!(TensorOperations.tensoralloc_add(T, A, p, false, Val(false)))
+                Mooncake.TestUtils.test_rule(rng, tensoradd!, C1, A, p, false, α, β; atol, rtol, mode)
+
+                C2 = randn!(TensorOperations.tensoralloc_add(T, A, p, true, Val(false)))
+                Mooncake.TestUtils.test_rule(rng, tensoradd!, C2, A, p, true, α, β; atol, rtol, mode)
+
+                A = rand(Bool) ? C1 : C2
+            end
+        end
+
         @timedtestset "tensorcontract!" begin
             for _ in 1:5
                 d = 0
@@ -135,6 +154,31 @@ for V in spacelist
                         atol, rtol, mode, is_primitive
                     )
 
+                end
+            end
+        end
+
+        @timedtestset "tensortrace!" begin
+            for _ in 1:5
+                k1 = rand(0:2)
+                k2 = rand(1:2)
+                V1 = map(v -> rand(Bool) ? v' : v, rand(V, k1))
+                V2 = map(v -> rand(Bool) ? v' : v, rand(V, k2))
+
+                (_p, _q) = randindextuple(k1 + 2 * k2, k1)
+                p = _repartition(_p, rand(0:k1))
+                q = _repartition(_q, k2)
+                ip = _repartition(invperm(linearize((_p, _q))), rand(0:(k1 + 2 * k2)))
+                A = randn(T, permute(prod(V1) ⊗ prod(V2) ← prod(V2), ip))
+
+                α = randn(T)
+                β = randn(T)
+                for conjA in (false, true)
+                    C = randn!(TensorOperations.tensoralloc_add(T, A, p, conjA, Val(false)))
+                    Mooncake.TestUtils.test_rule(
+                        rng, tensortrace!, C, A, p, q, conjA, α, β;
+                        atol, rtol, mode, is_primitive = false
+                    )
                 end
             end
         end
