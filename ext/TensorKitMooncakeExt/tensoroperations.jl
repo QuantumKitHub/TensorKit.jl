@@ -1,88 +1,88 @@
 # tensoradd!
 # ----------
-Mooncake.@is_primitive(
-    DefaultCtx,
-    ReverseMode,
-    Tuple{
-        typeof(TO.tensoradd!),
-        AbstractTensorMap,
-        AbstractTensorMap, Index2Tuple, Bool,
-        Number, Number, Vararg{Any},
-    }
-)
-
-function Mooncake.rrule!!(
-        ::CoDual{typeof(TO.tensoradd!)},
-        C_ΔC::CoDual{<:AbstractTensorMap},
-        A_ΔA::CoDual{<:AbstractTensorMap}, pA_ΔpA::CoDual{<:Index2Tuple}, conjA_ΔconjA::CoDual{Bool},
-        α_Δα::CoDual{<:Number}, β_Δβ::CoDual{<:Number},
-        ba_Δba::CoDual...
-    )
-    # prepare arguments
-    C, ΔC = arrayify(C_ΔC)
-    A, ΔA = arrayify(A_ΔA)
-    pA = primal(pA_ΔpA)
-    conjA = primal(conjA_ΔconjA)
-    α, β = primal.((α_Δα, β_Δβ))
-    ba = primal.(ba_Δba)
-
-    # primal call
-    C_cache = copy(C)
-    TO.tensoradd!(C, A, pA, conjA, α, β, ba...)
-
-    function tensoradd_pullback(::NoRData)
-        copy!(C, C_cache)
-
-        ΔCr = tensoradd_pullback_ΔC!(ΔC, β)
-        ΔAr = tensoradd_pullback_ΔA!(ΔA, ΔC, A, pA, conjA, α, ba...)
-        Δαr = tensoradd_pullback_Δα(ΔC, A, pA, conjA, α, ba...)
-        Δβr = tensoradd_pullback_Δβ(ΔC, C, β)
-
-        return NoRData(),
-            ΔCr,
-            ΔAr, NoRData(), NoRData(),
-            Δαr, Δβr,
-            map(Returns(NoRData()), ba)...
-    end
-
-    return C_ΔC, tensoradd_pullback
-end
-
-tensoradd_pullback_ΔC!(ΔC, β) = (scale!(ΔC, conj(β)); NoRData())
-
-function tensoradd_pullback_ΔA!(
-        ΔA, ΔC, A, pA, conjA, α, ba...
-    )
-    ipA = invperm(linearize(pA))
-    pΔA = _repartition(ipA, A)
-    TO.tensoradd!(ΔA, ΔC, pΔA, conjA, conjA ? α : conj(α), Zero(), ba...)
-    return NoRData()
-end
-
-function tensoradd_pullback_Δα(
-        ΔC, A, pA, conjA, α, ba...
-    )
-    Tdα = Mooncake.rdata_type(Mooncake.tangent_type(typeof(α)))
-    Tdα === NoRData && return NoRData()
-
-    tΔC = twist(ΔC, filter(x -> isdual(space(ΔC, x)), allind(ΔC)); copy = false)
-    Δα = TO.tensorscalar(
-        TO.tensorcontract(
-            A, ((), linearize(pA)), !conjA,
-            tΔC, (trivtuple(TO.numind(pA)), ()), false,
-            ((), ()), One(), ba...
-        )
-    )
-    return Mooncake._rdata(Δα)
-end
-
-function tensoradd_pullback_Δβ(ΔC, C, β)
-    Tdβ = Mooncake.rdata_type(Mooncake.tangent_type(typeof(β)))
-    Tdβ === NoRData && return NoRData()
-
-    Δβ = inner(C, ΔC)
-    return Mooncake._rdata(Δβ)
-end
+# Mooncake.@is_primitive(
+#     DefaultCtx,
+#     ReverseMode,
+#     Tuple{
+#         typeof(TO.tensoradd!),
+#         AbstractTensorMap,
+#         AbstractTensorMap, Index2Tuple, Bool,
+#         Number, Number, Vararg{Any},
+#     }
+# )
+#
+# function Mooncake.rrule!!(
+#         ::CoDual{typeof(TO.tensoradd!)},
+#         C_ΔC::CoDual{<:AbstractTensorMap},
+#         A_ΔA::CoDual{<:AbstractTensorMap}, pA_ΔpA::CoDual{<:Index2Tuple}, conjA_ΔconjA::CoDual{Bool},
+#         α_Δα::CoDual{<:Number}, β_Δβ::CoDual{<:Number},
+#         ba_Δba::CoDual...
+#     )
+#     # prepare arguments
+#     C, ΔC = arrayify(C_ΔC)
+#     A, ΔA = arrayify(A_ΔA)
+#     pA = primal(pA_ΔpA)
+#     conjA = primal(conjA_ΔconjA)
+#     α, β = primal.((α_Δα, β_Δβ))
+#     ba = primal.(ba_Δba)
+#
+#     # primal call
+#     C_cache = copy(C)
+#     TO.tensoradd!(C, A, pA, conjA, α, β, ba...)
+#
+#     function tensoradd_pullback(::NoRData)
+#         copy!(C, C_cache)
+#
+#         ΔCr = tensoradd_pullback_ΔC!(ΔC, β)
+#         ΔAr = tensoradd_pullback_ΔA!(ΔA, ΔC, A, pA, conjA, α, ba...)
+#         Δαr = tensoradd_pullback_Δα(ΔC, A, pA, conjA, α, ba...)
+#         Δβr = tensoradd_pullback_Δβ(ΔC, C, β)
+#
+#         return NoRData(),
+#             ΔCr,
+#             ΔAr, NoRData(), NoRData(),
+#             Δαr, Δβr,
+#             map(Returns(NoRData()), ba)...
+#     end
+#
+#     return C_ΔC, tensoradd_pullback
+# end
+#
+# tensoradd_pullback_ΔC!(ΔC, β) = (scale!(ΔC, conj(β)); NoRData())
+#
+# function tensoradd_pullback_ΔA!(
+#         ΔA, ΔC, A, pA, conjA, α, ba...
+#     )
+#     ipA = invperm(linearize(pA))
+#     pΔA = _repartition(ipA, A)
+#     TO.tensoradd!(ΔA, ΔC, pΔA, conjA, conjA ? α : conj(α), Zero(), ba...)
+#     return NoRData()
+# end
+#
+# function tensoradd_pullback_Δα(
+#         ΔC, A, pA, conjA, α, ba...
+#     )
+#     Tdα = Mooncake.rdata_type(Mooncake.tangent_type(typeof(α)))
+#     Tdα === NoRData && return NoRData()
+#
+#     tΔC = twist(ΔC, filter(x -> isdual(space(ΔC, x)), allind(ΔC)); copy = false)
+#     Δα = TO.tensorscalar(
+#         TO.tensorcontract(
+#             A, ((), linearize(pA)), !conjA,
+#             tΔC, (trivtuple(TO.numind(pA)), ()), false,
+#             ((), ()), One(), ba...
+#         )
+#     )
+#     return Mooncake._rdata(Δα)
+# end
+#
+# function tensoradd_pullback_Δβ(ΔC, C, β)
+#     Tdβ = Mooncake.rdata_type(Mooncake.tangent_type(typeof(β)))
+#     Tdβ === NoRData && return NoRData()
+#
+#     Δβ = inner(C, ΔC)
+#     return Mooncake._rdata(Δβ)
+# end
 
 # tensorcontract!
 # ---------------
