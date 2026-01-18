@@ -3,6 +3,7 @@ using TensorKit
 using TensorOperations
 using Mooncake
 using Random
+using TupleTools
 
 mode = Mooncake.ReverseMode
 rng = Random.default_rng()
@@ -12,6 +13,14 @@ function randindextuple(N::Int, k::Int = rand(0:N))
     @assert 0 ≤ k ≤ N
     _p = randperm(N)
     return (tuple(_p[1:k]...), tuple(_p[(k + 1):end]...))
+end
+function randcircshift(N₁::Int, N₂::Int, k::Int = rand(0:(N₁ + N₂)))
+    N = N₁ + N₂
+    @assert 0 ≤ k ≤ N
+    p = TupleTools.vcat(ntuple(identity, N₁), reverse(ntuple(identity, N₂) .+ N₁))
+    n = rand(0:N)
+    _p = TupleTools.circshift(p, n)
+    return (tuple(_p[1:k]...), reverse(tuple(_p[(k + 1):end]...)))
 end
 
 const _repartition = @static if isdefined(Base, :get_extension)
@@ -93,6 +102,54 @@ for V in spacelist
         Mooncake.TestUtils.test_rule(rng, inner, C', A'; atol, rtol, mode)
     end
 
+    @timedtestset "Index manipulations with scalartype $T" for T in eltypes
+        atol = precision(T)
+        rtol = precision(T)
+
+        symmetricbraiding && @timedtestset "add_permute!" begin
+            A = randn(T, V[1] ⊗ V[2] ← V[4] ⊗ V[5])
+            α = randn(T)
+            β = randn(T)
+
+            # repeat a couple times to get some distribution of arrows
+            for _ in 1:5
+                p = randindextuple(numind(A))
+                C = randn!(permute(A, p))
+                Mooncake.TestUtils.test_rule(rng, TensorKit.add_permute!, C, A, p, α, β; atol, rtol, mode)
+                A = C
+            end
+        end
+
+        @timedtestset "add_transpose!" begin
+            A = randn(T, V[1] ⊗ V[2] ← V[4] ⊗ V[5])
+            α = randn(T)
+            β = randn(T)
+
+            # repeat a couple times to get some distribution of arrows
+            for _ in 1:5
+                p = randcircshift(numout(A), numin(A))
+                C = randn!(transpose(A, p))
+                Mooncake.TestUtils.test_rule(rng, TensorKit.add_transpose!, C, A, p, α, β; atol, rtol, mode)
+                A = C
+            end
+        end
+
+        @timedtestset "add_braid!" begin
+            A = randn(T, V[1] ⊗ V[2] ← V[4] ⊗ V[5])
+            α = randn(T)
+            β = randn(T)
+
+            # repeat a couple times to get some distribution of arrows
+            for _ in 1:5
+                p = randcircshift(numout(A), numin(A))
+                levels = tuple(randperm(numind(A)))
+                C = randn!(transpose(A, p))
+                Mooncake.TestUtils.test_rule(rng, TensorKit.add_transpose!, C, A, p, α, β; atol, rtol, mode)
+                A = C
+            end
+        end
+    end
+
     symmetricbraiding && @timedtestset "TensorOperations with scalartype $T" for T in eltypes
         atol = precision(T)
         rtol = precision(T)
@@ -107,10 +164,10 @@ for V in spacelist
                 p = randindextuple(numind(A))
 
                 C1 = randn!(TensorOperations.tensoralloc_add(T, A, p, false, Val(false)))
-                Mooncake.TestUtils.test_rule(rng, tensoradd!, C1, A, p, false, α, β; atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, tensoradd!, C1, A, p, false, α, β; atol, rtol, mode, is_primitive = false)
 
                 C2 = randn!(TensorOperations.tensoralloc_add(T, A, p, true, Val(false)))
-                Mooncake.TestUtils.test_rule(rng, tensoradd!, C2, A, p, true, α, β; atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, tensoradd!, C2, A, p, true, α, β; atol, rtol, mode, is_primitive = false)
 
                 A = rand(Bool) ? C1 : C2
             end
