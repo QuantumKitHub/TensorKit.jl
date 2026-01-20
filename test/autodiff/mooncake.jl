@@ -102,6 +102,24 @@ for V in spacelist
         Mooncake.TestUtils.test_rule(rng, inner, C', A'; atol, rtol, mode)
     end
 
+    @timedtestset "LinearAlgebra with scalartype $T" for T in eltypes
+        atol = precision(T)
+        rtol = precision(T)
+
+        C = randn(T, V[1] ⊗ V[2] ← V[5])
+        A = randn(T, codomain(C) ← V[3] ⊗ V[4])
+        B = randn(T, domain(A) ← domain(C))
+        α = randn(T)
+        β = randn(T)
+
+        Mooncake.TestUtils.test_rule(rng, mul!, C, A, B, α, β; atol, rtol, mode)
+        Mooncake.TestUtils.test_rule(rng, mul!, C, A, B; atol, rtol, mode, is_primitive = false)
+
+        Mooncake.TestUtils.test_rule(rng, norm, C, 2; atol, rtol, mode)
+        Mooncake.TestUtils.test_rule(rng, norm, C', 2; atol, rtol, mode)
+    end
+
+
     @timedtestset "Index manipulations with scalartype $T" for T in eltypes
         atol = precision(T)
         rtol = precision(T)
