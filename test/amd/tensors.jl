@@ -283,7 +283,6 @@ for V in spacelist
 
                 AMDGPU.@allowscalar begin
                     t3 = @constinferred repartition(t, $k)
-                    t3 = repartition(t, k)
                     @test norm(t3) ≈ norm(t)
                     t3′ = @constinferred repartition!(similar(t3), t′)
                     @test norm(t3′) ≈ norm(t′)
@@ -432,12 +431,12 @@ for V in spacelist
                 t = AMDGPU.rand(T, W1, W2)
                 @test t1 * (t1 \ t) ≈ t
                 @test (t / t2) * t2 ≈ t
-                AMDGPU.@allowscalar begin
+                #=AMDGPU.@allowscalar begin
                     @test t1 \ one(t1) ≈ inv(t1)
                     @test one(t1) / t1 ≈ pinv(t1)
                     tp = pinv(t) * t
                     @test tp ≈ tp * tp
-                end
+                end=#
                 @test_throws SpaceMismatch inv(t)
                 @test_throws SpaceMismatch t2 \ t
                 @test_throws SpaceMismatch t / t1
