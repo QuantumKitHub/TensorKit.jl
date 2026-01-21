@@ -483,15 +483,14 @@ for V in spacelist
                 for T in (Float64, ComplexF64)
                     t = project_hermitian!(AMDGPU.randn(T, W, W))
                     s = dim(W)
-                    #@test (@constinferred sqrt(t))^2 ≈ t
-                    #@test TensorKit.to_cpu(sqrt(t)) ≈ sqrt(TensorKit.to_cpu(t))
-
-                    expt = @constinferred exp(t)
-                    @test TensorKit.to_cpu(expt) ≈ exp(TensorKit.to_cpu(t))
-
-                    # log doesn't work on AMDGPU yet (scalar indexing)
-                    #@test exp(@constinferred log(project_hermitian!(expt))) ≈ expt
-                    #@test TensorKit.to_cpu(log(project_hermitian!(expt))) ≈ log(TensorKit.to_cpu(expt))
+                    AMDGPU.@allowscalar begin
+                        @test (@constinferred sqrt(t))^2 ≈ t
+                        @test TensorKit.to_cpu(sqrt(t)) ≈ sqrt(TensorKit.to_cpu(t))
+                        expt = @constinferred exp(t)
+                        @test TensorKit.to_cpu(expt) ≈ exp(TensorKit.to_cpu(t))
+                        @test exp(@constinferred log(project_hermitian!(expt))) ≈ expt
+                        @test TensorKit.to_cpu(log(project_hermitian!(expt))) ≈ log(TensorKit.to_cpu(expt))
+                    end
 
                     #=@test (@constinferred cos(t))^2 + (@constinferred sin(t))^2 ≈
                           id(storagetype(t), W)
