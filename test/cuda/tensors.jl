@@ -294,10 +294,8 @@ for V in spacelist
                         @test dot(t2′, t2) ≈ dot(t′, t) ≈ dot(transpose(t2′), transpose(t2))
                     end
                 end
-
                 CUDA.@allowscalar begin
                     t3 = @constinferred repartition(t, $k)
-                    t3 = repartition(t, k)
                     @test norm(t3) ≈ norm(t)
                     t3′ = @constinferred repartition!(similar(t3), t′)
                     @test norm(t3′) ≈ norm(t′)
