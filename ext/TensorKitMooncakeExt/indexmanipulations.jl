@@ -196,3 +196,47 @@ function Mooncake.rrule!!(
 
     return t_Δt, twist_pullback
 end
+
+# both are needed for correctly capturing every dispatch
+Mooncake.@is_primitive DefaultCtx ReverseMode Tuple{typeof(flip), AbstractTensorMap, Any}
+Mooncake.@is_primitive DefaultCtx ReverseMode Tuple{typeof(Core.kwcall), @NamedTuple{inv::Bool}, typeof(flip), AbstractTensorMap, Any}
+
+function Mooncake.rrule!!(::CoDual{typeof(flip)}, t_Δt::CoDual{<:AbstractTensorMap}, inds_Δinds::CoDual)
+    # prepare arguments
+    t, Δt = arrayify(t_Δt)
+    inv = false
+    inds = primal(inds_Δinds)
+
+    # primal call
+    t_flipped = flip(t, inds; inv)
+    t_flipped_Δt_flipped = Mooncake.zero_fcodual(t_flipped)
+    _, Δt_flipped = arrayify(t_flipped_Δt_flipped)
+
+    function twist_pullback(::NoRData)
+        copy!(Δt, flip(Δt_flipped, inds; inv = !inv))
+        return ntuple(Returns(NoRData()), 3)
+    end
+
+    return t_flipped_Δt_flipped, twist_pullback
+end
+function Mooncake.rrule!!(
+        ::CoDual{typeof(Core.kwcall)}, kwargs_Δkwargs::CoDual{@NamedTuple{inv::Bool}}, ::CoDual{typeof(flip)},
+        t_Δt::CoDual{<:AbstractTensorMap}, inds_Δinds::CoDual
+    )
+    # prepare arguments
+    t, Δt = arrayify(t_Δt)
+    inv = primal(kwargs_Δkwargs).inv
+    inds = primal(inds_Δinds)
+
+    # primal call
+    t_flipped = flip(t, inds; inv)
+    t_flipped_Δt_flipped = Mooncake.zero_fcodual(t_flipped)
+    _, Δt_flipped = arrayify(t_flipped_Δt_flipped)
+
+    function twist_pullback(::NoRData)
+        copy!(Δt, flip(Δt_flipped, inds; inv = !inv))
+        return ntuple(Returns(NoRData()), 5)
+    end
+
+    return t_flipped_Δt_flipped, twist_pullback
+end
