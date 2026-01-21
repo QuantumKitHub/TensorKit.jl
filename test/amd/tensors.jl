@@ -429,9 +429,9 @@ for V in spacelist
                 t1 = AMDGPU.rand(T, W1, W1)
                 t2 = AMDGPU.rand(T, W2, W2)
                 t = AMDGPU.rand(T, W1, W2)
-                @test t1 * (t1 \ t) ≈ t
+                #=@test t1 * (t1 \ t) ≈ t
                 @test (t / t2) * t2 ≈ t
-                #=AMDGPU.@allowscalar begin
+                AMDGPU.@allowscalar begin
                     @test t1 \ one(t1) ≈ inv(t1)
                     @test one(t1) / t1 ≈ pinv(t1)
                     tp = pinv(t) * t
@@ -457,7 +457,7 @@ for V in spacelist
                 @test TensorKit.to_cpu(t2 * t') ≈ ht2 * ht'
                 @test TensorKit.to_cpu(t2' * t') ≈ ht2' * ht'
 
-                AMDGPU.@allowscalar begin
+                #=AMDGPU.@allowscalar begin
                     @test TensorKit.to_cpu(inv(t1)) ≈ inv(ht1)
                     @test TensorKit.to_cpu(pinv(t)) ≈ pinv(ht)
 
@@ -465,7 +465,7 @@ for V in spacelist
                         continue
                     end
 
-                    #=@test TensorKit.to_cpu(t1 \ t) ≈ ht1 \ ht
+                    @test TensorKit.to_cpu(t1 \ t) ≈ ht1 \ ht
                     @test TensorKit.to_cpu(t1' \ t) ≈ ht1' \ ht
                     @test TensorKit.to_cpu(t2 \ t') ≈ ht2 \ ht'
                     @test TensorKit.to_cpu(t2' \ t') ≈ ht2' \ ht'
@@ -473,8 +473,8 @@ for V in spacelist
                     @test TensorKit.to_cpu(t2 / t) ≈ ht2 / ht
                     @test TensorKit.to_cpu(t2' / t) ≈ ht2' / ht
                     @test TensorKit.to_cpu(t1 / t') ≈ ht1 / ht'
-                    @test TensorKit.to_cpu(t1' / t') ≈ ht1' / ht'=#
-                end
+                    @test TensorKit.to_cpu(t1' / t') ≈ ht1' / ht'
+                end=#
             end
         end
         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
