@@ -166,6 +166,14 @@ for V in spacelist
                 A = C
             end
         end
+
+        @timedtestset "twist!" begin
+            A = randn(T, V[1] ⊗ V[2] ← V[4] ⊗ V[5])
+            Mooncake.TestUtils.test_rule(rng, Core.kwcall, (; inv = false), twist!, A, 1; atol, rtol, mode)
+            Mooncake.TestUtils.test_rule(rng, Core.kwcall, (; inv = true), twist!, A, [1, 3]; atol, rtol, mode)
+            Mooncake.TestUtils.test_rule(rng, twist!, A, 1; atol, rtol, mode)
+            Mooncake.TestUtils.test_rule(rng, twist!, A, [1, 3]; atol, rtol, mode)
+        end
     end
 
     symmetricbraiding && @timedtestset "TensorOperations with scalartype $T" for T in eltypes
