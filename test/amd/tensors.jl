@@ -432,13 +432,15 @@ for V in spacelist
                 t = AMDGPU.rand(T, W1, W2)
                 @test t1 * (t1 \ t) ≈ t
                 @test (t / t2) * t2 ≈ t
-                @test t1 \ one(t1) ≈ inv(t1)
-                @test one(t1) / t1 ≈ pinv(t1)
+                AMDGPU.@allowscalar begin
+                    @test t1 \ one(t1) ≈ inv(t1)
+                    @test one(t1) / t1 ≈ pinv(t1)
+                    tp = pinv(t) * t
+                    @test tp ≈ tp * tp
+                end
                 @test_throws SpaceMismatch inv(t)
                 @test_throws SpaceMismatch t2 \ t
                 @test_throws SpaceMismatch t / t1
-                tp = pinv(t) * t
-                @test tp ≈ tp * tp
             end
         end
         @timedtestset "Multiplication and inverse: test via CPU" begin
