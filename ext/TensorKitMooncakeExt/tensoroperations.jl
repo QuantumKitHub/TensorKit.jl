@@ -230,83 +230,80 @@ Mooncake.@is_primitive(
     DefaultCtx,
     ReverseMode,
     Tuple{
-        typeof(TO.tensortrace!),
+        typeof(TensorKit.trace_permute!),
         AbstractTensorMap,
-        AbstractTensorMap, Index2Tuple, Index2Tuple, Bool,
+        AbstractTensorMap, Index2Tuple, Index2Tuple,
         Number, Number,
-        Vararg{Any},
+        Any,
     }
 )
 
 function Mooncake.rrule!!(
-        ::CoDual{typeof(TO.tensortrace!)},
+        ::CoDual{typeof(TensorKit.trace_permute!)},
         C_ΔC::CoDual{<:AbstractTensorMap},
-        A_ΔA::CoDual{<:AbstractTensorMap}, p_Δp::CoDual{<:Index2Tuple}, q_Δq::CoDual{<:Index2Tuple}, conjA_ΔconjA::CoDual{Bool},
+        A_ΔA::CoDual{<:AbstractTensorMap}, p_Δp::CoDual{<:Index2Tuple}, q_Δq::CoDual{<:Index2Tuple},
         α_Δα::CoDual{<:Number}, β_Δβ::CoDual{<:Number},
-        ba_Δba::CoDual...
+        backend_Δbackend::CoDual
     )
     # prepare arguments
     C, ΔC = arrayify(C_ΔC)
     A, ΔA = arrayify(A_ΔA)
     p = primal(p_Δp)
     q = primal(q_Δq)
-    conjA = primal(conjA_ΔconjA)
     α, β = primal.((α_Δα, β_Δβ))
-    ba = primal.(ba_Δba)
+    backend = primal(backend_Δbackend)
 
     # primal call
     C_cache = copy(C)
-    TO.tensortrace!(C, A, p, q, conjA, α, β, ba...)
+    TensorKit.trace_permute!(C, A, p, q, α, β, backend)
 
-    function tensortrace_pullback(::NoRData)
+    function trace_permute_pullback(::NoRData)
         copy!(C, C_cache)
 
-        ΔCr = tensortrace_pullback_ΔC!(ΔC, β)
-        ΔAr = tensortrace_pullback_ΔA!(ΔA, ΔC, A, p, q, conjA, α, ba...)
-        Δαr = tensortrace_pullback_Δα(ΔC, A, p, q, conjA, α, ba...)
-        Δβr = tensortrace_pullback_Δβ(ΔC, C, β)
+        ΔAr = trace_permute_pullback_ΔA!(ΔA, ΔC, A, p, q, α, backend)
+        Δαr = trace_permute_pullback_Δα(ΔC, A, p, q, α, backend)
+        Δβr = trace_permute_pullback_Δβ(ΔC, C, β)
+        ΔCr = trace_permute_pullback_ΔC!(ΔC, β)
 
         return NoRData(),
-            ΔCr,
-            ΔAr, NoRData(), NoRData(), NoRData(),
-            Δαr, Δβr,
-            map(Returns(NoRData()), ba)...
+            ΔCr, ΔAr, NoRData(), NoRData(),
+            Δαr, Δβr, NoRData()
     end
 
-    return C_ΔC, tensortrace_pullback
+    return C_ΔC, trace_permute_pullback
 end
 
-tensortrace_pullback_ΔC!(ΔC, β) = (scale!(ΔC, conj(β)); NoRData())
+trace_permute_pullback_ΔC!(ΔC, β) = (scale!(ΔC, conj(β)); NoRData())
 
-function tensortrace_pullback_ΔA!(
-        ΔA, ΔC, A, p, q, conjA, α, ba...
+function trace_permute_pullback_ΔA!(
+        ΔA, ΔC, A, p, q, α, backend
     )
     ip = invperm((linearize(p)..., q[1]..., q[2]...))
     pdA = _repartition(ip, A)
-    E = one!(TO.tensoralloc_add(scalartype(A), A, q, conjA))
+    E = one!(TO.tensoralloc_add(scalartype(A), A, q, false))
     twist!(E, filter(x -> !isdual(space(E, x)), codomainind(E)))
     pE = ((), trivtuple(TO.numind(q)))
     pΔC = (trivtuple(TO.numind(p)), ())
     TO.tensorproduct!(
-        ΔA, ΔC, pΔC, conjA, E, pE, conjA, pdA, conjA ? α : conj(α), Zero(), ba...
+        ΔA, ΔC, pΔC, false, E, pE, false, pdA, conj(α), One(), backend
     )
     return NoRData()
 end
 
-function tensortrace_pullback_Δα(
-        ΔC, A, p, q, conjA, α, ba...
+function trace_permute_pullback_Δα(
+        ΔC, A, p, q, α, backend
     )
     Tdα = Mooncake.rdata_type(Mooncake.tangent_type(typeof(α)))
     Tdα === NoRData && return NoRData()
 
     # TODO: this result might be easier to compute as:
     # C′ = βC + α * trace(A) ⟹ At = (C′ - βC) / α
-    At = TO.tensortrace(A, p, q, conjA)
+    At = TO.tensortrace(A, p, q, false, One(), backend)
     Δα = inner(At, ΔC)
     return Mooncake._rdata(Δα)
 end
 
-function tensortrace_pullback_Δβ(ΔC, C, β)
+function trace_permute_pullback_Δβ(ΔC, C, β)
     Tdβ = Mooncake.rdata_type(Mooncake.tangent_type(typeof(β)))
     Tdβ === NoRData && return NoRData()
 

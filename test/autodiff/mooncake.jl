@@ -260,14 +260,14 @@ for V in spacelist
                     )
                     Mooncake.TestUtils.test_rule(
                         rng, tensorcontract!, C, A, pA, conjA, B, pB, conjB, pAB, α, β;
-                        atol, rtol, mode, is_primitive
+                        atol, rtol, mode
                     )
 
                 end
             end
         end
 
-        @timedtestset "tensortrace!" begin
+        @timedtestset "trace_permute!" begin
             for _ in 1:5
                 k1 = rand(0:2)
                 k2 = rand(1:2)
@@ -282,13 +282,11 @@ for V in spacelist
 
                 α = randn(T)
                 β = randn(T)
-                for conjA in (false, true)
-                    C = randn!(TensorOperations.tensoralloc_add(T, A, p, conjA, Val(false)))
-                    Mooncake.TestUtils.test_rule(
-                        rng, tensortrace!, C, A, p, q, conjA, α, β;
-                        atol, rtol, mode, is_primitive = false
-                    )
-                end
+                C = randn!(TensorOperations.tensoralloc_add(T, A, p, false, Val(false)))
+                Mooncake.TestUtils.test_rule(
+                    rng, TensorKit.trace_permute!, C, A, p, q, α, β, TensorOperations.DefaultBackend();
+                    atol, rtol, mode
+                )
             end
         end
     end
