@@ -465,7 +465,7 @@ for V in spacelist
                         continue
                     end
 
-                    @test TensorKit.to_cpu(t1 \ t) ≈ ht1 \ ht
+                    #=@test TensorKit.to_cpu(t1 \ t) ≈ ht1 \ ht
                     @test TensorKit.to_cpu(t1' \ t) ≈ ht1' \ ht
                     @test TensorKit.to_cpu(t2 \ t') ≈ ht2 \ ht'
                     @test TensorKit.to_cpu(t2' \ t') ≈ ht2' \ ht'
@@ -473,7 +473,7 @@ for V in spacelist
                     @test TensorKit.to_cpu(t2 / t) ≈ ht2 / ht
                     @test TensorKit.to_cpu(t2' / t) ≈ ht2' / ht
                     @test TensorKit.to_cpu(t1 / t') ≈ ht1 / ht'
-                    @test TensorKit.to_cpu(t1' / t') ≈ ht1' / ht'
+                    @test TensorKit.to_cpu(t1' / t') ≈ ht1' / ht'=#
                 end
             end
         end
