@@ -151,3 +151,48 @@ function Mooncake.rrule!!(
 
     return C_ΔC, add_braid!_pullback
 end
+
+# both are needed for correctly capturing every dispatch
+Mooncake.@is_primitive DefaultCtx ReverseMode Tuple{typeof(twist!), AbstractTensorMap, Any}
+Mooncake.@is_primitive DefaultCtx ReverseMode Tuple{typeof(Core.kwcall), @NamedTuple{inv::Bool}, typeof(twist!), AbstractTensorMap, Any}
+
+function Mooncake.rrule!!(::CoDual{typeof(twist!)}, t_Δt::CoDual{<:AbstractTensorMap}, inds_Δinds::CoDual)
+    # prepare arguments
+    t, Δt = arrayify(t_Δt)
+    inv = false
+    inds = primal(inds_Δinds)
+
+    # primal call
+    t_cache = copy(t)
+    twist!(t, inds; inv)
+
+    function twist_pullback(::NoRData)
+        copy!(t, t_cache)
+        twist!(Δt, inds; inv = !inv)
+        return ntuple(Returns(NoRData()), 3)
+    end
+
+    return t_Δt, twist_pullback
+
+end
+function Mooncake.rrule!!(
+        ::CoDual{typeof(Core.kwcall)}, kwargs_Δkwargs::CoDual{@NamedTuple{inv::Bool}}, ::CoDual{typeof(twist!)},
+        t_Δt::CoDual{<:AbstractTensorMap}, inds_Δinds::CoDual
+    )
+    # prepare arguments
+    t, Δt = arrayify(t_Δt)
+    inv = primal(kwargs_Δkwargs).inv
+    inds = primal(inds_Δinds)
+
+    # primal call
+    t_cache = copy(t)
+    twist!(t, inds; inv)
+
+    function twist_pullback(::NoRData)
+        copy!(t, t_cache)
+        twist!(Δt, inds; inv = !inv)
+        return ntuple(Returns(NoRData()), 5)
+    end
+
+    return t_Δt, twist_pullback
+end
