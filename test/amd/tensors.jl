@@ -415,8 +415,8 @@ for V in spacelist
             W2 = V4 ⊗ V5
             W1 = W2 ⊗ (oneunit(V1) ⊕ oneunit(V1))
             for T in (Float64, ComplexF64)
-                t1 = randisometry(ROCMatrix{T}, W1, W2)
-                t2 = randisometry(ROCMatrix{T}, W2 ← W2)
+                t1 = randisometry(ROCMatrix{T, AMDGPU.Mem.HIPBuffer}, W1, W2)
+                t2 = randisometry(ROCMatrix{T, AMDGPU.Mem.HIPBuffer}, W2 ← W2)
                 @test isisometric(t1)
                 @test isunitary(t2)
                 P = t1 * t1'
