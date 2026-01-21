@@ -119,7 +119,7 @@ function LinearAlgebra.isposdef(t::ROCTensorMap)
     InnerProductStyle(spacetype(t)) === EuclideanInnerProduct() || return false
     for (c, b) in blocks(t)
         # do our own hermitian check
-        isherm = MatrixAlgebraKit.ishermitian(b; atol = eps(real(eltype(b))), rtol = eps(real(eltype(b))))
+        isherm = MatrixAlgebraKit.ishermitian(b)
         isherm || return false
         isposdef(Hermitian(b)) || return false
     end
