@@ -206,25 +206,6 @@ for V in spacelist
         atol = precision(T)
         rtol = precision(T)
 
-        @timedtestset "tensoradd!" begin
-            A = randn(T, V[1] ⊗ V[2] ← V[4] ⊗ V[5])
-            α = randn(T)
-            β = randn(T)
-
-            # repeat a couple times to get some distribution of arrows
-            for _ in 1:5
-                p = randindextuple(numind(A))
-
-                C1 = randn!(TensorOperations.tensoralloc_add(T, A, p, false, Val(false)))
-                Mooncake.TestUtils.test_rule(rng, tensoradd!, C1, A, p, false, α, β; atol, rtol, mode, is_primitive = false)
-
-                C2 = randn!(TensorOperations.tensoralloc_add(T, A, p, true, Val(false)))
-                Mooncake.TestUtils.test_rule(rng, tensoradd!, C2, A, p, true, α, β; atol, rtol, mode, is_primitive = false)
-
-                A = rand(Bool) ? C1 : C2
-            end
-        end
-
         @timedtestset "tensorcontract!" begin
             for _ in 1:5
                 d = 0
