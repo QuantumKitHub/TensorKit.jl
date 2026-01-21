@@ -457,22 +457,24 @@ for V in spacelist
                 @test TensorKit.to_cpu(t2 * t') ≈ ht2 * ht'
                 @test TensorKit.to_cpu(t2' * t') ≈ ht2' * ht'
 
-                @test TensorKit.to_cpu(inv(t1)) ≈ inv(ht1)
-                @test TensorKit.to_cpu(pinv(t)) ≈ pinv(ht)
+                AMDGPU.@allowscalar begin
+                    @test TensorKit.to_cpu(inv(t1)) ≈ inv(ht1)
+                    @test TensorKit.to_cpu(pinv(t)) ≈ pinv(ht)
 
-                if T == Float32 || T == ComplexF32
-                    continue
+                    if T == Float32 || T == ComplexF32
+                        continue
+                    end
+
+                    @test TensorKit.to_cpu(t1 \ t) ≈ ht1 \ ht
+                    @test TensorKit.to_cpu(t1' \ t) ≈ ht1' \ ht
+                    @test TensorKit.to_cpu(t2 \ t') ≈ ht2 \ ht'
+                    @test TensorKit.to_cpu(t2' \ t') ≈ ht2' \ ht'
+
+                    @test TensorKit.to_cpu(t2 / t) ≈ ht2 / ht
+                    @test TensorKit.to_cpu(t2' / t) ≈ ht2' / ht
+                    @test TensorKit.to_cpu(t1 / t') ≈ ht1 / ht'
+                    @test TensorKit.to_cpu(t1' / t') ≈ ht1' / ht'
                 end
-
-                @test TensorKit.to_cpu(t1 \ t) ≈ ht1 \ ht
-                @test TensorKit.to_cpu(t1' \ t) ≈ ht1' \ ht
-                @test TensorKit.to_cpu(t2 \ t') ≈ ht2 \ ht'
-                @test TensorKit.to_cpu(t2' \ t') ≈ ht2' \ ht'
-
-                @test TensorKit.to_cpu(t2 / t) ≈ ht2 / ht
-                @test TensorKit.to_cpu(t2' / t) ≈ ht2' / ht
-                @test TensorKit.to_cpu(t1 / t') ≈ ht1 / ht'
-                @test TensorKit.to_cpu(t1' / t') ≈ ht1' / ht'
             end
         end
         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
