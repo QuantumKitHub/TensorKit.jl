@@ -179,6 +179,27 @@ for V in spacelist
             Mooncake.TestUtils.test_rule(rng, flip, A, 1; atol, rtol, mode)
             Mooncake.TestUtils.test_rule(rng, flip, A, [1, 3]; atol, rtol, mode)
         end
+
+        @timedtestset "insert and remove units" begin
+            A = randn(T, V[1] ⊗ V[2] ← V[4] ⊗ V[5])
+
+            for insertunit in (insertleftunit, insertrightunit)
+                Mooncake.TestUtils.test_rule(rng, insertunit, A, Val(1); atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, insertunit, A, Val(4); atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, insertunit, A', Val(2); atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, Core.kwcall, (; copy = false), insertunit, A, Val(1); atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, Core.kwcall, (; copy = true), insertunit, A, Val(2); atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, Core.kwcall, (; copy = false, dual = true, conj = true), insertunit, A, Val(3); atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, Core.kwcall, (; copy = false, dual = true, conj = true), insertunit, A', Val(3); atol, rtol, mode)
+            end
+
+            for i in 1:4
+                B = insertleftunit(A, i; dual = rand(Bool))
+                Mooncake.TestUtils.test_rule(rng, removeunit, B, Val(i); atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, Core.kwcall, (; copy = false), removeunit, B, Val(i); atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, Core.kwcall, (; copy = true), removeunit, B, Val(i); atol, rtol, mode)
+            end
+        end
     end
 
     symmetricbraiding && @timedtestset "TensorOperations with scalartype $T" for T in eltypes

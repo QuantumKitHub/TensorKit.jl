@@ -240,3 +240,170 @@ function Mooncake.rrule!!(
 
     return t_flipped_Δt_flipped, twist_pullback
 end
+
+for insertunit in (:insertleftunit, :insertrightunit)
+    insertunit_pullback = Symbol(insertunit, :_pullback)
+    @eval begin
+        # both are needed for correctly capturing every dispatch
+        Mooncake.@is_primitive DefaultCtx ReverseMode Tuple{typeof($insertunit), AbstractTensorMap, Val}
+        Mooncake.@is_primitive DefaultCtx ReverseMode Tuple{typeof(Core.kwcall), NamedTuple, typeof($insertunit), AbstractTensorMap, Val}
+
+        function Mooncake.rrule!!(::CoDual{typeof($insertunit)}, tsrc_Δtsrc::CoDual{<:AbstractTensorMap}, ival_Δival::CoDual{<:Val})
+            # prepare arguments
+            tsrc, Δtsrc = arrayify(tsrc_Δtsrc)
+            ival = primal(ival_Δival)
+
+            # tdst shares data with tsrc if <:TensorMap, in this case we have to deal with correctly
+            # sharing address spaces
+            if tsrc isa TensorMap
+                tsrc_cache = copy(tsrc)
+                tdst = $insertunit(tsrc, ival)
+                # note: this is somewhat of a hack that makes use of the fact that the tangent is
+                # encoded without any information about the space, which allows us to simply reuse
+                # the tangent exactly without having to modify the space information
+                tdst_Δtdst = CoDual(tdst, Mooncake.tangent(tsrc_Δtsrc))
+            else
+                tsrc_cache = nothing
+                tdst = $insertunit(tsrc, ival)
+                tdst_Δtdst = Mooncake.zero_fcodual(tdst)
+            end
+
+            _, Δtdst = arrayify(tdst_Δtdst)
+
+            function $insertunit_pullback(::NoRData)
+                if isnothing(tsrc_cache)
+                    for (c, b) in blocks(Δtdst)
+                        copy!(block(Δtsrc, c), b)
+                    end
+                else
+                    copy!(tsrc, tsrc_cache)
+                    # note: since data is already shared, don't have to do anything here!
+                end
+                return ntuple(Returns(NoRData()), 3)
+            end
+
+            return tdst_Δtdst, $insertunit_pullback
+        end
+        function Mooncake.rrule!!(
+                ::CoDual{typeof(Core.kwcall)}, kwargs_Δkwargs::CoDual{<:NamedTuple},
+                ::CoDual{typeof($insertunit)}, tsrc_Δtsrc::CoDual{<:AbstractTensorMap}, ival_Δival::CoDual{<:Val}
+            )
+            # prepare arguments
+            tsrc, Δtsrc = arrayify(tsrc_Δtsrc)
+            ival = primal(ival_Δival)
+            kwargs = primal(kwargs_Δkwargs)
+
+            # tdst shares data with tsrc if <:TensorMap & copy=false, in this case we have to deal with correctly
+            # sharing address spaces
+            if tsrc isa TensorMap && !get(kwargs, :copy, false)
+                tsrc_cache = copy(tsrc)
+                tdst = $insertunit(tsrc, ival; kwargs...)
+                # note: this is somewhat of a hack that makes use of the fact that the tangent is
+                # encoded without any information about the space, which allows us to simply reuse
+                # the tangent exactly without having to modify the space information
+                tdst_Δtdst = CoDual(tdst, Mooncake.tangent(tsrc_Δtsrc))
+            else
+                tsrc_cache = nothing
+                tdst = $insertunit(tsrc, ival; kwargs...)
+                tdst_Δtdst = Mooncake.zero_fcodual(tdst)
+            end
+
+            _, Δtdst = arrayify(tdst_Δtdst)
+
+            function $insertunit_pullback(::NoRData)
+                if isnothing(tsrc_cache)
+                    for (c, b) in blocks(Δtdst)
+                        copy!(block(Δtsrc, c), b)
+                    end
+                else
+                    copy!(tsrc, tsrc_cache)
+                    # note: since data is already shared, don't have to do anything here!
+                end
+                return ntuple(Returns(NoRData()), 5)
+            end
+
+            return tdst_Δtdst, $insertunit_pullback
+        end
+    end
+end
+
+
+Mooncake.@is_primitive DefaultCtx ReverseMode Tuple{typeof(removeunit), AbstractTensorMap, Val}
+Mooncake.@is_primitive DefaultCtx ReverseMode Tuple{typeof(Core.kwcall), NamedTuple, typeof(removeunit), AbstractTensorMap, Val}
+
+function Mooncake.rrule!!(::CoDual{typeof(removeunit)}, tsrc_Δtsrc::CoDual{<:AbstractTensorMap}, ival_Δival::CoDual{Val{i}}) where {i}
+    # prepare arguments
+    tsrc, Δtsrc = arrayify(tsrc_Δtsrc)
+    ival = primal(ival_Δival)
+
+    # tdst shares data with tsrc if <:TensorMap, in this case we have to deal with correctly
+    # sharing address spaces
+    if tsrc isa TensorMap
+        tsrc_cache = copy(tsrc)
+        tdst = removeunit(tsrc, ival)
+        # note: this is somewhat of a hack that makes use of the fact that the tangent is
+        # encoded without any information about the space, which allows us to simply reuse
+        # the tangent exactly without having to modify the space information
+        tdst_Δtdst = CoDual(tdst, Mooncake.tangent(tsrc_Δtsrc))
+    else
+        tsrc_cache = nothing
+        tdst = removeunit(tsrc, ival)
+        tdst_Δtdst = Mooncake.zero_fcodual(tdst)
+    end
+
+    _, Δtdst = arrayify(tdst_Δtdst)
+
+    function removeunit_pullback(::NoRData)
+        if isnothing(tsrc_cache)
+            for (c, b) in blocks(Δtdst)
+                copy!(block(Δtsrc, c), b)
+            end
+        else
+            copy!(tsrc, tsrc_cache)
+            # note: since data is already shared, don't have to do anything here!
+        end
+        return ntuple(Returns(NoRData()), 3)
+    end
+
+    return tdst_Δtdst, removeunit_pullback
+end
+function Mooncake.rrule!!(
+        ::CoDual{typeof(Core.kwcall)}, kwargs_Δkwargs::CoDual{<:NamedTuple},
+        ::CoDual{typeof(removeunit)}, tsrc_Δtsrc::CoDual{<:AbstractTensorMap}, ival_Δival::CoDual{<:Val}
+    )
+    # prepare arguments
+    tsrc, Δtsrc = arrayify(tsrc_Δtsrc)
+    ival = primal(ival_Δival)
+    kwargs = primal(kwargs_Δkwargs)
+
+    # tdst shares data with tsrc if <:TensorMap & copy=false, in this case we have to deal with correctly
+    # sharing address spaces
+    if tsrc isa TensorMap && !get(kwargs, :copy, false)
+        tsrc_cache = copy(tsrc)
+        tdst = removeunit(tsrc, ival; kwargs...)
+        # note: this is somewhat of a hack that makes use of the fact that the tangent is
+        # encoded without any information about the space, which allows us to simply reuse
+        # the tangent exactly without having to modify the space information
+        tdst_Δtdst = CoDual(tdst, Mooncake.tangent(tsrc_Δtsrc))
+    else
+        tsrc_cache = nothing
+        tdst = removeunit(tsrc, ival; kwargs...)
+        tdst_Δtdst = Mooncake.zero_fcodual(tdst)
+    end
+
+    _, Δtdst = arrayify(tdst_Δtdst)
+
+    function removeunit_pullback(::NoRData)
+        if isnothing(tsrc_cache)
+            for (c, b) in blocks(Δtdst)
+                copy!(block(Δtsrc, c), b)
+            end
+        else
+            copy!(tsrc, tsrc_cache)
+            # note: since data is already shared, don't have to do anything here!
+        end
+        return ntuple(Returns(NoRData()), 5)
+    end
+
+    return tdst_Δtdst, removeunit_pullback
+end
