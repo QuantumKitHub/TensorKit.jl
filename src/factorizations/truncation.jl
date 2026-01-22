@@ -193,19 +193,20 @@ end
 
 function _findtruncvalue_order(values::SectorVector, n::Int; by = identity, rev::Bool = false)
     I = sectortype(values)
-    p = sortperm(parent(values); by, rev)
 
     if FusionStyle(I) isa UniqueFusion # dimensions are all 1
-        return n <= 0 ? nothing : p[min(n, length(p))]
-    else
+        p = sortperm(parent(values), n; by, rev)
+        return n <= 0 ? nothing : by(values[p[min(n, length(p))]])
+    end
+
+        p = sortperm(parent(values); by, rev)
         dims = similar(values, Base.promote_op(dim, I))
         for (c, v) in pairs(dims)
             fill!(v, dim(c))
         end
         cumulative_dim = cumsum(Base.permute!(parent(dims), p))
         k = findlast(<=(n), cumulative_dim)
-        return isnothing(k) ? k : p[k]
-    end
+        return isnothing(k) ? k : by(values[p[k]])
 end
 
 # findtruncated
@@ -224,13 +225,12 @@ end
 # - discard everything that is ordered after that value
 
 function MAK.findtruncated(values::SectorVector, strategy::TruncationByOrder)
-    k = _findtruncvalue_order(values, strategy.howmany; strategy.by, strategy.rev)
+    val = _findtruncvalue_order(values, strategy.howmany; strategy.by, strategy.rev)
 
-    if isnothing(k)
+    if isnothing(val)
         # discard everything
         return SectorDict{sectortype(values), UnitRange{Int}}()
     else
-        val = strategy.by(values[k])
         strategy = trunctol(; atol = val, strategy.by, keep_below = !strategy.rev)
         return MAK.findtruncated_svd(values, strategy)
     end

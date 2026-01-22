@@ -17,5 +17,6 @@ using TensorKit: MatrixAlgebraKit
 using Random
 
 include("cutensormap.jl")
+include("truncation.jl")
 
 end
