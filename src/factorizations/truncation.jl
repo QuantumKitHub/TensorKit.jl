@@ -232,8 +232,7 @@ function MAK.findtruncated(values::SectorVector, strategy::TruncationIntersectio
     inds = map(Base.Fix1(MAK.findtruncated, values), strategy.components)
     return SectorDict(
         c => mapreduce(
-                Base.Fix2(getindex, c), MatrixAlgebraKit._ind_intersect, inds;
-                init = trues(length(values[c]))
+                Base.Fix2(getindex, c), MatrixAlgebraKit._ind_intersect, inds
             ) for c in intersect(map(keys, inds)...)
     )
 end
@@ -241,8 +240,7 @@ function MAK.findtruncated_svd(values::SectorVector, strategy::TruncationInterse
     inds = map(Base.Fix1(MAK.findtruncated_svd, values), strategy.components)
     return SectorDict(
         c => mapreduce(
-                Base.Fix2(getindex, c), MatrixAlgebraKit._ind_intersect, inds;
-                init = trues(length(values[c]))
+                Base.Fix2(getindex, c), MatrixAlgebraKit._ind_intersect, inds
             ) for c in intersect(map(keys, inds)...)
     )
 end
