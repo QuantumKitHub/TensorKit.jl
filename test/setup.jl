@@ -7,6 +7,7 @@ export test_dim_isapprox
 export Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, Vfib, VIB_diag, VIB_M
 
 using Random
+using Test: @test
 using TensorKit
 using TensorKit: ℙ, PlanarTrivial
 using Base.Iterators: take, product
