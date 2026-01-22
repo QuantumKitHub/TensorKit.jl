@@ -1,4 +1,4 @@
-Mooncake.@is_primitive DefaultCtx ReverseMode Tuple{typeof(mul!), AbstractTensorMap, AbstractTensorMap, AbstractTensorMap, Number, Number}
+@is_primitive DefaultCtx ReverseMode Tuple{typeof(mul!), AbstractTensorMap, AbstractTensorMap, AbstractTensorMap, Number, Number}
 
 function Mooncake.rrule!!(
         ::CoDual{typeof(mul!)},
@@ -37,7 +37,7 @@ function Mooncake.rrule!!(
     return C_ΔC, mul_pullback
 end
 
-Mooncake.@is_primitive DefaultCtx ReverseMode Tuple{typeof(norm), AbstractTensorMap, Real}
+@is_primitive DefaultCtx ReverseMode Tuple{typeof(norm), AbstractTensorMap, Real}
 
 function Mooncake.rrule!!(::CoDual{typeof(norm)}, tΔt::CoDual{<:AbstractTensorMap}, pdp::CoDual{<:Real})
     t, Δt = arrayify(tΔt)
@@ -52,7 +52,7 @@ function Mooncake.rrule!!(::CoDual{typeof(norm)}, tΔt::CoDual{<:AbstractTensorM
     return CoDual(n, Mooncake.NoFData()), norm_pullback
 end
 
-Mooncake.@is_primitive DefaultCtx ReverseMode Tuple{typeof(tr), AbstractTensorMap}
+@is_primitive DefaultCtx ReverseMode Tuple{typeof(tr), AbstractTensorMap}
 
 function Mooncake.rrule!!(::CoDual{typeof(tr)}, A_ΔA::CoDual{<:AbstractTensorMap})
     A, ΔA = arrayify(A_ΔA)
@@ -68,7 +68,7 @@ function Mooncake.rrule!!(::CoDual{typeof(tr)}, A_ΔA::CoDual{<:AbstractTensorMa
     return CoDual(trace, Mooncake.NoFData()), tr_pullback
 end
 
-Mooncake.@is_primitive DefaultCtx ReverseMode Tuple{typeof(inv), AbstractTensorMap}
+@is_primitive DefaultCtx ReverseMode Tuple{typeof(inv), AbstractTensorMap}
 
 function Mooncake.rrule!!(::CoDual{typeof(inv)}, A_ΔA::CoDual{<:AbstractTensorMap})
     A, ΔA = arrayify(A_ΔA)
