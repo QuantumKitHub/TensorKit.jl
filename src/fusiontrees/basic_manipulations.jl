@@ -53,7 +53,7 @@ holds for all `M` between `0` and `N`, where `N` is the number of uncoupled sect
 
 See also [`split`](@ref) and [`insertat`](@ref).
 """
-function join(f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}) where {I, N₁, N₂}
+@inline function join(f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}) where {I, N₁, N₂}
     (f₁.coupled == f₂.uncoupled[1] && !f₂.isdual[1]) ||
         throw(SectorMismatch("cannot connect $(f₂.uncoupled[1]) to $(f₁.coupled)"))
     uncoupled = (f₁.uncoupled..., Base.tail(f₂.uncoupled)...)
@@ -175,7 +175,7 @@ See also [`multi_Fmove_inv`](@ref), [`multi_associator`](@ref).
 """
 function multi_Fmove(f::FusionTree{I, N}) where {I, N}
     if FusionStyle(I) isa UniqueFusion
-        coupled = N == 1 ? rightunit(f.uncoupled[1]) : (N == 2:f.uncoupled[2]:f.innerlines[end])
+        coupled = N == 1 ? rightunit(f.uncoupled[1]) : (N == 2 ? f.uncoupled[2] : f.innerlines[end])
         f′ = FusionTree{I}(Base.tail(f.uncoupled), coupled, Base.tail(f.isdual))
         return (f′,), (multi_associator(f, f′),)
     end
@@ -311,6 +311,8 @@ function multi_Fmove(f::FusionTree{I, N}) where {I, N}
                 end
             end
         end
+        # TODO: it would be more uniform to return this as a dictionary
+        # Would that extra step create significant extra overhead?
         return trees, coeffs
     end
 end
@@ -467,6 +469,8 @@ function multi_Fmove_inv(a, c, f::FusionTree{I, N}) where {I, N}
                 end
             end
         end
+        # TODO: it would be more uniform to return this as a dictionary
+        # Would that extra step create significant extra overhead?
         return trees, coeffs
     end
 end
