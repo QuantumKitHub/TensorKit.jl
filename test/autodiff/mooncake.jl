@@ -125,6 +125,10 @@ for V in spacelist
         Mooncake.TestUtils.test_rule(rng, tr, D1; atol, rtol, mode)
         Mooncake.TestUtils.test_rule(rng, tr, D2; atol, rtol, mode)
         Mooncake.TestUtils.test_rule(rng, tr, D3; atol, rtol, mode)
+
+        Mooncake.TestUtils.test_rule(rng, inv, D1; atol, rtol, mode)
+        Mooncake.TestUtils.test_rule(rng, inv, D2; atol, rtol, mode)
+        Mooncake.TestUtils.test_rule(rng, inv, D3; atol, rtol, mode)
     end
 
 
