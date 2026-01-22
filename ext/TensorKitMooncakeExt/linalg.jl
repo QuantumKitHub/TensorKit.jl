@@ -51,3 +51,19 @@ function Mooncake.rrule!!(::CoDual{typeof(norm)}, tΔt::CoDual{<:AbstractTensorM
     end
     return CoDual(n, Mooncake.NoFData()), norm_pullback
 end
+
+Mooncake.@is_primitive DefaultCtx ReverseMode Tuple{typeof(tr), AbstractTensorMap}
+
+function Mooncake.rrule!!(::CoDual{typeof(tr)}, A_ΔA::CoDual{<:AbstractTensorMap})
+    A, ΔA = arrayify(A_ΔA)
+    trace = tr(A)
+
+    function tr_pullback(Δtrace)
+        for (_, b) in blocks(ΔA)
+            TensorKit.diagview(b) .+= Δtrace
+        end
+        return NoRData(), NoRData()
+    end
+
+    return CoDual(trace, Mooncake.NoFData()), tr_pullback
+end
