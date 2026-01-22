@@ -17,7 +17,7 @@ for f! in (:eig_full!, :eig_trunc!)
     @eval function MAK.initialize_output(
             ::typeof($f!), d::AbstractTensorMap, ::DiagonalAlgorithm
         )
-        return similar(d, complex(scalartype(d))), similar(d, complex(scalartype(d)))
+        return similar(d, complex(scalartype(d))), similar(d, complex(scalartype(d)), space(d))
     end
 end
 
