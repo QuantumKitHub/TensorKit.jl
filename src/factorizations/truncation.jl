@@ -147,75 +147,11 @@ for f! in (:eig_trunc!, :eigh_trunc!)
     end
 end
 
-# Find truncation
-# ---------------
+# findtruncated
+# -------------
 # auxiliary functions
 rtol_to_atol(S, p, atol, rtol) = rtol == 0 ? atol : max(atol, norm(S, p) * rtol)
 
-function _compute_truncerr(Σdata, truncdim, p = 2)
-    I = keytype(Σdata)
-    S = scalartype(valtype(Σdata))
-    return TensorKit._norm(
-        (c => @view(v[(get(truncdim, c, 0) + 1):end]) for (c, v) in Σdata),
-        p, zero(S)
-    )
-end
-
-function _findnexttruncvalue(
-        S, truncdim::SectorDict{I, Int}; by = identity, rev::Bool = true
-    ) where {I <: Sector}
-    # early return
-    (isempty(S) || all(iszero, values(truncdim))) && return nothing
-    if rev
-        σmin, imin = findmin(keys(truncdim)) do c
-            d = truncdim[c]
-            return by(S[c][d])
-        end
-        return σmin, keys(truncdim)[imin]
-    else
-        σmax, imax = findmax(keys(truncdim)) do c
-            d = truncdim[c]
-            return by(S[c][d])
-        end
-        return σmax, keys(truncdim)[imax]
-    end
-end
-
-function _sort_and_perm(values::SectorVector; by = identity, rev::Bool = false)
-    values_sorted = similar(values)
-    perms = SectorDict(
-        (
-                begin
-                    p = sortperm(v; by, rev)
-                    vs = values_sorted[c]
-                    vs .= view(v, p)
-                    c => p
-                end
-            ) for (c, v) in pairs(values)
-    )
-    return values_sorted, perms
-end
-
-function _findtruncvalue_order(values::SectorVector, n::Int; by = identity, rev::Bool = false)
-    I = sectortype(values)
-
-    if FusionStyle(I) isa UniqueFusion # dimensions are all 1
-        p = sortperm(parent(values), n; by, rev)
-        return n <= 0 ? nothing : by(values[p[min(n, length(p))]])
-    end
-
-        p = sortperm(parent(values); by, rev)
-        dims = similar(values, Base.promote_op(dim, I))
-        for (c, v) in pairs(dims)
-            fill!(v, dim(c))
-        end
-        cumulative_dim = cumsum(Base.permute!(parent(dims), p))
-        k = findlast(<=(n), cumulative_dim)
-        return isnothing(k) ? k : by(values[p[k]])
-end
-
-# findtruncated
-# -------------
 # Generic fallback
 function MAK.findtruncated_svd(values::SectorVector, strategy::TruncationStrategy)
     return MAK.findtruncated(values, strategy)
@@ -225,20 +161,20 @@ function MAK.findtruncated(values::SectorVector, ::NoTruncation)
     return SectorDict(c => Colon() for c in keys(values))
 end
 
-# TruncationByOrder strategy:
-# - find the howmany'th value of the input sorted according to the strategy
-# - discard everything that is ordered after that value
-
 function MAK.findtruncated(values::SectorVector, strategy::TruncationByOrder)
-    val = _findtruncvalue_order(values, strategy.howmany; strategy.by, strategy.rev)
+    I = sectortype(values)
 
-    if isnothing(val)
-        # discard everything
-        return SectorDict{sectortype(values), UnitRange{Int}}()
-    else
-        strategy = trunctol(; atol = val, strategy.by, keep_below = !strategy.rev)
-        return MAK.findtruncated_svd(values, strategy)
+    dims = similar(values, Base.promote_op(dim, I))
+    for (c, v) in pairs(dims)
+        fill!(v, dim(c))
     end
+
+    perm = sortperm(parent(values); strategy.by, strategy.rev)
+    cumulative_dim = cumsum(Base.permute!(parent(dims), perm))
+
+    result = similar(values, Bool)
+    parent(result)[perm] .= cumulative_dim .<= strategy.howmany
+    return result
 end
 # disambiguate
 MAK.findtruncated_svd(values::SectorVector, strategy::TruncationByOrder) =
@@ -259,28 +195,29 @@ function MAK.findtruncated_svd(values::SectorVector, strategy::TruncationByValue
     return SectorDict(c => MAK.findtruncated_svd(d, strategy′) for (c, d) in pairs(values))
 end
 
-function MAK.findtruncated(values::SectorVector, strategy::TruncationByError)
-    values_sorted, perms = _sort_and_perm(values; strategy.by, strategy.rev)
-    inds = MAK.findtruncated_svd(values_sorted, truncrank(strategy.howmany))
-    return SectorDict(c => perms[c][I] for (c, I) in inds)
-end
-function MAK.findtruncated_svd(values::SectorVector, strategy::TruncationByError)
-    I = keytype(values)
-    truncdim = SectorDict{I, Int}(c => length(d) for (c, d) in pairs(values))
-    by(c, v) = abs(v)^strategy.p * dim(c)
-    Nᵖ = sum(((c, v),) -> sum(Base.Fix1(by, c), v), pairs(values))
-    ϵᵖ = max(strategy.atol^strategy.p, strategy.rtol^strategy.p * Nᵖ)
-    truncerrᵖ = zero(real(scalartype(valtype(values))))
-    next = _findnexttruncvalue(values, truncdim)
-    while !isnothing(next)
-        σmin, cmin = next
-        truncerrᵖ += by(cmin, σmin)
-        truncerrᵖ >= ϵᵖ && break
-        (truncdim[cmin] -= 1) == 0 && delete!(truncdim, cmin)
-        next = _findnexttruncvalue(values, truncdim)
+function MAK.findtruncated(values::SectorVector, strategy::MAK.TruncationByError)
+    ϵᵖmax = max(strategy.atol^strategy.p, strategy.rtol^strategy.p * norm(values, strategy.p))
+    ϵᵖ = similar(values, typeof(ϵᵖmax))
+
+    if FusionStyle(sectortype(values)) isa UniqueFusion # dimensions are all 1
+        parent(ϵᵖ) .= abs.(parent(values)) .^ strategy.p
+    else
+        for (c, v) in pairs(values)
+            v′ = ϵᵖ[c]
+            v′ .= abs.(v) .^ strategy.p .* dim(c)
+        end
     end
-    return SectorDict{I, Base.OneTo{Int}}(c => Base.OneTo(d) for (c, d) in truncdim)
+
+    perm = sortperm(parent(values); by = abs, rev = false)
+    cumulative_err = cumsum(Base.permute!(parent(ϵᵖ), perm))
+
+    result = similar(values, Bool)
+    parent(result)[perm] .= cumulative_err .> ϵᵖmax
+    return result
 end
+# disambiguate
+MAK.findtruncated_svd(values::SectorVector, strategy::TruncationByError) =
+    MAK.findtruncated(values, strategy)
 
 function MAK.findtruncated(values::SectorVector, strategy::TruncationSpace)
     blockstrategy(c) = truncrank(dim(strategy.space, c); strategy.by, strategy.rev)
