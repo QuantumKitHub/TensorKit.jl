@@ -17,7 +17,7 @@ for f! in (:eig_full!, :eig_trunc!)
     @eval function MAK.initialize_output(
             ::typeof($f!), d::AbstractTensorMap, ::DiagonalAlgorithm
         )
-        return d, similar(d)
+        return similar(d, complex(scalartype(d))), similar(d, complex(scalartype(d)))
     end
 end
 
@@ -93,7 +93,7 @@ end
 # For diagonal inputs we don't have to promote the scalartype since we know they are symmetric
 function MAK.initialize_output(::typeof(eig_vals!), t::AbstractTensorMap, alg::DiagonalAlgorithm)
     V_D = fuse(domain(t))
-    Tc = scalartype(t)
+    Tc = complex(scalartype(t))
     A = similarstoragetype(t, Tc)
     return SectorVector{Tc, sectortype(t), A}(undef, V_D)
 end
