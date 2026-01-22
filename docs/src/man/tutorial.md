@@ -1,8 +1,8 @@
 # [Tutorial](@id s_tutorial)
 
 Before discussing at length all aspects of this package, both its usage and implementation,
-we start with a short tutorial to sketch the main capabilities. Thereto, we start by
-loading TensorKit.jl
+we start with a short tutorial to sketch the main capabilities. Thereto, we start by loading
+TensorKit.jl
 
 ```@repl tutorial
 using TensorKit
@@ -17,12 +17,12 @@ The most important objects in TensorKit.jl are tensors, which we now create with
 A = randn(ℝ^3 ⊗ ℝ^2 ⊗ ℝ^4)
 ```
 
-Note that we entered the tensor size not as plain dimensions, by specifying the vector
-space associated with these tensor indices, in this case `ℝ^n`, which can be obtained by
-typing `\bbR+TAB`. The tensor then lives in the tensor product of the different spaces,
-which we can obtain by typing `⊗` (i.e. `\otimes+TAB`), although for simplicity also the
-usual multiplication sign `*` does the job. Note also that `A` is printed as an instance of
-a parametric type `TensorMap`, which we will discuss below and contains `Tensor`.
+Note that we entered the tensor size not as plain dimensions, by specifying the vector space
+associated with these tensor indices, in this case `ℝ^n`, which can be obtained by typing
+`\bbR+TAB`. The tensor then lives in the tensor product of the different spaces, which we
+can obtain by typing `⊗` (i.e. `\otimes+TAB`), although for simplicity also the usual
+multiplication sign `*` does the job. Note also that `A` is printed as an instance of a
+parametric type `TensorMap`, which we will discuss below and contains `Tensor`.
 
 Let us briefly sidetrack into the nature of `ℝ^n`:
 
@@ -35,8 +35,8 @@ supertype(ElementarySpace)
 ```
 
 i.e. `ℝ^n` can also be created without Unicode using the longer syntax `CartesianSpace(n)`.
-It is subtype of `ElementarySpace`, with a standard (Euclidean) inner product
-over the real numbers. Furthermore,
+It is subtype of `ElementarySpace`, with a standard (Euclidean) inner product over the real
+numbers. Furthermore,
 
 ```@repl tutorial
 W = ℝ^3 ⊗ ℝ^2 ⊗ ℝ^4
@@ -80,16 +80,16 @@ scalarBA′ = dot(B′,A)
 ```
 
 However, in this particular case, we can reorder the indices of `B′` to match space of `A`,
-using the routine `permute` (we deliberately choose not to overload `permutedims` from
-Julia Base, for reasons that become clear below):
+using the routine `permute` (we deliberately choose not to overload `permutedims` from Julia
+Base, for reasons that become clear below):
 
 ```@repl tutorial
 space(permute(B′, (3, 2, 1))) == space(A)
 ```
 
 We can contract two tensors using Einstein summation convention, which takes the interface
-from [TensorOperations.jl](https://github.com/quantumkithub/TensorOperations.jl). TensorKit.jl
-reexports the `@tensor` macro
+from [TensorOperations.jl](https://github.com/quantumkithub/TensorOperations.jl).
+TensorKit.jl reexports the `@tensor` macro
 
 ```@repl tutorial
 @tensor D[a,b,c,d] := A[a,b,e] * B[d,c,e]
@@ -130,7 +130,7 @@ domain(A)
 
 An instance of `TensorMap` thus represents a linear map from its domain to its codomain,
 making it an element of the space of homomorphisms between these two spaces. That space is
-represented using its own type `HomSpace` in TensorKit.jl, and which admits a direct 
+represented using its own type `HomSpace` in TensorKit.jl, and which admits a direct
 constructor as well as a unicode alternative using the symbol `→` (obtained as `\to+TAB` or
 `\rightarrow+TAB`) or `←` (obtained as `\leftarrow+TAB`).
 
@@ -157,7 +157,7 @@ Note that for the construction of `M₁`, in accordance with how one specifies t
 of a matrix (e.g. `randn(4,3)`), the first space is the codomain and the second the domain.
 This is somewhat opposite to the general notation for a function `f:domain→codomain`, so
 that we also support this more mathemical notation, as illustrated in the construction of
-`M₂`.  However, as this is confusing from the perspective of rows and columns, we also
+`M₂`. However, as this is confusing from the perspective of rows and columns, we also
 support the syntax `codomain ← domain` and actually use this as the default way of printing
 `HomSpace` instances.
 
@@ -184,8 +184,8 @@ P = U * U' # should be a projector
 P * P ≈ P
 ```
 
-Here, the adjoint of a `TensorMap` results in a new tensor map (actually a simple wrapper
-of type `AdjointTensorMap <: AbstractTensorMap`) with domain and codomain interchanged.
+Here, the adjoint of a `TensorMap` results in a new tensor map (actually a simple wrapper of
+type `AdjointTensorMap <: AbstractTensorMap`) with domain and codomain interchanged.
 
 Our original tensor `A` living in `ℝ^4 * ℝ^2 * ℝ^3` is isomorphic to e.g. a linear map
 `ℝ^3 → ℝ^4 * ℝ^2`. This is where the full power of `permute` emerges. It allows to specify a
@@ -201,11 +201,11 @@ In fact, `tsvd(A, ((1, 3), (2,)))` is a shorthand for `tsvd(permute(A, ((1, 3), 
 where `tsvd(A::TensorMap)` will just compute the singular value decomposition according to
 the given codomain and domain of `A`.
 
-Note, finally, that the `@tensor` macro treats all indices at the same footing and thus
-does not distinguish between codomain and domain. The linear numbering is first all indices
-in the codomain, followed by all indices in the domain. However, when `@tensor` creates a
-new tensor (i.e. when using `:=`), the default syntax always creates a `Tensor`, i.e. with
-all indices in the codomain.
+Note, finally, that the `@tensor` macro treats all indices at the same footing and thus does
+not distinguish between codomain and domain. The linear numbering is first all indices in
+the codomain, followed by all indices in the domain. However, when `@tensor` creates a new
+tensor (i.e. when using `:=`), the default syntax always creates a `Tensor`, i.e. with all
+indices in the codomain.
 
 ```@repl tutorial
 @tensor A′[a,b,c] := U[a,c,d] * S[d,e] * Vd[e,b];
@@ -224,8 +224,8 @@ immediately specify the desired codomain and domain indices.
 ## Complex tensors
 
 For applications in e.g. quantum physics, we of course want to work with complex tensors.
-Trying to create a complex-valued tensor with `CartesianSpace` indices is of course
-somewhat contrived and prints a (one-time) warning
+Trying to create a complex-valued tensor with `CartesianSpace` indices is of course somewhat
+contrived and prints a (one-time) warning
 
 ```@repl tutorial
 A = randn(ComplexF64, ℝ^3 ⊗ ℝ^2 ⊗ ℝ^4)
@@ -260,8 +260,8 @@ However, trying the following
 @tensor d = A[a,b,c] * A[a,b,c]
 ```
 
-we obtain `SpaceMismatch` errors. The reason for this is that, with `ComplexSpace`, an
-index in a space `ℂ^n` can only be contracted with an index in the dual space
+we obtain `SpaceMismatch` errors. The reason for this is that, with `ComplexSpace`, an index
+in a space `ℂ^n` can only be contracted with an index in the dual space
 `dual(ℂ^n) == (ℂ^n)'`. Because of the complex Euclidean inner product, the dual space is
 equivalent to the complex conjugate space, but not the space itself.
 
@@ -297,11 +297,11 @@ which are each others dual. Knowing this, all the other functionality of tensors
 ## [Symmetries](@id ss_tutorial_symmetries)
 
 So far, the functionality that we have illustrated seems to be just a convenient (or
-inconvenient?) wrapper around dense multidimensional arrays, e.g. Julia's Base `Array`.
-More power becomes visible when involving symmetries. With symmetries, we imply that there
-is some symmetry action defined on every vector space associated with each of the indices
-of a `TensorMap`, and the `TensorMap` is then required to be equivariant, i.e. it acts as
-an intertwiner between the tensor product representation on the domain and that on the
+inconvenient?) wrapper around dense multidimensional arrays, e.g. Julia's Base `Array`. More
+power becomes visible when involving symmetries. With symmetries, we imply that there is
+some symmetry action defined on every vector space associated with each of the indices of a
+`TensorMap`, and the `TensorMap` is then required to be equivariant, i.e. it acts as an
+intertwiner between the tensor product representation on the domain and that on the
 codomain. By Schur's lemma, this means that the tensor is block diagonal in some basis
 corresponding to the irreducible representations that can be coupled to by combining the
 different representations on the different spaces in the domain or codomain. For Abelian
@@ -323,9 +323,9 @@ Here, we create a 5-dimensional space `V1`, which has a three-dimensional subspa
 associated with charge 0 (the trivial irrep of ``ℤ₂``) and a two-dimensional subspace with
 charge 1 (the non-trivial irrep). Similar for `V2`, where both subspaces are one-
 dimensional. Representing the tensor as a dense `Array`, we see that it is zero in those
-regions where the charges don't add to zero (modulo 2). Of course, the `Tensor(Map)` type
-in TensorKit.jl won't store these zero blocks, and only stores the non-zero information,
-which we can recognize also in the full `Array` representation.
+regions where the charges don't add to zero (modulo 2). Of course, the `Tensor(Map)` type in
+TensorKit.jl won't store these zero blocks, and only stores the non-zero information, which
+we can recognize also in the full `Array` representation.
 
 From there on, the resulting tensors support all of the same operations as the ones we
 encountered in the previous examples.
@@ -378,8 +378,8 @@ supertype(GradedSpace)
 Note that `GradedSpace` is not immediately parameterized by some group `G`, but actually by
 the set of irreducible representations of `G`, denoted as `Irrep[G]`. Indeed, `GradedSpace`
 also supports a grading that is derived from the fusion ring of a (unitary) pre-fusion
-category. Note furthermore that the order in which the charges and their corresponding 
-subspace dimensionality are specified is irrelevant, and that the charges, henceforth called 
+category. Note furthermore that the order in which the charges and their corresponding
+subspace dimensionality are specified is irrelevant, and that the charges, henceforth called
 sectors (which is a more general name for charges or quantum numbers) are of a specific
 type, in this case `Irrep[U₁] == U1Irrep`. However, the `Vect[I]` constructor automatically
 converts the keys in the list of `Pair`s it receives to the correct type. Alternatively, we
@@ -412,26 +412,26 @@ norm(A) ≈ norm(convert(Array, A))
 ```
 
 In this case, the full `Array` representation of the tensor has again many zeros, but it is
-less obvious to recognize the dense blocks, as there are additional zeros and the numbers
-in the original tensor data do not match with those in the `Array`. The reason is of course
+less obvious to recognize the dense blocks, as there are additional zeros and the numbers in
+the original tensor data do not match with those in the `Array`. The reason is of course
 that the original tensor data now needs to be transformed with a construction known as
-fusion trees, which are made up out of the Clebsch-Gordan coefficients of the group.
-Indeed, note that the non-zero blocks are also no longer labeled by a list of sectors, but
-by pairs of fusion trees. This will be explained further in the manual. However, the
-Clebsch-Gordan coefficients of the group are only needed to actually convert a tensor to an
-`Array`. For working with tensors with `SU₂Space` indices, e.g. contracting or factorizing
-them, the Clebsch-Gordan coefficients are never needed explicitly. Instead, recoupling
-relations are used to symbolically manipulate the basis of fusion trees, and this only
-requires what is known as the topological data of the group (or its representation theory).
+fusion trees, which are made up out of the Clebsch-Gordan coefficients of the group. Indeed,
+note that the non-zero blocks are also no longer labeled by a list of sectors, but by pairs
+of fusion trees. This will be explained further in the manual. However, the Clebsch-Gordan
+coefficients of the group are only needed to actually convert a tensor to an `Array`. For
+working with tensors with `SU₂Space` indices, e.g. contracting or factorizing them, the
+Clebsch-Gordan coefficients are never needed explicitly. Instead, recoupling relations are
+used to symbolically manipulate the basis of fusion trees, and this only requires what is
+known as the topological data of the group (or its representation theory).
 
 In fact, this formalism extends beyond the case of group representations on vector spaces,
-and can also deal with super vector spaces (to describe fermions) and more general
-(unitary) fusion categories. Support for all of these generalizations is present in
-TensorKit.jl. Indeed, all of these concepts will be explained throughout the remainder of
-this manual, including several details regarding their implementation. However, to just use
-tensors and their manipulations (contractions, factorizations, ...) in higher level
-algorithms (e.g. tensoer network algorithms), one does not need to know or understand most
-of these details, and one can immediately refer to the general interface of the `TensorMap`
-type, discussed on the [last page](@ref s_tensors). Adhering to this interface should yield
-code and algorithms that are oblivious to the underlying symmetries and can thus work with
-arbitrary symmetric tensors.
+and can also deal with super vector spaces (to describe fermions) and more general (unitary)
+fusion categories. Support for all of these generalizations is present in TensorKit.jl.
+Indeed, all of these concepts will be explained throughout the remainder of this manual,
+including several details regarding their implementation. However, to just use tensors and
+their manipulations (contractions, factorizations, ...) in higher level algorithms (e.g.
+tensoer network algorithms), one does not need to know or understand most of these details,
+and one can immediately refer to the general interface of the `TensorMap` type, discussed on
+the [last page](@ref s_tensors). Adhering to this interface should yield code and algorithms
+that are oblivious to the underlying symmetries and can thus work with arbitrary symmetric
+tensors.
