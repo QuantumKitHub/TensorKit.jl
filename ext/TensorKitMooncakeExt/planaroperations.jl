@@ -49,19 +49,31 @@ end
 
 planartrace_pullback_ΔC!(ΔC, β) = (scale!(ΔC, conj(β)); NoRData())
 
+# This implementation is slightly more involved than its non-planar counterpart
+# this is because we lack a general `pAB` argument in `planarcontract`, and need
+# to keep things planar along the way.
+# In particular, we can't simply tensor product with multiple identities in one go
+# if they aren't "contiguous", e.g. p = ((1, 4, 5), ()), q = ((2, 6), (3, 7))
 function planartrace_pullback_ΔA!(
         ΔA, ΔC, A, p, q, α, backend, allocator
     )
-    ip = invperm((linearize(p)..., q[1]..., q[2]...))
-    pdA = _repartition(ip, A)
-    E = one!(TO.tensoralloc_add(scalartype(A), A, q, false))
-    twist!(E, filter(x -> !isdual(space(E, x)), codomainind(E)))
-    pE = ((), trivtuple(TO.numind(q)))
-    pΔC = (trivtuple(TO.numind(p)), ())
-    TensorKit.planarcontract!(
-        ΔA, ΔC, pΔC, E, pE, pdA, conj(α), One(), backend, allocator
-    )
-    return NoRData()
+    if length(q[1]) == 0
+        ip = invperm(linearize(p))
+        pΔA = _repartition(ip, A)
+        TK.add_transpose!(ΔA, ΔC, pΔA, conj(α), One(), backend, allocator)
+        return NoRData()
+    end
+    # if length(q[1]) == 1
+    #     ip = invperm((p[1]..., q[2]..., p[2]..., q[1]...))
+    #     pdA = _repartition(ip, A)
+    #     E = one!(TO.tensoralloc_add(scalartype(A), A, q, false))
+    #     twist!(E, filter(x -> !isdual(space(E, x)), codomainind(E)))
+    #     # pE = ((), trivtuple(TO.numind(q)))
+    #     # pΔC = (trivtuple(TO.numind(p)), ())
+    #     TensorKit.planaradd!(ΔA, ΔC ⊗ E, pdA, conj(α), One(), backend, allocator)
+    #     return NoRData()
+    # end
+    error("The reverse rule for `planartrace` is not yet implemented")
 end
 
 function planartrace_pullback_Δα(
@@ -73,7 +85,7 @@ function planartrace_pullback_Δα(
     # TODO: this result might be easier to compute as:
     # C′ = βC + α * trace(A) ⟹ At = (C′ - βC) / α
     At = TO.tensoralloc_add(scalartype(A), A, p, false, Val(true), allocator)
-    TensorKit.planartrace!(At, A, p, q, false, One(), backend, allocator)
+    TensorKit.planartrace!(At, A, p, q, One(), Zero(), backend, allocator)
     Δα = inner(At, ΔC)
     TO.tensorfree!(At, allocator)
     return Mooncake._rdata(Δα)
