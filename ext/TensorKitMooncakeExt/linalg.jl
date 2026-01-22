@@ -1,3 +1,8 @@
+# Shared
+# ------
+pullback_dC!(ΔC, β) = (scale!(ΔC, conj(β)); return NoRData())
+pullback_dβ(C, ΔC, β) = _needs_tangent(β) ? inner(C, ΔC) : NoRData()
+
 @is_primitive DefaultCtx ReverseMode Tuple{typeof(mul!), AbstractTensorMap, AbstractTensorMap, AbstractTensorMap, Number, Number}
 
 function Mooncake.rrule!!(
@@ -22,14 +27,13 @@ function Mooncake.rrule!!(
     function mul_pullback(::NoRData)
         copy!(C, C_cache)
 
-        scale!(ΔC, conj(β))
         mul!(ΔA, ΔC, B', conj(α), One())
         mul!(ΔB, A', ΔC, conj(α), One())
-        ΔCr = NoRData()
         ΔAr = NoRData()
         ΔBr = NoRData()
         Δαr = isnothing(AB) ? NoRData() : Mooncake._rdata(inner(AB, ΔC))
-        Δβr = _needs_tangent(β) ? Mooncake._rdata(inner(C, ΔC)) : NoRData()
+        Δβr = pullback_dβ(C, ΔC, β)
+        ΔCr = pullback_dC!(ΔC, β)
 
         return NoRData(), ΔCr, ΔAr, ΔBr, Δαr, Δβr
     end

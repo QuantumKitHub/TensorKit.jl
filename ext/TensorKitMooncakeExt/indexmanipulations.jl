@@ -31,21 +31,17 @@ for transform in (:permute, :transpose)
         # if we need to compute Δa, it is faster to allocate an intermediate permuted A
         # and store that instead of repeating the permutation in the pullback each time.
         # effectively, we replace `add_permute` by `add ∘ permute`.
-        Tdα = Mooncake.rdata_type(Mooncake.tangent_type(typeof(α)))
-        Ap = if Tdα === NoRData
-            TK.$add_transform!(C, A, p, α, β, ba...)
-            nothing
-        else
+        Ap = if _needs_tangent(α)
             Ap = $transform(A, p)
             add!(C, Ap, α, β)
             Ap
+        else
+            TK.$add_transform!(C, A, p, α, β, ba...)
+            nothing
         end
 
         function $add_transform_pullback(::NoRData)
             copy!(C, C_cache)
-
-            scale!(ΔC, conj(β))
-            ΔCr = NoRData()
 
             # ΔA
             ip = invperm(linearize(p))
@@ -60,14 +56,8 @@ for transform in (:permute, :transpose)
                 Mooncake._rdata(inner(Ap, ΔC))
             end
 
-            # Δβ
-            Tdβ = Mooncake.rdata_type(Mooncake.tangent_type(typeof(β)))
-            Δβr = if Tdβ === NoRData
-                NoRData()
-            else
-                Mooncake._rdata(inner(C, ΔC))
-            end
-
+            Δβr = pullback_dβ(C, ΔC, β)
+            ΔCr = pullback_dC!(ΔC, β)
 
             return NoRData(), ΔCr, ΔAr, NoRData(), Δαr, Δβr, map(Returns(NoRData()), ba)...
         end
@@ -107,21 +97,17 @@ function Mooncake.rrule!!(
     # if we need to compute Δa, it is faster to allocate an intermediate braided A
     # and store that instead of repeating the permutation in the pullback each time.
     # effectively, we replace `add_permute` by `add ∘ permute`.
-    Tdα = Mooncake.rdata_type(Mooncake.tangent_type(typeof(α)))
-    Ap = if Tdα === NoRData
-        TK.add_braid!(C, A, p, levels, α, β, ba...)
-        nothing
-    else
+    Ap = if _needs_tangent(α)
         Ap = braid(A, p, levels)
         add!(C, Ap, α, β)
         Ap
+    else
+        TK.add_braid!(C, A, p, levels, α, β, ba...)
+        nothing
     end
 
     function add_braid!_pullback(::NoRData)
         copy!(C, C_cache)
-
-        scale!(ΔC, conj(β))
-        ΔCr = NoRData()
 
         # ΔA
         ip = invperm(linearize(p))
@@ -137,14 +123,8 @@ function Mooncake.rrule!!(
             Mooncake._rdata(inner(Ap, ΔC))
         end
 
-        # Δβ
-        Tdβ = Mooncake.rdata_type(Mooncake.tangent_type(typeof(β)))
-        Δβr = if Tdβ === NoRData
-            NoRData()
-        else
-            Mooncake._rdata(inner(C, ΔC))
-        end
-
+        Δβr = pullback_dβ(C, ΔC, β)
+        ΔCr = pullback_dC!(ΔC, β)
 
         return NoRData(), ΔCr, ΔAr, NoRData(), NoRData(), Δαr, Δβr, map(Returns(NoRData()), ba)...
     end
