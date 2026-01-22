@@ -108,3 +108,11 @@ LinearAlgebra.dot(v1::SectorVector, v2::SectorVector) = inner(v1, v2)
 function LinearAlgebra.norm(v::SectorVector, p::Real = 2)
     return _norm(blocks(v), p, float(zero(real(scalartype(v)))))
 end
+
+# Common functionality
+# --------------------
+# specific overloads for performance and/or GPU
+Base.minimum(x::SectorVector) = minimum(parent(x))
+Base.minimum(f, x::SectorVector) = minimum(f, parent(x))
+Base.maximum(x::SectorVector) = maximum(parent(x))
+Base.maximum(f, x::SectorVector) = maximum(f, parent(x))
