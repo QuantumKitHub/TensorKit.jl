@@ -11,6 +11,7 @@ using Random
 using Test: @test
 using TensorKit
 using TensorKit: ℙ, PlanarTrivial
+using TensorOperations: IndexTuple, Index2Tuple
 using Base.Iterators: take, product
 using TupleTools
 
