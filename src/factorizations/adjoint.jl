@@ -7,6 +7,7 @@ _adjoint(alg::MAK.LAPACK_HouseholderLQ) = MAK.LAPACK_HouseholderQR(; alg.kwargs.
 _adjoint(alg::MAK.LAPACK_HouseholderQL) = MAK.LAPACK_HouseholderRQ(; alg.kwargs...)
 _adjoint(alg::MAK.LAPACK_HouseholderRQ) = MAK.LAPACK_HouseholderQL(; alg.kwargs...)
 _adjoint(alg::MAK.PolarViaSVD) = MAK.PolarViaSVD(_adjoint(alg.svd_alg))
+_adjoint(alg::TruncatedAlgorithm) = TruncatedAlgorithm(_adjoint(alg.alg), alg.trunc)
 _adjoint(alg::AbstractAlgorithm) = alg
 
 _adjoint(alg::MAK.CUSOLVER_HouseholderQR) = MAK.LQViaTransposedQR(alg)
@@ -81,7 +82,7 @@ for (left_f, right_f) in zip(
 end
 
 # 3-arg functions
-for f in (:svd_full, :svd_compact)
+for f in (:svd_full, :svd_compact, :svd_trunc)
     f! = Symbol(f, :!)
     @eval function MAK.copy_input(::typeof($f), t::AdjointTensorMap)
         return adjoint(MAK.copy_input($f, adjoint(t)))
@@ -93,9 +94,16 @@ for f in (:svd_full, :svd_compact)
         return reverse(adjoint.(MAK.initialize_output($f!, adjoint(t), _adjoint(alg))))
     end
 
-    @eval function MAK.$f!(t::AdjointTensorMap, F, alg::AbstractAlgorithm)
-        F′ = $f!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
-        return reverse(adjoint.(F′))
+    if f === :svd_trunc
+        function MAK.svd_trunc!(t::AdjointTensorMap, F, alg::AbstractAlgorithm)
+            U, S, Vᴴ, ϵ = svd_trunc!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
+            return Vᴴ', S, U', ϵ
+        end
+    else
+        @eval function MAK.$f!(t::AdjointTensorMap, F, alg::AbstractAlgorithm)
+            F′ = $f!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
+            return reverse(adjoint.(F′))
+        end
     end
 
     # disambiguate by prohibition
@@ -110,6 +118,15 @@ end
 function MAK.svd_compact!(t::AdjointTensorMap, F, alg::DiagonalAlgorithm)
     F′ = svd_compact!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
     return reverse(adjoint.(F′))
+end
+function MAK.initialize_output(
+        ::typeof(svd_trunc!), t::AdjointTensorMap, alg::TruncatedAlgorithm
+    )
+    return reverse(adjoint.(MAK.initialize_output(svd_trunc!, adjoint(t), _adjoint(alg))))
+end
+function MAK.svd_trunc!(t::AdjointTensorMap, F, alg::TruncatedAlgorithm)
+    U, S, Vᴴ, ϵ = svd_trunc!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
+    return Vᴴ', S, U', ϵ
 end
 
 function LinearAlgebra.isposdef(t::AdjointTensorMap)
