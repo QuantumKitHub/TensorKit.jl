@@ -82,7 +82,7 @@ end
 function MAK.truncate(
         ::typeof(left_null!), (U, S)::NTuple{2, AbstractTensorMap}, strategy::TruncationStrategy
     )
-    extended_S = zerovector!(SectorVector{eltype(S)}(undef, fuse(codomain(U))))
+    extended_S = zerovector!(SectorVector{eltype(S), sectortype(S), storagetype(S)}(undef, fuse(codomain(U))))
     for (c, b) in blocks(S)
         copyto!(extended_S[c], diagview(b)) # copyto! since `b` might be shorter
     end
@@ -95,7 +95,7 @@ end
 function MAK.truncate(
         ::typeof(right_null!), (S, Vᴴ)::NTuple{2, AbstractTensorMap}, strategy::TruncationStrategy
     )
-    extended_S = zerovector!(SectorVector{eltype(S)}(undef, fuse(domain(Vᴴ))))
+    extended_S = zerovector!(SectorVector{eltype(S), sectortype(S), storagetype(S)}(undef, fuse(domain(Vᴴ))))
     for (c, b) in blocks(S)
         copyto!(extended_S[c], diagview(b)) # copyto! since `b` might be shorter
     end
