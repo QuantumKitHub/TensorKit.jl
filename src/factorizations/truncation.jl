@@ -29,6 +29,8 @@ end
 # ---------
 _blocklength(d::Integer, ind) = _blocklength(Base.OneTo(d), ind)
 _blocklength(ax, ind) = length(ax[ind])
+_blocklength(ax::Base.OneTo, ind::AbstractVector{<:Integer}) = length(ind)
+
 function truncate_space(V::ElementarySpace, inds)
     return spacetype(V)(c => _blocklength(dim(V, c), ind) for (c, ind) in inds)
 end
