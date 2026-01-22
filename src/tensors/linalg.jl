@@ -201,7 +201,7 @@ LinearAlgebra.isdiag(t::AbstractTensorMap) = all(LinearAlgebra.isdiag ∘ last, 
 function Base.copy!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap)
     space(tdst) == space(tsrc) || throw(SpaceMismatch("$(space(tdst)) ≠ $(space(tsrc))"))
     for ((c, bdst), (_, bsrc)) in zip(blocks(tdst), blocks(tsrc))
-        bdst .= bsrc
+        copy!(bdst, bsrc)
     end
     return tdst
 end
