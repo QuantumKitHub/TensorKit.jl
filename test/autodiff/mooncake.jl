@@ -231,20 +231,19 @@ for V in spacelist
                 β = randn(T)
                 V2_conj = prod(conj, V2; init = one(V[1]))
 
-                for conjA in (false, true), conjB in (false, true)
-                    A = randn(T, permute(V1 ← (conjA ? V2_conj : V2), ipA))
-                    B = randn(T, permute((conjB ? V2_conj : V2) ← V3, ipB))
-                    C = randn!(
-                        TensorOperations.tensoralloc_contract(
-                            T, A, pA, conjA, B, pB, conjB, pAB, Val(false)
-                        )
+                A = randn(T, permute(V1 ← V2, ipA))
+                B = randn(T, permute(V2 ← V3, ipB))
+                C = randn!(
+                    TensorOperations.tensoralloc_contract(
+                        T, A, pA, false, B, pB, false, pAB, Val(false)
                     )
-                    Mooncake.TestUtils.test_rule(
-                        rng, tensorcontract!, C, A, pA, conjA, B, pB, conjB, pAB, α, β;
-                        atol, rtol, mode
-                    )
-
-                end
+                )
+                Mooncake.TestUtils.test_rule(
+                    rng, TensorKit.blas_contract!,
+                    C, A, pA, B, pB, pAB, α, β,
+                    TensorOperations.DefaultBackend(), TensorOperations.DefaultAllocator();
+                    atol, rtol, mode
+                )
             end
         end
 
