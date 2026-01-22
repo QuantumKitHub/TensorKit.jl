@@ -45,8 +45,8 @@ function Mooncake.rrule!!(
         Δαr = blas_contract_pullback_Δα(
             ΔC, A, pA, B, pB, pAB, α, backend, allocator
         )
-        Δβr = blas_contract_pullback_Δβ(ΔC, C, β)
-        ΔCr = blas_contract_pullback_ΔC!(ΔC, β)
+        Δβr = pullback_dβ(ΔC, C, β)
+        ΔCr = pullback_dC!(ΔC, β)
 
         return NoRData(), ΔCr,
             ΔAr, NoRData(),
@@ -58,8 +58,6 @@ function Mooncake.rrule!!(
 
     return C_ΔC, blas_contract_pullback
 end
-
-blas_contract_pullback_ΔC!(ΔC, β) = (scale!(ΔC, conj(β)); NoRData())
 
 function blas_contract_pullback_ΔA!(
         ΔA, ΔC, A, pA, B, pB, pAB, α, backend, allocator
@@ -125,14 +123,6 @@ function blas_contract_pullback_Δα(
     return Mooncake._rdata(Δα)
 end
 
-function blas_contract_pullback_Δβ(ΔC, C, β)
-    Tdβ = Mooncake.rdata_type(Mooncake.tangent_type(typeof(β)))
-    Tdβ === NoRData && return NoRData()
-
-    Δβ = inner(C, ΔC)
-    return Mooncake._rdata(Δβ)
-end
-
 # tensortrace!
 # ------------
 @is_primitive(
@@ -171,8 +161,8 @@ function Mooncake.rrule!!(
 
         ΔAr = trace_permute_pullback_ΔA!(ΔA, ΔC, A, p, q, α, backend)
         Δαr = trace_permute_pullback_Δα(ΔC, A, p, q, α, backend)
-        Δβr = trace_permute_pullback_Δβ(ΔC, C, β)
-        ΔCr = trace_permute_pullback_ΔC!(ΔC, β)
+        Δβr = pullback_dβ(ΔC, C, β)
+        ΔCr = pullback_dC!(ΔC, β)
 
         return NoRData(),
             ΔCr, ΔAr, NoRData(), NoRData(),
@@ -181,8 +171,6 @@ function Mooncake.rrule!!(
 
     return C_ΔC, trace_permute_pullback
 end
-
-trace_permute_pullback_ΔC!(ΔC, β) = (scale!(ΔC, conj(β)); NoRData())
 
 function trace_permute_pullback_ΔA!(
         ΔA, ΔC, A, p, q, α, backend
@@ -210,12 +198,4 @@ function trace_permute_pullback_Δα(
     At = TO.tensortrace(A, p, q, false, One(), backend)
     Δα = inner(At, ΔC)
     return Mooncake._rdata(Δα)
-end
-
-function trace_permute_pullback_Δβ(ΔC, C, β)
-    Tdβ = Mooncake.rdata_type(Mooncake.tangent_type(typeof(β)))
-    Tdβ === NoRData && return NoRData()
-
-    Δβ = inner(C, ΔC)
-    return Mooncake._rdata(Δβ)
 end
