@@ -9,6 +9,7 @@ export Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, 
 using Random
 using TensorKit
 using TensorKit: ℙ, PlanarTrivial
+using TensorOperations: IndexTuple, Index2Tuple
 using Base.Iterators: take, product
 using TupleTools
 
