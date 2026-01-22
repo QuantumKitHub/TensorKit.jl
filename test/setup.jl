@@ -1,5 +1,6 @@
 module TestSetup
 
+export randindextuple, randcircshift, _repartition, trivtuple
 export smallset, randsector, hasfusiontensor, force_planar
 export random_fusion
 export sectorlist
@@ -11,9 +12,46 @@ using Test: @test
 using TensorKit
 using TensorKit: ℙ, PlanarTrivial
 using Base.Iterators: take, product
+using TupleTools
 
 Random.seed!(123456)
 
+# IndexTuple utility
+# ------------------
+function randindextuple(N::Int, k::Int = rand(0:N))
+    @assert 0 ≤ k ≤ N
+    _p = randperm(N)
+    return (tuple(_p[1:k]...), tuple(_p[(k + 1):end]...))
+end
+function randcircshift(N₁::Int, N₂::Int, k::Int = rand(0:(N₁ + N₂)))
+    N = N₁ + N₂
+    @assert 0 ≤ k ≤ N
+    p = TupleTools.vcat(ntuple(identity, N₁), reverse(ntuple(identity, N₂) .+ N₁))
+    n = rand(0:N)
+    _p = TupleTools.circshift(p, n)
+    return (tuple(_p[1:k]...), reverse(tuple(_p[(k + 1):end]...)))
+end
+
+trivtuple(N) = ntuple(identity, N)
+
+Base.@constprop :aggressive function _repartition(p::IndexTuple, N₁::Int)
+    length(p) >= N₁ ||
+        throw(ArgumentError("cannot repartition $(typeof(p)) to $N₁, $(length(p) - N₁)"))
+    return TupleTools.getindices(p, trivtuple(N₁)),
+        TupleTools.getindices(p, trivtuple(length(p) - N₁) .+ N₁)
+end
+Base.@constprop :aggressive function _repartition(p::Index2Tuple, N₁::Int)
+    return _repartition(linearize(p), N₁)
+end
+function _repartition(p::Union{IndexTuple, Index2Tuple}, ::Index2Tuple{N₁}) where {N₁}
+    return _repartition(p, N₁)
+end
+function _repartition(p::Union{IndexTuple, Index2Tuple}, t::AbstractTensorMap)
+    return _repartition(p, TensorKit.numout(t))
+end
+
+# Sector utility
+# --------------
 smallset(::Type{I}) where {I <: Sector} = take(values(I), 5)
 function smallset(::Type{ProductSector{Tuple{I1, I2}}}) where {I1, I2}
     iter = product(smallset(I1), smallset(I2))
