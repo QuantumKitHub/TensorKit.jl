@@ -36,7 +36,7 @@ Base.size(v::SectorVector, args...) = size(parent(v), args...)
 
 Base.similar(v::SectorVector) = SectorVector(similar(v.data), v.structure)
 Base.similar(v::SectorVector, ::Type{T}) where {T} = SectorVector(similar(v.data, T), v.structure)
-Base.similar(v::SectorVector, V::ElementarySpace) = typeof(v)(undef, V)
+Base.similar(v::SectorVector, V::ElementarySpace) = SectorVector{eltype(v), sectortype(V), storagetype(v)}(undef, V)
 
 Base.copy(v::SectorVector) = SectorVector(copy(v.data), v.structure)
 
@@ -60,8 +60,7 @@ Base.haskey(v::SectorVector{<:Any, I}, key::I) where {I} = key in keys(v)
 # TensorKit interface
 # -------------------
 sectortype(::Type{T}) where {T <: SectorVector} = keytype(T)
-
-Base.similar(v::SectorVector, V::ElementarySpace) = SectorVector(undef, V)
+storagetype(::Type{SectorVector{T, I, A}}) where {T, I, A} = A
 
 blocksectors(v::SectorVector) = keys(v)
 blocks(v::SectorVector) = pairs(v)
