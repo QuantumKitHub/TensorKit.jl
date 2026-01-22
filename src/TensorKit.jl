@@ -123,8 +123,8 @@ using OhMyThreads
 using ScopedValues
 
 using TensorKitSectors
-import TensorKitSectors: dim, BraidingStyle, FusionStyle, ⊠, ⊗
-import TensorKitSectors: dual, type_repr
+import TensorKitSectors: dim, BraidingStyle, FusionStyle, ⊠, ⊗, ×
+import TensorKitSectors: dual, type_repr, fusiontensor
 import TensorKitSectors: twist
 
 using Base: @boundscheck, @propagate_inbounds, @constprop,
@@ -213,6 +213,19 @@ function set_num_transformer_threads(n::Int)
         Strided._set_num_threads_warn(n)
     end
     return TRANSFORMER_THREADS[] = n
+end
+
+const TREEMANIPULATION_THREADS = Ref(1)
+
+get_num_manipulation_threads() = TREEMANIPULATION_THREADS[]
+
+function set_num_manipulation_threads(n::Int)
+    N = Base.Threads.nthreads()
+    if n > N
+        n = N
+        Strided._set_num_threads_warn(n)
+    end
+    return TREEMANIPULATION_THREADS[] = n
 end
 
 # Definitions and methods for tensors

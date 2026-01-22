@@ -324,6 +324,8 @@ end
     return (f₁, f₂)
 end
 
+fusionblocks(t::AbstractTensorMap) = fusionblocks(space(t))
+
 # tensor data: block access
 #---------------------------
 @doc """
