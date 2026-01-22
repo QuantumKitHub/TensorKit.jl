@@ -532,7 +532,8 @@ end
 #---------------------------
 Base.convert(::Type{TensorMap}, t::TensorMap) = t
 function Base.convert(::Type{TensorMap}, t::AbstractTensorMap)
-    return copy!(TensorMap{scalartype(t)}(undef, space(t)), t)
+    A = storagetype(t)
+    return copy!(TensorMapWithStorage{scalartype(A), A}(undef, space(t)), t)
 end
 
 function Base.convert(::Type{TensorMapWithStorage{T, A}}, t::TensorMap) where {T, A}
