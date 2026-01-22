@@ -692,7 +692,7 @@ function planar_trace(
             k += 1
         end
     end
-    k > N₃ && throw(ArgumentError("Not a planar trace"))
+    k > N₃ && throw(ArgumentError(lazy"not a planar trace: ($q1, $q2)"))
 
     q1′ = let i = i, j = j
         map(l -> (l - (l > i) - (l > j)), TupleTools.deleteat(q1, k))
