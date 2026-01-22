@@ -4,72 +4,69 @@ Mooncake.@is_primitive(
     DefaultCtx,
     ReverseMode,
     Tuple{
-        typeof(TO.tensorcontract!),
+        typeof(TensorKit.blas_contract!),
         AbstractTensorMap,
-        AbstractTensorMap, Index2Tuple, Bool,
-        AbstractTensorMap, Index2Tuple, Bool,
+        AbstractTensorMap, Index2Tuple,
+        AbstractTensorMap, Index2Tuple,
         Index2Tuple,
         Number, Number,
-        Vararg{Any},
+        Any, Any,
     }
 )
 
 function Mooncake.rrule!!(
-        ::CoDual{typeof(TO.tensorcontract!)},
+        ::CoDual{typeof(TensorKit.blas_contract!)},
         C_ΔC::CoDual{<:AbstractTensorMap},
-        A_ΔA::CoDual{<:AbstractTensorMap}, pA_ΔpA::CoDual{<:Index2Tuple}, conjA_ΔconjA::CoDual{Bool},
-        B_ΔB::CoDual{<:AbstractTensorMap}, pB_ΔpB::CoDual{<:Index2Tuple}, conjB_ΔconjB::CoDual{Bool},
+        A_ΔA::CoDual{<:AbstractTensorMap}, pA_ΔpA::CoDual{<:Index2Tuple},
+        B_ΔB::CoDual{<:AbstractTensorMap}, pB_ΔpB::CoDual{<:Index2Tuple},
         pAB_ΔpAB::CoDual{<:Index2Tuple},
         α_Δα::CoDual{<:Number}, β_Δβ::CoDual{<:Number},
-        ba_Δba::CoDual...,
+        backend_Δbackend::CoDual, allocator_Δallocator::CoDual
     )
     # prepare arguments
     (C, ΔC), (A, ΔA), (B, ΔB) = arrayify.((C_ΔC, A_ΔA, B_ΔB))
     pA, pB, pAB = primal.((pA_ΔpA, pB_ΔpB, pAB_ΔpAB))
-    conjA, conjB = primal.((conjA_ΔconjA, conjB_ΔconjB))
     α, β = primal.((α_Δα, β_Δβ))
-    ba = primal.(ba_Δba)
+    backend, allocator = primal.((backend_Δbackend, allocator_Δallocator))
 
     # primal call
     C_cache = copy(C)
-    TO.tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, ba...)
+    TensorKit.blas_contract!(C, A, pA, B, pB, pAB, α, β, backend, allocator)
 
-    function tensorcontract_pullback(::NoRData)
+    function blas_contract_pullback(::NoRData)
         copy!(C, C_cache)
 
-        ΔCr = tensorcontract_pullback_ΔC!(ΔC, β)
-        ΔAr = tensorcontract_pullback_ΔA!(
-            ΔA, ΔC, A, pA, conjA, B, pB, conjB, pAB, α, ba...
+        ΔAr = blas_contract_pullback_ΔA!(
+            ΔA, ΔC, A, pA, B, pB, pAB, α, backend, allocator
         )
-        ΔBr = tensorcontract_pullback_ΔB!(
-            ΔB, ΔC, A, pA, conjA, B, pB, conjB, pAB, α, ba...
+        ΔBr = blas_contract_pullback_ΔB!(
+            ΔB, ΔC, A, pA, B, pB, pAB, α, backend, allocator
         )
-        Δαr = tensorcontract_pullback_Δα(
-            ΔC, A, pA, conjA, B, pB, conjB, pAB, α, ba...
+        Δαr = blas_contract_pullback_Δα(
+            ΔC, A, pA, B, pB, pAB, α, backend, allocator
         )
-        Δβr = tensorcontract_pullback_Δβ(ΔC, C, β)
+        Δβr = blas_contract_pullback_Δβ(ΔC, C, β)
+        ΔCr = blas_contract_pullback_ΔC!(ΔC, β)
 
         return NoRData(), ΔCr,
-            ΔAr, NoRData(), NoRData(),
-            ΔBr, NoRData(), NoRData(),
+            ΔAr, NoRData(),
+            ΔBr, NoRData(),
             NoRData(),
             Δαr, Δβr,
-            map(ba_ -> NoRData(), ba)...
+            NoRData(), NoRData()
     end
 
-    return C_ΔC, tensorcontract_pullback
+    return C_ΔC, blas_contract_pullback
 end
 
-tensorcontract_pullback_ΔC!(ΔC, β) = (scale!(ΔC, conj(β)); NoRData())
+blas_contract_pullback_ΔC!(ΔC, β) = (scale!(ΔC, conj(β)); NoRData())
 
-function tensorcontract_pullback_ΔA!(
-        ΔA, ΔC, A, pA, conjA, B, pB, conjB, pAB, α, ba...
+function blas_contract_pullback_ΔA!(
+        ΔA, ΔC, A, pA, B, pB, pAB, α, backend, allocator
     )
     ipAB = invperm(linearize(pAB))
     pΔC = _repartition(ipAB, TO.numout(pA))
     ipA = _repartition(invperm(linearize(pA)), A)
-    conjΔC = conjA
-    conjB′ = conjA ? conjB : !conjB
 
     tB = twist(
         B,
@@ -81,24 +78,22 @@ function tensorcontract_pullback_ΔA!(
 
     TO.tensorcontract!(
         ΔA,
-        ΔC, pΔC, conjΔC,
-        tB, reverse(pB), conjB′,
+        ΔC, pΔC, false,
+        tB, reverse(pB), true,
         ipA,
-        conjA ? α : conj(α), Zero(),
-        ba...
+        conj(α), Zero(),
+        backend, allocator
     )
 
     return NoRData()
 end
 
-function tensorcontract_pullback_ΔB!(
-        ΔB, ΔC, A, pA, conjA, B, pB, conjB, pAB, α, ba...
+function blas_contract_pullback_ΔB!(
+        ΔB, ΔC, A, pA, B, pB, pAB, α, backend, allocator
     )
     ipAB = invperm(linearize(pAB))
     pΔC = _repartition(ipAB, TO.numout(pA))
     ipB = _repartition(invperm(linearize(pB)), B)
-    conjΔC = conjB
-    conjA′ = conjB ? conjA : !conjA
 
     tA = twist(
         A,
@@ -110,27 +105,27 @@ function tensorcontract_pullback_ΔB!(
 
     TO.tensorcontract!(
         ΔB,
-        tA, reverse(pA), conjA′,
-        ΔC, pΔC, conjΔC,
+        tA, reverse(pA), true,
+        ΔC, pΔC, false,
         ipB,
-        conjB ? α : conj(α), Zero(), ba...
+        conj(α), Zero(), backend, allocator
     )
 
     return NoRData()
 end
 
-function tensorcontract_pullback_Δα(
-        ΔC, A, pA, conjA, B, pB, conjB, pAB, α, ba...
+function blas_contract_pullback_Δα(
+        ΔC, A, pA, B, pB, pAB, α, backend, allocator
     )
     Tdα = Mooncake.rdata_type(Mooncake.tangent_type(typeof(α)))
     Tdα === NoRData && return NoRData()
 
-    AB = TO.tensorcontract(A, pA, conjA, B, pB, conjB, pAB, One(), ba...)
+    AB = TO.tensorcontract(A, pA, false, B, pB, false, pAB, One(), backend, allocator)
     Δα = inner(AB, ΔC)
     return Mooncake._rdata(Δα)
 end
 
-function tensorcontract_pullback_Δβ(ΔC, C, β)
+function blas_contract_pullback_Δβ(ΔC, C, β)
     Tdβ = Mooncake.rdata_type(Mooncake.tangent_type(typeof(β)))
     Tdβ === NoRData && return NoRData()
 
