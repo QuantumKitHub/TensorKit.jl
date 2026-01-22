@@ -117,6 +117,14 @@ for V in spacelist
 
         Mooncake.TestUtils.test_rule(rng, norm, C, 2; atol, rtol, mode)
         Mooncake.TestUtils.test_rule(rng, norm, C', 2; atol, rtol, mode)
+
+        D1 = randn(T, V[1] ← V[1])
+        D2 = randn(T, V[1] ⊗ V[2] ← V[1] ⊗ V[2])
+        D3 = randn(T, V[1] ⊗ V[2] ⊗ V[3] ← V[1] ⊗ V[2] ⊗ V[3])
+
+        Mooncake.TestUtils.test_rule(rng, tr, D1; atol, rtol, mode)
+        Mooncake.TestUtils.test_rule(rng, tr, D2; atol, rtol, mode)
+        Mooncake.TestUtils.test_rule(rng, tr, D3; atol, rtol, mode)
     end
 
 
