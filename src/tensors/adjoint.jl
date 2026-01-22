@@ -50,7 +50,7 @@ Base.@propagate_inbounds function subblock(t::AdjointTensorMap, (f₁, f₂)::Tu
     return permutedims(conj(data), (domainind(tp)..., codomainind(tp)...))
 end
 
-to_cpu(t::AdjointTensorMap) = AdjointTensorMap(convert(TensorMapWithStorage{scalartype(t), similarstoragetype(scalartype(t))}, parent(t)))
+to_cpu(t::AdjointTensorMap) = adjoint(to_cpu(adjoint(t)))
 
 # Show
 #------
