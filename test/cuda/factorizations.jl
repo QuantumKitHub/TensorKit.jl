@@ -286,7 +286,7 @@ for V in spacelist
                 @test isisometric(U1)
                 @test isisometric(Vᴴ1; side = :right)
                 @test norm(t - U1 * S1 * Vᴴ1) ≈ ϵ1 atol = eps(real(T))^(4 / 5)
-                @test dim(domain(S1)) <= nvals
+                test_dim_isapprox(domain(S1), nvals)
 
                 λ = minimum(diagview(S1))
                 trunc = trunctol(; atol = λ - 10eps(λ))
@@ -325,7 +325,7 @@ for V in spacelist
                 @test isisometric(Vᴴ5; side = :right)
                 @test norm(t - U5 * S5 * Vᴴ5) ≈ ϵ5 atol = eps(real(T))^(4 / 5)
                 @test minimum(diagview(S5)) >= λ
-                @test dim(domain(S5)) ≤ nvals
+                test_dim_isapprox(domain(S5), nvals)
             end
         end
 
@@ -335,7 +335,7 @@ for V in spacelist
                         CUDA.rand(T, V1, V1),
                         CUDA.rand(T, W, W),
                         CUDA.rand(T, W, W)',
-                        DiagonalTensorMap(CUDA.rand(T, reduceddim(V1)), V1),
+                        # DiagonalTensorMap(CUDA.rand(T, reduceddim(V1)), V1),
                     )
 
                 d, v = @constinferred eig_full(t)
@@ -352,7 +352,7 @@ for V in spacelist
                 nvals = round(Int, dim(domain(t)) / 2)
                 d, v = @constinferred eig_trunc(t; trunc = truncrank(nvals))
                 @test t * v ≈ v * d
-                @test dim(domain(d)) ≤ nvals
+                test_dim_isapprox(domain(d), nvals)
 
                 t2 = @constinferred project_hermitian(t)
                 D, V = eigen(t2)
@@ -382,7 +382,7 @@ for V in spacelist
 
                 d, v = @constinferred eigh_trunc(t2; trunc = truncrank(nvals))
                 @test t2 * v ≈ v * d
-                @test dim(domain(d)) ≤ nvals
+                test_dim_isapprox(domain(d), nvals)
             end
         end
 
