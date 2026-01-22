@@ -1,6 +1,6 @@
 # tensorcontract!
 # ---------------
-Mooncake.@is_primitive(
+@is_primitive(
     DefaultCtx,
     ReverseMode,
     Tuple{
@@ -135,7 +135,7 @@ end
 
 # tensortrace!
 # ------------
-Mooncake.@is_primitive(
+@is_primitive(
     DefaultCtx,
     ReverseMode,
     Tuple{
