@@ -1,6 +1,6 @@
 # planartrace!
 # ------------
-Mooncake.@is_primitive(
+@is_primitive(
     DefaultCtx,
     ReverseMode,
     Tuple{

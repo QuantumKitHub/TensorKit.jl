@@ -1,7 +1,7 @@
 module TensorKitMooncakeExt
 
 using Mooncake
-using Mooncake: @zero_derivative, DefaultCtx, ReverseMode, NoFData, NoRData, CoDual, arrayify, primal
+using Mooncake: @zero_derivative, @is_primitive, DefaultCtx, ReverseMode, NoFData, NoRData, CoDual, arrayify, primal
 using TensorKit
 import TensorKit as TK
 using VectorInterface

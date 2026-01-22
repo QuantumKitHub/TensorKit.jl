@@ -1,7 +1,7 @@
 for transform in (:permute, :transpose)
     add_transform! = Symbol(:add_, transform, :!)
     add_transform_pullback = Symbol(add_transform!, :_pullback)
-    @eval Mooncake.@is_primitive(
+    @eval @is_primitive(
         DefaultCtx,
         ReverseMode,
         Tuple{
@@ -76,7 +76,7 @@ for transform in (:permute, :transpose)
     end
 end
 
-Mooncake.@is_primitive(
+@is_primitive(
     DefaultCtx,
     ReverseMode,
     Tuple{
@@ -153,8 +153,8 @@ function Mooncake.rrule!!(
 end
 
 # both are needed for correctly capturing every dispatch
-Mooncake.@is_primitive DefaultCtx ReverseMode Tuple{typeof(twist!), AbstractTensorMap, Any}
-Mooncake.@is_primitive DefaultCtx ReverseMode Tuple{typeof(Core.kwcall), @NamedTuple{inv::Bool}, typeof(twist!), AbstractTensorMap, Any}
+@is_primitive DefaultCtx ReverseMode Tuple{typeof(twist!), AbstractTensorMap, Any}
+@is_primitive DefaultCtx ReverseMode Tuple{typeof(Core.kwcall), @NamedTuple{inv::Bool}, typeof(twist!), AbstractTensorMap, Any}
 
 function Mooncake.rrule!!(::CoDual{typeof(twist!)}, t_Δt::CoDual{<:AbstractTensorMap}, inds_Δinds::CoDual)
     # prepare arguments
@@ -198,8 +198,8 @@ function Mooncake.rrule!!(
 end
 
 # both are needed for correctly capturing every dispatch
-Mooncake.@is_primitive DefaultCtx ReverseMode Tuple{typeof(flip), AbstractTensorMap, Any}
-Mooncake.@is_primitive DefaultCtx ReverseMode Tuple{typeof(Core.kwcall), @NamedTuple{inv::Bool}, typeof(flip), AbstractTensorMap, Any}
+@is_primitive DefaultCtx ReverseMode Tuple{typeof(flip), AbstractTensorMap, Any}
+@is_primitive DefaultCtx ReverseMode Tuple{typeof(Core.kwcall), @NamedTuple{inv::Bool}, typeof(flip), AbstractTensorMap, Any}
 
 function Mooncake.rrule!!(::CoDual{typeof(flip)}, t_Δt::CoDual{<:AbstractTensorMap}, inds_Δinds::CoDual)
     # prepare arguments
@@ -245,8 +245,8 @@ for insertunit in (:insertleftunit, :insertrightunit)
     insertunit_pullback = Symbol(insertunit, :_pullback)
     @eval begin
         # both are needed for correctly capturing every dispatch
-        Mooncake.@is_primitive DefaultCtx ReverseMode Tuple{typeof($insertunit), AbstractTensorMap, Val}
-        Mooncake.@is_primitive DefaultCtx ReverseMode Tuple{typeof(Core.kwcall), NamedTuple, typeof($insertunit), AbstractTensorMap, Val}
+        @is_primitive DefaultCtx ReverseMode Tuple{typeof($insertunit), AbstractTensorMap, Val}
+        @is_primitive DefaultCtx ReverseMode Tuple{typeof(Core.kwcall), NamedTuple, typeof($insertunit), AbstractTensorMap, Val}
 
         function Mooncake.rrule!!(::CoDual{typeof($insertunit)}, tsrc_Δtsrc::CoDual{<:AbstractTensorMap}, ival_Δival::CoDual{<:Val})
             # prepare arguments
@@ -328,8 +328,8 @@ for insertunit in (:insertleftunit, :insertrightunit)
 end
 
 
-Mooncake.@is_primitive DefaultCtx ReverseMode Tuple{typeof(removeunit), AbstractTensorMap, Val}
-Mooncake.@is_primitive DefaultCtx ReverseMode Tuple{typeof(Core.kwcall), NamedTuple, typeof(removeunit), AbstractTensorMap, Val}
+@is_primitive DefaultCtx ReverseMode Tuple{typeof(removeunit), AbstractTensorMap, Val}
+@is_primitive DefaultCtx ReverseMode Tuple{typeof(Core.kwcall), NamedTuple, typeof(removeunit), AbstractTensorMap, Val}
 
 function Mooncake.rrule!!(::CoDual{typeof(removeunit)}, tsrc_Δtsrc::CoDual{<:AbstractTensorMap}, ival_Δival::CoDual{Val{i}}) where {i}
     # prepare arguments
