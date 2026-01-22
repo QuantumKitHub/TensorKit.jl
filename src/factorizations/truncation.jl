@@ -30,9 +30,10 @@ end
 _blocklength(d::Integer, ind) = _blocklength(Base.OneTo(d), ind)
 _blocklength(ax, ind) = length(ax[ind])
 _blocklength(ax::Base.OneTo, ind::AbstractVector{<:Integer}) = length(ind)
+_blocklength(ax::Base.OneTo, ind::AbstractVector{Bool}) = count(ind)
 
 function truncate_space(V::ElementarySpace, inds)
-    return spacetype(V)(c => _blocklength(dim(V, c), ind) for (c, ind) in inds)
+    return spacetype(V)(c => _blocklength(dim(V, c), ind) for (c, ind) in pairs(inds))
 end
 
 function truncate_domain!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, inds)
@@ -314,7 +315,7 @@ end
 MAK.truncation_error(values::SectorVector, ind) = MAK.truncation_error!(copy(values), ind)
 
 function MAK.truncation_error!(values::SectorVector, ind)
-    for (c, ind_c) in ind
+    for (c, ind_c) in pairs(ind)
         v = values[c]
         v[ind_c] .= zero(eltype(v))
     end

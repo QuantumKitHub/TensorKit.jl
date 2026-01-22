@@ -36,6 +36,7 @@ Base.size(v::SectorVector, args...) = size(parent(v), args...)
 
 Base.similar(v::SectorVector) = SectorVector(similar(v.data), v.structure)
 Base.similar(v::SectorVector, ::Type{T}) where {T} = SectorVector(similar(v.data, T), v.structure)
+Base.similar(v::SectorVector, V::ElementarySpace) where {T} = typeof(v)(undef, V)
 
 Base.copy(v::SectorVector) = SectorVector(copy(v.data), v.structure)
 
@@ -52,6 +53,9 @@ Base.valtype(::Type{SectorVector{T, I, A}}) where {T, I, A} = SubArray{T, 1, A, 
 Base.keys(v::SectorVector) = keys(v.structure)
 Base.values(v::SectorVector) = (v[c] for c in keys(v))
 Base.pairs(v::SectorVector) = SectorDict(c => v[c] for c in keys(v))
+
+Base.get(v::SectorVector{<:Any, I}, key::I, default) where {I} = haskey(v, key) ? v[key] : default
+Base.haskey(v::SectorVector{<:Any, I}, key::I) where {I} = key in keys(v)
 
 # TensorKit interface
 # -------------------
