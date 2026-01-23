@@ -164,16 +164,31 @@ end
 function MAK.findtruncated(values::SectorVector, strategy::TruncationByOrder)
     I = sectortype(values)
 
+
+    if FusionStyle(I) isa UniqueFusion # dimensions are all 1
+        perm = partialsortperm(parent(values), 1:strategy.howmany; strategy.by, strategy.rev)
+        result = similar(values, Bool)
+        fill!(parent(result), false)
+        parent(result)[perm] .= true
+        return result
+    end
+
     dims = similar(values, Base.promote_op(dim, I))
     for (c, v) in pairs(dims)
         fill!(v, dim(c))
     end
 
     perm = sortperm(parent(values); strategy.by, strategy.rev)
-    cumulative_dim = cumsum(Base.permute!(parent(dims), perm))
-
     result = similar(values, Bool)
-    parent(result)[perm] .= cumulative_dim .<= strategy.howmany
+    fill!(parent(result), false)
+
+    totaldim = 0
+    for i in perm
+        totaldim += dims[i]
+        totaldim > strategy.howmany && break
+        result[i] = true
+    end
+
     return result
 end
 # disambiguate
