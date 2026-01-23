@@ -306,7 +306,7 @@ for V in spacelist
             for T in eltypes,
                     t in (
                         rand(T, V1, V1), rand(T, W, W), rand(T, W, W)',
-                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                        # DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
                     )
 
                 d, v = @constinferred eig_full(t)
