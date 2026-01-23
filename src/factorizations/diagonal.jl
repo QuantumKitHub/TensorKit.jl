@@ -13,26 +13,6 @@ for f in (
     @eval MAK.copy_input(::typeof($f), d::DiagonalTensorMap) = copy(d)
 end
 
-for f! in (:eig_full!, :eig_trunc!)
-    @eval function MAK.initialize_output(
-            ::typeof($f!), d::AbstractTensorMap, ::DiagonalAlgorithm
-        )
-        return similar(d, complex(scalartype(d))), similar(d, complex(scalartype(d)), space(d))
-    end
-end
-
-for f! in (:eigh_full!, :eigh_trunc!)
-    @eval function MAK.initialize_output(
-            ::typeof($f!), d::AbstractTensorMap, ::DiagonalAlgorithm
-        )
-        if scalartype(d) <: Real
-            return d, similar(d, space(d))
-        else
-            return similar(d, real(scalartype(d))), similar(d, space(d))
-        end
-    end
-end
-
 for f! in (:qr_full!, :qr_compact!)
     @eval function MAK.initialize_output(
             ::typeof($f!), d::AbstractTensorMap, ::DiagonalAlgorithm
