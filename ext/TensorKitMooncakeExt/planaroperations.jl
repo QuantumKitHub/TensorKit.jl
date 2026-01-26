@@ -49,6 +49,7 @@ end
 
 planartrace_pullback_ΔC!(ΔC, β) = (scale!(ΔC, conj(β)); NoRData())
 
+# TODO: Fix planartrace pullback
 # This implementation is slightly more involved than its non-planar counterpart
 # this is because we lack a general `pAB` argument in `planarcontract`, and need
 # to keep things planar along the way.
