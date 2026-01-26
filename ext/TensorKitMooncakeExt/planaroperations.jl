@@ -88,7 +88,7 @@ function planartrace_pullback_Δα(
     TensorKit.planartrace!(At, A, p, q, One(), Zero(), backend, allocator)
     Δα = inner(At, ΔC)
     TO.tensorfree!(At, allocator)
-    return Mooncake._rdata(Δα)
+    return Δα
 end
 
 function planartrace_pullback_Δβ(ΔC, C, β)
@@ -96,5 +96,5 @@ function planartrace_pullback_Δβ(ΔC, C, β)
     Tdβ === NoRData && return NoRData()
 
     Δβ = inner(C, ΔC)
-    return Mooncake._rdata(Δβ)
+    return Δβ
 end

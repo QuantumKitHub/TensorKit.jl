@@ -53,7 +53,7 @@ for transform in (:permute, :transpose)
             Δαr = if isnothing(Ap)
                 NoRData()
             else
-                Mooncake._rdata(inner(Ap, ΔC))
+                inner(Ap, ΔC)
             end
 
             Δβr = pullback_dβ(C, ΔC, β)
@@ -120,7 +120,7 @@ function Mooncake.rrule!!(
         Δαr = if isnothing(Ap)
             NoRData()
         else
-            Mooncake._rdata(inner(Ap, ΔC))
+            inner(Ap, ΔC)
         end
 
         Δβr = pullback_dβ(C, ΔC, β)

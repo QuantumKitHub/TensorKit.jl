@@ -120,7 +120,7 @@ function blas_contract_pullback_Δα(
 
     AB = TO.tensorcontract(A, pA, false, B, pB, false, pAB, One(), backend, allocator)
     Δα = inner(AB, ΔC)
-    return Mooncake._rdata(Δα)
+    return Δα
 end
 
 # tensortrace!
@@ -197,5 +197,5 @@ function trace_permute_pullback_Δα(
     # C′ = βC + α * trace(A) ⟹ At = (C′ - βC) / α
     At = TO.tensortrace(A, p, q, false, One(), backend)
     Δα = inner(At, ΔC)
-    return Mooncake._rdata(Δα)
+    return Δα
 end
