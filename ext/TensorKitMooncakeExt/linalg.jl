@@ -31,7 +31,7 @@ function Mooncake.rrule!!(
         mul!(ΔB, A', ΔC, conj(α), One())
         ΔAr = NoRData()
         ΔBr = NoRData()
-        Δαr = isnothing(AB) ? NoRData() : Mooncake._rdata(inner(AB, ΔC))
+        Δαr = isnothing(AB) ? NoRData() : inner(AB, ΔC)
         Δβr = pullback_dβ(C, ΔC, β)
         ΔCr = pullback_dC!(ΔC, β)
 
