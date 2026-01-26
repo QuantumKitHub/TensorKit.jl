@@ -161,11 +161,16 @@ function MAK.findtruncated(values::SectorVector, ::NoTruncation)
     return SectorDict(c => Colon() for c in keys(values))
 end
 
+# Need to select the first k values here after sorting across blocks, weighted by quantum dimension
+# The strategy is therefore to sort all values, and then use a logical array to indicate
+# which ones to keep.
+# For GenericFusion, we additionally keep a vector of the quantum dimensions to provide the
+# correct weight
 function MAK.findtruncated(values::SectorVector, strategy::TruncationByOrder)
     I = sectortype(values)
 
-
-    if FusionStyle(I) isa UniqueFusion # dimensions are all 1
+    # dimensions are all 1 so no need to account for weight
+    if FusionStyle(I) isa UniqueFusion
         perm = partialsortperm(parent(values), 1:strategy.howmany; strategy.by, strategy.rev)
         result = similar(values, Bool)
         fill!(parent(result), false)
@@ -173,17 +178,19 @@ function MAK.findtruncated(values::SectorVector, strategy::TruncationByOrder)
         return result
     end
 
+    # allocate vector of weights for each value
     dims = similar(values, Base.promote_op(dim, I))
     for (c, v) in pairs(dims)
         fill!(v, dim(c))
     end
 
-    perm = sortperm(parent(values); strategy.by, strategy.rev)
+    # allocate logical array for the output
     result = similar(values, Bool)
     fill!(parent(result), false)
 
+    # loop over sorted values and mark first `howmany` as to keep
     totaldim = 0
-    for i in perm
+    for i in sortperm(parent(values); strategy.by, strategy.rev)
         totaldim += dims[i]
         totaldim > strategy.howmany && break
         result[i] = true
