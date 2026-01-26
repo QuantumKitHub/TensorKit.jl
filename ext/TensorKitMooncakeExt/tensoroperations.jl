@@ -1,73 +1,70 @@
-Mooncake.@is_primitive(
+# tensorcontract!
+# ---------------
+@is_primitive(
     DefaultCtx,
     ReverseMode,
     Tuple{
-        typeof(TO.tensorcontract!),
+        typeof(TensorKit.blas_contract!),
         AbstractTensorMap,
-        AbstractTensorMap, Index2Tuple, Bool,
-        AbstractTensorMap, Index2Tuple, Bool,
+        AbstractTensorMap, Index2Tuple,
+        AbstractTensorMap, Index2Tuple,
         Index2Tuple,
         Number, Number,
-        Vararg{Any},
+        Any, Any,
     }
 )
 
 function Mooncake.rrule!!(
-        ::CoDual{typeof(TO.tensorcontract!)},
+        ::CoDual{typeof(TensorKit.blas_contract!)},
         C_ΔC::CoDual{<:AbstractTensorMap},
-        A_ΔA::CoDual{<:AbstractTensorMap}, pA_ΔpA::CoDual{<:Index2Tuple}, conjA_ΔconjA::CoDual{Bool},
-        B_ΔB::CoDual{<:AbstractTensorMap}, pB_ΔpB::CoDual{<:Index2Tuple}, conjB_ΔconjB::CoDual{Bool},
+        A_ΔA::CoDual{<:AbstractTensorMap}, pA_ΔpA::CoDual{<:Index2Tuple},
+        B_ΔB::CoDual{<:AbstractTensorMap}, pB_ΔpB::CoDual{<:Index2Tuple},
         pAB_ΔpAB::CoDual{<:Index2Tuple},
         α_Δα::CoDual{<:Number}, β_Δβ::CoDual{<:Number},
-        ba_Δba::CoDual...,
+        backend_Δbackend::CoDual, allocator_Δallocator::CoDual
     )
     # prepare arguments
     (C, ΔC), (A, ΔA), (B, ΔB) = arrayify.((C_ΔC, A_ΔA, B_ΔB))
     pA, pB, pAB = primal.((pA_ΔpA, pB_ΔpB, pAB_ΔpAB))
-    conjA, conjB = primal.((conjA_ΔconjA, conjB_ΔconjB))
     α, β = primal.((α_Δα, β_Δβ))
-    ba = primal.(ba_Δba)
+    backend, allocator = primal.((backend_Δbackend, allocator_Δallocator))
 
     # primal call
     C_cache = copy(C)
-    TO.tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, ba...)
+    TensorKit.blas_contract!(C, A, pA, B, pB, pAB, α, β, backend, allocator)
 
-    function tensorcontract_pullback(::NoRData)
+    function blas_contract_pullback(::NoRData)
         copy!(C, C_cache)
 
-        ΔCr = tensorcontract_pullback_ΔC!(ΔC, β)
-        ΔAr = tensorcontract_pullback_ΔA!(
-            ΔA, ΔC, A, pA, conjA, B, pB, conjB, pAB, α, ba...
+        ΔAr = blas_contract_pullback_ΔA!(
+            ΔA, ΔC, A, pA, B, pB, pAB, α, backend, allocator
+        ) # this typically returns NoRData()
+        ΔBr = blas_contract_pullback_ΔB!(
+            ΔB, ΔC, A, pA, B, pB, pAB, α, backend, allocator
+        ) # this typically returns NoRData()
+        Δαr = blas_contract_pullback_Δα(
+            ΔC, A, pA, B, pB, pAB, α, backend, allocator
         )
-        ΔBr = tensorcontract_pullback_ΔB!(
-            ΔB, ΔC, A, pA, conjA, B, pB, conjB, pAB, α, ba...
-        )
-        Δαr = tensorcontract_pullback_Δα(
-            ΔC, A, pA, conjA, B, pB, conjB, pAB, α, ba...
-        )
-        Δβr = tensorcontract_pullback_Δβ(ΔC, C, β)
+        Δβr = pullback_dβ(ΔC, C, β)
+        ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
 
         return NoRData(), ΔCr,
-            ΔAr, NoRData(), NoRData(),
-            ΔBr, NoRData(), NoRData(),
+            ΔAr, NoRData(),
+            ΔBr, NoRData(),
             NoRData(),
             Δαr, Δβr,
-            map(ba_ -> NoRData(), ba)...
+            NoRData(), NoRData()
     end
 
-    return C_ΔC, tensorcontract_pullback
+    return C_ΔC, blas_contract_pullback
 end
 
-tensorcontract_pullback_ΔC!(ΔC, β) = (scale!(ΔC, conj(β)); NoRData())
-
-function tensorcontract_pullback_ΔA!(
-        ΔA, ΔC, A, pA, conjA, B, pB, conjB, pAB, α, ba...
+function blas_contract_pullback_ΔA!(
+        ΔA, ΔC, A, pA, B, pB, pAB, α, backend, allocator
     )
     ipAB = invperm(linearize(pAB))
     pΔC = _repartition(ipAB, TO.numout(pA))
     ipA = _repartition(invperm(linearize(pA)), A)
-    conjΔC = conjA
-    conjB′ = conjA ? conjB : !conjB
 
     tB = twist(
         B,
@@ -79,24 +76,22 @@ function tensorcontract_pullback_ΔA!(
 
     TO.tensorcontract!(
         ΔA,
-        ΔC, pΔC, conjΔC,
-        tB, reverse(pB), conjB′,
+        ΔC, pΔC, false,
+        tB, reverse(pB), true,
         ipA,
-        conjA ? α : conj(α), Zero(),
-        ba...
+        conj(α), Zero(),
+        backend, allocator
     )
 
     return NoRData()
 end
 
-function tensorcontract_pullback_ΔB!(
-        ΔB, ΔC, A, pA, conjA, B, pB, conjB, pAB, α, ba...
+function blas_contract_pullback_ΔB!(
+        ΔB, ΔC, A, pA, B, pB, pAB, α, backend, allocator
     )
     ipAB = invperm(linearize(pAB))
     pΔC = _repartition(ipAB, TO.numout(pA))
     ipB = _repartition(invperm(linearize(pB)), B)
-    conjΔC = conjB
-    conjA′ = conjB ? conjA : !conjA
 
     tA = twist(
         A,
@@ -108,30 +103,99 @@ function tensorcontract_pullback_ΔB!(
 
     TO.tensorcontract!(
         ΔB,
-        tA, reverse(pA), conjA′,
-        ΔC, pΔC, conjΔC,
+        tA, reverse(pA), true,
+        ΔC, pΔC, false,
         ipB,
-        conjB ? α : conj(α), Zero(), ba...
+        conj(α), Zero(), backend, allocator
     )
 
     return NoRData()
 end
 
-function tensorcontract_pullback_Δα(
-        ΔC, A, pA, conjA, B, pB, conjB, pAB, α, ba...
+function blas_contract_pullback_Δα(
+        ΔC, A, pA, B, pB, pAB, α, backend, allocator
     )
     Tdα = Mooncake.rdata_type(Mooncake.tangent_type(typeof(α)))
     Tdα === NoRData && return NoRData()
 
-    AB = TO.tensorcontract(A, pA, conjA, B, pB, conjB, pAB, One(), ba...)
+    AB = TO.tensorcontract(A, pA, false, B, pB, false, pAB, One(), backend, allocator)
     Δα = inner(AB, ΔC)
-    return Mooncake._rdata(Δα)
+    return Δα
 end
 
-function tensorcontract_pullback_Δβ(ΔC, C, β)
-    Tdβ = Mooncake.rdata_type(Mooncake.tangent_type(typeof(β)))
-    Tdβ === NoRData && return NoRData()
+# tensortrace!
+# ------------
+@is_primitive(
+    DefaultCtx,
+    ReverseMode,
+    Tuple{
+        typeof(TensorKit.trace_permute!),
+        AbstractTensorMap,
+        AbstractTensorMap, Index2Tuple, Index2Tuple,
+        Number, Number,
+        Any,
+    }
+)
 
-    Δβ = inner(C, ΔC)
-    return Mooncake._rdata(Δβ)
+function Mooncake.rrule!!(
+        ::CoDual{typeof(TensorKit.trace_permute!)},
+        C_ΔC::CoDual{<:AbstractTensorMap},
+        A_ΔA::CoDual{<:AbstractTensorMap}, p_Δp::CoDual{<:Index2Tuple}, q_Δq::CoDual{<:Index2Tuple},
+        α_Δα::CoDual{<:Number}, β_Δβ::CoDual{<:Number},
+        backend_Δbackend::CoDual
+    )
+    # prepare arguments
+    C, ΔC = arrayify(C_ΔC)
+    A, ΔA = arrayify(A_ΔA)
+    p = primal(p_Δp)
+    q = primal(q_Δq)
+    α, β = primal.((α_Δα, β_Δβ))
+    backend = primal(backend_Δbackend)
+
+    # primal call
+    C_cache = copy(C)
+    TensorKit.trace_permute!(C, A, p, q, α, β, backend)
+
+    function trace_permute_pullback(::NoRData)
+        copy!(C, C_cache)
+
+        ΔAr = trace_permute_pullback_ΔA!(ΔA, ΔC, A, p, q, α, backend) # this typically returns NoRData()
+        Δαr = trace_permute_pullback_Δα(ΔC, A, p, q, α, backend)
+        Δβr = pullback_dβ(ΔC, C, β)
+        ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
+
+        return NoRData(),
+            ΔCr, ΔAr, NoRData(), NoRData(),
+            Δαr, Δβr, NoRData()
+    end
+
+    return C_ΔC, trace_permute_pullback
+end
+
+function trace_permute_pullback_ΔA!(
+        ΔA, ΔC, A, p, q, α, backend
+    )
+    ip = invperm((linearize(p)..., q[1]..., q[2]...))
+    pdA = _repartition(ip, A)
+    E = one!(TO.tensoralloc_add(scalartype(A), A, q, false))
+    twist!(E, filter(x -> !isdual(space(E, x)), codomainind(E)))
+    pE = ((), trivtuple(TO.numind(q)))
+    pΔC = (trivtuple(TO.numind(p)), ())
+    TO.tensorproduct!(
+        ΔA, ΔC, pΔC, false, E, pE, false, pdA, conj(α), One(), backend
+    )
+    return NoRData()
+end
+
+function trace_permute_pullback_Δα(
+        ΔC, A, p, q, α, backend
+    )
+    Tdα = Mooncake.rdata_type(Mooncake.tangent_type(typeof(α)))
+    Tdα === NoRData && return NoRData()
+
+    # TODO: this result might be easier to compute as:
+    # C′ = βC + α * trace(A) ⟹ At = (C′ - βC) / α
+    At = TO.tensortrace(A, p, q, false, One(), backend)
+    Δα = inner(At, ΔC)
+    return Δα
 end

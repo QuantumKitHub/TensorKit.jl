@@ -1,7 +1,7 @@
 _needs_tangent(x) = _needs_tangent(typeof(x))
-_needs_tangent(::Type{<:Number}) = true
-_needs_tangent(::Type{<:Integer}) = false
-_needs_tangent(::Type{<:Union{One, Zero}}) = false
+function _needs_tangent(::Type{T}) where {T <: Number}
+    return Mooncake.rdata_type(Mooncake.tangent_type(T)) !== NoRData()
+end
 
 # IndexTuple utility
 # ------------------
@@ -25,4 +25,15 @@ end
 
 # Ignore derivatives
 # ------------------
+
+# A VectorSpace has no meaningful notion of a vector space (tangent space)
+Mooncake.tangent_type(::Type{<:VectorSpace}) = Mooncake.NoTangent
+
 @zero_derivative DefaultCtx Tuple{typeof(TensorKit.fusionblockstructure), Any}
+
+@zero_derivative DefaultCtx Tuple{typeof(TensorKit.select), HomSpace, Index2Tuple}
+@zero_derivative DefaultCtx Tuple{typeof(TensorKit.flip), HomSpace, Any}
+@zero_derivative DefaultCtx Tuple{typeof(TensorKit.permute), HomSpace, Index2Tuple}
+@zero_derivative DefaultCtx Tuple{typeof(TensorKit.braid), HomSpace, Index2Tuple, IndexTuple}
+@zero_derivative DefaultCtx Tuple{typeof(TensorKit.compose), HomSpace, HomSpace}
+@zero_derivative DefaultCtx Tuple{typeof(TensorOperations.tensorcontract), HomSpace, Index2Tuple, Bool, HomSpace, Index2Tuple, Bool, Index2Tuple}
