@@ -34,10 +34,10 @@ function Mooncake.rrule!!(
     function planartrace_pullback(::NoRData)
         copy!(C, C_cache)
 
-        ΔAr = planartrace_pullback_ΔA!(ΔA, ΔC, A, p, q, α, backend, allocator)
+        ΔAr = planartrace_pullback_ΔA!(ΔA, ΔC, A, p, q, α, backend, allocator) # this typically returns NoRData()
         Δαr = planartrace_pullback_Δα(ΔC, A, p, q, α, backend, allocator)
         Δβr = planartrace_pullback_Δβ(ΔC, C, β)
-        ΔCr = planartrace_pullback_ΔC!(ΔC, β)
+        ΔCr = planartrace_pullback_ΔC!(ΔC, β) # this typically returns NoRData()
 
         return NoRData(),
             ΔCr, ΔAr, NoRData(), NoRData(),
