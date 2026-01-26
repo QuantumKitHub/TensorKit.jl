@@ -188,7 +188,7 @@ function MAK.findtruncated(values::SectorVector, strategy::TruncationByOrder)
     result = similar(values, Bool)
     fill!(parent(result), false)
 
-    # loop over sorted values and mark first `howmany` as to keep
+    # loop over sorted values and mark as to keep until dimension is reached
     totaldim = 0
     for i in sortperm(parent(values); strategy.by, strategy.rev)
         totaldim += dims[i]
@@ -217,11 +217,16 @@ function MAK.findtruncated_svd(values::SectorVector, strategy::TruncationByValue
     return SectorDict(c => MAK.findtruncated_svd(d, strategy′) for (c, d) in pairs(values))
 end
 
+# Need to select the first k values here after sorting by error across blocks,
+# where k is determined by the cumulative truncation error of these values.
+# The strategy is therefore to sort all values, and then use a logical array to indicate
+# which ones to keep.
 function MAK.findtruncated(values::SectorVector, strategy::MAK.TruncationByError)
     ϵᵖmax = max(strategy.atol^strategy.p, strategy.rtol^strategy.p * norm(values, strategy.p))
     ϵᵖ = similar(values, typeof(ϵᵖmax))
 
-    if FusionStyle(sectortype(values)) isa UniqueFusion # dimensions are all 1
+    # dimensions are all 1 so no need to account for weight
+    if FusionStyle(sectortype(values)) isa UniqueFusion
         parent(ϵᵖ) .= abs.(parent(values)) .^ strategy.p
     else
         for (c, v) in pairs(values)
@@ -230,11 +235,18 @@ function MAK.findtruncated(values::SectorVector, strategy::MAK.TruncationByError
         end
     end
 
-    perm = sortperm(parent(values); by = abs, rev = false)
-    cumulative_err = cumsum(Base.permute!(parent(ϵᵖ), perm))
-
+    # allocate logical array for the output
     result = similar(values, Bool)
-    parent(result)[perm] .= cumulative_err .> ϵᵖmax
+    fill!(parent(result), false)
+
+    # loop over sorted values and mark as to keep until maximal error is reached
+    totalerr = zero(eltype(ϵᵖ))
+    for i in sortperm(parent(values); by = abs, rev = false)
+        totalerr += ϵᵖ[i]
+        totalerr > ϵᵖmax && break
+        result[i] = true
+    end
+
     return result
 end
 # disambiguate
