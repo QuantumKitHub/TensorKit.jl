@@ -237,14 +237,14 @@ function MAK.findtruncated(values::SectorVector, strategy::MAK.TruncationByError
 
     # allocate logical array for the output
     result = similar(values, Bool)
-    fill!(parent(result), false)
+    fill!(parent(result), true)
 
-    # loop over sorted values and mark as to keep until maximal error is reached
+    # loop over sorted values and mark as to discard until maximal error is reached
     totalerr = zero(eltype(ϵᵖ))
     for i in sortperm(parent(values); by = abs, rev = false)
         totalerr += ϵᵖ[i]
         totalerr > ϵᵖmax && break
-        result[i] = true
+        result[i] = false
     end
 
     return result
