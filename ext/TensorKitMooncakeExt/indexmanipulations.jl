@@ -57,7 +57,7 @@ for transform in (:permute, :transpose)
             end
 
             Δβr = pullback_dβ(C, ΔC, β)
-            ΔCr = pullback_dC!(ΔC, β)
+            ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
 
             return NoRData(), ΔCr, ΔAr, NoRData(), Δαr, Δβr, map(Returns(NoRData()), ba)...
         end
@@ -124,7 +124,7 @@ function Mooncake.rrule!!(
         end
 
         Δβr = pullback_dβ(C, ΔC, β)
-        ΔCr = pullback_dC!(ΔC, β)
+        ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
 
         return NoRData(), ΔCr, ΔAr, NoRData(), NoRData(), Δαr, Δβr, map(Returns(NoRData()), ba)...
     end
