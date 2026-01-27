@@ -41,7 +41,7 @@ function truncate_domain!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, inds
         I = get(inds, c, nothing)
         @assert !isnothing(I)
         b′ = block(tsrc, c)
-        b .= b′[:, I]
+        b .= view(b′, :, I)
     end
     return tdst
 end
@@ -50,7 +50,7 @@ function truncate_codomain!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, in
         I = get(inds, c, nothing)
         @assert !isnothing(I)
         b′ = block(tsrc, c)
-        b .= b′[I, :]
+        b .= view(b′, I, :)
     end
     return tdst
 end
@@ -58,7 +58,7 @@ function truncate_diagonal!(Ddst::DiagonalTensorMap, Dsrc::DiagonalTensorMap, in
     for (c, b) in blocks(Ddst)
         I = get(inds, c, nothing)
         @assert !isnothing(I)
-        diagview(b) .= @view diagview(block(Dsrc, c))[I]
+        diagview(b) .= view(diagview(block(Dsrc, c)), I)
     end
     return Ddst
 end
