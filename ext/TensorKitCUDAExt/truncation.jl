@@ -21,6 +21,8 @@ end
 function MatrixAlgebraKit.findtruncated(
         values::CuSectorVector, strategy::MatrixAlgebraKit.TruncationByError
     )
+    (isfinite(strategy.p) && strategy.p > 0) ||
+        throw(ArgumentError(lazy"p-norm with p = $(strategy.p) is currently not supported."))
     ϵᵖmax = max(strategy.atol^strategy.p, strategy.rtol^strategy.p * norm(values, strategy.p))
     ϵᵖ = similar(values, typeof(ϵᵖmax))
 

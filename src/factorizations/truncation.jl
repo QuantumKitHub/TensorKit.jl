@@ -221,7 +221,9 @@ end
 # where k is determined by the cumulative truncation error of these values.
 # The strategy is therefore to sort all values, and then use a logical array to indicate
 # which ones to keep.
-function MAK.findtruncated(values::SectorVector, strategy::MAK.TruncationByError)
+function MAK.findtruncated(values::SectorVector, strategy::TruncationByError)
+    (isfinite(strategy.p) && strategy.p > 0) ||
+        throw(ArgumentError(lazy"p-norm with p = $(strategy.p) is currently not supported."))
     ϵᵖmax = max(strategy.atol^strategy.p, strategy.rtol^strategy.p * norm(values, strategy.p))
     ϵᵖ = similar(values, typeof(ϵᵖmax))
 
