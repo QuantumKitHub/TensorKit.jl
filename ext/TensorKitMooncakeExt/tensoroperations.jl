@@ -79,7 +79,7 @@ function blas_contract_pullback_ΔA!(
         ΔC, pΔC, false,
         tB, reverse(pB), true,
         ipA,
-        conj(α), Zero(),
+        conj(α), One(),
         backend, allocator
     )
 
@@ -106,7 +106,7 @@ function blas_contract_pullback_ΔB!(
         tA, reverse(pA), true,
         ΔC, pΔC, false,
         ipB,
-        conj(α), Zero(), backend, allocator
+        conj(α), One(), backend, allocator
     )
 
     return NoRData()
@@ -115,8 +115,7 @@ end
 function blas_contract_pullback_Δα(
         ΔC, A, pA, B, pB, pAB, α, backend, allocator
     )
-    Tdα = Mooncake.rdata_type(Mooncake.tangent_type(typeof(α)))
-    Tdα === NoRData && return NoRData()
+    _needs_tangent(α) || return NoRData()
 
     AB = TO.tensorcontract(A, pA, false, B, pB, false, pAB, One(), backend, allocator)
     Δα = inner(AB, ΔC)
