@@ -19,41 +19,54 @@ end
 # fail for types that would be self-referential, which we choose to not support
 # for now.
 
-Mooncake.@foldable Mooncake.tangent_type(::Type{T}) where {T <: TensorMap} = T
 Mooncake.@foldable Mooncake.tangent_type(::Type{T}, ::Type{NoRData}) where {T <: TensorMap} = T
+Mooncake.@foldable Mooncake.tangent_type(::Type{TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A} =
+    TK.tensormaptype(S, N₁, N₂, Mooncake.tangent_type(A))
 
-Mooncake.@foldable Mooncake.fdata_type(::Type{T}) where {T <: TensorMap} = T
+Mooncake.@foldable Mooncake.fdata_type(::Type{T}) where {T <: TensorMap} = Mooncake.tangent_type(T)
 Mooncake.@foldable Mooncake.rdata_type(::Type{T}) where {T <: TensorMap} = NoRData
 
 Mooncake.tangent(t::TensorMap, ::NoRData) = t
-Mooncake.zero_tangent_internal(t::TensorMap, ::Mooncake.MaybeCache) = zerovector(t)
+Mooncake.zero_tangent_internal(t::TensorMap, c::Mooncake.MaybeCache) =
+    TensorMap(Mooncake.zero_tangent_internal(t.data, c), space(t))
 
-Mooncake.randn_tangent_internal(rng::AbstractRNG, p::TensorMap, ::Mooncake.MaybeCache) =
-    randn!(rng, similar(p))
+Mooncake.randn_tangent_internal(rng::AbstractRNG, p::TensorMap, c::Mooncake.MaybeCache) =
+    TensorMap(Mooncake.randn_tangent_internal(rng, p.data, c), space(p))
 
 Mooncake.set_to_zero_internal!!(::Mooncake.SetToZeroCache, t::TensorMap) = zerovector!(t)
-Mooncake.increment_internal!!(::Mooncake.IncCache, x::T, y::T) where {T <: TensorMap} = add!(x, y)
+function Mooncake.increment!!(x::TensorMap, y::TensorMap)
+    data = Mooncake.increment!!(x.data, y.data)
+    return x.data === data ? x : TensorMap(data, space(x))
+end
+function Mooncake.increment_internal!!(c::Mooncake.IncCache, x::TensorMap, y::TensorMap)
+    data = Mooncake.increment_internal!!(c, x.data, y.data)
+    return x.data === data ? x : TensorMap(data, space(x))
+end
 
-
-Mooncake._add_to_primal_internal(::Mooncake.MaybeCache, p::T, t::T, unsafe::Bool) where {T <: TensorMap} = add(p, t)
-Mooncake.tangent_to_primal_internal!!(p::T, t::T, ::Mooncake.MaybeCache) where {T <: TensorMap} = copy!(p, t)
+Mooncake._add_to_primal_internal(c::Mooncake.MaybeCache, p::TensorMap, t::TensorMap, unsafe::Bool) =
+    TensorMap(Mooncake._add_to_primal_internal(c, p.data, t.data, unsafe), space(p))
+function Mooncake.tangent_to_primal_internal!!(p::TensorMap, t::TensorMap, c::Mooncake.MaybeCache)
+    data = Mooncake.tangent_to_primal_internal!!(p.data, t.data, c)
+    data === p.data || copy!(p.data, data)
+    return p
+end
 Mooncake.primal_to_tangent_internal!!(t::T, p::T, ::Mooncake.MaybeCache) where {T <: TensorMap} = copy!(t, p)
 
-Mooncake._dot_internal(::Mooncake.MaybeCache, t::T, s::T) where {T <: TensorMap} = Float64(real(inner(t, s)))
-Mooncake._scale_internal(::Mooncake.MaybeCache, a::Float64, t::T) where {T <: TensorMap} = scale(t, a)
+Mooncake._dot_internal(::Mooncake.MaybeCache, t::TensorMap, s::TensorMap) = Float64(real(inner(t, s)))
+Mooncake._scale_internal(::Mooncake.MaybeCache, a::Float64, t::TensorMap) = scale(t, a)
 
-function Mooncake.TestUtils.populate_address_map_internal(
-        m::Mooncake.AddressMap, primal::T, tangent::T
-    ) where {T <: TensorMap}
-    return Mooncake.TestUtils.populate_address_map_internal(m, primal.data, tangent.data)
-end
+Mooncake.TestUtils.populate_address_map_internal(m::Mooncake.TestUtils.AddressMap, primal::TensorMap, tangent::TensorMap) =
+    Mooncake.populate_address_map_internal(m, primal.data, tangent.data)
+@inline Mooncake.TestUtils.__get_data_field(t::TensorMap, n) = getfield(t, n)
 
 function Mooncake.__verify_fdata_value(::IdDict{Any, Nothing}, p::TensorMap, f::TensorMap)
     space(p) == space(f) ||
         throw(Mooncake.InvalidFDataException(lazy"p has space $(space(p)) but f has size $(space(f))"))
     return nothing
 end
-
+function Mooncake.__verify_fdata_value(c::IdDict{Any, Nothing}, p::TensorMap, t::TensorMap)
+    return Mooncake.__verify_fdata_value(c, p.data, t.data)
+end
 
 @is_primitive MinimalCtx Tuple{typeof(Mooncake.lgetfield), <:TensorMap, Val}
 
