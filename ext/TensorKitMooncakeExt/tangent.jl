@@ -1,12 +1,7 @@
-function Mooncake.arrayify(A_dA::CoDual{<:TensorMap})
-    A = Mooncake.primal(A_dA)
-    dA_fw = Mooncake.tangent(A_dA)
-    data = dA_fw.data.data
-    dA = typeof(A)(data, A.space)
-    return A, dA
-end
+Mooncake.arrayify(A_dA::CoDual{<:TensorMap}) = arrayify(primal(A_dA), tangent(A_dA))
+Mooncake.arrayify(A::TensorMap, dA::TensorMap) = (A, dA)
 
-function Mooncake.arrayify(Aᴴ_ΔAᴴ::CoDual{<:TensorKit.AdjointTensorMap})
+function Mooncake.arrayify(Aᴴ_ΔAᴴ::CoDual{<:TK.AdjointTensorMap})
     Aᴴ = Mooncake.primal(Aᴴ_ΔAᴴ)
     ΔAᴴ = Mooncake.tangent(Aᴴ_ΔAᴴ)
     A_ΔA = CoDual(Aᴴ', ΔAᴴ.data.parent)
