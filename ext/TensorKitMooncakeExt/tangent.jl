@@ -13,3 +13,201 @@ function Mooncake.arrayify(Aᴴ_ΔAᴴ::CoDual{<:TensorKit.AdjointTensorMap})
     A, ΔA = arrayify(A_ΔA)
     return A', ΔA'
 end
+
+# Define the tangent type of a TensorMap to be TensorMap itself.
+# This has a number of benefits, but also correctly alters the
+# inner product when dealing with non-abelian symmetries.
+#
+# Note: this implementation is technically a little lazy, since we are
+# assuming that the tangent type of the underlying storage is also given
+# by that same type. This should in principle work out fine, and will only
+# fail for types that would be self-referential, which we choose to not support
+# for now.
+
+Mooncake.@foldable Mooncake.tangent_type(::Type{T}) where {T <: TensorMap} = T
+Mooncake.@foldable Mooncake.tangent_type(::Type{T}, ::Type{NoRData}) where {T <: TensorMap} = T
+
+Mooncake.@foldable Mooncake.fdata_type(::Type{T}) where {T <: TensorMap} = T
+Mooncake.@foldable Mooncake.rdata_type(::Type{T}) where {T <: TensorMap} = NoRData
+
+Mooncake.tangent(t::TensorMap, ::NoRData) = t
+Mooncake.zero_tangent_internal(t::TensorMap, ::Mooncake.MaybeCache) = zerovector(t)
+
+Mooncake.randn_tangent_internal(rng::AbstractRNG, p::TensorMap, ::Mooncake.MaybeCache) =
+    randn!(rng, similar(p))
+
+Mooncake.set_to_zero_internal!!(::Mooncake.SetToZeroCache, t::TensorMap) = zerovector!(t)
+Mooncake.increment_internal!!(::Mooncake.IncCache, x::T, y::T) where {T <: TensorMap} = add!(x, y)
+
+
+Mooncake._add_to_primal_internal(::Mooncake.MaybeCache, p::T, t::T, unsafe::Bool) where {T <: TensorMap} = add(p, t)
+Mooncake.tangent_to_primal_internal!!(p::T, t::T, ::Mooncake.MaybeCache) where {T <: TensorMap} = copy!(p, t)
+Mooncake.primal_to_tangent_internal!!(t::T, p::T, ::Mooncake.MaybeCache) where {T <: TensorMap} = copy!(t, p)
+
+Mooncake._dot_internal(::Mooncake.MaybeCache, t::T, s::T) where {T <: TensorMap} = Float64(real(inner(t, s)))
+Mooncake._scale_internal(::Mooncake.MaybeCache, a::Float64, t::T) where {T <: TensorMap} = scale(t, a)
+
+function Mooncake.TestUtils.populate_address_map_internal(
+        m::Mooncake.AddressMap, primal::T, tangent::T
+    ) where {T <: TensorMap}
+    return Mooncake.TestUtils.populate_address_map_internal(m, primal.data, tangent.data)
+end
+
+function Mooncake.__verify_fdata_value(::IdDict{Any, Nothing}, p::TensorMap, f::TensorMap)
+    space(p) == space(f) ||
+        throw(Mooncake.InvalidFDataException(lazy"p has space $(space(p)) but f has size $(space(f))"))
+    return nothing
+end
+
+
+@is_primitive MinimalCtx Tuple{typeof(Mooncake.lgetfield), <:TensorMap, Val}
+
+# TODO: double-check if this has to include quantum dimensinos for non-abelian?
+function Mooncake.frule!!(
+        ::Dual{typeof(Mooncake.lgetfield)}, t::Dual{<:TensorMap}, ::Dual{Val{FieldName}}
+    ) where {FieldName}
+    y = getfield(primal(t), FieldName)
+
+    return if FieldName === 1 || FieldName === :data
+        dval = tangent(t).data
+        Dual(val, dval)
+    elseif FieldName === 2 || FieldName === :space
+        Dual(val, NoFData()), getfield_pullback
+    else
+        throw(ArgumentError(lazy"Invalid fieldname `$FieldName`"))
+    end
+end
+
+function Mooncake.rrule!!(
+        ::CoDual{typeof(Mooncake.lgetfield)}, t::CoDual{<:TensorMap}, ::CoDual{Val{FieldName}}
+    ) where {FieldName}
+    val = getfield(primal(t), FieldName)
+    getfield_pullback = Mooncake.NoPullback(ntuple(Returns(NoRData()), 3))
+
+    return if FieldName === 1 || FieldName === :data
+        dval = Mooncake.tangent(t).data
+        CoDual(val, dval), getfield_pullback
+    elseif FieldName === 2 || FieldName === :space
+        Mooncake.zero_fcodual(val), getfield_pullback
+    else
+        throw(ArgumentError(lazy"Invalid fieldname `$FieldName`"))
+    end
+end
+
+@is_primitive MinimalCtx Tuple{typeof(getfield), <:TensorMap, Any, Vararg{Symbol}}
+
+Base.@constprop :aggressive function Mooncake.frule!!(
+        ::Dual{typeof(getfield)}, t::Dual{<:TensorMap}, name::Dual
+    )
+    y = getfield(primal(t), primal(name))
+
+    return if primal(name) === 1 || primal(name) === :data
+        dval = tangent(t).data
+        Dual(val, dval)
+    elseif primal(name) === 2 || primal(name) === :space
+        Dual(val, NoFData())
+    else
+        throw(ArgumentError(lazy"Invalid fieldname `$(primal(name))`"))
+    end
+end
+
+Base.@constprop :aggressive function Mooncake.rrule!!(
+        ::CoDual{typeof(getfield)}, t::CoDual{<:TensorMap}, name::CoDual
+    )
+    val = getfield(primal(t), primal(name))
+    getfield_pullback = Mooncake.NoPullback(ntuple(Returns(NoRData()), 3))
+
+    return if primal(name) === 1 || primal(name) === :data
+        dval = Mooncake.tangent(t).data
+        CoDual(val, dval), getfield_pullback
+    elseif primal(name) === 2 || primal(name) === :space
+        Mooncake.zero_fcodual(val), getfield_pullback
+    else
+        throw(ArgumentError(lazy"Invalid fieldname `$(primal(name))`"))
+    end
+end
+
+Base.@constprop :aggressive function Mooncake.frule!!(
+        ::Dual{typeof(getfield)}, t::Dual{<:TensorMap}, name::Dual, order::Dual
+    )
+    y = getfield(primal(t), primal(name), primal(order))
+
+    return if primal(name) === 1 || primal(name) === :data
+        dval = tangent(t).data
+        Dual(val, dval)
+    elseif primal(name) === 2 || primal(name) === :space
+        Dual(val, NoFData())
+    else
+        throw(ArgumentError(lazy"Invalid fieldname `$(primal(name))`"))
+    end
+end
+
+Base.@constprop :aggressive function Mooncake.rrule!!(
+        ::CoDual{typeof(getfield)}, t::CoDual{<:TensorMap}, name::CoDual, order::CoDual
+    )
+    val = getfield(primal(t), primal(name), primal(order))
+    getfield_pullback = Mooncake.NoPullback(ntuple(Returns(NoRData()), 4))
+
+    return if primal(name) === 1 || primal(name) === :data
+        dval = Mooncake.tangent(t).data
+        CoDual(val, dval), getfield_pullback
+    elseif primal(name) === 2 || primal(name) === :space
+        Mooncake.zero_fcodual(val), getfield_pullback
+    else
+        throw(ArgumentError(lazy"Invalid fieldname `$(primal(name))`"))
+    end
+end
+
+
+@is_primitive MinimalCtx Tuple{typeof(Mooncake.lgetfield), <:TensorMap, Val, Val}
+
+# TODO: double-check if this has to include quantum dimensinos for non-abelian?
+function Mooncake.frule!!(
+        ::Dual{typeof(Mooncake.lgetfield)}, t::Dual{<:TensorMap}, ::Dual{Val{FieldName}}, ::Dual{Val{Order}}
+    ) where {FieldName, Order}
+    y = getfield(primal(t), FieldName, Order)
+
+    return if FieldName === 1 || FieldName === :data
+        dval = tangent(t).data
+        Dual(val, dval)
+    elseif FieldName === 2 || FieldName === :space
+        Dual(val, NoFData())
+    else
+        throw(ArgumentError(lazy"Invalid fieldname `$FieldName`"))
+    end
+end
+
+function Mooncake.rrule!!(
+        ::CoDual{typeof(Mooncake.lgetfield)}, t::CoDual{<:TensorMap}, ::CoDual{Val{FieldName}}, ::CoDual{Val{Order}}
+    ) where {FieldName, Order}
+    val = getfield(primal(t), FieldName, Order)
+    getfield_pullback = Mooncake.NoPullback(ntuple(Returns(NoRData()), 4))
+
+    return if FieldName === 1 || FieldName === :data
+        dval = Mooncake.tangent(t).data
+        CoDual(val, dval), getfield_pullback
+    elseif FieldName === 2 || FieldName === :space
+        Mooncake.zero_fcodual(val), getfield_pullback
+    else
+        throw(ArgumentError(lazy"Invalid fieldname `$FieldName`"))
+    end
+end
+
+
+Mooncake.@zero_derivative Mooncake.MinimalCtx Tuple{typeof(Mooncake._new_), Type{TensorMap{T, S, N₁, N₂, A}}, UndefInitializer, TensorMapSpace{S, N₁, N₂}} where {T, S, N₁, N₂, A}
+@is_primitive Mooncake.MinimalCtx Tuple{typeof(Mooncake._new_), Type{TensorMap{T, S, N₁, N₂, A}}, A, TensorMapSpace{S, N₁, N₂}} where {T, S, N₁, N₂, A}
+
+function Mooncake.frule!!(
+        ::Dual{typeof(Mooncake._new_)}, ::Dual{Type{TensorMap{T, S, N₁, N₂, A}}}, data::Dual{A}, space::Dual{TensorMapSpace{S, N₁, N₂}}
+    ) where {T, S, N₁, N₂, A}
+    t = Mooncake._new_(TensorMap{T, S, N₁, N₂, A}, primal(data), primal(space))
+    dt = Mooncake._new_(TensorMap{T, S, N₁, N₂, A}, tangent(data), primal(space))
+    return Dual(t, dt)
+end
+
+function Mooncake.rrule!!(
+        ::CoDual{typeof(Mooncake._new_)}, ::CoDual{Type{TensorMap{T, S, N₁, N₂, A}}}, data::CoDual{A}, space::CoDual{TensorMapSpace{S, N₁, N₂}}
+    ) where {T, S, N₁, N₂, A}
+    return Mooncake.zero_fcodual(Mooncake._new_(TensorMap{T, S, N₁, N₂, A}, primal(data), primal(space))),
+        Returns(ntuple(Returns(NoRData()), 4))
+end
