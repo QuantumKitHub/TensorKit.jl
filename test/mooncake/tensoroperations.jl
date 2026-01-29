@@ -1,6 +1,7 @@
 using Test, TestExtras
 using TensorKit
 using TensorOperations
+using VectorInterface: One, Zero
 using Mooncake
 using Random
 
@@ -86,6 +87,12 @@ eltypes = (Float64, ComplexF64)
                 TensorOperations.tensoralloc_contract(
                     T, A, pA, false, B, pB, false, pAB, Val(false)
                 )
+            )
+            Mooncake.TestUtils.test_rule(
+                rng, TensorKit.blas_contract!,
+                C, A, pA, B, pB, pAB, One(), Zero(),
+                TensorOperations.DefaultBackend(), TensorOperations.DefaultAllocator();
+                atol, rtol, mode
             )
             Mooncake.TestUtils.test_rule(
                 rng, TensorKit.blas_contract!,
