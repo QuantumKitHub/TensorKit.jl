@@ -27,6 +27,7 @@ end
 
 # A VectorSpace has no meaningful notion of a vector space (tangent space)
 Mooncake.tangent_type(::Type{<:VectorSpace}) = Mooncake.NoTangent
+Mooncake.tangent_type(::Type{<:HomSpace}) = Mooncake.NoTangent
 
 @zero_derivative DefaultCtx Tuple{typeof(TensorKit.fusionblockstructure), Any}
 
