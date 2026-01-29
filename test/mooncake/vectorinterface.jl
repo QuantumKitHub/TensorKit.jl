@@ -40,15 +40,15 @@ spacelist = (
         Vect[SU2Irrep](1 // 2 => 2),
         Vect[SU2Irrep](0 => 1, 1 // 2 => 1, 3 // 2 => 1)',
     ),
-    # (
-    #     Vect[FibonacciAnyon](:I => 2, :τ => 1),
-    #     Vect[FibonacciAnyon](:I => 1, :τ => 2)',
-    #     Vect[FibonacciAnyon](:I => 2, :τ => 2)',
-    #     Vect[FibonacciAnyon](:I => 2, :τ => 3),
-    #     Vect[FibonacciAnyon](:I => 2, :τ => 2),
-    # ),
+    (
+        Vect[FibonacciAnyon](:I => 2, :τ => 1),
+        Vect[FibonacciAnyon](:I => 1, :τ => 2)',
+        Vect[FibonacciAnyon](:I => 2, :τ => 2)',
+        Vect[FibonacciAnyon](:I => 2, :τ => 3),
+        Vect[FibonacciAnyon](:I => 2, :τ => 2),
+    ),
 )
-eltypes = (Float64,) # no complex support yet
+eltypes = (Float64, ComplexF64)
 
 @timedtestset "Mooncake - VectorInterface: $(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes
     atol = default_tol(T)
