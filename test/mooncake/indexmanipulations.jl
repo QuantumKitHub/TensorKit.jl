@@ -51,8 +51,8 @@ spacelist = (
 eltypes = (Float64,) # no complex support yet
 
 @timedtestset "Mooncake - Index Manipulations: $(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes
-    atol = precision(T)
-    rtol = precision(T)
+    atol = default_tol(T)
+    rtol = default_tol(T)
     symmetricbraiding = BraidingStyle(sectortype(eltype(V))) isa SymmetricBraiding
 
     symmetricbraiding && @timedtestset "add_permute!" begin

@@ -51,8 +51,8 @@ spacelist = (
 eltypes = (Float64,) # no complex support yet
 
 @timedtestset "Mooncake - LinearAlgebra: $(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes
-    atol = precision(T)
-    rtol = precision(T)
+    atol = default_tol(T)
+    rtol = default_tol(T)
 
     C = randn(T, V[1] ⊗ V[2] ← V[5])
     A = randn(T, codomain(C) ← V[3] ⊗ V[4])

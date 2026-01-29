@@ -52,8 +52,8 @@ spacelist = (
 eltypes = (Float64,) # no complex support yet
 
 @timedtestset "Mooncake - PlanarOperations: $(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes
-    atol = precision(T)
-    rtol = precision(T)
+    atol = default_tol(T)
+    rtol = default_tol(T)
 
     @timedtestset "planarcontract!" begin
         for _ in 1:5
