@@ -192,12 +192,13 @@ function Mooncake.rrule!!(::CoDual{typeof(flip)}, t_Δt::CoDual{<:AbstractTensor
     t_flipped_Δt_flipped = Mooncake.zero_fcodual(t_flipped)
     _, Δt_flipped = arrayify(t_flipped_Δt_flipped)
 
-    function twist_pullback(::NoRData)
-        add!(Δt, flip(Δt_flipped, inds; inv = !inv))
+    function flip_pullback(::NoRData)
+        Δt_flipflipped = flip(Δt_flipped, inds; inv = !inv)
+        add!(Δt, scalartype(Δt) <: Real ? real(Δt_flipflipped) : Δt_flipflipped)
         return ntuple(Returns(NoRData()), 3)
     end
 
-    return t_flipped_Δt_flipped, twist_pullback
+    return t_flipped_Δt_flipped, flip_pullback
 end
 function Mooncake.rrule!!(
         ::CoDual{typeof(Core.kwcall)}, kwargs_Δkwargs::CoDual{@NamedTuple{inv::Bool}}, ::CoDual{typeof(flip)},
@@ -213,12 +214,13 @@ function Mooncake.rrule!!(
     t_flipped_Δt_flipped = Mooncake.zero_fcodual(t_flipped)
     _, Δt_flipped = arrayify(t_flipped_Δt_flipped)
 
-    function twist_pullback(::NoRData)
-        add!(Δt, flip(Δt_flipped, inds; inv = !inv))
+    function flip_pullback(::NoRData)
+        Δt_flipflipped = flip(Δt_flipped, inds; inv = !inv)
+        add!(Δt, scalartype(Δt) <: Real ? real(Δt_flipflipped) : Δt_flipflipped)
         return ntuple(Returns(NoRData()), 5)
     end
 
-    return t_flipped_Δt_flipped, twist_pullback
+    return t_flipped_Δt_flipped, flip_pullback
 end
 
 for insertunit in (:insertleftunit, :insertrightunit)
