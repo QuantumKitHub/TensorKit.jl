@@ -1,6 +1,7 @@
 module TestSetup
 
 export randindextuple, randcircshift, _repartition, trivtuple
+export default_tol
 export smallset, randsector, hasfusiontensor, force_planar
 export random_fusion
 export sectorlist
@@ -50,6 +51,10 @@ end
 function _repartition(p::Union{IndexTuple, Index2Tuple}, t::AbstractTensorMap)
     return _repartition(p, TensorKit.numout(t))
 end
+
+# Float32 and finite differences don't mix well
+default_tol(::Type{<:Union{Float32, Complex{Float32}}}) = 1.0e-2
+default_tol(::Type{<:Union{Float64, Complex{Float64}}}) = 1.0e-5
 
 # Sector utility
 # --------------
