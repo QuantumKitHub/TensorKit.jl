@@ -1,7 +1,6 @@
 _needs_tangent(x) = _needs_tangent(typeof(x))
-function _needs_tangent(::Type{T}) where {T <: Number}
-    return Mooncake.rdata_type(Mooncake.tangent_type(T)) !== NoRData()
-end
+_needs_tangent(::Type{T}) where {T <: Number} =
+    Mooncake.rdata_type(Mooncake.tangent_type(T)) !== NoRData
 
 # IndexTuple utility
 # ------------------
