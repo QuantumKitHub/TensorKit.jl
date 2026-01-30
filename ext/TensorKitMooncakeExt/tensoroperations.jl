@@ -119,7 +119,7 @@ function blas_contract_pullback_Δα(
 
     AB = TO.tensorcontract(A, pA, false, B, pB, false, pAB, One(), backend, allocator)
     Δα = inner(AB, ΔC)
-    return Δα
+    return project_scalar(α, Δα)
 end
 
 # tensortrace!
