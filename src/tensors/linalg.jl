@@ -19,17 +19,15 @@ LinearAlgebra.normalize!(t::AbstractTensorMap, p::Real = 2) = scale!(t, inv(norm
 LinearAlgebra.normalize(t::AbstractTensorMap, p::Real = 2) = scale(t, inv(norm(t, p)))
 
 # destination allocation for matrix multiplication
+# note that we don't fall back to `tensoralloc_contract` since that needs to account for
+# permutations, which might require complex scalartypes even if the inputs are real.
 function compose_dest(A::AbstractTensorMap, B::AbstractTensorMap)
+    S = check_spacetype(A, B)
     TC = TO.promote_contract(scalartype(A), scalartype(B), One)
-    pA = (codomainind(A), domainind(A))
-    pB = (codomainind(B), domainind(B))
-    pAB = (codomainind(A), ntuple(i -> i + numout(A), numin(B)))
-    return TO.tensoralloc_contract(
-        TC,
-        A, pA, false,
-        B, pB, false,
-        pAB, Val(false)
-    )
+    M = promote_storagetype(similarstoragetype(A, TC), similarstoragetype(B, TC))
+    TTC = tensormaptype(S, numout(A), numin(B), M)
+    structure = codomain(A) ← domain(B)
+    return TO.tensoralloc(TTC, structure, Val(false))
 end
 
 """

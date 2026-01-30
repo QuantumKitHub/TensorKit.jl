@@ -291,6 +291,15 @@ function Base.zero(d::DiagonalTensorMap)
     return DiagonalTensorMap(zero.(d.data), d.domain)
 end
 
+function compose_dest(A::DiagonalTensorMap, B::DiagonalTensorMap)
+    S = check_spacetype(A, B)
+    TC = TO.promote_contract(scalartype(A), scalartype(B), One)
+    M = promote_storagetype(similarstoragetype(A, TC), similarstoragetype(B, TC))
+    TTC = DiagonalTensorMap{TC, S, M}
+    structure = codomain(A) ← domain(B)
+    return TO.tensoralloc(TTC, structure, Val(false))
+end
+
 function LinearAlgebra.mul!(
         dC::DiagonalTensorMap, dA::DiagonalTensorMap, dB::DiagonalTensorMap, α::Number, β::Number
     )
