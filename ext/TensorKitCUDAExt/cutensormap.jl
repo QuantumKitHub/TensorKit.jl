@@ -138,6 +138,9 @@ function Base.promote_rule(
     return CuTensorMap{T, S, N₁, N₂}
 end
 
+TensorKit.promote_storagetype(TA::CuArray{T, N, M}, TB::CuArray{T, N}) where {T, N, M} = CuArray{T, N, M}
+TensorKit.promote_storagetype(TA::CuArray{T, N, M}, TB::CuArray{T, N, M}) where {T, N, M} = CuArray{T, N, M}
+
 # CuTensorMap exponentation:
 function TensorKit.exp!(t::CuTensorMap)
     domain(t) == codomain(t) ||
