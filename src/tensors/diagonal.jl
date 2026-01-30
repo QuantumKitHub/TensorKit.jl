@@ -260,10 +260,8 @@ function TO.tensorcontract_type(
         B::DiagonalTensorMap, ::Index2Tuple{1, 1}, ::Bool,
         ::Index2Tuple{1, 1}
     )
-    M = similarstoragetype(A, TC)
-    M == similarstoragetype(B, TC) ||
-        throw(ArgumentError("incompatible storage types:\n$(M) ≠ $(similarstoragetype(B, TC))"))
     S = check_spacetype(A, B)
+    M = promote_storagetype(similarstoragetype(A, TC), similarstoragetype(B, TC))
     return DiagonalTensorMap{TC, S, M}
 end
 
