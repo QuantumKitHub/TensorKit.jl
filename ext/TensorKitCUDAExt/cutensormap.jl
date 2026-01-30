@@ -37,6 +37,11 @@ for (fname, felt) in ((:zeros, :zero), (:ones, :one))
             fill!(t, $felt(T))
             return t
         end
+        function Base.$fname(::Type{TorA}, V::TensorMapSpace) where {TorA <: CuArray}
+            t = tensormaptype(spacetype(V), numout(V), numin(V), TorA)(undef, V)
+            fill!(t, $felt(eltype(TorA)))
+            return t
+        end
     end
 end
 
