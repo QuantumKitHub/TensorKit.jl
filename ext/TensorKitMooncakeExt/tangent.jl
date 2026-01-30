@@ -65,6 +65,8 @@ function Mooncake.__verify_fdata_value(c::IdDict{Any, Nothing}, p::TensorMap, t:
     return Mooncake.__verify_fdata_value(c, p.data, t.data)
 end
 
+Mooncake.to_cr_tangent(x::TensorMap) = x
+
 @is_primitive MinimalCtx Tuple{typeof(Mooncake.lgetfield), <:TensorMap, Val}
 
 # TODO: double-check if this has to include quantum dimensinos for non-abelian?
