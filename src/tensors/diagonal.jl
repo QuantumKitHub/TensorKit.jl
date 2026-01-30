@@ -261,7 +261,8 @@ function TO.tensorcontract_type(
         ::Index2Tuple{1, 1}
     )
     S = check_spacetype(A, B)
-    M = promote_storagetype(similarstoragetype(A, TC), similarstoragetype(B, TC))
+    TC′ = recoupled_scalartype(TC, sectortype(S))
+    M = promote_storagetype(similarstoragetype(A, TC′), similarstoragetype(B, TC′))
     return DiagonalTensorMap{TC, S, M}
 end
 
