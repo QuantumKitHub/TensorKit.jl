@@ -189,8 +189,7 @@ end
 function trace_permute_pullback_Δα(
         ΔC, A, p, q, α, backend
     )
-    Tdα = Mooncake.rdata_type(Mooncake.tangent_type(typeof(α)))
-    Tdα === NoRData && return NoRData()
+    _needs_tangent(α) || return NoRData()
 
     # TODO: this result might be easier to compute as:
     # C′ = βC + α * trace(A) ⟹ At = (C′ - βC) / α
