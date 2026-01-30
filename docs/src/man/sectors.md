@@ -1038,7 +1038,7 @@ value pair.
 With the elementary `artin_braid`, we can then compute a more general braid. For this, we
 provide an interface
 
-[`braid(f::FusionTree{I,N}, levels::NTuple{N,Int}, permutation::NTuple{N,Int})`](@ref braid(f::FusionTree{I,N}, levels::NTuple{N,Int}, p::NTuple{N,Int}) where {I<:Sector,N})
+[`braid(f::FusionTree{I, N}, permutation::IndexTuple{N}, levels::NTuple{N,Int})`](@ref braid(::FusionTree{I, N}, ::IndexTuple{N}, ::IndexTuple{N}) where {I, N})
 
 where the braid is specified as a permutation, such that the new sector at position `i` was
 originally at position `permutation[i]`, and where every uncoupled sector is also assigned
@@ -1065,7 +1065,7 @@ the braiding or its inverse (i.e. lines crossing over or under each other in the
 notation) and the whole operation simplifies down to a permutation. We then also support
 the interface
 
-[`permute(f::FusionTree{I,N}, permutation::NTuple{N,Int})`](@ref permute(f::FusionTree{I,N}, p::NTuple{N,Int}) where {I<:Sector,N})
+[`permute(f::FusionTree{I, N}, permutation::IndexTuple{N})`](@ref permute(::FusionTree{I, N}, ::IndexTuple{N}) where {I, N})
 
 Other manipulations which are sometimes needed are
 
@@ -1159,7 +1159,8 @@ the splitting tree.
 
 The `FusionTree` interface to duality and line bending is given by
 
-[`repartition(f1::FusionTree{I,N₁}, f2::FusionTree{I,N₂}, N::Int)`](@ref repartition)
+[`repartition(f::FusionTreePair{I,N₁,N₂}, N::Int)`](@ref repartition(::Union{FusionTreePair,
+FusionTreeBlock}, ::Int))
 
 which takes a splitting tree `f1` with `N₁` outgoing sectors, a fusion tree `f2` with `N₂`
 incoming sectors, and applies line bending such that the resulting splitting and fusion
@@ -1184,7 +1185,7 @@ With this basic function, we can now perform arbitrary combinations of braids or
 permutations with line bendings, to completely reshuffle where sectors appear. The
 interface provided for this is given by
 
-[`braid(f1::FusionTree{I,N₁}, f2::FusionTree{I,N₂}, levels1::NTuple{N₁,Int}, levels2::NTuple{N₂,Int}, p1::NTuple{N₁′,Int}, p2::NTuple{N₂′,Int})`](@ref braid(::FusionTree{I}, ::FusionTree{I}, ::IndexTuple, ::IndexTuple, ::IndexTuple{N₁}, ::IndexTuple{N₂}) where {I<:Sector,N₁,N₂})
+[`braid((f₁, f₂)::FusionTreePair, (p1, p2)::Index2Tuple, (levels1, levels2)::Index2Tuple)`](@ref braid(::TensorKit.FusionTreePair, ::Index2Tuple, ::Index2Tuple))
 
 where we now have splitting tree `f1` with `N₁` outgoing sectors, a fusion tree `f2` with
 `N₂` incoming sectors, `levels1` and `levels2` assign a level or depth to the corresponding
@@ -1211,7 +1212,7 @@ As before, there is a simplified interface for the case where
 `BraidingStyle(I) isa SymmetricBraiding` and the levels are not needed. This is simply
 given by
 
-[`permute(f1::FusionTree{I,N₁}, f2::FusionTree{I,N₂}, p1::NTuple{N₁′,Int}, p2::NTuple{N₂′,Int})`](@ref permute(::FusionTree{I}, ::FusionTree{I}, ::IndexTuple{N₁}, ::IndexTuple{N₂}) where {I<:Sector,N₁,N₂})
+[`permute((f₁, f₂)::FusionTreePair, (p1, p2)::Index2Tuple)`](@ref permute(::Union{FusionTreePair, FusionTreeBlock}, ::Index2Tuple))
 
 The `braid` and `permute` routines for double fusion trees will be the main access point for
 corresponding manipulations on tensors. As a consequence, results from this routine are
