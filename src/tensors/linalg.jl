@@ -538,8 +538,7 @@ absorb(tdst::AbstractTensorMap, tsrc::AbstractTensorMap) = absorb!(copy(tdst), t
 function absorb!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap)
     numin(tdst) == numin(tsrc) && numout(tdst) == numout(tsrc) ||
         throw(DimensionError("Incompatible number of indices for source and destination"))
-    S = spacetype(tdst)
-    S == spacetype(tsrc) || throw(SpaceMismatch("incompatible spacetypes"))
+    S = check_spacetype(tdst, tsrc)
     dom = mapreduce(infimum, ⊗, domain(tdst), domain(tsrc); init = one(S))
     cod = mapreduce(infimum, ⊗, codomain(tdst), codomain(tsrc); init = one(S))
     for (f1, f2) in fusiontrees(cod ← dom)
@@ -561,7 +560,7 @@ new `TensorMap` instance whose codomain is `codomain(t1) ⊗ codomain(t2)` and w
 is `domain(t1) ⊗ domain(t2)`.
 """
 function ⊗(A::AbstractTensorMap, B::AbstractTensorMap)
-    (S = spacetype(A)) === spacetype(B) || throw(SpaceMismatch("incompatible space types"))
+    check_spacetype(A, B)
 
     # allocate destination with correct scalartype
     pA = ((codomainind(A)..., domainind(A)...), ())

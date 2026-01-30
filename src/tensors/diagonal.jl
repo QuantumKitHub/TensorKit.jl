@@ -263,8 +263,8 @@ function TO.tensorcontract_type(
     M = similarstoragetype(A, TC)
     M == similarstoragetype(B, TC) ||
         throw(ArgumentError("incompatible storage types:\n$(M) ≠ $(similarstoragetype(B, TC))"))
-    spacetype(A) == spacetype(B) || throw(SpaceMismatch("incompatible space types"))
-    return DiagonalTensorMap{TC, spacetype(A), M}
+    S = check_spacetype(A, B)
+    return DiagonalTensorMap{TC, S, M}
 end
 
 function TO.tensoralloc(
