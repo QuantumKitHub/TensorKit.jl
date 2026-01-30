@@ -59,12 +59,9 @@ Mooncake.TestUtils.populate_address_map_internal(m::Mooncake.TestUtils.AddressMa
     Mooncake.populate_address_map_internal(m, primal.data, tangent.data)
 @inline Mooncake.TestUtils.__get_data_field(t::TensorMap, n) = getfield(t, n)
 
-function Mooncake.__verify_fdata_value(::IdDict{Any, Nothing}, p::TensorMap, f::TensorMap)
-    space(p) == space(f) ||
-        throw(Mooncake.InvalidFDataException(lazy"p has space $(space(p)) but f has size $(space(f))"))
-    return nothing
-end
 function Mooncake.__verify_fdata_value(c::IdDict{Any, Nothing}, p::TensorMap, t::TensorMap)
+    space(p) == space(t) ||
+        throw(Mooncake.InvalidFDataException(lazy"p has space $(space(p)) but t has size $(space(t))"))
     return Mooncake.__verify_fdata_value(c, p.data, t.data)
 end
 
