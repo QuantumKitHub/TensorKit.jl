@@ -15,7 +15,7 @@ Return a new tensor that is isomorphic to `t` but where the arrows on the indice
 """
 function flip(t::AbstractTensorMap, I; inv::Bool = false)
     P = flip(space(t), I)
-    t′ = similar(t, P)
+    t′ = sectorscalartype(sectortype(t)) <: Real ? similar(t, P) : similar(t, complex(scalartype(t)), P)
     for (f₁, f₂) in fusiontrees(t)
         (f₁′, f₂′), factor = only(flip(f₁, f₂, I; inv))
         scale!(t′[f₁′, f₂′], t[f₁, f₂], factor)
