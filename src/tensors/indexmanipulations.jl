@@ -55,7 +55,7 @@ function permute(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple; copy::Bool = f
         if p₁ === codomainind(t) && p₂ === domainind(t)
             return t
         elseif t isa TensorMap && has_shared_permute(t, (p₁, p₂))
-            return TensorMap(t.data, space′)
+            return TensorMap(t.data, permute(space(t), (p₁, p₂)))
         end
     end
     tdst = TO.tensoralloc_add(scalartype(t), t, (p₁, p₂), false, Val(false))
