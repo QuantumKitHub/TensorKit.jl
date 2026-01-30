@@ -296,6 +296,10 @@ function twist!(t::AbstractTensorMap, inds; inv::Bool = false)
         throw(ArgumentError(msg))
     end
     has_shared_twist(t, inds) && return t
+
+    (scalartype(t) <: Real && !(sectorscalartype(sectortype(t)) <: Real)) &&
+        throw(ArgumentError("No in-place `twist!` for a real tensor with complex sector type"))
+
     N₁ = numout(t)
     for (f₁, f₂) in fusiontrees(t)
         θ = prod(i -> i <= N₁ ? twist(f₁.uncoupled[i]) : twist(f₂.uncoupled[i - N₁]), inds)
@@ -317,7 +321,8 @@ See [`twist!`](@ref) for storing the result in place.
 """
 function twist(t::AbstractTensorMap, inds; inv::Bool = false, copy::Bool = false)
     !copy && has_shared_twist(t, inds) && return t
-    return twist!(Base.copy(t), inds; inv)
+    tdst = similar(t, sectorscalartype(sectortype(t)) <: Real ? scalartype(t) : complex(scalartype(t)))
+    return twist!(tdst, inds; inv)
 end
 
 # Methods which change the number of indices, implement using `Val(i)` for type inference
