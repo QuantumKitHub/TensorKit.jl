@@ -2,6 +2,15 @@ _needs_tangent(x) = _needs_tangent(typeof(x))
 _needs_tangent(::Type{T}) where {T <: Number} =
     Mooncake.rdata_type(Mooncake.tangent_type(T)) !== NoRData
 
+"""
+    project_scalar(x::Number, dx::Number)
+
+Project a computed tangent `dx` onto the correct tangent type for `x`.
+For example, we might compute a complex `dx` but only require the real part.
+"""
+project_scalar(x::Number, dx::Number) = oftype(x, dx)
+project_scalar(x::Real, dx::Complex) = project_scalar(x, real(dx))
+
 # IndexTuple utility
 # ------------------
 trivtuple(N) = ntuple(identity, N)

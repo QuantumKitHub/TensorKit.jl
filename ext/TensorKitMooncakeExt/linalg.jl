@@ -1,7 +1,7 @@
 # Shared
 # ------
 pullback_dC!(ΔC, β) = (scale!(ΔC, conj(β)); return NoRData())
-pullback_dβ(C, ΔC, β) = _needs_tangent(β) ? inner(C, ΔC) : NoRData()
+pullback_dβ(C, ΔC, β) = _needs_tangent(β) ? project_scalar(β, inner(ΔC, C)) : NoRData()
 
 @is_primitive DefaultCtx ReverseMode Tuple{typeof(mul!), AbstractTensorMap, AbstractTensorMap, AbstractTensorMap, Number, Number}
 
