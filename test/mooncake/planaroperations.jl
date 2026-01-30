@@ -91,6 +91,10 @@ eltypes = (Float64, ComplexF64)
                 )
             )
             Mooncake.TestUtils.test_rule(
+                rng, TensorKit.planarcontract!, C, A, pA, B, pB, pAB, One(), Zero();
+                atol, rtol, mode, is_primitive = false
+            )
+            Mooncake.TestUtils.test_rule(
                 rng, TensorKit.planarcontract!, C, A, pA, B, pB, pAB, α, β;
                 atol, rtol, mode, is_primitive = false
             )
