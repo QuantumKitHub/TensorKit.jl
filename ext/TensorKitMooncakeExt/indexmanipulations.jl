@@ -56,7 +56,7 @@ for transform in (:permute, :transpose)
                 inner(Ap, ΔC)
             end
 
-            Δβr = pullback_dβ(C, ΔC, β)
+            Δβr = pullback_dβ(ΔC, C, β)
             ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
 
             return NoRData(), ΔCr, ΔAr, NoRData(), Δαr, Δβr, map(Returns(NoRData()), ba)...
