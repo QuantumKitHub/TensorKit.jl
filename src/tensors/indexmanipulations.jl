@@ -295,6 +295,7 @@ See [`twist!`](@ref) for storing the result in place.
 function twist(t::AbstractTensorMap, inds; inv::Bool = false, copy::Bool = false)
     !copy && has_shared_twist(t, inds) && return t
     tdst = TO.tensoralloc_add(scalartype(t), t, (codomainind(t), domainind(t)), false, Val(false))
+    copy!(tdst, t)
     return twist!(tdst, inds; inv)
 end
 
