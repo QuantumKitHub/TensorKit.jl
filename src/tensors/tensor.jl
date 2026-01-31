@@ -105,6 +105,11 @@ TensorMapWithStorage{T, A}(::UndefInitializer, codomain::TensorSpace, domain::Te
     TensorMapWithStorage{T, A}(undef, codomain ← domain)
 TensorWithStorage{T, A}(::UndefInitializer, V::TensorSpace) where {T, A} = TensorMapWithStorage{T, A}(undef, V ← one(V))
 
+# Utility constructors
+# --------------------
+TensorMap(t::TensorMap) = copy(t)
+
+
 # raw data constructors
 # ---------------------
 # - dispatch starts with TensorMap{T}(::DenseVector{T}, ...)

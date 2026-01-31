@@ -184,7 +184,7 @@ type `add_transform!`, for additional expert-mode options that allows for additi
 scaling, as well as the selection of a custom backend.
 
 ```@docs
-permute(::AbstractTensorMap, ::Index2Tuple{N₁,N₂}) where {N₁,N₂}
+permute(::AbstractTensorMap, ::Index2Tuple)
 braid(::AbstractTensorMap, ::Index2Tuple, ::IndexTuple)
 transpose(::AbstractTensorMap, ::Index2Tuple)
 repartition(::AbstractTensorMap, ::Int, ::Int)

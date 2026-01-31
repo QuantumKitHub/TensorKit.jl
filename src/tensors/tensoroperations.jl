@@ -54,8 +54,7 @@ end
 function TO.tensoradd_type(
         TC, A::AbstractTensorMap, ::Index2Tuple{N₁, N₂}, ::Bool
     ) where {N₁, N₂}
-    I = sectortype(A)
-    M = similarstoragetype(A, sectorscalartype(I) <: Real ? TC : complex(TC))
+    M = similarstoragetype(A, recoupled_scalartype(TC, sectortype(A)))
     return tensormaptype(spacetype(A), N₁, N₂, M)
 end
 
@@ -103,7 +102,7 @@ end
         VB::TensorMapSpace, pB::Index2Tuple, conjB::Bool,
         pAB::Index2Tuple
     )
-    spacetype(VC) == spacetype(VA) == spacetype(VB) || throw(SectorMismatch("incompatible sector types"))
+    check_spacetype(VC, VA, VB)
     TO.tensorcontract(VA, pA, conjA, VB, pB, conjB, pAB) == VC ||
         throw(
         SpaceMismatch(
@@ -153,11 +152,10 @@ function TO.tensorcontract_type(
         B::AbstractTensorMap, ::Index2Tuple, ::Bool,
         ::Index2Tuple{N₁, N₂}
     ) where {N₁, N₂}
-    spacetype(A) == spacetype(B) || throw(SpaceMismatch("incompatible space types"))
-    I = sectortype(A)
-    TC′ = isreal(I) ? TC : complex(TC)
+    S = check_spacetype(A, B)
+    TC′ = recoupled_scalartype(TC, sectortype(S))
     M = promote_storagetype(similarstoragetype(A, TC′), similarstoragetype(B, TC′))
-    return tensormaptype(spacetype(A), N₁, N₂, M)
+    return tensormaptype(S, N₁, N₂, M)
 end
 
 # TODO: handle actual promotion rule system
@@ -213,8 +211,7 @@ function trace_permute!(
         backend = TO.DefaultBackend()
     )
     # some input checks
-    (S = spacetype(tdst)) == spacetype(tsrc) ||
-        throw(SpaceMismatch("incompatible spacetypes"))
+    S = check_spacetype(tdst, tsrc)
     if !(BraidingStyle(sectortype(S)) isa SymmetricBraiding)
         throw(SectorMismatch("only tensors with symmetric braiding rules can be contracted; try `@planar` instead"))
     end
