@@ -197,7 +197,8 @@ end
     foldright((f₁, f₂)::FusionTreePair) -> (f₃, f₄) => coeff
     foldright(src::FusionTreeBlock) -> dst => coeffs
 
-Map the first splitting vertex `a ⊗ b ← c` of `src` to a fusion vertex `a ← c ⊗ dual(b)` in `dst`.
+Map the first splitting vertex `a ⊗ b ← c` of `src` to a fusion vertex `b ← dual(a) ⊗ c`,
+and reexpress as a linear combination of standard basis trees.
 For `FusionStyle(src) === UniqueFusion()`, both `src` and `dst` are simple `FusionTreePair`s, and the
 transformation consists of a single coefficient `coeff`.
 For generic `FusionStyle`s, the input and output consist of `FusionTreeBlock`s that bundle together
@@ -221,30 +222,15 @@ function foldright((f₁, f₂)::FusionTreePair)
     @assert FusionStyle(I) === UniqueFusion()
     @assert length(f₁) > 0
 
-    # compute new trees
     a = f₁.uncoupled[1]
+    κₐ = frobenius_schur_phase(a)
     isduala = f₁.isdual[1]
-    c1 = dual(a)
-    c2 = f₁.coupled
-    c = only(c1 ⊗ c2)
-    uncoupled = Base.tail(f₁.uncoupled)
-    isdual = Base.tail(f₁.isdual)
-    fc = FusionTree((c1, c2), c, (!isduala, false), ())
+    f₁′, coef₁ = only(multi_Fmove(f₁))
+    b = f₁′.coupled
+    f₂′, coeff₂ = only(multi_Fmove_inv(dual(a), b, f₂))
+    coeff = sqrtdim(f₁.coupled) * invsqrtdim(b) * coeff₁ * Asymbol(a, b, c) * coeff₂
 
-    fl′, coeff1 = only(insertat(fc, 2, f₁))
-    coupled = fl′.coupled
-    uncoupled = Base.tail(Base.tail(fl′.uncoupled))
-    isdual = Base.tail(Base.tail(fl′.isdual))
-    fl = FusionTree{I}(uncoupled, coupled, isdual)
-
-    fr, coeff2 = only(insertat(fc, 2, f₂))
-    coeff = coeff1 * conj(coeff2)
-
-    # compute new coefficients
-    factor = sqrtdim(a) * coeff
-    isduala || (factor *= conj(frobenius_schur_phase(a)))
-
-    return (fl, fr) => factor
+    return (f₁′, f₂′) => (isduala ? coeff * conj(κₐ) : coeff)
 end
 
 function foldright(src::FusionTreeBlock)
@@ -259,60 +245,113 @@ function foldright(src::FusionTreeBlock)
 
     dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst; sizehint = length(src))
     indexmap = treeindex_map(dst)
-    U = zeros(sectorscalartype(I), length(dst), length(src))
 
+    f₁, f₂ = first(fusiontrees(src))
+    a::I = f₁.uncoupled[1]
+    κₐ = frobenius_schur_phase(a)
+    isduala = f₁.isdual[1]
+
+    cache₁ = Dict(f₁ => multi_Fmove(f₁))
+    f₁′, coef₁ = first.(cache₁[f₁])
+    b::I = f₁′.coupled
+    cache₂ = Dict((b, f₂) => multi_Fmove_inv(dual(a), b, f₂))
+    c::I = f₁.coupled
+    cache₃ = Dict((b, c) => Asymbol(a, b, c))
+
+    U = zeros(eltype(coef₁), length(dst), length(src))
     for (col, (f₁, f₂)) in enumerate(fusiontrees(src))
-        # map first splitting vertex (a, b)<-c to fusion vertex b<-(dual(a), c)
-        a = f₁.uncoupled[1]
-        isduala = f₁.isdual[1]
-        factor = sqrtdim(a)
-        if !isduala
-            factor *= conj(frobenius_schur_phase(a))
+        f₁′s, coeffs₁ = get!(cache₁, f₁) do
+            multi_Fmove(f₁)
         end
-        c1 = dual(a)
-        c2 = f₁.coupled
-        uncoupled = Base.tail(f₁.uncoupled)
-        isdual = Base.tail(f₁.isdual)
-        if FusionStyle(I) isa UniqueFusion
-            c = first(c1 ⊗ c2)
-            fl = FusionTree{I}(Base.tail(f₁.uncoupled), c, Base.tail(f₁.isdual))
-            fr = FusionTree{I}((c1, f₂.uncoupled...), c, (!isduala, f₂.isdual...))
-            row = indexmap[treeindex_data((fl, fr))]
-            @inbounds U[row, col] = factor
-        else
-            if N₁ == 1
-                cset = (leftunit(c1),) # or rightunit(a)
-            elseif N₁ == 2
-                cset = (f₁.uncoupled[2],)
-            else
-                cset = ⊗(Base.tail(f₁.uncoupled)...)
+        for (f₁′, coeff₁) in zip(f₁′s, coeffs₁)
+            b = f₁′.coupled
+            c = f₁.coupled
+            A = get!(cache₃, (b, c)) do
+                Asymbol(a, b, c)
             end
-            for c in c1 ⊗ c2
-                c ∈ cset || continue
-                for μ in 1:Nsymbol(c1, c2, c)
-                    fc = FusionTree((c1, c2), c, (!isduala, false), (), (μ,))
-                    frs_coeffs = insertat(fc, 2, f₂)
-                    for (fl′, coeff1) in insertat(fc, 2, f₁)
-                        N₁ > 1 && !isunit(fl′.innerlines[1]) && continue
-                        coupled = fl′.coupled
-                        uncoupled = Base.tail(Base.tail(fl′.uncoupled))
-                        isdual = Base.tail(Base.tail(fl′.isdual))
-                        inner = N₁ <= 3 ? () : Base.tail(Base.tail(fl′.innerlines))
-                        vertices = N₁ <= 2 ? () : Base.tail(Base.tail(fl′.vertices))
-                        fl = FusionTree{I}(uncoupled, coupled, isdual, inner, vertices)
-                        for (fr, coeff2) in frs_coeffs
-                            coeff = factor * coeff1 * conj(coeff2)
-                            row = indexmap[treeindex_data((fl, fr))]
-                            @inbounds U[row, col] = coeff
-                        end
-                    end
+            f₂′s, coeffs₂ = get!(cache₂, (b, f₂)) do
+                multi_Fmove_inv(dual(a), b, f₂)
+            end
+            coeff₀ = sqrtdim(c) * invsqrtdim(b)
+            for (f₂′, coeff₂) in zip(f₂′s, coeffs₂)
+                coeff = coeff₀ * (coeff₂' * (transpose(A) * coeff₁))
+                if isduala
+                    coeff *= conj(κₐ)
                 end
+                row = indexmap[treeindex_data((f₁′, f₂′))]
+                @inbounds U[row, col] += coeff
             end
         end
     end
-
     return dst => U
 end
+
+# function foldright_old(src::FusionTreeBlock)
+#     uncoupled_dst = (
+#         Base.tail(src.uncoupled[1]),
+#         (dual(first(src.uncoupled[1])), src.uncoupled[2]...),
+#     )
+#     isdual_dst = (Base.tail(src.isdual[1]), (!first(src.isdual[1]), src.isdual[2]...))
+#     I = sectortype(src)
+#     N₁ = numout(src)
+#     @assert N₁ > 0
+
+#     dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst; sizehint = length(src))
+#     indexmap = treeindex_map(dst)
+#     U = zeros(sectorscalartype(I), length(dst), length(src))
+
+#     for (col, (f₁, f₂)) in enumerate(fusiontrees(src))
+#         # map first splitting vertex (a, b)<-c to fusion vertex b<-(dual(a), c)
+#         a = f₁.uncoupled[1]
+#         isduala = f₁.isdual[1]
+#         factor = sqrtdim(a)
+#         if !isduala
+#             factor *= conj(frobenius_schur_phase(a))
+#         end
+#         c1 = dual(a)
+#         c2 = f₁.coupled
+#         uncoupled = Base.tail(f₁.uncoupled)
+#         isdual = Base.tail(f₁.isdual)
+#         if FusionStyle(I) isa UniqueFusion
+#             c = first(c1 ⊗ c2)
+#             fl = FusionTree{I}(Base.tail(f₁.uncoupled), c, Base.tail(f₁.isdual))
+#             fr = FusionTree{I}((c1, f₂.uncoupled...), c, (!isduala, f₂.isdual...))
+#             row = indexmap[treeindex_data((fl, fr))]
+#             @inbounds U[row, col] = factor
+#         else
+#             if N₁ == 1
+#                 cset = (leftunit(c1),) # or rightunit(a)
+#             elseif N₁ == 2
+#                 cset = (f₁.uncoupled[2],)
+#             else
+#                 cset = ⊗(Base.tail(f₁.uncoupled)...)
+#             end
+#             for c in c1 ⊗ c2
+#                 c ∈ cset || continue
+#                 for μ in 1:Nsymbol(c1, c2, c)
+#                     fc = FusionTree((c1, c2), c, (!isduala, false), (), (μ,))
+#                     frs_coeffs = insertat(fc, 2, f₂)
+#                     for (fl′, coeff1) in insertat(fc, 2, f₁)
+#                         N₁ > 1 && !isunit(fl′.innerlines[1]) && continue
+#                         coupled = fl′.coupled
+#                         uncoupled = Base.tail(Base.tail(fl′.uncoupled))
+#                         isdual = Base.tail(Base.tail(fl′.isdual))
+#                         inner = N₁ <= 3 ? () : Base.tail(Base.tail(fl′.innerlines))
+#                         vertices = N₁ <= 2 ? () : Base.tail(Base.tail(fl′.vertices))
+#                         fl = FusionTree{I}(uncoupled, coupled, isdual, inner, vertices)
+#                         for (fr, coeff2) in frs_coeffs
+#                             coeff = factor * coeff1 * conj(coeff2)
+#                             row = indexmap[treeindex_data((fl, fr))]
+#                             @inbounds U[row, col] += coeff
+#                         end
+#                     end
+#                 end
+#             end
+#         end
+#     end
+#     return dst => U
+# end
+
 
 @doc """
     foldleft((f₁, f₂)::FusionTreePair) -> (f₃, f₄) => coeff
@@ -343,8 +382,6 @@ function foldleft((f₁, f₂)::FusionTreePair)
     return (f₁′, f₂′) => conj(coeff)
 end
 
-# !! note that this is more or less a copy of foldright through
-# (f1, f2) => conj(coeff) for ((f2, f1), coeff) in foldright(src)
 function foldleft(src::FusionTreeBlock)
     uncoupled_dst = (
         (dual(first(src.uncoupled[2])), src.uncoupled[1]...),
@@ -361,59 +398,118 @@ function foldleft(src::FusionTreeBlock)
 
     dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst; sizehint = length(src))
     indexmap = treeindex_map(dst)
-    U = zeros(sectorscalartype(I), length(dst), length(src))
 
-    for (col, (f₂, f₁)) in enumerate(fusiontrees(src))
-        # map first splitting vertex (a, b)<-c to fusion vertex b<-(dual(a), c)
-        a = f₁.uncoupled[1]
-        isduala = f₁.isdual[1]
-        factor = sqrtdim(a)
-        if !isduala
-            factor *= conj(frobenius_schur_phase(a))
+    f₁, f₂ = first(fusiontrees(src))
+    a::I = f₂.uncoupled[1]
+    κₐ = frobenius_schur_phase(a)
+    isduala = f₂.isdual[1]
+
+    cache₂ = Dict(f₂ => multi_Fmove(f₂))
+    f₂′, coef₂ = first.(cache₂[f₂])
+    b::I = f₂′.coupled
+    cache₁ = Dict((b, f₁) => multi_Fmove_inv(dual(a), b, f₁))
+    c::I = f₂.coupled
+    cache₃ = Dict((b, c) => Asymbol(a, b, c))
+
+    U = zeros(eltype(coef₂), length(dst), length(src))
+    for (col, (f₁, f₂)) in enumerate(fusiontrees(src))
+        f₂′s, coeffs₂ = get!(cache₂, f₂) do
+            multi_Fmove(f₂)
         end
-        c1 = dual(a)
-        c2 = f₁.coupled
-        uncoupled = Base.tail(f₁.uncoupled)
-        isdual = Base.tail(f₁.isdual)
-        if FusionStyle(I) isa UniqueFusion
-            c = first(c1 ⊗ c2)
-            fl = FusionTree{I}(Base.tail(f₁.uncoupled), c, Base.tail(f₁.isdual))
-            fr = FusionTree{I}((c1, f₂.uncoupled...), c, (!isduala, f₂.isdual...))
-            row = indexmap[treeindex_data((fr, fl))]
-            @inbounds U[row, col] = conj(factor)
-        else
-            if N₁ == 1
-                cset = (leftunit(c1),) # or rightunit(a)
-            elseif N₁ == 2
-                cset = (f₁.uncoupled[2],)
-            else
-                cset = ⊗(Base.tail(f₁.uncoupled)...)
+        for (f₂′, coeff₂) in zip(f₂′s, coeffs₂)
+            b = f₂′.coupled
+            c = f₂.coupled
+            A = get!(cache₃, (b, c)) do
+                Asymbol(a, b, c)
             end
-            for c in c1 ⊗ c2
-                c ∈ cset || continue
-                for μ in 1:Nsymbol(c1, c2, c)
-                    fc = FusionTree((c1, c2), c, (!isduala, false), (), (μ,))
-                    fr_coeffs = insertat(fc, 2, f₂)
-                    for (fl′, coeff1) in insertat(fc, 2, f₁)
-                        N₁ > 1 && !isone(fl′.innerlines[1]) && continue
-                        coupled = fl′.coupled
-                        uncoupled = Base.tail(Base.tail(fl′.uncoupled))
-                        isdual = Base.tail(Base.tail(fl′.isdual))
-                        inner = N₁ <= 3 ? () : Base.tail(Base.tail(fl′.innerlines))
-                        vertices = N₁ <= 2 ? () : Base.tail(Base.tail(fl′.vertices))
-                        fl = FusionTree{I}(uncoupled, coupled, isdual, inner, vertices)
-                        for (fr, coeff2) in fr_coeffs
-                            coeff = factor * coeff1 * conj(coeff2)
-                            row = indexmap[treeindex_data((fr, fl))]
-                            @inbounds U[row, col] = conj(coeff)
-                        end
-                    end
+            f₁′s, coeffs₁ = get!(cache₁, (b, f₁)) do
+                multi_Fmove_inv(dual(a), b, f₁)
+            end
+            coeff₀ = sqrtdim(c) * invsqrtdim(b)
+            for (f₁′, coeff₁) in zip(f₁′s, coeffs₁)
+                coeff = coeff₀ * conj(coeff₁' * (transpose(A) * coeff₂))
+                if isduala
+                    coeff *= κₐ
                 end
+                row = indexmap[treeindex_data((f₁′, f₂′))]
+                @inbounds U[row, col] += coeff
             end
         end
     end
     return dst => U
 end
+
+# !! note that this is more or less a copy of foldright through
+# (f1, f2) => conj(coeff) for ((f2, f1), coeff) in foldright(src)
+# function foldleft_old(src::FusionTreeBlock)
+#     uncoupled_dst = (
+#         (dual(first(src.uncoupled[2])), src.uncoupled[1]...),
+#         Base.tail(src.uncoupled[2]),
+#     )
+#     isdual_dst = (
+#         (!first(src.isdual[2]), src.isdual[1]...),
+#         Base.tail(src.isdual[2]),
+#     )
+#     I = sectortype(src)
+#     N₁ = numin(src)
+#     N₂ = numout(src)
+#     @assert N₁ > 0
+
+#     dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst; sizehint = length(src))
+#     indexmap = treeindex_map(dst)
+#     U = zeros(sectorscalartype(I), length(dst), length(src))
+
+#     for (col, (f₂, f₁)) in enumerate(fusiontrees(src))
+#         # map first splitting vertex (a, b)<-c to fusion vertex b<-(dual(a), c)
+#         a = f₁.uncoupled[1]
+#         isduala = f₁.isdual[1]
+#         factor = sqrtdim(a)
+#         if !isduala
+#             factor *= conj(frobenius_schur_phase(a))
+#         end
+#         c1 = dual(a)
+#         c2 = f₁.coupled
+#         uncoupled = Base.tail(f₁.uncoupled)
+#         isdual = Base.tail(f₁.isdual)
+#         if FusionStyle(I) isa UniqueFusion
+#             c = first(c1 ⊗ c2)
+#             fl = FusionTree{I}(Base.tail(f₁.uncoupled), c, Base.tail(f₁.isdual))
+#             fr = FusionTree{I}((c1, f₂.uncoupled...), c, (!isduala, f₂.isdual...))
+#             row = indexmap[treeindex_data((fr, fl))]
+#             @inbounds U[row, col] = conj(factor)
+#         else
+#             if N₁ == 1
+#                 cset = (leftunit(c1),) # or rightunit(a)
+#             elseif N₁ == 2
+#                 cset = (f₁.uncoupled[2],)
+#             else
+#                 cset = ⊗(Base.tail(f₁.uncoupled)...)
+#             end
+#             for c in c1 ⊗ c2
+#                 c ∈ cset || continue
+#                 for μ in 1:Nsymbol(c1, c2, c)
+#                     fc = FusionTree((c1, c2), c, (!isduala, false), (), (μ,))
+#                     fr_coeffs = insertat(fc, 2, f₂)
+#                     for (fl′, coeff1) in insertat(fc, 2, f₁)
+#                         N₁ > 1 && !isone(fl′.innerlines[1]) && continue
+#                         coupled = fl′.coupled
+#                         uncoupled = Base.tail(Base.tail(fl′.uncoupled))
+#                         isdual = Base.tail(Base.tail(fl′.isdual))
+#                         inner = N₁ <= 3 ? () : Base.tail(Base.tail(fl′.innerlines))
+#                         vertices = N₁ <= 2 ? () : Base.tail(Base.tail(fl′.vertices))
+#                         fl = FusionTree{I}(uncoupled, coupled, isdual, inner, vertices)
+#                         for (fr, coeff2) in fr_coeffs
+#                             coeff = factor * coeff1 * conj(coeff2)
+#                             row = indexmap[treeindex_data((fr, fl))]
+#                             @inbounds U[row, col] = conj(coeff)
+#                         end
+#                     end
+#                 end
+#             end
+#         end
+#     end
+#     return dst => U
+# end
 
 # clockwise cyclic permutation while preserving (N₁, N₂): foldright & bendleft
 # anticlockwise cyclic permutation while preserving (N₁, N₂): foldleft & bendright

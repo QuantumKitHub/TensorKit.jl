@@ -363,7 +363,7 @@ function multi_Fmove_inv(a, c, f::FusionTree{I, N}) where {I, N}
             coeffs[1] = one(T)
         else
             for μ in 1:Nabc
-                trees[μ] = FusionTree{I}((a, f.uncoupled[1]), c, (false, f.isdual[1]), (μ,))
+                trees[μ] = FusionTree{I}((a, f.uncoupled[1]), c, (false, f.isdual[1]), (), (μ,))
                 coeff = zeros(T, Nsymbol(a, b, c))
                 coeff[μ] = one(T)
                 coeffs[μ] = coeff
@@ -483,7 +483,7 @@ Attach a fusion tree `f₂` to the uncoupled leg `i` of the fusion tree `f₁` a
 into a linear combination of fusion trees in standard form. This requires that
 `f₂.coupled == f₁.uncoupled[i]` and `f₁.isdual[i] == false`.
 """
-@inline function insertat(f₁::FusionTree{I, N₁}, i, f₂::FusionTree{I, N₂}) where {I, N₁, N₂}
+function insertat(f₁::FusionTree{I, N₁}, i, f₂::FusionTree{I, N₂}) where {I, N₁, N₂}
     (f₁.uncoupled[i] == f₂.coupled && !f₁.isdual[i]) ||
         throw(SectorMismatch("cannot connect $(f₂.uncoupled) to $(f₁.uncoupled[i])"))
 

@@ -757,8 +757,8 @@ end
 # Show and friends
 # ----------------
 function Base.dims2string(V::HomSpace)
-    str_cod = numout(V) == 0 ? "()" : join(dim.(codomain(V)), '×')
-    str_dom = numin(V) == 0 ? "()" : join(dim.(domain(V)), '×')
+    str_cod = numout(V) == 0 ? "()" : Base.join(dim.(codomain(V)), '×')
+    str_dom = numin(V) == 0 ? "()" : Base.join(dim.(domain(V)), '×')
     return str_cod * "←" * str_dom
 end
 
