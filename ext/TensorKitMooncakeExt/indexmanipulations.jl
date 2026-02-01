@@ -46,7 +46,14 @@ for transform in (:permute, :transpose)
             # ΔA
             ip = invperm(linearize(p))
             pΔA = _repartition(ip, A)
-            TK.$add_transform!(ΔA, ΔC, pΔA, conj(α), One(), ba...)
+            if scalartype(ΔA) <: Real && (!(scalartype(ΔC) <: Real) || !(scalartype(α) <: Real))
+                TC = VectorInterface.promote_scale(ΔC, α)
+                ΔAc = TO.tensoralloc_add(TC, ΔC, pΔA, false, Val(false))
+                TK.$add_transform!(ΔAc, ΔC, pΔA, conj(α), Zero(), ba...)
+                add!(ΔA, real(ΔAc))
+            else
+                TK.$add_transform!(ΔA, ΔC, pΔA, conj(α), One(), ba...)
+            end
             ΔAr = NoRData()
 
             Δαr = isnothing(Ap) ? NoRData() : project_scalar(α, inner(Ap, ΔC))
@@ -107,7 +114,14 @@ function Mooncake.rrule!!(
         ip = invperm(linearize(p))
         pΔA = _repartition(ip, A)
         ilevels = TupleTools.permute(levels, linearize(p))
-        TK.add_braid!(ΔA, ΔC, pΔA, ilevels, conj(α), One(), ba...)
+        if scalartype(ΔA) <: Real && (!(scalartype(ΔC) <: Real) || !(scalartype(α) <: Real))
+            TC = VectorInterface.promote_scale(ΔC, α)
+            ΔAc = TO.tensoralloc_add(TC, ΔC, pΔA, false, Val(false))
+            TK.add_braid!(ΔAc, ΔC, pΔA, ilevels, conj(α), Zero(), ba...)
+            add!(ΔA, real(ΔAc))
+        else
+            TK.add_braid!(ΔA, ΔC, pΔA, ilevels, conj(α), One(), ba...)
+        end
         ΔAr = NoRData()
 
         Δαr = isnothing(Ap) ? NoRData() : project_scalar(α, inner(Ap, ΔC))
