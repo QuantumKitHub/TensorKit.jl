@@ -49,13 +49,7 @@ for transform in (:permute, :transpose)
             TK.$add_transform!(ΔA, ΔC, pΔA, conj(α), One(), ba...)
             ΔAr = NoRData()
 
-            # Δα
-            Δαr = if isnothing(Ap)
-                NoRData()
-            else
-                inner(Ap, ΔC)
-            end
-
+            Δαr = isnothing(Ap) ? NoRData() : project_scalar(α, inner(Ap, ΔC))
             Δβr = pullback_dβ(ΔC, C, β)
             ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
 
@@ -116,13 +110,7 @@ function Mooncake.rrule!!(
         TK.add_braid!(ΔA, ΔC, pΔA, ilevels, conj(α), One(), ba...)
         ΔAr = NoRData()
 
-        # Δα
-        Δαr = if isnothing(Ap)
-            NoRData()
-        else
-            inner(Ap, ΔC)
-        end
-
+        Δαr = isnothing(Ap) ? NoRData() : project_scalar(α, inner(Ap, ΔC))
         Δβr = pullback_dβ(C, ΔC, β)
         ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
 

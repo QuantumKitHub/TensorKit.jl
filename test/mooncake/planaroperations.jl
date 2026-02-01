@@ -1,6 +1,7 @@
 using Test, TestExtras
 using TensorKit
 using TensorOperations
+using VectorInterface: Zero, One
 using Mooncake
 using Random
 

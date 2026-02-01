@@ -36,8 +36,8 @@ function Mooncake.rrule!!(
 
         ΔAr = planartrace_pullback_ΔA!(ΔA, ΔC, A, p, q, α, backend, allocator) # this typically returns NoRData()
         Δαr = planartrace_pullback_Δα(ΔC, A, p, q, α, backend, allocator)
-        Δβr = planartrace_pullback_Δβ(ΔC, C, β)
-        ΔCr = planartrace_pullback_ΔC!(ΔC, β) # this typically returns NoRData()
+        Δβr = pullback_dβ(ΔC, C, β)
+        ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
 
         return NoRData(),
             ΔCr, ΔAr, NoRData(), NoRData(),
@@ -47,15 +47,13 @@ function Mooncake.rrule!!(
     return C_ΔC, planartrace_pullback
 end
 
-planartrace_pullback_ΔC!(ΔC, β) = (scale!(ΔC, conj(β)); NoRData())
-
 # TODO: Fix planartrace pullback
 # This implementation is slightly more involved than its non-planar counterpart
 # this is because we lack a general `pAB` argument in `planarcontract`, and need
 # to keep things planar along the way.
 # In particular, we can't simply tensor product with multiple identities in one go
 # if they aren't "contiguous", e.g. p = ((1, 4, 5), ()), q = ((2, 6), (3, 7))
-function planartrace_pullback_ΔA!(
+function planartrace_pullback_dA!(
         ΔA, ΔC, A, p, q, α, backend, allocator
     )
     if length(q[1]) == 0
@@ -77,7 +75,7 @@ function planartrace_pullback_ΔA!(
     error("The reverse rule for `planartrace` is not yet implemented")
 end
 
-function planartrace_pullback_Δα(
+function planartrace_pullback_dα(
         ΔC, A, p, q, α, backend, allocator
     )
     Tdα = Mooncake.rdata_type(Mooncake.tangent_type(typeof(α)))
@@ -87,15 +85,7 @@ function planartrace_pullback_Δα(
     # C′ = βC + α * trace(A) ⟹ At = (C′ - βC) / α
     At = TO.tensoralloc_add(scalartype(A), A, p, false, Val(true), allocator)
     TensorKit.planartrace!(At, A, p, q, One(), Zero(), backend, allocator)
-    Δα = inner(At, ΔC)
+    Δα = project_scalar(α, inner(At, ΔC))
     TO.tensorfree!(At, allocator)
     return Δα
-end
-
-function planartrace_pullback_Δβ(ΔC, C, β)
-    Tdβ = Mooncake.rdata_type(Mooncake.tangent_type(typeof(β)))
-    Tdβ === NoRData && return NoRData()
-
-    Δβ = inner(C, ΔC)
-    return Δβ
 end
