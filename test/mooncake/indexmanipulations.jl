@@ -1,6 +1,7 @@
 using Test, TestExtras
 using TensorKit
 using TensorOperations
+using VectorInterface: Zero, One
 using Mooncake
 using Random
 
@@ -78,7 +79,13 @@ eltypes = (Float64, ComplexF64)
         for _ in 1:5
             p = randcircshift(numout(A), numin(A))
             C = randn!(transpose(A, p))
+            Mooncake.TestUtils.test_rule(rng, TensorKit.add_transpose!, C, A, p, One(), Zero(); atol, rtol, mode)
             Mooncake.TestUtils.test_rule(rng, TensorKit.add_transpose!, C, A, p, α, β; atol, rtol, mode)
+            if !(T <: Real)
+                Mooncake.TestUtils.test_rule(rng, TensorKit.add_transpose!, C, real(A), p, α, β; atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, TensorKit.add_transpose!, C, A, p, real(α), β; atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, TensorKit.add_transpose!, C, real(A), p, real(α), β; atol, rtol, mode)
+            end
             A = C
         end
     end
