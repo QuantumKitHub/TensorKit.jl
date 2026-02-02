@@ -149,12 +149,10 @@ function FusionTreeBlock{I}(
         sort!(collect(intersect(⊗(uncoupled[1]...), ⊗(uncoupled[2]...))))
     end
 
-    for c in cs
-        for f₁ in fusiontrees(uncoupled[1], c, isdual[1]),
-                f₂ in fusiontrees(uncoupled[2], c, isdual[2])
-
-            push!(trees, (f₁, f₂))
-        end
+    for c in cs,
+            f₂ in fusiontrees(uncoupled[2], c, isdual[2]),
+            f₁ in fusiontrees(uncoupled[1], c, isdual[1])
+        push!(trees, (f₁, f₂))
     end
     return FusionTreeBlock(trees)
 end
