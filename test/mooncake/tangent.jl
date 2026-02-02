@@ -55,4 +55,7 @@ eltypes = (Float64, ComplexF64)
 Sys.islinux() && @timedtestset "Mooncake - Tangent type: $(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes
     A = randn(T, V[1] ⊗ V[2] ← V[4] ⊗ V[5])
     Mooncake.TestUtils.test_data(rng, A)
+
+    D = DiagonalTensorMap{T}(undef, V[1])
+    Mooncake.TestUtils.test_data(rng, D)
 end
