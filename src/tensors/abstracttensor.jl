@@ -102,12 +102,6 @@ similarstoragetype(::Type{D}, ::Type{T}) where {D <: AbstractDict{<:Sector, <:Ab
 # default storage type for numbers
 similarstoragetype(::Type{T}) where {T <: Number} = Vector{T}
 
-
-# helper function to determine the scalartype taking into account that recouplings might happen
-recoupled_scalartype(::Type{T}, ::Type{I}) where {T <: Number, I <: Sector} = isreal(I) ? T : complex(T)
-recoupled_scalartype(t::AbstractTensorMap) = recoupled_scalartype(typeof(t))
-recoupled_scalartype(::Type{T}) where {T <: AbstractTensorMap} = recoupled_scalartype(scalartype(T), sectortype(T))
-
 # tensor characteristics: space and index information
 #-----------------------------------------------------
 """

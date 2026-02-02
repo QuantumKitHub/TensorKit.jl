@@ -54,7 +54,7 @@ end
 function TO.tensoradd_type(
         TC, A::AbstractTensorMap, ::Index2Tuple{N₁, N₂}, ::Bool
     ) where {N₁, N₂}
-    M = similarstoragetype(A, recoupled_scalartype(TC, sectortype(A)))
+    M = similarstoragetype(A, promote_permute(TC, sectortype(A)))
     return tensormaptype(spacetype(A), N₁, N₂, M)
 end
 
@@ -153,7 +153,7 @@ function TO.tensorcontract_type(
         ::Index2Tuple{N₁, N₂}
     ) where {N₁, N₂}
     S = check_spacetype(A, B)
-    TC′ = recoupled_scalartype(TC, sectortype(S))
+    TC′ = promote_permute(TC, sectortype(S))
     M = promote_storagetype(similarstoragetype(A, TC′), similarstoragetype(B, TC′))
     return tensormaptype(S, N₁, N₂, M)
 end

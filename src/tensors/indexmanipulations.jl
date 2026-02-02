@@ -1,5 +1,28 @@
 # Index manipulations
 #---------------------
+
+# find the scalartype after applying operations: take into account fusion and/or braiding
+# might need to become Float or Complex to capture complex recoupling coefficients but don't alter precision
+for (operation, manipulation) in (
+        :flip => :sector, :twist => :braiding,
+        :transpose => :fusion, :permute => :sector, :braid => :sector,
+    )
+    promote_op = Symbol(:promote_, operation)
+    manipulation_scalartype = Symbol(manipulation, :scalartype)
+
+    @eval begin
+        $promote_op(t::AbstractTensorMap) = $promote_op(typeof(t))
+        $promote_op(::Type{T}) where {T <: AbstractTensorMap} =
+            $promote_op(scalartype(T), sectortype(T))
+        $promote_op(::Type{T}, ::Type{I}) where {T <: Number, I <: Sector} =
+            sectorscalartype(I) <: Integer ? T :
+            sectorscalartype(I) <: Real ? float(T) : complex(T)
+        # TODO: currently the manipulations all use sectorscalartype, change to:
+        # $manipulation_scalartype(I) <: Integer ? T :
+        # $manipulation_scalartype(I) <: Real ? float(T) : complex(T)
+    end
+end
+
 """
     flip(t::AbstractTensorMap, I) -> t′::AbstractTensorMap
 
@@ -15,7 +38,7 @@ Return a new tensor that is isomorphic to `t` but where the arrows on the indice
 """
 function flip(t::AbstractTensorMap, I; inv::Bool = false)
     P = flip(space(t), I)
-    t′ = similar(t, recoupled_scalartype(t), P)
+    t′ = similar(t, promote_flip(t), P)
     for (f₁, f₂) in fusiontrees(t)
         (f₁′, f₂′), factor = only(flip(f₁, f₂, I; inv))
         scale!(t′[f₁′, f₂′], t[f₁, f₂], factor)
@@ -49,18 +72,19 @@ Otherwise, a copy is always made.
 
 To permute into an existing destination, see [permute!](@ref) and [`add_permute!`](@ref)
 """
-function permute(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple; copy::Bool = false)
+function permute(t::AbstractTensorMap, p::Index2Tuple; copy::Bool = false)
     # share data if possible
     if !copy
-        if p₁ === codomainind(t) && p₂ === domainind(t)
+        if p == (codomainind(t), domainind(t))
             return t
-        elseif t isa TensorMap && has_shared_permute(t, (p₁, p₂))
-            return TensorMap(t.data, permute(space(t), (p₁, p₂)))
+        elseif t isa TensorMap && has_shared_permute(t, p)
+            return TensorMap(t.data, permute(space(t), p))
         end
     end
-    tdst = TO.tensoralloc_add(scalartype(t), t, (p₁, p₂), false, Val(false))
+
     # general case
-    return @inbounds permute!(tdst, t, (p₁, p₂))
+    tdst = similar(t, promote_permute(t), permute(space(t), p))
+    return @inbounds permute!(tdst, t, p)
 end
 function permute(t::AdjointTensorMap, (p₁, p₂)::Index2Tuple; copy::Bool = false)
     p₁′ = adjointtensorindices(t, p₂)
@@ -125,16 +149,16 @@ If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwis
 To braid into an existing destination, see [braid!](@ref) and [`add_braid!`](@ref)
 """
 function braid(
-        t::AbstractTensorMap, (p₁, p₂)::Index2Tuple, levels::IndexTuple; copy::Bool = false
+        t::AbstractTensorMap, p::Index2Tuple, levels::IndexTuple; copy::Bool = false
     )
     length(levels) == numind(t) || throw(ArgumentError("invalid levels"))
 
-    BraidingStyle(sectortype(t)) isa SymmetricBraiding && return permute(t, (p₁, p₂); copy = copy)
-    (!copy && p₁ == codomainind(t) && p₂ == domainind(t)) && return t
+    BraidingStyle(sectortype(t)) isa SymmetricBraiding && return permute(t, p; copy)
+    (!copy && p == (codomainind(t), domainind(t))) && return t
 
     # general case
-    tdst = TO.tensoralloc_add(scalartype(t), t, (p₁, p₂), false, Val(false))
-    return @inbounds braid!(tdst, t, (p₁, p₂), levels)
+    tdst = similar(t, promote_braid(t), permute(space(t), p))
+    return @inbounds braid!(tdst, t, p, levels)
 end
 # TODO: braid for `AdjointTensorMap`; think about how to map the `levels` argument.
 
@@ -174,15 +198,15 @@ If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwis
 To permute into an existing destination, see [permute!](@ref) and [`add_permute!`](@ref)
 """
 function LinearAlgebra.transpose(
-        t::AbstractTensorMap, (p₁, p₂)::Index2Tuple = _transpose_indices(t);
+        t::AbstractTensorMap, p::Index2Tuple = _transpose_indices(t);
         copy::Bool = false
     )
-    sectortype(t) === Trivial && return permute(t, (p₁, p₂); copy)
-    (!copy && p₁ == codomainind(t) && p₂ == domainind(t)) && return t
+    sectortype(t) === Trivial && return permute(t, p; copy)
+    (!copy && p == (codomainind(t), domainind(t))) && return t
 
     # general case
-    tdst = TO.tensoralloc_add(scalartype(t), t, (p₁, p₂), false, Val(false))
-    return @inbounds transpose!(tdst, t, (p₁, p₂))
+    tdst = similar(t, promote_transpose(t), permute(space(t), p))
+    return @inbounds transpose!(tdst, t, p)
 end
 
 function LinearAlgebra.transpose(
@@ -294,7 +318,7 @@ See [`twist!`](@ref) for storing the result in place.
 """
 function twist(t::AbstractTensorMap, inds; inv::Bool = false, copy::Bool = false)
     !copy && has_shared_twist(t, inds) && return t
-    tdst = TO.tensoralloc_add(scalartype(t), t, (codomainind(t), domainind(t)), false, Val(false))
+    tdst = similar(t, promote_twist(t))
     copy!(tdst, t)
     return twist!(tdst, inds; inv)
 end
