@@ -290,8 +290,8 @@ function LinearAlgebra.rank(
         t::AbstractTensorMap;
         atol::Real = 0, rtol::Real = atol > 0 ? 0 : _default_rtol(t)
     )
-    r = 0 * dim(first(allunits(sectortype(t))))
-    dim(t) == 0 && return r
+    r = zero(dimscalartype(sectortype(t)))
+    iszero(dim(t)) && return r
     S = MatrixAlgebraKit.svd_vals(t)
     tol = max(atol, rtol * maximum(parent(S)))
     for (c, b) in pairs(S)
@@ -323,7 +323,7 @@ end
 function LinearAlgebra.tr(t::AbstractTensorMap)
     domain(t) == codomain(t) ||
         throw(SpaceMismatch("Trace of a tensor only exist when domain == codomain"))
-    s = zero(scalartype(t))
+    s = zero(scalartype(t)) * zero(dimscalartype(sectortype(t)))
     for (c, b) in blocks(t)
         s += dim(c) * tr(b)
     end
