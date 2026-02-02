@@ -368,13 +368,13 @@ include("braiding_manipulations.jl")
 # _abelianinner: generate the inner indices for given outer indices in the abelian case
 _abelianinner(outer::Tuple{}) = ()
 function _abelianinner(outer::Tuple{I}) where {I <: Sector}
-    return isunit(outer[1]) ? () : throw(SectorMismatch())
+    return isunit(outer[1]) ? () : throw(SectorMismatch("No fusion channels available"))
 end
 function _abelianinner(outer::Tuple{I, I}) where {I <: Sector}
-    return outer[1] == dual(outer[2]) ? () : throw(SectorMismatch())
+    return outer[1] == dual(outer[2]) ? () : throw(SectorMismatch("No fusion channels available"))
 end
 function _abelianinner(outer::Tuple{I, I, I}) where {I <: Sector}
-    return isunit(first(⊗(outer...))) ? () : throw(SectorMismatch())
+    return isunit(first(⊗(outer...))) ? () : throw(SectorMismatch("No fusion channels available"))
 end
 function _abelianinner(outer::Tuple{I, I, I, I, Vararg{I}}) where {I <: Sector}
     c = first(outer[1] ⊗ outer[2])

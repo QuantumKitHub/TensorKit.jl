@@ -151,7 +151,7 @@ function multi_associator(long::FusionTree{I, N}, short) where {I, N}
 end
 
 """
-    function multi_Fmove(tree::FusionTree{I,N}) where {I, N}
+    multi_Fmove(tree::FusionTree{I,N}) where {I, N}
 
 Computes the result of completely recoupling a fusion tree to split off
 the first uncoupled sector
@@ -175,7 +175,9 @@ See also [`multi_Fmove_inv`](@ref), [`multi_associator`](@ref).
 """
 function multi_Fmove(f::FusionTree{I, N}) where {I, N}
     if FusionStyle(I) isa UniqueFusion
-        coupled = N == 1 ? rightunit(f.uncoupled[1]) : (N == 2 ? f.uncoupled[2] : f.innerlines[end])
+        coupled = N == 1 ? rightunit(f.uncoupled[1]) :
+            N == 2 ? f.uncoupled[2] :
+            only(⊗(Base.tail(f.uncoupled)...))
         f′ = FusionTree{I}(Base.tail(f.uncoupled), coupled, Base.tail(f.isdual))
         return (f′,), (multi_associator(f, f′),)
     end

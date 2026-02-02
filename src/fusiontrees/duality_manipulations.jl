@@ -225,9 +225,10 @@ function foldright((f₁, f₂)::FusionTreePair)
     a = f₁.uncoupled[1]
     κₐ = frobenius_schur_phase(a)
     isduala = f₁.isdual[1]
-    f₁′, coef₁ = only(multi_Fmove(f₁))
+    f₁′, coeff₁ = only.(multi_Fmove(f₁))
     b = f₁′.coupled
-    f₂′, coeff₂ = only(multi_Fmove_inv(dual(a), b, f₂))
+    c = f₁.coupled
+    f₂′, coeff₂ = only.(multi_Fmove_inv(dual(a), b, f₂))
     coeff = sqrtdim(f₁.coupled) * invsqrtdim(b) * coeff₁ * Asymbol(a, b, c) * coeff₂
 
     return (f₁′, f₂′) => (isduala ? coeff * conj(κₐ) : coeff)
@@ -610,6 +611,9 @@ U = Utmp * U
 return dst, U
 ```
 =#
+@generated function repartition(src::Union{FusionTreePair, FusionTreeBlock}, ::Val{N}) where {N}
+    return _repartition_body(numout(src) - N)
+end
 function _repartition_body(N)
     if N == 0
         ex = quote
@@ -635,9 +639,6 @@ function _repartition_body(N)
         end
     end
     return ex
-end
-@generated function repartition(src::Union{FusionTreePair, FusionTreeBlock}, ::Val{N}) where {N}
-    return _repartition_body(numout(src) - N)
 end
 
 """
