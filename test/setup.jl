@@ -3,9 +3,11 @@ module TestSetup
 export smallset, randsector, hasfusiontensor, force_planar
 export random_fusion
 export sectorlist
+export test_dim_isapprox
 export Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, Vfib, VIB_diag, VIB_M
 
 using Random
+using Test: @test
 using TensorKit
 using TensorKit: ℙ, PlanarTrivial
 using Base.Iterators: take, product
@@ -86,6 +88,17 @@ function random_fusion(I::Type{<:Sector}, ::Val{N}) where {N} # for fusion tree 
         s = (counter < 20) ? randsector(I) : leftunit(first(tail))
     end
     return (s, tail...)
+end
+
+# helper function to check that d - dim(c) < dim(V) <= d where c is the largest sector
+# to allow for truncations to have some margin with larger sectors
+function test_dim_isapprox(V::ElementarySpace, d::Int)
+    dim_c_max = maximum(dim, sectors(V); init = 1)
+    return @test max(0, d - dim_c_max) ≤ dim(V) ≤ d + dim_c_max
+end
+function test_dim_isapprox(V::ProductSpace, d::Int)
+    dim_c_max = maximum(dim, blocksectors(V); init = 1)
+    return @test max(0, d - dim_c_max) ≤ dim(V) ≤ d + dim_c_max
 end
 
 sectorlist = (

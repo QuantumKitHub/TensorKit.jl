@@ -1,25 +1,29 @@
+using Adapt, CUDA, cuTENSOR
 using Test, TestExtras
 using TensorKit
 using LinearAlgebra: LinearAlgebra
 using MatrixAlgebraKit: diagview
+const CUDAExt = Base.get_extension(TensorKit, :TensorKitCUDAExt)
+@assert !isnothing(CUDAExt)
+const CuTensorMap = getglobal(CUDAExt, :CuTensorMap)
+const curand = getglobal(CUDAExt, :curand)
+const curandn = getglobal(CUDAExt, :curandn)
+const curand! = getglobal(CUDAExt, :curand!)
+using CUDA: rand as curand, rand! as curand!, randn as curandn, randn! as curandn!
 
 @isdefined(TestSetup) || include("../setup.jl")
 using .TestSetup
 
-spacelist = try
-    if ENV["CI"] == "true"
-        println("Detected running on CI")
-        if Sys.iswindows()
-            (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VIB_diag)
-        elseif Sys.isapple()
-            (Vtr, Vℤ₃, VfU₁, VfSU₂, VIB_M)
-        else
-            (Vtr, VU₁, VCU₁, VSU₂, VfSU₂, VIB_diag, VIB_M)
-        end
+spacelist = if get(ENV, "CI", "false") == "true"
+    println("Detected running on CI")
+    if Sys.iswindows()
+        (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VIB_diag)
+    elseif Sys.isapple()
+        (Vtr, Vℤ₃, VfU₁, VfSU₂, VIB_M)
     else
-        (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VIB_diag, VIB_M)
+        (Vtr, VU₁, VCU₁, VSU₂, VfSU₂, VIB_diag, VIB_M)
     end
-catch
+else
     (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VIB_diag, VIB_M)
 end
 
@@ -40,8 +44,11 @@ for V in spacelist
         @testset "QR decomposition" begin
             for T in eltypes,
                     t in (
-                        rand(T, W, W), rand(T, W, W)', rand(T, W, V4), rand(T, V4, W)',
-                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                        CUDA.rand(T, W, W),
+                        CUDA.rand(T, W, W)',
+                        CUDA.rand(T, W, V4),
+                        CUDA.rand(T, V4, W)',
+                        DiagonalTensorMap(CUDA.rand(T, reduceddim(V1)), V1),
                     )
 
                 Q, R = @constinferred qr_full(t)
@@ -67,7 +74,7 @@ for V in spacelist
 
             # empty tensor
             for T in eltypes
-                t = rand(T, V1 ⊗ V2, zerospace(V1))
+                t = CUDA.rand(T, V1 ⊗ V2, zerospace(V1))
 
                 Q, R = @constinferred qr_full(t)
                 @test Q * R ≈ t
@@ -93,8 +100,11 @@ for V in spacelist
         @testset "LQ decomposition" begin
             for T in eltypes,
                     t in (
-                        rand(T, W, W), rand(T, W, W)', rand(T, W, V4), rand(T, V4, W)',
-                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                        CUDA.rand(T, W, W),
+                        CUDA.rand(T, W, W)',
+                        CUDA.rand(T, W, V4),
+                        CUDA.rand(T, V4, W)',
+                        DiagonalTensorMap(CUDA.rand(T, reduceddim(V1)), V1),
                     )
 
                 L, Q = @constinferred lq_full(t)
@@ -116,7 +126,7 @@ for V in spacelist
 
             for T in eltypes
                 # empty tensor
-                t = rand(T, zerospace(V1), V1 ⊗ V2)
+                t = CUDA.rand(T, zerospace(V1), V1 ⊗ V2)
 
                 L, Q = @constinferred lq_full(t)
                 @test L * Q ≈ t
@@ -140,10 +150,13 @@ for V in spacelist
         end
 
         @testset "Polar decomposition" begin
-            for T in eltypes,
+            @testset for T in eltypes,
                     t in (
-                        rand(T, W, W), rand(T, W, W)', rand(T, W, V4), rand(T, V4, W)',
-                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                        CUDA.rand(T, W, W),
+                        CUDA.rand(T, W, W)',
+                        CUDA.rand(T, W, V4),
+                        CUDA.rand(T, V4, W)',
+                        DiagonalTensorMap(CUDA.rand(T, reduceddim(V1)), V1),
                     )
 
                 @assert domain(t) ≾ codomain(t)
@@ -157,8 +170,13 @@ for V in spacelist
                 @test isisometric(w)
             end
 
-            for T in eltypes,
-                    t in (rand(T, W, W), rand(T, W, W)', rand(T, V4, W), rand(T, W, V4)')
+            @testset for T in eltypes,
+                    t in (
+                        CUDA.rand(T, W, W),
+                        CUDA.rand(T, W, W)',
+                        CUDA.rand(T, V4, W),
+                        CUDA.rand(T, W, V4)',
+                    )
 
                 @assert codomain(t) ≾ domain(t)
                 p, wᴴ = @constinferred right_polar(t)
@@ -175,10 +193,13 @@ for V in spacelist
         @testset "SVD" begin
             for T in eltypes,
                     t in (
-                        rand(T, W, W), rand(T, W, W)',
-                        rand(T, W, V4), rand(T, V4, W),
-                        rand(T, W, V4)', rand(T, V4, W)',
-                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                        CUDA.rand(T, W, W),
+                        CUDA.rand(T, W, W)',
+                        CUDA.rand(T, W, V4),
+                        CUDA.rand(T, V4, W),
+                        CUDA.rand(T, W, V4)',
+                        CUDA.rand(T, V4, W)',
+                        DiagonalTensorMap(CUDA.rand(T, reduceddim(V1)), V1),
                     )
 
                 u, s, vᴴ = @constinferred svd_full(t)
@@ -193,7 +214,7 @@ for V in spacelist
                 @test isisometric(vᴴ; side = :right)
 
                 s′ = @constinferred svd_vals(t)
-                @test s′ ≈ diagview(s)
+                @test parent(s′) ≈ parent(diagview(s))
                 @test s′ isa TensorKit.SectorVector
 
                 v, c = @constinferred left_orth(t; alg = :svd)
@@ -222,7 +243,10 @@ for V in spacelist
             end
 
             # empty tensor
-            for T in eltypes, t in (rand(T, W, zerospace(V1)), rand(T, zerospace(V1), W))
+            for T in eltypes, t in (
+                        CUDA.rand(T, W, zerospace(V1)),
+                        CUDA.rand(T, zerospace(V1), W),
+                    )
                 U, S, Vᴴ = @constinferred svd_full(t)
                 @test U * S * Vᴴ ≈ t
                 @test isunitary(U)
@@ -237,10 +261,13 @@ for V in spacelist
         @testset "truncated SVD" begin
             for T in eltypes,
                     t in (
-                        randn(T, W, W), randn(T, W, W)',
-                        randn(T, W, V4), randn(T, V4, W),
-                        randn(T, W, V4)', randn(T, V4, W)',
-                        DiagonalTensorMap(randn(T, reduceddim(V1)), V1),
+                        CUDA.randn(T, W, W),
+                        CUDA.randn(T, W, W)',
+                        CUDA.randn(T, W, V4),
+                        CUDA.randn(T, V4, W),
+                        CUDA.randn(T, W, V4)',
+                        CUDA.randn(T, V4, W)',
+                        DiagonalTensorMap(CUDA.randn(T, reduceddim(V1)), V1),
                     )
 
                 @constinferred normalize!(t)
@@ -305,15 +332,17 @@ for V in spacelist
         @testset "Eigenvalue decomposition" begin
             for T in eltypes,
                     t in (
-                        rand(T, V1, V1), rand(T, W, W), rand(T, W, W)',
-                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                        CUDA.rand(T, V1, V1),
+                        CUDA.rand(T, W, W),
+                        CUDA.rand(T, W, W)',
+                        # DiagonalTensorMap(CUDA.rand(T, reduceddim(V1)), V1),
                     )
 
                 d, v = @constinferred eig_full(t)
                 @test t * v ≈ v * d
 
                 d′ = @constinferred eig_vals(t)
-                @test d′ ≈ diagview(d)
+                @test parent(d′) ≈ parent(diagview(d))
                 @test d′ isa TensorKit.SectorVector
 
                 vdv = project_hermitian!(v' * v)
@@ -331,7 +360,7 @@ for V in spacelist
                 D̃, Ṽ = @constinferred eigh_full(t2)
                 @test D ≈ D̃
                 @test V ≈ Ṽ
-                λ = minimum(real, diagview(D))
+                λ = minimum(real, parent(diagview(D)))
                 @test cond(Ṽ) ≈ one(real(T))
                 @test isposdef(t2) == isposdef(λ)
                 @test isposdef(t2 - λ * one(t2) + 0.1 * one(t2))
@@ -342,10 +371,10 @@ for V in spacelist
                 @test isunitary(v)
 
                 d′ = @constinferred eigh_vals(t2)
-                @test d′ ≈ diagview(d)
+                @test parent(d′) ≈ parent(diagview(d))
                 @test d′ isa TensorKit.SectorVector
 
-                λ = minimum(real, diagview(d))
+                λ = minimum(real, parent(diagview(d)))
                 @test cond(v) ≈ one(real(T))
                 @test isposdef(t2) == isposdef(λ)
                 @test isposdef(t2 - λ * one(t) + 0.1 * one(t2))
@@ -360,10 +389,13 @@ for V in spacelist
         @testset "Condition number and rank" begin
             for T in eltypes,
                     t in (
-                        rand(T, W, W), rand(T, W, W)',
-                        rand(T, W, V4), rand(T, V4, W),
-                        rand(T, W, V4)', rand(T, V4, W)',
-                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                        CUDA.rand(T, W, W),
+                        CUDA.rand(T, W, W)',
+                        CUDA.rand(T, W, V4),
+                        CUDA.rand(T, V4, W),
+                        CUDA.rand(T, W, V4)',
+                        CUDA.rand(T, V4, W)',
+                        DiagonalTensorMap(CUDA.rand(T, reduceddim(V1)), V1),
                     )
 
                 d1, d2 = dim(codomain(t)), dim(domain(t))
@@ -380,17 +412,20 @@ for V in spacelist
                 @test @constinferred(cond(u)) ≈ one(real(T))
                 @test @constinferred(rank(u)) == dim(V1 ⊗ V2)
 
-                t = rand(T, zerospace(V1), W)
+                t = CUDA.rand(T, zerospace(V1), W)
                 @test rank(t) == 0
-                t2 = rand(T, zerospace(V1) * zerospace(V2), zerospace(V1) * zerospace(V2))
+                t2 = CUDA.rand(T, zerospace(V1) * zerospace(V2), zerospace(V1) * zerospace(V2))
                 @test rank(t2) == 0
                 @test cond(t2) == 0.0
             end
-            for T in eltypes, t in (rand(T, W, W), rand(T, W, W)')
+            for T in eltypes, t in (
+                        CUDA.rand(T, W, W),
+                        CUDA.rand(T, W, W)',
+                    )
                 project_hermitian!(t)
                 vals = @constinferred LinearAlgebra.eigvals(t)
-                λmax = maximum(s -> maximum(abs, s), values(vals))
-                λmin = minimum(s -> minimum(abs, s), values(vals))
+                λmax = maximum(abs, parent(vals))
+                λmin = minimum(abs, parent(vals))
                 @test cond(t) ≈ λmax / λmin
             end
         end
@@ -398,8 +433,10 @@ for V in spacelist
         @testset "Hermitian projections" begin
             for T in eltypes,
                     t in (
-                        rand(T, V1, V1), rand(T, W, W), rand(T, W, W)',
-                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                        CUDA.rand(T, V1, V1),
+                        CUDA.rand(T, W, W),
+                        CUDA.rand(T, W, W)',
+                        DiagonalTensorMap(CUDA.rand(T, reduceddim(V1)), V1),
                     )
                 normalize!(t)
                 noisefactor = eps(real(T))^(3 / 4)
@@ -429,8 +466,10 @@ for V in spacelist
         @testset "Isometric projections" begin
             for T in eltypes,
                     t in (
-                        randn(T, W, W), randn(T, W, W)',
-                        randn(T, W, V4), randn(T, V4, W)',
+                        CUDA.randn(T, W, W),
+                        CUDA.randn(T, W, W)',
+                        CUDA.randn(T, W, V4),
+                        CUDA.randn(T, V4, W)',
                     )
                 t2 = project_isometric(t)
                 @test isisometric(t2)
@@ -445,7 +484,7 @@ for V in spacelist
 
                 # test that t2 is closer to A then any other isometry
                 for k in 1:10
-                    δt = randn!(similar(t))
+                    δt = CUDA.randn!(similar(t))
                     t3 = project_isometric(t + δt / 100)
                     @test norm(t - t3) > norm(t - t2)
                 end

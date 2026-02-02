@@ -522,7 +522,7 @@ for V in spacelist
                 for T in eltypes,
                         t in (
                             rand(T, V[1], V[1]), rand(T, W, W), rand(T, W, W)',
-                            DiagonalTensorMap(rand(T, reduceddim(V[1])), V[1]),
+                            # DiagonalTensorMap(rand(T, reduceddim(V[1])), V[1]), # broken in MatrixAlgebraKit
                         )
 
                     atol = rtol = precision(T) * dim(space(t))

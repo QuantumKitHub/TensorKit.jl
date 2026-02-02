@@ -194,14 +194,12 @@ LinearAlgebra.isdiag(t::AbstractTensorMap) = all(LinearAlgebra.isdiag ∘ last, 
 
 # In-place methods
 #------------------
-# Wrapping the blocks in a StridedView enables multithreading if JULIA_NUM_THREADS > 1
-# TODO: reconsider this strategy, consider spawning different threads for different blocks
 
 # Copy, adjoint and fill:
 function Base.copy!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap)
     space(tdst) == space(tsrc) || throw(SpaceMismatch("$(space(tdst)) ≠ $(space(tsrc))"))
     for ((c, bdst), (_, bsrc)) in zip(blocks(tdst), blocks(tsrc))
-        copy!(StridedView(bdst), StridedView(bsrc))
+        copy!(bdst, bsrc)
     end
     return tdst
 end
@@ -269,14 +267,21 @@ function _norm(blockiter, p::Real, init::Real)
             return isempty(b) ? init : oftype(init, LinearAlgebra.normInf(b))
         end
     elseif p > 0 # finite positive p
-        np = sum(blockiter; init) do (c, b)
-            return oftype(init, dim(c) * norm(b, p)^p)
+        np = init
+        for (c, b) in blockiter
+            np += oftype(init, dim(c) * norm(b, p)^p)
         end
         return np^(inv(oftype(np, p)))
     else
         msg = "Norm with non-positive p is not defined for `AbstractTensorMap`"
         throw(ArgumentError(msg))
     end
+end
+function LinearAlgebra.norm(t::TensorMap, p::Real = 2)
+    InnerProductStyle(t) === EuclideanInnerProduct() || throw_invalid_innerproduct(:norm)
+    # performance specialization:
+    FusionStyle(sectortype(t)) isa UniqueFusion && return norm(t.data, p)
+    return _norm(blocks(t), p, float(zero(real(scalartype(t)))))
 end
 
 _default_rtol(t) = eps(real(float(scalartype(t)))) * min(dim(domain(t)), dim(codomain(t)))
