@@ -713,7 +713,7 @@ function _add_transform_single!(tdst, tsrc, p, src::FusionTreeBlock, transformer
     return nothing
 end
 function _add_transform_single!(
-        tdst, tsrc, p, (coeff, struct_dst, struct_src)::_AbelianTransformerData,
+        tdst, tsrc, p, (coeff, struct_dst, struct_src)::AbelianTransformerData,
         α, β, backend...
     )
     subblock_dst = StridedView(tdst.data, struct_dst...)
@@ -722,7 +722,7 @@ function _add_transform_single!(
     return nothing
 end
 function _add_transform_single!(
-        tdst, tsrc, p, (basistransform, structs_dst, structs_src)::_GenericTransformerData,
+        tdst, tsrc, p, (basistransform, structs_dst, structs_src)::GenericTransformerData,
         α, β, backend...
     )
     struct_dst = (structs_dst[1], only(structs_dst[2])...)

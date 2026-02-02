@@ -7,10 +7,10 @@ abstract type TreeTransformer end
 
 struct TrivialTreeTransformer <: TreeTransformer end
 
-const _AbelianTransformerData{T, N} = Tuple{T, StridedStructure{N}, StridedStructure{N}}
+const AbelianTransformerData{T, N} = Tuple{T, StridedStructure{N}, StridedStructure{N}}
 
 struct AbelianTreeTransformer{T, N} <: TreeTransformer
-    data::Vector{_AbelianTransformerData{T, N}}
+    data::Vector{AbelianTransformerData{T, N}}
 end
 
 function AbelianTreeTransformer(transform, p, Vdst, Vsrc)
@@ -45,14 +45,14 @@ function AbelianTreeTransformer(transform, p, Vdst, Vsrc)
     return transformer
 end
 
-const _GenericTransformerData{T, N} = Tuple{
+const GenericTransformerData{T, N} = Tuple{
     Matrix{T},
     Tuple{NTuple{N, Int}, Vector{Tuple{NTuple{N, Int}, Int}}},
     Tuple{NTuple{N, Int}, Vector{Tuple{NTuple{N, Int}, Int}}},
 }
 
 struct GenericTreeTransformer{T, N} <: TreeTransformer
-    data::Vector{_GenericTransformerData{T, N}}
+    data::Vector{GenericTransformerData{T, N}}
 end
 
 function GenericTreeTransformer(transform, p, Vdst, Vsrc)
@@ -71,7 +71,7 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
 
     fblocks = fusionblocks(Vsrc)
     nblocks = length(fblocks)
-    data = Vector{_GenericTransformerData{T, N}}(undef, nblocks)
+    data = Vector{GenericTransformerData{T, N}}(undef, nblocks)
 
     nthreads = get_num_manipulation_threads()
     if nthreads > 1
@@ -237,7 +237,7 @@ function Base.sort!(
     return transformer
 end
 
-function _transformer_weight((coeff, struct_dst, struct_src)::_AbelianTransformerData)
+function _transformer_weight((coeff, struct_dst, struct_src)::AbelianTransformerData)
     return prod(struct_dst[1])
 end
 
@@ -246,6 +246,6 @@ end
 # this is L input blocks each going to L output blocks of given length
 # Note that it might be the case that the permutations are dominant, in which case the
 # actual cost model would scale like L x length(subblock)
-function _transformer_weight((mat, structs_dst, structs_src)::_GenericTransformerData)
+function _transformer_weight((mat, structs_dst, structs_src)::GenericTransformerData)
     return length(mat) * prod(structs_dst[1])
 end

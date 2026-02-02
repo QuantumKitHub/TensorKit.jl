@@ -151,8 +151,7 @@ function fusionblocks(W::HomSpace)
     fblocks = Vector{FusionTreeBlock{I, N₁, N₂, fusiontreetype(I, N₁, N₂)}}()
     for dom_uncoupled_src in sectors(domain(W)), cod_uncoupled_src in sectors(codomain(W))
         fs_src = FusionTreeBlock{I}((cod_uncoupled_src, dom_uncoupled_src), isdual_src)
-        trees_src = fusiontrees(fs_src)
-        isempty(trees_src) || push!(fblocks, fs_src)
+        isempty(fs_src) || push!(fblocks, fs_src)
     end
     return fblocks
 end
