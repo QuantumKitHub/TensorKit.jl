@@ -101,6 +101,11 @@ eltypes = (Float64, ComplexF64)
             levels = tuple(randperm(numind(A)))
             C = randn!(transpose(A, p))
             Mooncake.TestUtils.test_rule(rng, TensorKit.add_transpose!, C, A, p, α, β; atol, rtol, mode)
+            if !(T <: Real)
+                Mooncake.TestUtils.test_rule(rng, TensorKit.add_transpose!, C, real(A), p, α, β; atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, TensorKit.add_transpose!, C, A, p, real(α), β; atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, TensorKit.add_transpose!, C, A, p, real(α), real(β); atol, rtol, mode)
+            end
             A = C
         end
     end

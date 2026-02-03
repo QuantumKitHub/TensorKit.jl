@@ -74,13 +74,11 @@ function blas_contract_pullback_ΔA!(
         ); copy = false
     )
 
-    TO.tensorcontract!(
+    project_contract!(
         ΔA,
         ΔC, pΔC, false,
         tB, reverse(pB), true,
-        ipA,
-        conj(α), One(),
-        backend, allocator
+        ipA, conj(α), backend, allocator
     )
 
     return NoRData()
@@ -101,12 +99,11 @@ function blas_contract_pullback_ΔB!(
         ); copy = false
     )
 
-    TO.tensorcontract!(
+    project_contract!(
         ΔB,
         tA, reverse(pA), true,
         ΔC, pΔC, false,
-        ipB,
-        conj(α), One(), backend, allocator
+        ipB, conj(α), backend, allocator
     )
 
     return NoRData()

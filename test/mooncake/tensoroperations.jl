@@ -100,12 +100,26 @@ eltypes = (Float64, ComplexF64)
                 TensorOperations.DefaultBackend(), TensorOperations.DefaultAllocator();
                 atol, rtol, mode
             )
-            T <: Complex && Mooncake.TestUtils.test_rule(
-                rng, TensorKit.blas_contract!,
-                C, A, pA, B, pB, pAB, real(α), real(β),
-                TensorOperations.DefaultBackend(), TensorOperations.DefaultAllocator();
-                atol, rtol, mode
-            )
+            if !(T <: Real)
+                Mooncake.TestUtils.test_rule(
+                    rng, TensorKit.blas_contract!,
+                    C, A, pA, B, pB, pAB, real(α), real(β),
+                    TensorOperations.DefaultBackend(), TensorOperations.DefaultAllocator();
+                    atol, rtol, mode
+                )
+                Mooncake.TestUtils.test_rule(
+                    rng, TensorKit.blas_contract!,
+                    C, real(A), pA, B, pB, pAB, real(α), real(β),
+                    TensorOperations.DefaultBackend(), TensorOperations.DefaultAllocator();
+                    atol, rtol, mode
+                )
+                Mooncake.TestUtils.test_rule(
+                    rng, TensorKit.blas_contract!,
+                    C, A, pA, real(B), pB, pAB, real(α), real(β),
+                    TensorOperations.DefaultBackend(), TensorOperations.DefaultAllocator();
+                    atol, rtol, mode
+                )
+            end
         end
     end
 

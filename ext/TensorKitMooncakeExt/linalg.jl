@@ -27,11 +27,11 @@ function Mooncake.rrule!!(
     function mul_pullback(::NoRData)
         copy!(C, C_cache)
 
-        mul!(ΔA, ΔC, B', conj(α), One())
-        mul!(ΔB, A', ΔC, conj(α), One())
+        project_mul!(ΔA, ΔC, B', conj(α))
+        project_mul!(ΔB, A', ΔC, conj(α))
         ΔAr = NoRData()
         ΔBr = NoRData()
-        Δαr = isnothing(AB) ? NoRData() : inner(AB, ΔC)
+        Δαr = isnothing(AB) ? NoRData() : project_scalar(α, inner(AB, ΔC))
         Δβr = pullback_dβ(ΔC, C, β)
         ΔCr = pullback_dC!(ΔC, β)
 
