@@ -57,7 +57,7 @@ istestfile(fn) = endswith(fn, ".jl") && !contains(fn, "setup")
 
     # somehow AD tests are unreasonably slow on Apple CI
     # and ChainRulesTestUtils doesn't like prereleases
-    if group == "chainrules"
+    if group == "chainrules" || group == "mooncake"
         Sys.isapple() && get(ENV, "CI", "false") == "true" && continue
         isempty(VERSION.prerelease) || continue
     end
