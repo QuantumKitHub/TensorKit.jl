@@ -124,10 +124,8 @@ function Mooncake.frule!!(
     return if FieldName === 1 || FieldName === :data
         dval = tangent(t).data
         Dual(val, dval)
-    elseif FieldName === 2 || FieldName === :space
+    else # cannot be invalid fieldname since already called `getfield`
         Dual(val, NoFData()), getfield_pullback
-    else
-        throw(ArgumentError(lazy"Invalid fieldname `$FieldName`"))
     end
 end
 
@@ -140,10 +138,8 @@ function Mooncake.rrule!!(
     return if FieldName === 1 || FieldName === :data
         dval = Mooncake.tangent(t).data
         CoDual(val, dval), getfield_pullback
-    elseif FieldName === 2 || FieldName === :space
+    else # cannot be invalid fieldname since already called `getfield`
         Mooncake.zero_fcodual(val), getfield_pullback
-    else
-        throw(ArgumentError(lazy"Invalid fieldname `$FieldName`"))
     end
 end
 
@@ -157,10 +153,8 @@ Base.@constprop :aggressive function Mooncake.frule!!(
     return if primal(name) === 1 || primal(name) === :data
         dval = tangent(t).data
         Dual(val, dval)
-    elseif primal(name) === 2 || primal(name) === :space
+    else # cannot be invalid fieldname since already called `getfield`
         Dual(val, NoFData())
-    else
-        throw(ArgumentError(lazy"Invalid fieldname `$(primal(name))`"))
     end
 end
 
@@ -173,10 +167,8 @@ Base.@constprop :aggressive function Mooncake.rrule!!(
     return if primal(name) === 1 || primal(name) === :data
         dval = Mooncake.tangent(t).data
         CoDual(val, dval), getfield_pullback
-    elseif primal(name) === 2 || primal(name) === :space
+    else # cannot be invalid fieldname since already called `getfield`
         Mooncake.zero_fcodual(val), getfield_pullback
-    else
-        throw(ArgumentError(lazy"Invalid fieldname `$(primal(name))`"))
     end
 end
 
@@ -188,10 +180,8 @@ Base.@constprop :aggressive function Mooncake.frule!!(
     return if primal(name) === 1 || primal(name) === :data
         dval = tangent(t).data
         Dual(val, dval)
-    elseif primal(name) === 2 || primal(name) === :space
+    else # cannot be invalid fieldname since already called `getfield`
         Dual(val, NoFData())
-    else
-        throw(ArgumentError(lazy"Invalid fieldname `$(primal(name))`"))
     end
 end
 
@@ -204,10 +194,8 @@ Base.@constprop :aggressive function Mooncake.rrule!!(
     return if primal(name) === 1 || primal(name) === :data
         dval = Mooncake.tangent(t).data
         CoDual(val, dval), getfield_pullback
-    elseif primal(name) === 2 || primal(name) === :space
+    else # cannot be invalid fieldname since already called `getfield`
         Mooncake.zero_fcodual(val), getfield_pullback
-    else
-        throw(ArgumentError(lazy"Invalid fieldname `$(primal(name))`"))
     end
 end
 
@@ -223,10 +211,8 @@ function Mooncake.frule!!(
     return if FieldName === 1 || FieldName === :data
         dval = tangent(t).data
         Dual(val, dval)
-    elseif FieldName === 2 || FieldName === :space
+    else # cannot be invalid fieldname since already called `getfield`
         Dual(val, NoFData())
-    else
-        throw(ArgumentError(lazy"Invalid fieldname `$FieldName`"))
     end
 end
 
@@ -239,10 +225,8 @@ function Mooncake.rrule!!(
     return if FieldName === 1 || FieldName === :data
         dval = Mooncake.tangent(t).data
         CoDual(val, dval), getfield_pullback
-    elseif FieldName === 2 || FieldName === :space
+    else # cannot be invalid fieldname since already called `getfield`
         Mooncake.zero_fcodual(val), getfield_pullback
-    else
-        throw(ArgumentError(lazy"Invalid fieldname `$FieldName`"))
     end
 end
 
