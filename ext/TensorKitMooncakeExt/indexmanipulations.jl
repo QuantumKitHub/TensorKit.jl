@@ -126,7 +126,7 @@ function Mooncake.rrule!!(
         ΔAr = NoRData()
 
         Δαr = isnothing(Ap) ? NoRData() : project_scalar(α, inner(Ap, ΔC))
-        Δβr = pullback_dβ(C, ΔC, β)
+        Δβr = pullback_dβ(ΔC, C, β)
         ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
 
         return NoRData(), ΔCr, ΔAr, NoRData(), NoRData(), Δαr, Δβr, map(Returns(NoRData()), ba)...
