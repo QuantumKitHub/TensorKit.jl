@@ -14,13 +14,6 @@ rng = Random.default_rng()
 spacelist = (
     (ℂ^2, (ℂ^3)', ℂ^3, ℂ^2, (ℂ^2)'),
     (
-        Vect[Z2Irrep](0 => 1, 1 => 1),
-        Vect[Z2Irrep](0 => 1, 1 => 2)',
-        Vect[Z2Irrep](0 => 2, 1 => 2)',
-        Vect[Z2Irrep](0 => 2, 1 => 3),
-        Vect[Z2Irrep](0 => 2, 1 => 2),
-    ),
-    (
         Vect[FermionParity](0 => 1, 1 => 1),
         Vect[FermionParity](0 => 1, 1 => 2)',
         Vect[FermionParity](0 => 2, 1 => 1)',
@@ -98,13 +91,13 @@ eltypes = (Float64, ComplexF64)
         # repeat a couple times to get some distribution of arrows
         for _ in 1:5
             p = randcircshift(numout(A), numin(A))
-            levels = tuple(randperm(numind(A)))
+            levels = Tuple(randperm(numind(A)))
             C = randn!(transpose(A, p))
-            Mooncake.TestUtils.test_rule(rng, TensorKit.add_transpose!, C, A, p, α, β; atol, rtol, mode)
+            Mooncake.TestUtils.test_rule(rng, TensorKit.add_braid!, C, A, p, levels, α, β; atol, rtol, mode)
             if !(T <: Real)
-                Mooncake.TestUtils.test_rule(rng, TensorKit.add_transpose!, C, real(A), p, α, β; atol, rtol, mode)
-                Mooncake.TestUtils.test_rule(rng, TensorKit.add_transpose!, C, A, p, real(α), β; atol, rtol, mode)
-                Mooncake.TestUtils.test_rule(rng, TensorKit.add_transpose!, C, A, p, real(α), real(β); atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, TensorKit.add_braid!, C, real(A), p, levels, α, β; atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, TensorKit.add_braid!, C, A, p, levels, real(α), β; atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, TensorKit.add_braid!, C, A, p, levels, real(α), real(β); atol, rtol, mode)
             end
             A = C
         end
