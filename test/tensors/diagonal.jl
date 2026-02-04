@@ -51,7 +51,7 @@ diagspacelist = (
             @test norm(t) ≈ norm(t')
 
             @test t == @constinferred(TensorMap(t))
-            @test norm(t + TensorMap(t)) ≈ 2 * norm(t)
+            @test norm(t + TensorMap(t)) ≈ norm(TensorMap(t) + t) ≈ 2 * norm(t)
 
             @test norm(zerovector!(t)) == 0
             @test norm(one!(t)) ≈ sqrt(dim(V))
@@ -59,6 +59,9 @@ diagspacelist = (
             if T != BigFloat # seems broken for now
                 @test norm(one!(t) - id(V)) == 0
             end
+
+            t2 = randn!(TensorMap(t))
+            @test t2 + t ≈ t + t2 ≈ t2 + TensorMap(t)
 
             t1 = DiagonalTensorMap(rand(T, reduceddim(V)), V)
             t2 = DiagonalTensorMap(rand(T, reduceddim(V)), V)
