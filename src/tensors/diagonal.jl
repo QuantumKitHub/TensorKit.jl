@@ -85,6 +85,17 @@ similar_diagonal(d::DiagonalTensorMap) = DiagonalTensorMap(similar(d.data), d.do
 similar_diagonal(d::DiagonalTensorMap, ::Type{T}) where {T <: Number} =
     DiagonalTensorMap(similar(d.data, T), d.domain)
 
+"""
+    DiagonalTensorMap(s::SectorVector)
+
+Construct a `DiagonalTensorMap` directly from a `SectorVector`,
+from which the codomain (assumed non-dual) is inferred automatically.
+"""
+function DiagonalTensorMap(s::SectorVector)
+    V = Vect[sectortype(s)](c => length(b) for (c, b) in blocks(s))
+    return DiagonalTensorMap(s.data, V)
+end
+
 # TODO: more constructors needed?
 
 # Special case adjoint:
