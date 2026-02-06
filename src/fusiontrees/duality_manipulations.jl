@@ -100,7 +100,7 @@ function bendright(src::FusionTreeBlock)
             uncoupled₂ = f₂′.uncoupled
             coupled₂ = f₂′.coupled
             isdual₂ = f₂′.isdual
-            inner₂ = f₂′.inner
+            inner₂ = f₂′.innerlines
             for ν in axes(Bmat, 2)
                 coeff = coeff₀ * Bmat[μ, ν]
                 iszero(coeff) && continue
@@ -179,7 +179,7 @@ function bendleft(src::FusionTreeBlock)
             uncoupled₁ = f₁′.uncoupled
             coupled₁ = f₁′.coupled
             isdual₁ = f₁′.isdual
-            inner₁ = f₁′.inner
+            inner₁ = f₁′.innerlines
             for ν in axes(Bmat, 2)
                 coeff = coeff₀ * Bmat[μ, ν]
                 iszero(coeff) && continue
@@ -228,7 +228,7 @@ function foldright((f₁, f₂)::FusionTreePair)
     f₁′, coeff₁ = only.(multi_Fmove(f₁))
     b = f₁′.coupled
     c = f₁.coupled
-    f₂′, coeff₂ = only.(multi_Fmove_inv(dual(a), b, f₂))
+    f₂′, coeff₂ = only.(multi_Fmove_inv(dual(a), b, f₂, !isduala))
     coeff = sqrtdim(f₁.coupled) * invsqrtdim(b) * coeff₁ * Asymbol(a, b, c) * coeff₂
 
     return (f₁′, f₂′) => (isduala ? coeff * conj(κₐ) : coeff)
@@ -255,7 +255,7 @@ function foldright(src::FusionTreeBlock)
     cache₁ = Dict(f₁ => multi_Fmove(f₁))
     f₁′, coef₁ = first.(cache₁[f₁])
     b::I = f₁′.coupled
-    cache₂ = Dict((b, f₂) => multi_Fmove_inv(dual(a), b, f₂))
+    cache₂ = Dict((b, f₂) => multi_Fmove_inv(dual(a), b, f₂, !isduala))
     c::I = f₁.coupled
     cache₃ = Dict((b, c) => Asymbol(a, b, c))
 
@@ -408,7 +408,7 @@ function foldleft(src::FusionTreeBlock)
     cache₂ = Dict(f₂ => multi_Fmove(f₂))
     f₂′, coef₂ = first.(cache₂[f₂])
     b::I = f₂′.coupled
-    cache₁ = Dict((b, f₁) => multi_Fmove_inv(dual(a), b, f₁))
+    cache₁ = Dict((b, f₁) => multi_Fmove_inv(dual(a), b, f₁, !isduala))
     c::I = f₂.coupled
     cache₃ = Dict((b, c) => Asymbol(a, b, c))
 
@@ -424,7 +424,7 @@ function foldleft(src::FusionTreeBlock)
                 Asymbol(a, b, c)
             end
             f₁′s, coeffs₁ = get!(cache₁, (b, f₁)) do
-                multi_Fmove_inv(dual(a), b, f₁)
+                multi_Fmove_inv(dual(a), b, f₁, !isduala)
             end
             coeff₀ = sqrtdim(c) * invsqrtdim(b)
             for (f₁′, coeff₁) in zip(f₁′s, coeffs₁)

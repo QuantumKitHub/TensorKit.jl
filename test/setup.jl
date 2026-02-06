@@ -10,6 +10,7 @@ using Random
 using Test: @test
 using TensorKit
 using TensorKit: ℙ, PlanarTrivial
+using TensorKitSectors
 using Base.Iterators: take, product
 
 Random.seed!(123456)
@@ -101,14 +102,28 @@ function test_dim_isapprox(V::ProductSpace, d::Int)
     return @test max(0, d - dim_c_max) ≤ dim(V) ≤ d + dim_c_max
 end
 
-sectorlist = (
+uniquefusionsectorlist = (
     Z2Irrep, Z3Irrep, Z4Irrep, Z3Irrep ⊠ Z4Irrep,
-    U1Irrep, CU1Irrep, SU2Irrep,
-    FermionParity, FermionParity ⊠ FermionParity,
-    FermionParity ⊠ U1Irrep ⊠ SU2Irrep, FermionParity ⊠ SU2Irrep ⊠ SU2Irrep, # Hubbard-like
-    FibonacciAnyon, IsingAnyon,
-    Z2Irrep ⊠ FibonacciAnyon ⊠ FibonacciAnyon,
-    IsingBimodule, IsingBimodule ⊠ SU2Irrep, IsingBimodule ⊠ IsingBimodule,
+    U1Irrep, FermionParity, FermionParity ⊠ FermionParity, FermionNumber,
+    Z3Element{1}, ZNElement{5, 2},
+)
+simplefusionsectorlist = (
+    CU1Irrep, SU2Irrep, FibonacciAnyon, IsingAnyon,
+    FermionParity ⊠ U1Irrep ⊠ SU2Irrep, FermionParity ⊠ SU2Irrep ⊠ SU2Irrep,
+    Z3Element{1} ⊠ FibonacciAnyon ⊠ FibonacciAnyon,
+)
+genericfusionsectorlist = (
+    A4Irrep, A4Irrep ⊠ FermionParity, A4Irrep ⊠ SU2Irrep, A4Irrep ⊠ Z3Element{2}, A4Irrep ⊠ A4Irrep,
+)
+multifusionsectorlist = (
+    IsingBimodule, IsingBimodule ⊠ SU2Irrep, IsingBimodule ⊠ IsingBimodule, IsingBimodule ⊠ Z3Element{1}, IsingBimodule ⊠ FibonacciAnyon ⊠ A4Irrep,
+)
+
+sectorlist = (
+    uniquefusionsectorlist...,
+    simplefusionsectorlist...,
+    genericfusionsectorlist...,
+    multifusionsectorlist...,
 )
 
 # spaces

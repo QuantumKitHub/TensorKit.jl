@@ -153,8 +153,7 @@ end
 """
     multi_Fmove(tree::FusionTree{I,N}) where {I, N}
 
-Computes the result of completely recoupling a fusion tree to split off
-the first uncoupled sector
+Computes the result of completely recoupling a splitting tree to split off the first uncoupled sector
 
 ```
         ╭ ⋯ ┴─╮               ╭─ ⋯ ──┴─╮
@@ -165,7 +164,7 @@ the first uncoupled sector
 
 As the leftmost uncoupled sector `a = tree.uncoupled[1]` and the coupled sector `c = tree.copuled`
 at the very top remain fixed, they are not returned. The result is returned as two arrays:
-the first array contains the different fusion trees of the `N-1` uncoupled sectors on the right,
+the first array contains the different splitting trees of the `N-1` uncoupled sectors on the right,
 which is attached via some coupled sector `b` to the final fusion vertex. The second array contains
 the corresponding expansion coefficients, either as scalars (if `FusionStyle(I) isa MultiplicityFreeFusion`)
 or as vectors of length `Nsymbol(a, b, c)`, representing the different coefficients associated
@@ -174,10 +173,11 @@ with the different vertex labels `λ` of the topmost vertex.
 See also [`multi_Fmove_inv`](@ref), [`multi_associator`](@ref).
 """
 function multi_Fmove(f::FusionTree{I, N}) where {I, N}
+    length(f) == 0 &&
+        throw(DimensionMismatch("multi_Fmove requires at least one uncoupled sector"))
+
     if FusionStyle(I) isa UniqueFusion
-        coupled = N == 1 ? rightunit(f.uncoupled[1]) :
-            N == 2 ? f.uncoupled[2] :
-            only(⊗(Base.tail(f.uncoupled)...))
+        coupled = only(dual(f.uncoupled[1]) ⊗ f.coupled)
         f′ = FusionTree{I}(Base.tail(f.uncoupled), coupled, Base.tail(f.isdual))
         return (f′,), (multi_associator(f, f′),)
     end
@@ -320,9 +320,9 @@ function multi_Fmove(f::FusionTree{I, N}) where {I, N}
 end
 
 """
-    function multi_Fmove_inv(a, c, tree::FusionTree{I, N}) where {I, N}
+    function multi_Fmove_inv(a, c, tree::FusionTree{I, N}, isduala = false) where {I, N}
 
-Computes the expansion of fusing a left uncoupled sector `a` with an existing fusion tree
+Computes the expansion of fusing a left uncoupled sector `a` with an existing splitting tree
 `tree` with coupled sector `b = tree.coupled` to a coupled sector `c`, and recoupling the
 result into a linear combination of trees in standard form.
 ```
@@ -332,21 +332,25 @@ result into a linear combination of trees in standard form.
   |  ╭─┴─╮ | |               ╭─┴─╮ | |   |
 ```
 
-The result is returned as two arrays: the first array contains the different fusion trees of
+The result is returned as two arrays: the first array contains the different splitting trees of
 the `N+1` uncoupled sectors. The second array contains the corresponding expansion coefficients,
 either as scalars (if `FusionStyle(I) isa MultiplicityFreeFusion`) or as vectors of length
 `Nsymbol(a, b, c)`, representing the different coefficients associated with the different
 possible vertex labels `λ` of the topmost vertex in the left hand side.
+
+The optional argument `isduala` specifies the duality flag of the newly added uncoupled sector `a`,
+i.e. whether the firstmost uncoupled sector of the resulting splitting trees has an extra Z isomorphism
+that turns the outgoing `a` line into an incoming `dual(a)` line.
 """
-function multi_Fmove_inv(a, c, f::FusionTree{I, N}) where {I, N}
+function multi_Fmove_inv(a, c, f::FusionTree{I, N}, isduala = false) where {I, N}
     b = f.coupled
     c ∈ a ⊗ b ||
         throw(SectorMismatch("cannot fuse sectors $a and $b to $c"))
 
-    if FusionStyle(I) isa UniqueFusion
-        f′ = FusionTree{I}((a, f.uncoupled...), c, (false, f.isdual...))
-        return (f′,), (conj(multi_associator(f′, f)),)
-    end
+    # if FusionStyle(I) isa UniqueFusion
+    #     f′ = FusionTree{I}((a, f.uncoupled...), c, (isduala, f.isdual...))
+    #     return (f′,), (conj(multi_associator(f′, f)),)
+    # end
 
     u = rightunit(c)
     T = typeof(Fsymbol(u, u, u, u, u, u)[1, 1, 1, 1])
@@ -354,18 +358,18 @@ function multi_Fmove_inv(a, c, f::FusionTree{I, N}) where {I, N}
     # sectorscalartype(I) may be different if there is also braiding
     # TODO: consider using _Fscalartype?
     if N == 0
-        f′ = FusionTree{I}((a,), c, (false,), (), ())
+        f′ = FusionTree{I}((a,), c, (isduala,), (), ())
         return F[f′], FusionStyle(I) isa MultiplicityFreeFusion ? [one(T)] : [ones(T, 1)]
     elseif N == 1
         Nabc = Nsymbol(a, b, c)
         trees = Vector{F}(undef, Nabc)
         coeffs = FusionStyle(I) isa MultiplicityFreeFusion ? Vector{T}(undef, Nabc) : Vector{Vector{T}}(undef, Nabc)
         if FusionStyle(I) isa MultiplicityFreeFusion
-            trees[1] = FusionTree{I}((a, f.uncoupled[1]), c, (false, f.isdual[1]), ())
+            trees[1] = FusionTree{I}((a, f.uncoupled[1]), c, (isduala, f.isdual[1]), ())
             coeffs[1] = one(T)
         else
             for μ in 1:Nabc
-                trees[μ] = FusionTree{I}((a, f.uncoupled[1]), c, (false, f.isdual[1]), (), (μ,))
+                trees[μ] = FusionTree{I}((a, f.uncoupled[1]), c, (isduala, f.isdual[1]), (), (μ,))
                 coeff = zeros(T, Nsymbol(a, b, c))
                 coeff[μ] = one(T)
                 coeffs[μ] = coeff
@@ -374,7 +378,7 @@ function multi_Fmove_inv(a, c, f::FusionTree{I, N}) where {I, N}
         return trees, coeffs
     else
         # Stage 1: generate all valid fusion trees
-        f′ = FusionTree{I}((a, f.uncoupled...), c, (false, f.isdual...), ntuple(n -> u, N - 1), ntuple(n -> 1, N))
+        f′ = FusionTree{I}((a, f.uncoupled...), c, (isduala, f.isdual...), ntuple(n -> u, N - 1), ntuple(n -> 1, N))
         # this is not a valid fusion tree; we generate trees along the way from right to left
         trees = [f′]
         treesprev = similar(trees, 0)
@@ -465,7 +469,7 @@ function multi_Fmove_inv(a, c, f::FusionTree{I, N}) where {I, N}
                 end
                 F = F_current
                 if FusionStyle(I) isa MultiplicityFreeFusion
-                    coeffs[i] *= F
+                    coeffs[i] *= conj(F)
                 else
                     coeffs[i] = view(F, :, ν, κ, :)' * coeffs[i]
                 end
