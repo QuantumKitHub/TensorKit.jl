@@ -310,11 +310,6 @@ for (fname, felt) in ((:zeros, :zero), (:ones, :one))
             ) where {TorA, S <: IndexSpace}
             return Base.$fname(TorA, codomain ← domain)
         end
-        function Base.$fname(
-                ::Type{T}, ::Type{TorA}, codomain::TensorSpace{S}, domain::TensorSpace{S} = one(codomain)
-            ) where {T, TorA, S <: IndexSpace}
-            return Base.$fname(TorA, codomain ← domain)
-        end
         Base.$fname(V::TensorMapSpace) = Base.$fname(Float64, V)
         function Base.$fname(::Type{TorA}, V::TensorMapSpace) where {TorA}
             t = tensormaptype(spacetype(V), numout(V), numin(V), TorA)(undef, V)
