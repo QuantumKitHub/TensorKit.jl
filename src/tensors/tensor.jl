@@ -318,7 +318,7 @@ for (fname, felt) in ((:zeros, :zero), (:ones, :one))
         Base.$fname(V::TensorMapSpace) = Base.$fname(Float64, V)
         function Base.$fname(::Type{TorA}, V::TensorMapSpace) where {TorA}
             t = tensormaptype(spacetype(V), numout(V), numin(V), TorA)(undef, V)
-            fill!(t, $felt(TorA))
+            fill!(t, $felt(scalartype(t)))
             return t
         end
     end
