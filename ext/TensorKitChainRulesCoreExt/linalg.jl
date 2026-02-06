@@ -80,7 +80,7 @@ function ChainRulesCore.rrule(
 end
 
 function ChainRulesCore.rrule(::typeof(tr), A::AbstractTensorMap)
-    tr_pullback(Δtr) = NoTangent(), Δtr * id(storagetype(A), domain(A))
+    tr_pullback(Δtr) = NoTangent(), scale!!(id!(similar(A)), Δtr)
     return tr(A), tr_pullback
 end
 
