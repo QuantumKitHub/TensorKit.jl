@@ -38,12 +38,30 @@ function InnerProductStyle(::Type{TT}) where {TT <: AbstractTensorMap}
     return InnerProductStyle(spacetype(TT))
 end
 
+# storage types and promotion system
+# ----------------------------------
 @doc """
     storagetype(t::AbstractTensorMap) -> Type{A<:AbstractVector}
     storagetype(T::Type{<:AbstractTensorMap}) -> Type{A<:AbstractVector}
 
 Return the type of vector that stores the data of a tensor.
+If this is not overloaded for a given tensor type, the default value of `storagetype(scalartype(t))` is returned.
+
+See also [`similarstoragetype`](@ref).
 """ storagetype
+storagetype(t) = storagetype(typeof(t))
+function storagetype(::Type{T}) where {T <: AbstractTensorMap}
+    if T isa Union
+        # attempt to be slightly more specific by promoting unions
+        Ma = storagetype(T.a)
+        Mb = storagetype(T.b)
+        return promote_storagetype(Ma, Mb)
+    else
+        # fallback definition by using scalartype
+        return similarstoragetype(scalartype(T))
+    end
+end
+storagetype(T::Type) = throw(MethodError(storagetype, T))
 
 # storage type determination and promotion - hooks for specializing
 # the default implementation tries to leverarge inference and `similar`
@@ -224,8 +242,7 @@ end
 # tensor characteristics: work on instances and pass to type
 #------------------------------------------------------------
 InnerProductStyle(t::AbstractTensorMap) = InnerProductStyle(typeof(t))
-storagetype(t) = storagetype(typeof(t))
-storagetype(T::Type) = throw(MethodError(storagetype, T))
+
 blocktype(t::AbstractTensorMap) = blocktype(typeof(t))
 
 numout(t::AbstractTensorMap) = numout(typeof(t))
