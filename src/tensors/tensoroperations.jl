@@ -158,11 +158,6 @@ function TO.tensorcontract_type(
     return tensormaptype(S, N₁, N₂, M)
 end
 
-# TODO: handle actual promotion rule system
-function promote_storagetype(::Type{M₁}, ::Type{M₂}) where {M₁, M₂}
-    return M₁ === M₂ ? M₁ : throw(ArgumentError("Cannot determine storage type for combining `$M₁` and `$M₂`"))
-end
-
 function TO.tensorcontract_structure(
         A::AbstractTensorMap, pA::Index2Tuple, conjA::Bool,
         B::AbstractTensorMap, pB::Index2Tuple, conjB::Bool,

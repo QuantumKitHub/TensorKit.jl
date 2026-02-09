@@ -87,6 +87,8 @@ appropriate storage types. Additionally this registers the default storage type 
     used in constructor-like calls, and therefore will return the exact same type for a `DenseVector`
     input. The latter is used in `similar`-like calls, and therefore will return the type of calling
     `similar` on the given `DenseVector`, which need not coincide with the original type.
+
+See also [`promote_storagetype`](@ref).
 """ similarstoragetype
 
 # implement in type domain
@@ -119,6 +121,65 @@ similarstoragetype(::Type{D}, ::Type{T}) where {D <: AbstractDict{<:Sector, <:Ab
 
 # default storage type for numbers
 similarstoragetype(::Type{T}) where {T <: Number} = Vector{T}
+
+@doc """
+    promote_storagetype([T], A, B)
+    promote_storagetype([T], TA, TB)
+
+Determine an appropriate storage type for the combination of tensors `A` and `B`, or tensors of type `TA` and `TB`.
+Optionally, a scalartype `T` for the destination can be supplied that might differ from the inputs.
+""" promote_storagetype
+
+promote_storagetype(A::AbstractTensorMap, B::AbstractTensorMap) =
+    promote_storagetype(typeof(A), typeof(B))
+promote_storagetype(::Type{T}, A::AbstractTensorMap, B::AbstractTensorMap) where {T <: Number} =
+    promote_storagetype(T, typeof(A), typeof(B))
+
+promote_storagetype(::Type{A}, ::Type{B}) where {A <: AbstractTensorMap, B <: AbstractTensorMap} =
+    promote_storagetype(storagetype(A), storagetype(B))
+promote_storagetype(::Type{T}, ::Type{A}, ::Type{B}) where {T <: Number, A <: AbstractTensorMap, B <: AbstractTensorMap} =
+    promote_storagetype(similarstoragetype(A, T), similarstoragetype(B, T))
+
+# promotion system in the same spirit as base/promotion.jl
+promote_storagetype(::Type{Base.Bottom}, ::Type{Base.Bottom}) = Base.Bottom
+promote_storagetype(::Type{T}, ::Type{T}) where {T} = T
+promote_storagetype(::Type{T}, ::Type{Base.Bottom}) where {T} = T
+promote_storagetype(::Type{Base.Bottom}, ::Type{T}) where {T} = T
+
+function promote_storagetype(::Type{T}, ::Type{S}) where {T, S}
+    @inline
+    # Try promote_storage_rule in both orders. Typically only one is defined,
+    # and there is a fallback returning Bottom below, so the common case is
+    #   promote_storagetype(T, S) =>
+    #   promote_storage_result(T, S, result, Bottom) =>
+    #   typejoin(result, Bottom) => result
+    return promote_storage_result(T, S, promote_storage_rule(T, S), promote_storage_rule(S, T))
+end
+
+@doc """
+    promote_storage_rule(type1, type2)
+
+Specifies what type should be used by [`promote_storagetype`](@ref) when given values of types `type1` and
+`type2`. This function should not be called directly, but should have definitions added to
+it for new types as appropriate.
+""" promote_storage_rule
+
+promote_storage_rule(::Type, ::Type) = Base.Bottom
+# Define some methods to avoid needing to enumerate unrelated possibilities when presented
+# with Type{<:T}, and return a value in general accordance with the result given by promote_type
+promote_storage_rule(::Type{Base.Bottom}, slurp...) = Base.Bottom
+promote_storage_rule(::Type{Base.Bottom}, ::Type{Base.Bottom}, slurp...) = Base.Bottom # not strictly necessary, since the next method would match unambiguously anyways
+promote_storage_rule(::Type{Base.Bottom}, ::Type{T}, slurp...) where {T} = T
+promote_storage_rule(::Type{T}, ::Type{Base.Bottom}, slurp...) where {T} = T
+
+promote_storage_result(::Type, ::Type, ::Type{T}, ::Type{S}) where {T, S} = (@inline; promote_storagetype(T, S))
+# If no promote_storage_rule is defined, both directions give Bottom => error
+promote_storage_result(T::Type, S::Type, ::Type{Base.Bottom}, ::Type{Base.Bottom}) =
+    throw(ArgumentError("No promotion rule defined for storagetype `$T` and `$S`"))
+
+# promotion rules for common vector types
+promote_storage_rule(::Type{T}, ::Type{S}) where {T <: DenseVector, S <: DenseVector} =
+    T === S ? T : throw(ArgumentError("No promotion rule defined for storagetype `$T` and `$S`"))
 
 # tensor characteristics: space and index information
 #-----------------------------------------------------
