@@ -153,8 +153,7 @@ function TO.tensorcontract_type(
         ::Index2Tuple{N₁, N₂}
     ) where {N₁, N₂}
     S = check_spacetype(A, B)
-    TC′ = promote_permute(TC, sectortype(S))
-    M = promote_storagetype(similarstoragetype(A, TC′), similarstoragetype(B, TC′))
+    M = promote_storagetype(promote_permute(TC, sectortype(S)), A, B)
     return tensormaptype(S, N₁, N₂, M)
 end
 

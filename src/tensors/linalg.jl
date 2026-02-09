@@ -23,8 +23,7 @@ LinearAlgebra.normalize(t::AbstractTensorMap, p::Real = 2) = scale(t, inv(norm(t
 # permutations, which might require complex scalartypes even if the inputs are real.
 function compose_dest(A::AbstractTensorMap, B::AbstractTensorMap)
     S = check_spacetype(A, B)
-    TC = TO.promote_contract(scalartype(A), scalartype(B), One)
-    M = promote_storagetype(similarstoragetype(A, TC), similarstoragetype(B, TC))
+    M = promote_storagetype(TO.promote_contract(scalartype(A), scalartype(B), One), A, B)
     TTC = tensormaptype(S, numout(A), numin(B), M)
     structure = codomain(A) ← domain(B)
     return TO.tensoralloc(TTC, structure, Val(false))

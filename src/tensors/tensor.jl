@@ -560,7 +560,6 @@ end
 function Base.promote_rule(
         ::Type{<:TT₁}, ::Type{<:TT₂}
     ) where {S, N₁, N₂, TT₁ <: TensorMap{<:Any, S, N₁, N₂}, TT₂ <: TensorMap{<:Any, S, N₁, N₂}}
-    T = VectorInterface.promote_add(scalartype(TT₁), scalartype(TT₂))
-    A = promote_storagetype(similarstoragetype(TT₁, T), similarstoragetype(TT₂, T))
+    A = promote_storagetype(VectorInterface.promote_add(scalartype(TT₁), scalartype(TT₂)), TT₁, TT₂)
     return tensormaptype(S, N₁, N₂, A)
 end

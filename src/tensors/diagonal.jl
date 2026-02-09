@@ -272,9 +272,8 @@ function TO.tensorcontract_type(
         ::Index2Tuple{1, 1}
     )
     S = check_spacetype(A, B)
-    TC′ = promote_permute(TC, sectortype(S))
-    M = promote_storagetype(similarstoragetype(A, TC′), similarstoragetype(B, TC′))
-    return DiagonalTensorMap{TC, S, M}
+    M = promote_storagetype(promote_permute(TC, sectortype(S)), A, B)
+    return DiagonalTensorMap{scalartype(M), S, M}
 end
 
 function TO.tensoralloc(
@@ -303,9 +302,8 @@ end
 
 function compose_dest(A::DiagonalTensorMap, B::DiagonalTensorMap)
     S = check_spacetype(A, B)
-    TC = TO.promote_contract(scalartype(A), scalartype(B), One)
-    M = promote_storagetype(similarstoragetype(A, TC), similarstoragetype(B, TC))
-    TTC = DiagonalTensorMap{TC, S, M}
+    M = promote_storagetype(TO.promote_contract(scalartype(A), scalartype(B), One), A, B)
+    TTC = DiagonalTensorMap{scalartype(M), S, M}
     structure = codomain(A) ← domain(B)
     return TO.tensoralloc(TTC, structure, Val(false))
 end
