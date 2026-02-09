@@ -225,13 +225,14 @@ function foldright((f₁, f₂)::FusionTreePair)
     a = f₁.uncoupled[1]
     κₐ = frobenius_schur_phase(a)
     isduala = f₁.isdual[1]
-    f₁′, coeff₁ = only.(multi_Fmove(f₁))
+    f₁′, coeff₁ = map(only, multi_Fmove(f₁))
     b = f₁′.coupled
     c = f₁.coupled
-    f₂′, coeff₂ = only.(multi_Fmove_inv(dual(a), b, f₂, !isduala))
-    coeff = sqrtdim(f₁.coupled) * invsqrtdim(b) * coeff₁ * Asymbol(a, b, c) * coeff₂
+    
+    f₂′, coeff₂ = map(only, multi_Fmove_inv(dual(a), b, f₂, !isduala))
+    coeff = sqrtdim(f₁.coupled) * invsqrtdim(b) * coeff₁ * Asymbol(a, b, c) * conj(coeff₂)
 
-    return (f₁′, f₂′) => (isduala ? coeff * conj(κₐ) : coeff)
+    return (f₁′, f₂′) => (isduala ? coeff * κₐ : coeff)
 end
 
 function foldright(src::FusionTreeBlock)
@@ -277,7 +278,7 @@ function foldright(src::FusionTreeBlock)
             for (f₂′, coeff₂) in zip(f₂′s, coeffs₂)
                 coeff = coeff₀ * (coeff₂' * (transpose(A) * coeff₁))
                 if isduala
-                    coeff *= conj(κₐ)
+                    coeff *= κₐ
                 end
                 row = indexmap[treeindex_data((f₁′, f₂′))]
                 @inbounds U[row, col] += coeff
@@ -430,7 +431,7 @@ function foldleft(src::FusionTreeBlock)
             for (f₁′, coeff₁) in zip(f₁′s, coeffs₁)
                 coeff = coeff₀ * conj(coeff₁' * (transpose(A) * coeff₂))
                 if isduala
-                    coeff *= κₐ
+                    coeff *= conj(κₐ)
                 end
                 row = indexmap[treeindex_data((f₁′, f₂′))]
                 @inbounds U[row, col] += coeff

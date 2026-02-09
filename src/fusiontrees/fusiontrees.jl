@@ -93,10 +93,9 @@ function FusionTree{I}(
     ) where {I <: Sector, N}
     FusionStyle(I) isa UniqueFusion ||
         throw(ArgumentError("fusion tree requires inner lines if `FusionStyle(I) <: MultipleFusion`"))
-    return FusionTree{I}(
-        map(s -> convert(I, s), uncoupled), convert(I, coupled), isdual,
-        _abelianinner(map(s -> convert(I, s), (uncoupled..., dual(coupled))))
-    )
+    uncoupled′ = map(s -> convert(I, s), uncoupled)
+    coupled′ = convert(I, coupled)
+    return FusionTree{I}(uncoupled′, coupled′, isdual, _abelianinner((uncoupled′..., dual(coupled′))))
 end
 function FusionTree(
         uncoupled::NTuple{N, I}, coupled::I, isdual = ntuple(n -> false, length(uncoupled))
@@ -234,6 +233,7 @@ function Base.:(==)(f₁::FusionTree{I, N}, f₂::FusionTree{I, N}) where {I <: 
     return true
 end
 Base.:(==)(f₁::FusionTree, f₂::FusionTree) = false
+Base.:(==)(b1::FusionTreeBlock, b2::FusionTreeBlock) = fusiontrees(b1) == fusiontrees(b2)
 
 # Within one block, all values of uncoupled and isdual are equal, so avoid hashing these
 function treeindex_data((f₁, f₂))

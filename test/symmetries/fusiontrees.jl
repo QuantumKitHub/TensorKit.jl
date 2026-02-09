@@ -91,6 +91,7 @@ using .TestSetup
         end
     end
 
+    # Basic associativity manipulations of individual fusion trees
     @testset "Fusion tree $Istr: split and join" begin
         N = 6
         uncoupled = random_fusion(I, Val(N))
@@ -226,7 +227,8 @@ using .TestSetup
         f1 = rand(collect(fusiontrees(out1, in1)))
         f2 = rand(collect(fusiontrees(out2, in2)))
 
-        @constinferred TK.merge(f1, f2, first(in1 ⊗ in2), 1)
+        d = @constinferred TK.merge(f1, f2, first(in1 ⊗ in2), 1)
+        @test norm(values(d)) ≈ 1
         if !(FusionStyle(I) isa GenericFusion)
             @constinferred TK.merge(f1, f2, first(in1 ⊗ in2))
         end
@@ -258,6 +260,7 @@ using .TestSetup
         end
     end
 
+    # Duality tests
     if I <: ProductSector
         N = 3
     else
@@ -302,6 +305,68 @@ using .TestSetup
         end
     end
 
+    @testset "Double fusion tree $Istr: bending" begin
+        # single bend
+        dst, U = @constinferred TK.bendright(src)
+        dst2, U2 = @constinferred TK.bendleft(dst)
+        @test src == dst2
+        @test _isone(U2 * U)
+        # double bend
+        dst1, U1 = @constinferred TK.bendleft(src)
+        dst2, U2 = @constinferred TK.bendleft(dst1)
+        dst3, U3 = @constinferred TK.bendright(dst2)
+        dst4, U4 = @constinferred TK.bendright(dst3)
+        @test src == dst4
+        @test _isone(U4 * U3 * U2 * U1)
+
+        if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
+            all_inds = (ntuple(identity, numout(src))..., reverse(ntuple(i -> i + numout(src), numin(src)))...)
+            p₁ = ntuple(i -> all_inds[i], numout(dst2))
+            p₂ = reverse(ntuple(i -> all_inds[i + numout(dst2)], numin(dst2)))
+            U = U2 * U1
+            if FusionStyle(I) isa UniqueFusion
+                @test permutedims(A, (p₁..., p₂...)) ≈ U * fusiontensor(dst)
+            else
+                A′ = map(Base.Fix2(permutedims, (p₁..., p₂...)), A)
+                A″ = map(fusiontensor, fusiontrees(dst2))
+                for (i, Ai) in enumerate(A′)
+                    @test Ai ≈ sum(A″ .* U[:, i])
+                end
+            end
+        end
+    end
+
+    @testset "Double fusion tree $Istr: folding" begin
+        # single bend
+        dst, U = @constinferred TK.foldleft(src)
+        dst2, U2 = @constinferred TK.foldright(dst)
+        @test src == dst2
+        @test _isone(U2 * U)
+        # double bend
+        dst1, U1 = @constinferred TK.foldright(src)
+        dst2, U2 = @constinferred TK.foldright(dst1)
+        dst3, U3 = @constinferred TK.foldleft(dst2)
+        dst4, U4 = @constinferred TK.foldleft(dst3)
+        @test src == dst4
+        @test _isone(U4 * U3 * U2 * U1)
+
+        if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
+            all_inds = TupleTools.circshift((ntuple(identity, numout(src))..., reverse(ntuple(i -> i + numout(src), numin(src)))...), -2)
+            p₁ = ntuple(i -> all_inds[i], numout(dst2))
+            p₂ = reverse(ntuple(i -> all_inds[i + numout(dst2)], numin(dst2)))
+            U = U2 * U1
+            if FusionStyle(I) isa UniqueFusion
+                @test permutedims(A, (p₁..., p₂...)) ≈ U * fusiontensor(dst2)
+            else
+                A′ = map(Base.Fix2(permutedims, (p₁..., p₂...)), A)
+                A″ = map(fusiontensor, fusiontrees(dst2))
+                for (i, Ai) in enumerate(A′)
+                    @test Ai ≈ sum(A″ .* U[:, i])
+                end
+            end
+        end
+    end
+
     @testset "Double fusion tree $Istr: repartitioning" begin
         for n in 0:(2 * N)
             dst, U = @constinferred TK.repartition(src, $n)
@@ -320,8 +385,7 @@ using .TestSetup
                     A′ = map(Base.Fix2(permutedims, (p₁..., p₂...)), A)
                     A″ = map(fusiontensor, fusiontrees(dst))
                     for (i, Ai) in enumerate(A′)
-                        Aj = sum(A″ .* U[:, i])
-                        @test Ai ≈ Aj
+                        @test Ai ≈ sum(A″ .* U[:, i])
                     end
                 end
             end
@@ -330,99 +394,99 @@ using .TestSetup
 
 
     # TODO: find better test for this
-    # @testset "Fusion tree $Istr: planar trace" begin
-    #     if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
-    #         s = randsector(I)
-    #         N = 6
-    #         outgoing = (s, dual(s), s, dual(s), s, dual(s))
-    #         for bool in (true, false)
-    #             isdual = (bool, !bool, bool, !bool, bool, !bool)
-    #             for f in fusiontrees(outgoing, unit(s), isdual)
-    #                 af = convert(Array, f)
-    #                 T = eltype(af)
+    @testset "Fusion tree $Istr: planar trace" begin
+        if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
+            s = randsector(I)
+            N = 6
+            outgoing = (s, dual(s), s, dual(s), s, dual(s))
+            for bool in (true, false)
+                isdual = (bool, !bool, bool, !bool, bool, !bool)
+                for f in fusiontrees(outgoing, unit(s), isdual)
+                    af = convert(Array, f)
+                    T = eltype(af)
 
-    #                 for i in 1:N
-    #                     d = @constinferred TK.elementary_trace(f, i)
-    #                     j = mod1(i + 1, N)
-    #                     inds = collect(1:(N + 1))
-    #                     inds[i] = inds[j]
-    #                     bf = tensortrace(af, inds)
-    #                     bf′ = zero(bf)
-    #                     for (f′, coeff) in d
-    #                         bf′ .+= coeff .* convert(Array, f′)
-    #                     end
-    #                     @test bf ≈ bf′ atol = 1.0e-12
-    #                 end
+                    for i in 1:N
+                        d = @constinferred TK.elementary_trace(f, i)
+                        j = mod1(i + 1, N)
+                        inds = collect(1:(N + 1))
+                        inds[i] = inds[j]
+                        bf = tensortrace(af, inds)
+                        bf′ = zero(bf)
+                        for (f′, coeff) in d
+                            bf′ .+= coeff .* convert(Array, f′)
+                        end
+                        @test bf ≈ bf′ atol = 1.0e-12
+                    end
 
-    #                 d2 = @constinferred TK.planar_trace(f, ((1, 3), (2, 4)))
-    #                 oind2 = (5, 6, 7)
-    #                 bf2 = tensortrace(af, (:a, :a, :b, :b, :c, :d, :e))
-    #                 bf2′ = zero(bf2)
-    #                 for (f2′, coeff) in d2
-    #                     bf2′ .+= coeff .* convert(Array, f2′)
-    #                 end
-    #                 @test bf2 ≈ bf2′ atol = 1.0e-12
+                    d2 = @constinferred TK.planar_trace(f, ((1, 3), (2, 4)))
+                    oind2 = (5, 6, 7)
+                    bf2 = tensortrace(af, (:a, :a, :b, :b, :c, :d, :e))
+                    bf2′ = zero(bf2)
+                    for (f2′, coeff) in d2
+                        bf2′ .+= coeff .* convert(Array, f2′)
+                    end
+                    @test bf2 ≈ bf2′ atol = 1.0e-12
 
-    #                 d2 = @constinferred TK.planar_trace(f, ((5, 6), (2, 1)))
-    #                 oind2 = (3, 4, 7)
-    #                 bf2 = tensortrace(af, (:a, :b, :c, :d, :b, :a, :e))
-    #                 bf2′ = zero(bf2)
-    #                 for (f2′, coeff) in d2
-    #                     bf2′ .+= coeff .* convert(Array, f2′)
-    #                 end
-    #                 @test bf2 ≈ bf2′ atol = 1.0e-12
+                    d2 = @constinferred TK.planar_trace(f, ((5, 6), (2, 1)))
+                    oind2 = (3, 4, 7)
+                    bf2 = tensortrace(af, (:a, :b, :c, :d, :b, :a, :e))
+                    bf2′ = zero(bf2)
+                    for (f2′, coeff) in d2
+                        bf2′ .+= coeff .* convert(Array, f2′)
+                    end
+                    @test bf2 ≈ bf2′ atol = 1.0e-12
 
-    #                 d2 = @constinferred TK.planar_trace(f, ((1, 4), (6, 3)))
-    #                 bf2 = tensortrace(af, (:a, :b, :c, :c, :d, :a, :e))
-    #                 bf2′ = zero(bf2)
-    #                 for (f2′, coeff) in d2
-    #                     bf2′ .+= coeff .* convert(Array, f2′)
-    #                 end
-    #                 @test bf2 ≈ bf2′ atol = 1.0e-12
+                    d2 = @constinferred TK.planar_trace(f, ((1, 4), (6, 3)))
+                    bf2 = tensortrace(af, (:a, :b, :c, :c, :d, :a, :e))
+                    bf2′ = zero(bf2)
+                    for (f2′, coeff) in d2
+                        bf2′ .+= coeff .* convert(Array, f2′)
+                    end
+                    @test bf2 ≈ bf2′ atol = 1.0e-12
 
-    #                 q1 = (1, 3, 5)
-    #                 q2 = (2, 4, 6)
-    #                 d3 = @constinferred TK.planar_trace(f, (q1, q2))
-    #                 bf3 = tensortrace(af, (:a, :a, :b, :b, :c, :c, :d))
-    #                 bf3′ = zero(bf3)
-    #                 for (f3′, coeff) in d3
-    #                     bf3′ .+= coeff .* convert(Array, f3′)
-    #                 end
-    #                 @test bf3 ≈ bf3′ atol = 1.0e-12
+                    q1 = (1, 3, 5)
+                    q2 = (2, 4, 6)
+                    d3 = @constinferred TK.planar_trace(f, (q1, q2))
+                    bf3 = tensortrace(af, (:a, :a, :b, :b, :c, :c, :d))
+                    bf3′ = zero(bf3)
+                    for (f3′, coeff) in d3
+                        bf3′ .+= coeff .* convert(Array, f3′)
+                    end
+                    @test bf3 ≈ bf3′ atol = 1.0e-12
 
-    #                 q1 = (1, 3, 5)
-    #                 q2 = (6, 2, 4)
-    #                 d3 = @constinferred TK.planar_trace(f, (q1, q2))
-    #                 bf3 = tensortrace(af, (:a, :b, :b, :c, :c, :a, :d))
-    #                 bf3′ = zero(bf3)
-    #                 for (f3′, coeff) in d3
-    #                     bf3′ .+= coeff .* convert(Array, f3′)
-    #                 end
-    #                 @test bf3 ≈ bf3′ atol = 1.0e-12
+                    q1 = (1, 3, 5)
+                    q2 = (6, 2, 4)
+                    d3 = @constinferred TK.planar_trace(f, (q1, q2))
+                    bf3 = tensortrace(af, (:a, :b, :b, :c, :c, :a, :d))
+                    bf3′ = zero(bf3)
+                    for (f3′, coeff) in d3
+                        bf3′ .+= coeff .* convert(Array, f3′)
+                    end
+                    @test bf3 ≈ bf3′ atol = 1.0e-12
 
-    #                 q1 = (1, 2, 3)
-    #                 q2 = (6, 5, 4)
-    #                 d3 = @constinferred TK.planar_trace(f, (q1, q2))
-    #                 bf3 = tensortrace(af, (:a, :b, :c, :c, :b, :a, :d))
-    #                 bf3′ = zero(bf3)
-    #                 for (f3′, coeff) in d3
-    #                     bf3′ .+= coeff .* convert(Array, f3′)
-    #                 end
-    #                 @test bf3 ≈ bf3′ atol = 1.0e-12
+                    q1 = (1, 2, 3)
+                    q2 = (6, 5, 4)
+                    d3 = @constinferred TK.planar_trace(f, (q1, q2))
+                    bf3 = tensortrace(af, (:a, :b, :c, :c, :b, :a, :d))
+                    bf3′ = zero(bf3)
+                    for (f3′, coeff) in d3
+                        bf3′ .+= coeff .* convert(Array, f3′)
+                    end
+                    @test bf3 ≈ bf3′ atol = 1.0e-12
 
-    #                 q1 = (1, 2, 4)
-    #                 q2 = (6, 3, 5)
-    #                 d3 = @constinferred TK.planar_trace(f, (q1, q2))
-    #                 bf3 = tensortrace(af, (:a, :b, :b, :c, :c, :a, :d))
-    #                 bf3′ = zero(bf3)
-    #                 for (f3′, coeff) in d3
-    #                     bf3′ .+= coeff .* convert(Array, f3′)
-    #                 end
-    #                 @test bf3 ≈ bf3′ atol = 1.0e-12
-    #             end
-    #         end
-    #     end
-    # end
+                    q1 = (1, 2, 4)
+                    q2 = (6, 3, 5)
+                    d3 = @constinferred TK.planar_trace(f, (q1, q2))
+                    bf3 = tensortrace(af, (:a, :b, :b, :c, :c, :a, :d))
+                    bf3′ = zero(bf3)
+                    for (f3′, coeff) in d3
+                        bf3′ .+= coeff .* convert(Array, f3′)
+                    end
+                    @test bf3 ≈ bf3′ atol = 1.0e-12
+                end
+            end
+        end
+    end
 
 
     # TODO: disabled because errors for ZNElement; needs to be fixed
