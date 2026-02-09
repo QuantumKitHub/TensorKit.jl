@@ -57,9 +57,6 @@ end
 
 space(b::BraidingTensor) = b.adjoint ? b.V1 ⊗ b.V2 ← b.V2 ⊗ b.V1 : b.V2 ⊗ b.V1 ← b.V1 ⊗ b.V2
 
-# TODO: this will probably give issues with GPUs, so we should try to avoid
-# calling this method alltogether
-storagetype(::Type{BraidingTensor{T, S}}) where {T, S} = Vector{T}
 
 function Base.getindex(b::BraidingTensor)
     sectortype(b) === Trivial || throw(SectorMismatch())
