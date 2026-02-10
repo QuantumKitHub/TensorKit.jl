@@ -35,6 +35,10 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 ### Fixed
 
+- Fix `findtruncated` with `truncspace` ([#369](https://github.com/QuantumKitHub/TensorKit.jl/pull/369))
+- Fix `truncrank` when kept rank is larger than input ([#368](https://github.com/QuantumKitHub/TensorKit.jl/pull/368))
+- Added missing `similar` definition for `SectorVector` ([#367](https://github.com/QuantumKitHub/TensorKit.jl/pull/367))
+- Small fixes for CUDA support ([#366](https://github.com/QuantumKitHub/TensorKit.jl/pull/366))
 
 
 ## [0.16.1](https://github.com/QuantumKitHub/TensorKit.jl/releases/tag/v0.16.1) - 2026-02-05
