@@ -18,11 +18,10 @@ When making changes to this project, please update the "Unreleased" section with
 
 When releasing a new version, move the "Unreleased" changes to a new version section with the release date.
 
-## [Unreleased](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.16.1...HEAD)
+## [Unreleased](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.16.2...HEAD)
 
 ### Added
 
-- A more robust promotion system for `storagetype`s to better handle working with unions and other abstract tensor map types ([#370](https://github.com/QuantumKitHub/TensorKit.jl/pull/370)).
 
 ### Changed
 
@@ -35,11 +34,20 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 ### Fixed
 
+
+
+## [0.16.2](https://github.com/QuantumKitHub/TensorKit.jl/releases/tag/v0.16.2) - 2026-02-10
+
+### Added
+
+- A more robust promotion system for `storagetype`s to better handle working with unions and other abstract tensor map types ([#370](https://github.com/QuantumKitHub/TensorKit.jl/pull/370)).
+
+### Fixed
+
 - Fix `findtruncated` with `truncspace` ([#369](https://github.com/QuantumKitHub/TensorKit.jl/pull/369))
 - Fix `truncrank` when kept rank is larger than input ([#368](https://github.com/QuantumKitHub/TensorKit.jl/pull/368))
 - Added missing `similar` definition for `SectorVector` ([#367](https://github.com/QuantumKitHub/TensorKit.jl/pull/367))
 - Small fixes for CUDA support ([#366](https://github.com/QuantumKitHub/TensorKit.jl/pull/366))
-
 
 ## [0.16.1](https://github.com/QuantumKitHub/TensorKit.jl/releases/tag/v0.16.1) - 2026-02-05
 
