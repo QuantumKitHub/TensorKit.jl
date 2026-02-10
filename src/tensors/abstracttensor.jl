@@ -131,9 +131,9 @@ Optionally, a scalartype `T` for the destination can be supplied that might diff
 """ promote_storagetype
 
 promote_storagetype(A::AbstractTensorMap, B::AbstractTensorMap) =
-    promote_storagetype(typeof(A), typeof(B))
+    promote_storagetype(storagetype(A), storagetype(B))
 promote_storagetype(::Type{T}, A::AbstractTensorMap, B::AbstractTensorMap) where {T <: Number} =
-    promote_storagetype(T, typeof(A), typeof(B))
+    promote_storagetype(T, storagetype(A), storagetype(B))
 
 promote_storagetype(::Type{A}, ::Type{B}) where {A <: AbstractTensorMap, B <: AbstractTensorMap} =
     promote_storagetype(storagetype(A), storagetype(B))
