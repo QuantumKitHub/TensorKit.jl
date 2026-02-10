@@ -123,22 +123,28 @@ similarstoragetype(::Type{D}, ::Type{T}) where {D <: AbstractDict{<:Sector, <:Ab
 similarstoragetype(::Type{T}) where {T <: Number} = Vector{T}
 
 @doc """
-    promote_storagetype([T], A, B)
-    promote_storagetype([T], TA, TB)
+    promote_storagetype([T], A, B, C...)
+    promote_storagetype([T], TA, TB, TC...)
 
 Determine an appropriate storage type for the combination of tensors `A` and `B`, or tensors of type `TA` and `TB`.
 Optionally, a scalartype `T` for the destination can be supplied that might differ from the inputs.
 """ promote_storagetype
 
-promote_storagetype(A::AbstractTensorMap, B::AbstractTensorMap) =
-    promote_storagetype(storagetype(A), storagetype(B))
-promote_storagetype(::Type{T}, A::AbstractTensorMap, B::AbstractTensorMap) where {T <: Number} =
-    promote_storagetype(T, storagetype(A), storagetype(B))
+@inline promote_storagetype(A::AbstractTensorMap, B::AbstractTensorMap, Cs::AbstractTensorMap...) =
+    promote_storagetype(storagetype(A), storagetype(B), map(storagetype, Cs)...)
+@inline promote_storagetype(::Type{T}, A::AbstractTensorMap, B::AbstractTensorMap, Cs::AbstractTensorMap...) where {T <: Number} =
+    promote_storagetype(T, storagetype(A), storagetype(B), map(storagetype, Cs)...)
 
-promote_storagetype(::Type{A}, ::Type{B}) where {A <: AbstractTensorMap, B <: AbstractTensorMap} =
-    promote_storagetype(storagetype(A), storagetype(B))
-promote_storagetype(::Type{T}, ::Type{A}, ::Type{B}) where {T <: Number, A <: AbstractTensorMap, B <: AbstractTensorMap} =
-    promote_storagetype(similarstoragetype(A, T), similarstoragetype(B, T))
+@inline function promote_storagetype(
+        ::Type{A}, ::Type{B}, Cs::Type{C}...
+    ) where {A <: AbstractTensorMap, B <: AbstractTensorMap, C <: AbstractTensorMap}
+    return promote_storagetype(storagetype(A), storagetype(B), map(storagetype, Cs)...)
+end
+@inline function promote_storagetype(
+        ::Type{T}, ::Type{A}, ::Type{B}, Cs::Type{C}...
+    ) where {T <: Number, A <: AbstractTensorMap, B <: AbstractTensorMap, C <: AbstractTensorMap}
+    return promote_storagetype(similarstoragetype(A, T), similarstoragetype(B, T), map(Base.Fix2(similarstoragetype, T), Cs)...)
+end
 
 # promotion system in the same spirit as base/promotion.jl
 promote_storagetype(::Type{Base.Bottom}, ::Type{Base.Bottom}) = Base.Bottom
@@ -155,6 +161,9 @@ function promote_storagetype(::Type{T}, ::Type{S}) where {T, S}
     #   typejoin(result, Bottom) => result
     return promote_storage_result(T, S, promote_storage_rule(T, S), promote_storage_rule(S, T))
 end
+
+@inline promote_storagetype(T, S, U) = promote_storagetype(promote_storagetype(T, S), U)
+@inline promote_storagetype(T, S, U, V...) = promote_storagetype(promote_storagetype(T, S), U, V...)
 
 @doc """
     promote_storage_rule(type1, type2)
