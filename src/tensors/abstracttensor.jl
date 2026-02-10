@@ -133,16 +133,16 @@ Optionally, a scalartype `T` for the destination can be supplied that might diff
 @inline promote_storagetype(A::AbstractTensorMap, B::AbstractTensorMap, Cs::AbstractTensorMap...) =
     promote_storagetype(storagetype(A), storagetype(B), map(storagetype, Cs)...)
 @inline promote_storagetype(::Type{T}, A::AbstractTensorMap, B::AbstractTensorMap, Cs::AbstractTensorMap...) where {T <: Number} =
-    promote_storagetype(T, storagetype(A), storagetype(B), map(storagetype, Cs)...)
+    promote_storagetype(similarstoragetype(A, T), similarstoragetype(B, T), map(Base.Fix2(similarstoragetype, T), Cs)...)
 
 @inline function promote_storagetype(
-        ::Type{A}, ::Type{B}, Cs::Type{C}...
-    ) where {A <: AbstractTensorMap, B <: AbstractTensorMap, C <: AbstractTensorMap}
+        ::Type{A}, ::Type{B}, Cs::Type{<:AbstractTensorMap}...
+    ) where {A <: AbstractTensorMap, B <: AbstractTensorMap}
     return promote_storagetype(storagetype(A), storagetype(B), map(storagetype, Cs)...)
 end
 @inline function promote_storagetype(
-        ::Type{T}, ::Type{A}, ::Type{B}, Cs::Type{C}...
-    ) where {T <: Number, A <: AbstractTensorMap, B <: AbstractTensorMap, C <: AbstractTensorMap}
+        ::Type{T}, ::Type{A}, ::Type{B}, Cs::Type{<:AbstractTensorMap}...
+    ) where {T <: Number, A <: AbstractTensorMap, B <: AbstractTensorMap}
     return promote_storagetype(similarstoragetype(A, T), similarstoragetype(B, T), map(Base.Fix2(similarstoragetype, T), Cs)...)
 end
 
