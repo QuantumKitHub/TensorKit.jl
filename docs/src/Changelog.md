@@ -22,6 +22,7 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 ### Added
 
+- A more robust promotion system for `storagetype`s to better handle working with unions and other abstract tensor map types ([#370](https://github.com/QuantumKitHub/TensorKit.jl/pull/370)).
 
 ### Changed
 
