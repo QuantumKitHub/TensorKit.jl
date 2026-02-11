@@ -478,7 +478,7 @@ for f in (:sqrt, :log, :asin, :acos, :acosh, :atanh, :acoth)
 end
 
 # concatenate tensors
-function catdomain(t1::TT, t2::TT) where {S, N₁, TT <: AbstractTensorMap{<:Any, S, N₁, 1}}
+function catdomain(t1::AbstractTensorMap{<:Any, S, N₁, 1}, t2::AbstractTensorMap{<:Any, S, N₁, 1}) where {S, N₁}
     codomain(t1) == codomain(t2) ||
         throw(
         SpaceMismatch("codomains of tensors to concatenate must match:\n$(codomain(t1)) ≠ $(codomain(t2))")
@@ -497,7 +497,7 @@ function catdomain(t1::TT, t2::TT) where {S, N₁, TT <: AbstractTensorMap{<:Any
     end
     return t
 end
-function catcodomain(t1::TT, t2::TT) where {S, N₂, TT <: AbstractTensorMap{<:Any, S, 1, N₂}}
+function catcodomain(t1::AbstractTensorMap{<:Any, S, 1, N₂}, t2::AbstractTensorMap{<:Any, S, 1, N₂}) where {S, N₂}
     domain(t1) == domain(t2) ||
         throw(SpaceMismatch("domains of tensors to concatenate must match:\n$(domain(t1)) ≠ $(domain(t2))"))
     V1, = codomain(t1)
