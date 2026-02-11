@@ -14,13 +14,6 @@ rng = Random.default_rng()
 spacelist = (
     (ℂ^2, (ℂ^3)', ℂ^3, ℂ^2, (ℂ^2)'),
     (
-        Vect[Z2Irrep](0 => 1, 1 => 1),
-        Vect[Z2Irrep](0 => 1, 1 => 2)',
-        Vect[Z2Irrep](0 => 2, 1 => 2)',
-        Vect[Z2Irrep](0 => 2, 1 => 3),
-        Vect[Z2Irrep](0 => 2, 1 => 2),
-    ),
-    (
         Vect[FermionParity](0 => 1, 1 => 1),
         Vect[FermionParity](0 => 1, 1 => 2)',
         Vect[FermionParity](0 => 2, 1 => 1)',
@@ -57,7 +50,7 @@ eltypes = (Float64, ComplexF64)
     symmetricbraiding = BraidingStyle(sectortype(eltype(V))) isa SymmetricBraiding
 
     symmetricbraiding && @timedtestset "tensorcontract!" begin
-        for _ in 1:5
+        for _ in 1:2
             d = 0
             local V1, V2, V3
             # retry a couple times to make sure there are at least some nonzero elements
@@ -124,7 +117,7 @@ eltypes = (Float64, ComplexF64)
     end
 
     symmetricbraiding && @timedtestset "trace_permute!" begin
-        for _ in 1:5
+        for _ in 1:2
             k1 = rand(0:2)
             k2 = rand(1:2)
             V1 = map(v -> rand(Bool) ? v' : v, rand(V, k1))

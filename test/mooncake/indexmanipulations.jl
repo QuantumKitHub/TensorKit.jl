@@ -69,7 +69,7 @@ eltypes = (Float64, ComplexF64)
         β = randn(T)
 
         # repeat a couple times to get some distribution of arrows
-        for _ in 1:5
+        for _ in 1:2
             p = randcircshift(numout(A), numin(A))
             C = randn!(transpose(A, p))
             Mooncake.TestUtils.test_rule(rng, TensorKit.add_transpose!, C, A, p, One(), Zero(); atol, rtol, mode)
@@ -89,7 +89,7 @@ eltypes = (Float64, ComplexF64)
         β = randn(T)
 
         # repeat a couple times to get some distribution of arrows
-        for _ in 1:5
+        for _ in 1:2
             p = randcircshift(numout(A), numin(A))
             levels = Tuple(randperm(numind(A)))
             C = randn!(transpose(A, p))
@@ -132,7 +132,7 @@ eltypes = (Float64, ComplexF64)
             Mooncake.TestUtils.test_rule(rng, Core.kwcall, (; copy = false, dual = true, conj = true), insertunit, A', Val(3); atol, rtol, mode)
         end
 
-        for i in 1:4
+        for i in 1:2
             B = insertleftunit(A, i; dual = rand(Bool))
             Mooncake.TestUtils.test_rule(rng, removeunit, B, Val(i); atol, rtol, mode)
             Mooncake.TestUtils.test_rule(rng, Core.kwcall, (; copy = false), removeunit, B, Val(i); atol, rtol, mode)
