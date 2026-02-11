@@ -54,7 +54,7 @@ TensorKitSectors.Dihedral
 TensorKitSectors.ProductGroup
 ```
 
-The following types are used to characterise different properties of the different types of
+The following types are used to characterize different properties of the different types of
 sectors:
 
 ```@docs

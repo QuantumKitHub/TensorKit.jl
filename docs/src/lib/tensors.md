@@ -130,7 +130,7 @@ Base.getindex(::AbstractTensorMap, ::FusionTree, ::FusionTree)
 Base.setindex!(::AbstractTensorMap, ::Any, ::FusionTree, ::FusionTree)
 ```
 
-For a tensor `t` with `FusionType(sectortype(t)) isa UniqueFusion`, fusion trees are
+For a tensor `t` with `FusionStyle(sectortype(t)) isa UniqueFusion`, fusion trees are
 completely determined by the outcoming sectors, and the data can be accessed in a more
 straightforward way:
 ```@docs
@@ -157,7 +157,7 @@ Random.randexp!
 The operations that can be performed on an `AbstractTensorMap` can be organized into the
 following categories:
 
-* *vector operations*: these do not change the `space` or index strucure of a tensor and can
+* *vector operations*: these do not change the `space` or index structure of a tensor and can
   be straightforwardly implemented on on the full data. All the methods described in
   [VectorInterface.jl](https://github.com/Jutho/VectorInterface.jl) are supported. For
   compatibility reasons, we also provide implementations for equivalent methods from
@@ -165,16 +165,16 @@ following categories:
 
 * *index manipulations*: these change (permute) the index structure of a tensor, which
   affects the data in a way that is fully determined by the categorical data of the
-  `sectortype` of the tensor.
-          
+  `sectortype` of the tensor .
+
 * *(planar) contractions* and *(planar) traces* (i.e., contractions with identity tensors).
   Tensor contractions correspond to a combination of some index manipulations followed by a
   composition or multiplication of the tensors in their role as linear maps. Tensor
-  contractions are however of such important and frequency that they require a dedicated
+  contractions are however of such importance and frequency that they require a dedicated
   implementation.
 
-* *tensor factorisations*, which relies on their identification of tensors with linear maps
-  between tensor spaces. The factorisations are applied as ordinary matrix factorisations to
+* *tensor factorizations*, which relies on their identification of tensors with linear maps
+  between tensor spaces. The factorizations are applied as ordinary matrix factorizations to
   the matrix blocks associated with the coupled charges.
 
 ### Index manipulations
@@ -222,7 +222,7 @@ contract!
 
 ## `TensorMap` factorizations
 
-The factorisation methods are powered by
+The factorization methods are powered by
 [MatrixAlgebraKit.jl](https://github.com/QuantumKitHub/MatrixAlgebraKit.jl) and all follow
 the same strategy. The idea is that the `TensorMap` is interpreted as a linear map based on
 the current partition of indices between `domain` and `codomain`, and then the entire range

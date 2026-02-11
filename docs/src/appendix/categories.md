@@ -668,7 +668,7 @@ justified.
 Before continuing, let us use some examples to sketch the relevance of the concept of fusion
 categories. As mentioned, the categories ``\mathbf{Vect}_𝕜`` and ``\mathbf{SVect}_𝕜`` have
 ``I ≂ 𝕜`` as simple object. For ``\mathbf{Vect}``, this is the only simple object, i.e. any
-other vector space ``V`` over ``𝕜``, can be thought of as a direct sum over
+other vector space ``V`` over ``𝕜`` can be thought of as a direct sum over
 ``N^V_I = \mathrm{dim}(V)`` multiple copies of ``𝕜``. In ``\mathbf{SVect}``, the object
 ``J = 0 ⊕ 𝕜`` with ``J_0=0`` the zero dimensional space and ``J_1 ≂ 𝕜`` is another simple
 object. Clearly, there are no non-zero grading preserving morphisms between ``I`` and ``J``,
@@ -884,14 +884,15 @@ allows to conclude that
 ``∑_ν [B^{ab}_c]^{ν}_{μ} \overline{[B^{ab}_c]^{ν}_{μ′}} = \delta_{μ,μ′}``, i.e. ``B^{ab}_c``
 is a unitary matrix. The same result follows for ``A^{ab}_c`` in analogue fashion.
 
-!!! note In the context of fusion categories, one often resorts to the so-called *isotopic*
-normalization convention, where splitting tensors are normalized as
-``(X^{ab}_{c,μ})^† ∘ X^{ab}_{c′,\mu′} = \sqrt{\frac{d_a d_b}{d_c}} δ_{c,c′} δ_{μ,μ′} \mathrm{id}_c``.
-This kills some of the quantum dimensions in formulas like the ones above and essentially
-allows to rotate the graphical notation of splitting and fusion tensors (up to a unitary
-transformation). Nonetheless, for our implementation of tensors and manipulations thereof
-(in particular orthonormal factorizations such as the singular value decomposition), we find
-it more convenient to work with the original normalization convention.
+!!! note
+    In the context of fusion categories, one often resorts to the so-called *isotopic*
+    normalization convention, where splitting tensors are normalized as
+    ``(X^{ab}_{c,μ})^† ∘ X^{ab}_{c′,\mu′} = \sqrt{\frac{d_a d_b}{d_c}} δ_{c,c′} δ_{μ,μ′} \mathrm{id}_c``.
+    This kills some of the quantum dimensions in formulas like the ones above and essentially
+    allows to rotate the graphical notation of splitting and fusion tensors (up to a unitary
+    transformation). Nonetheless, for our implementation of tensors and manipulations thereof
+    (in particular orthonormal factorizations such as the singular value decomposition), we find
+    it more convenient to work with the original normalization convention.
 
 Let us again study in more detail the example ``\mathbf{Rep}_{\mathsf{G}}``. The quantum
 dimension ``d_a`` of an irrep ``a`` is just the normal vector space dimension (over ``𝕜``)

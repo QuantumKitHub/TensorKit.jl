@@ -398,6 +398,7 @@ abelian groups, all irreps are one-dimensional.
 
 Some examples:
 ```@repl fusiontrees
+using LinearAlgebra # hide
 s = Irrep[SU₂](1/2)
 iter = fusiontrees((s, s, s, s), SU2Irrep(1))
 f = first(iter)
@@ -405,17 +406,17 @@ convert(Array, f)
 
 LinearAlgebra.I ≈ convert(Array, FusionTree((SU2Irrep(1/2),), SU2Irrep(1/2), (false,), ()))
 Z = adjoint(convert(Array, FusionTree((SU2Irrep(1/2),), SU2Irrep(1/2), (true,), ())))
-transpose(Z) ≈ frobeniusschur(SU2Irrep(1/2)) * Z
+transpose(Z) ≈ frobenius_schur_phase(SU2Irrep(1/2)) * Z
 
 LinearAlgebra.I ≈ convert(Array, FusionTree((Irrep[SU₂](1),), Irrep[SU₂](1), (false,), ()))
 Z = adjoint(convert(Array, FusionTree((Irrep[SU₂](1),), Irrep[SU₂](1), (true,), ())))
-transpose(Z) ≈ frobeniusschur(Irrep[SU₂](1)) * Z
+transpose(Z) ≈ frobenius_schur_phase(Irrep[SU₂](1)) * Z
 
 #check orthogonality
 for f1 in iter
   for f2 in iter
     dotproduct  = dot(convert(Array, f1), convert(Array, f2))
-    println("< $f1, $f2> = $dotproduct")
+    println("<$f1, $f2> = $dotproduct")
   end
 end
 ```

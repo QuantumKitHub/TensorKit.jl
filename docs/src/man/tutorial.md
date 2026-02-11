@@ -17,12 +17,12 @@ The most important objects in TensorKit.jl are tensors, which we now create with
 A = randn(ℝ^3 ⊗ ℝ^2 ⊗ ℝ^4)
 ```
 
-Note that we entered the tensor size not as plain dimensions, by specifying the vector space
-associated with these tensor indices, in this case `ℝ^n`, which can be obtained by typing
-`\bbR+TAB`. The tensor then lives in the tensor product of the different spaces, which we
-can obtain by typing `⊗` (i.e. `\otimes+TAB`), although for simplicity also the usual
-multiplication sign `*` does the job. Note also that `A` is printed as an instance of a
-parametric type `TensorMap`, which we will discuss below and contains `Tensor`.
+Note that we entered the tensor size not as plain dimensions, but by specifying the vector
+space associated with these tensor indices, in this case `ℝ^n`, which can be obtained by
+typing `\bbR+TAB`. The tensor then lives in the tensor product of the different spaces,
+which we can obtain by typing `⊗` (i.e. `\otimes+TAB`), although for simplicity also the
+usual multiplication sign `*` does the job. Note also that `A` is printed as an instance of
+a parametric type `TensorMap`, which we will discuss below and contains `Tensor`.
 
 Let us briefly sidetrack into the nature of `ℝ^n`:
 
@@ -35,8 +35,8 @@ supertype(ElementarySpace)
 ```
 
 i.e. `ℝ^n` can also be created without Unicode using the longer syntax `CartesianSpace(n)`.
-It is subtype of `ElementarySpace`, with a standard (Euclidean) inner product over the real
-numbers. Furthermore,
+It is a subtype of `ElementarySpace`, with a standard (Euclidean) inner product over the
+real numbers. Furthermore,
 
 ```@repl tutorial
 W = ℝ^3 ⊗ ℝ^2 ⊗ ℝ^4
@@ -57,7 +57,7 @@ B = randn(ℝ^3 * ℝ^2 * ℝ^4);
 C = 0.5*A + 2.5*B
 ```
 
-Given that they are behave as vectors, they also have a scalar product and norm, which they
+Given that they behave as vectors, they also have a scalar product and norm, which they
 inherit from the Euclidean inner product on the individual `ℝ^n` spaces:
 
 ```@repl tutorial
@@ -106,9 +106,11 @@ Finally, we can factorize a tensor, creating a bipartition of a subset of its in
 its complement. With a plain Julia `Array`, one would apply `permutedims` and `reshape` to
 cast the array into a matrix before applying e.g. the singular value decomposition. With
 TensorKit.jl, one just specifies which indices go to the left (rows) and right (columns)
+with a tuple of tuples, selecting the respective indices for either side.
 
 ```@repl tutorial
-U, S, Vd = tsvd(A, ((1,3), (2,)));
+A_matrix = permute(A, ((1, 3), (2,)));
+U, S, Vd = svd_compact(A_matrix);
 @tensor A′[a,b,c] := U[a,c,d] * S[d,e] * Vd[e,b];
 A ≈ A′
 U
@@ -155,11 +157,12 @@ space(M₃)
 
 Note that for the construction of `M₁`, in accordance with how one specifies the dimensions
 of a matrix (e.g. `randn(4,3)`), the first space is the codomain and the second the domain.
-This is somewhat opposite to the general notation for a function `f:domain→codomain`, so
-that we also support this more mathemical notation, as illustrated in the construction of
-`M₂`. However, as this is confusing from the perspective of rows and columns, we also
-support the syntax `codomain ← domain` and actually use this as the default way of printing
-`HomSpace` instances.
+This is somewhat opposite to the general notation for a function
+``f : \text{domain} \rightarrow \text{codomain}``, so that we also support this more
+mathematical notation, as illustrated in the construction of `M₂`. However, as this is
+confusing from the perspective of rows and columns, we also support the syntax
+`codomain ← domain` and actually use this as the default way of printing `HomSpace`
+instances.
 
 The 'matrix-vector' or 'matrix-matrix' product can be computed between any two `TensorMap`
 instances for which the domain of the first matches with the codomain of the second, e.g.
@@ -179,7 +182,7 @@ codomain(U)
 domain(U)
 space(U)
 U' * U # should be the identity on the corresponding domain = codomain
-U' * U ≈ one(U'*U)
+U' * U ≈ one(U' * U)
 P = U * U' # should be a projector
 P * P ≈ P
 ```
@@ -197,9 +200,9 @@ codomain(A2)
 domain(A2)
 ```
 
-In fact, `tsvd(A, ((1, 3), (2,)))` is a shorthand for `tsvd(permute(A, ((1, 3), (2,))))`,
-where `tsvd(A::TensorMap)` will just compute the singular value decomposition according to
-the given codomain and domain of `A`.
+In fact, this was already what we used in `svd_compact(A_matrix)` to create the matricized
+tensor `A_matrix`, and where `svd_compact(A::AbstractTensorMap)` will just compute the
+singular value decomposition according to the given codomain and domain of `A`.
 
 Note, finally, that the `@tensor` macro treats all indices at the same footing and thus does
 not distinguish between codomain and domain. The linear numbering is first all indices in
@@ -243,12 +246,12 @@ where `ℂ` is obtained as `\bbC+TAB` and we also have the non-Unicode alternati
 
 ```@repl tutorial
 B = randn(ℂ^3 * ℂ^2 * ℂ^4);
-C = im*A + (2.5 - 0.8im) * B
+C = im * A + (2.5 - 0.8im) * B
 scalarBA = dot(B, A)
 scalarAA = dot(A, A)
 normA² = norm(A)^2
-U, S, Vd = tsvd(A, ((1, 3), (2,)));
-@tensor A′[a,b,c] := U[a,c,d] * S[d,e] * Vd[e,b];
+U, S, Vd = svd_compact(permute(A, ((1, 3), (2,))));
+@tensor A′[a, b, c] := U[a, c, d] * S[d, e] * Vd[e, b];
 A′ ≈ A
 permute(A, ((1, 3), (2,))) ≈ U * S * Vd
 ```
@@ -321,8 +324,8 @@ convert(Array, A)
 
 Here, we create a 5-dimensional space `V1`, which has a three-dimensional subspace
 associated with charge 0 (the trivial irrep of ``ℤ₂``) and a two-dimensional subspace with
-charge 1 (the non-trivial irrep). Similar for `V2`, where both subspaces are one-
-dimensional. Representing the tensor as a dense `Array`, we see that it is zero in those
+charge 1 (the non-trivial irrep). Similar for `V2`, where both subspaces are
+one-dimensional. Representing the tensor as a dense `Array`, we see that it is zero in those
 regions where the charges don't add to zero (modulo 2). Of course, the `Tensor(Map)` type in
 TensorKit.jl won't store these zero blocks, and only stores the non-zero information, which
 we can recognize also in the full `Array` representation.
@@ -333,7 +336,7 @@ encountered in the previous examples.
 ```@repl tutorial
 B = randn(V1' * V1 * V2);
 @tensor C[a,b] := A[a,c,d] * B[c,b,d]
-U, S, V = tsvd(A, ((1, 3), (2,)));
+U, S, V = svd_compact(permute(A, ((1, 3), (2,))));
 U' * U # should be the identity on the corresponding domain = codomain
 U' * U ≈ one(U'*U)
 P = U * U' # should be a projector
@@ -349,7 +352,7 @@ A = randn(V * V, V)
 dim(A)
 convert(Array, A)
 
-V = Rep[U₁×ℤ₂]((0, 0) => 2, (1, 1) => 1, (-1, 0) => 1)
+V = Rep[U₁ × ℤ₂]((0, 0) => 2, (1, 1) => 1, (-1, 0) => 1)
 dim(V)
 A = randn(V * V, V)
 dim(A)
@@ -366,12 +369,12 @@ more general sectortypes `I` it can be constructed as `Vect[I]`. Furthermore, `�
 synonyms, e.g.
 
 ```@repl tutorial
-Rep[U₁](0=>3, 1=>2, -1=>1) == U1Space(-1=>1, 1=>2, 0=>3)
-V = U₁Space(1=>2, 0=>3, -1=>1)
+Rep[U₁](0 => 3, 1 => 2, -1 => 1) == U1Space(-1 => 1, 1 => 2, 0 => 3)
+V = U₁Space(1 => 2, 0 => 3, -1 => 1)
 for s in sectors(V)
   @show s, dim(V, s)
 end
-U₁Space(-1=>1, 0=>3, 1=>2) == GradedSpace(Irrep[U₁](1)=>2, Irrep[U₁](0)=>3, Irrep[U₁](-1)=>1)
+U₁Space(-1 => 1, 0 => 3, 1 => 2) == GradedSpace(Irrep[U₁](1) => 2, Irrep[U₁](0) => 3, Irrep[U₁](-1) => 1)
 supertype(GradedSpace)
 ```
 
@@ -416,13 +419,13 @@ less obvious to recognize the dense blocks, as there are additional zeros and th
 the original tensor data do not match with those in the `Array`. The reason is of course
 that the original tensor data now needs to be transformed with a construction known as
 fusion trees, which are made up out of the Clebsch-Gordan coefficients of the group. Indeed,
-note that the non-zero blocks are also no longer labeled by a list of sectors, but by pairs
-of fusion trees. This will be explained further in the manual. However, the Clebsch-Gordan
-coefficients of the group are only needed to actually convert a tensor to an `Array`. For
-working with tensors with `SU₂Space` indices, e.g. contracting or factorizing them, the
-Clebsch-Gordan coefficients are never needed explicitly. Instead, recoupling relations are
-used to symbolically manipulate the basis of fusion trees, and this only requires what is
-known as the topological data of the group (or its representation theory).
+note that the non-zero subblocks are also no longer labeled by a list of sectors, but by
+pairs of fusion trees. This will be explained further in the manual. However, the
+Clebsch-Gordan coefficients of the group are only needed to actually convert a tensor to an
+`Array`. For working with tensors with `SU₂Space` indices, e.g. contracting or factorizing
+them, the Clebsch-Gordan coefficients are never needed explicitly. Instead, recoupling
+relations are used to symbolically manipulate the basis of fusion trees, and this only
+requires what is known as the topological data of the group (or its representation theory).
 
 In fact, this formalism extends beyond the case of group representations on vector spaces,
 and can also deal with super vector spaces (to describe fermions) and more general (unitary)

@@ -119,7 +119,7 @@ removeunit(::ProductSpace, ::Val{i}) where {i}
 ```
 
 There are also specific methods for `HomSpace` instances, that are used in determining the
-resuling `HomSpace` after applying certain tensor operations.
+resulting `HomSpace` after applying certain tensor operations.
 
 ```@docs
 flip(W::HomSpace{S}, I) where {S}

@@ -14,7 +14,7 @@ struct GradedSpace{I<:Sector, D} <: ElementarySpace
 end
 ```
 Here, `D` is a type parameter to denote the data structure used to store the degeneracy or
-multiplicity dimensions ``n_a`` of the different sectors. For conviency, `Vect[I]` will
+multiplicity dimensions ``n_a`` of the different sectors. For convenience, `Vect[I]` will
 return the fully concrete type with `D` specified.
 
 Note that, conventionally, a graded vector space is a space that has a natural direct sum

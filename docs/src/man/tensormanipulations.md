@@ -220,7 +220,7 @@ note that we have a conjugation syntax within the context of [tensor contraction
 ss_tensor_contraction).
 
 To show the effect of `twist`, we now consider a type of sector `I` for which
-`BraidingStyle{I} != Bosonic()`. In particular, we use `FibonacciAnyon`. We cannot convert
+`BraidingStyle(I) != Bosonic()`. In particular, we use `FibonacciAnyon`. We cannot convert
 the resulting `TensorMap` to an `Array`, so we have to rely on indirect tests to verify our
 results.
 

@@ -15,7 +15,7 @@ abstract type VectorSpace end
 Technically speaking, this name does not capture the full generality that TensorKit.jl
 supports, as instances of subtypes of `VectorSpace` can encode general objects in linear
 monoidal categories, which are not necessarily vector spaces. However, in order not to make
-the remaining discussion to abstract or complicated, we will simply use the nomenclature of
+the remaining discussion too abstract or complicated, we will simply use the nomenclature of
 vector spaces. In particular, we define two abstract subtypes
 ```julia
 abstract type ElementarySpace <: VectorSpace end
@@ -181,7 +181,7 @@ direct sum of two vector spaces `V1` and `V2` of the same `spacetype` (and with 
 value of `isdual`) as [`V1 ⊕ V2`](@ref), where `⊕` is obtained by typing `\oplus`+TAB.
 [`zerospace(V)`](@ref) corresponds to the identity or zero element with respect to this
 direct sum operation, i.e. it corresponds to a zero-dimensional space. Furthermore,
-[`unitspace(V)`] (@ref) applied to an elementary space returns a one-dimensional space, that
+[`unitspace(V)`](@ref) applied to an elementary space returns a one-dimensional space, that
 is isomorphic to the scalar field underlying the space itself. Finally, we have also
 introduced the non-standard convention `V1 ⊖ V2` (obtained by typing `\ominus`+TAB.) in
 order to obtain a space that is isomorphic to the quotient space of `V1` by `V2`, or thus, a

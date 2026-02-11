@@ -55,8 +55,8 @@ map ``W → V`` is often denoted as a rank 2 tensor in ``V ⊗ W^*``, where ``W^
 to the dual space of ``W``. This simple example introduces two new concepts.
 
 1.  Typical vector spaces can appear in the domain and codomain in different related forms,
-    e.g. as normal space or dual space. In fact, the most generic case is that every vector
-    space ``V`` has associated with it a
+    e.g. as normal spaces or dual spaces. In fact, the most generic case is that every
+    vector space ``V`` has associated with it a
     [dual space](https://en.wikipedia.org/wiki/Dual_space) ``V^*``, a
     [conjugate space](https://en.wikipedia.org/wiki/Complex_conjugate_vector_space)
     ``\overline{V}`` and a conjugate dual space ``\overline{V}^*``. The four different

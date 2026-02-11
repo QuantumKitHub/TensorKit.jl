@@ -173,11 +173,11 @@ particular, the quantum dimensions ``d_a`` and Frobenius-Schur phase ``χ_a`` an
 (only if ``a == \overline{a}``) are encoded in the F-symbol. They are obtained as
 [`dim(a)`](@ref), [`frobenius_schur_phase(a)`](@ref) and
 [`frobenius_schur_indicator(a)`](@ref). These functions have default definitions which
-compute the requested data from `Fsymbol(a, conj(a), a, a, one(a), one(a))`, but they can be
-overloaded in case the value can be computed more efficiently. The same holds for related
+compute the requested data from `Fsymbol(a, conj(a), a, a, unit(a), unit(a))`, but they can
+be overloaded in case the value can be computed more efficiently. The same holds for related
 fusion manipulations such as the B-symbol, which is obtained as [`Bsymbol(a, b, c)`](@ref).
 Finally, the twist associated with a sector `a` is obtained as [`twist(a)`](@ref), which
-also has a default implementation in terms of the R-symbol. In addition, tThe function
+also has a default implementation in terms of the R-symbol. In addition, the function
 `isunit` is provided to facilitate checking whether a sector is a unit sector, in particular
 for the non-trivial case of the multi-fusion category case, which we do not discuss here.
 
@@ -374,7 +374,7 @@ Irrep[U₁](0.5)
 U1Irrep(0.4)
 U1Irrep(1) ⊗ Irrep[U₁](1//2)
 u = first(U1Irrep(1) ⊗ Irrep[U₁](1//2))
-Nsymbol(u, conj(u), one(u))
+Nsymbol(u, dual(u), unit(u))
 ```
 
 We similarly implement the irreps of the finite cyclic groups ``\mathbb{Z}_N``, where we
@@ -505,7 +505,7 @@ explicitly restricted the scalar type of `SU2Irrep` to `Float64` for efficiency.
 The following example illustrates the usage of `SU2Irrep`
 ```@repl sectors
 s = SU2Irrep(3//2)
-conj(s)
+dual(s)
 dim(s)
 collect(s ⊗ s)
 for s2 in s ⊗ s
@@ -516,17 +516,19 @@ end
 ```
 
 Other non-abelian groups for which the irreps are implemented are the dihedral groups
-``\mathsf{D}_N``, and the semidirect product ``\mathsf{U}₁ ⋉ ℤ_2``. In the context of
-quantum systems, the latter occurs in the case of systems with particle hole symmetry and
-the non-trivial element of ``ℤ_2`` acts as charge conjugation ``C``. It has the effect of
-interchaning ``\mathsf{U}_1`` irreps ``n`` and ``-n``, and turns them together in a joint
-2-dimensional index, except for the case ``n=0``. Irreps are therefore labeled by integers
-``n ≧ 0``, however for ``n=0`` the ``ℤ₂`` symmetry can be realized trivially or
-non-trivially, resulting in an even and odd one-dimensional irrep with ``\mathsf{U})_1``
-charge ``0``. Given ``\mathsf{U}_1 ≂ \mathsf{SO}_2``, this group is also simply known as
-``\mathsf{O}_2``, and the two representations with `` n = 0`` are the scalar and
-pseudo-scalar, respectively. However, because we also allow for half integer
-representations, we refer to it as `Irrep[CU₁]` or `CU1Irrep` in full.
+``\mathsf{D}_N``, the alternating group of order four ``mathsf{A}_4`` and the semidirect
+product ``\mathsf{U}₁ ⋉ ℤ_2``. In the context of quantum systems, the latter occurs in the
+case of systems with particle hole symmetry and the non-trivial element of ``ℤ_2`` acts as
+charge conjugation ``C``. It has the effect of interchanging ``\mathsf{U}_1`` irreps ``n``
+and ``-n``, and turns them together in a joint two-dimensional index, except for the case
+``n=0``. Irreps are therefore labeled by integers ``n ≧ 0``, however for ``n=0`` the ``ℤ₂``
+symmetry can be realized trivially or non-trivially, resulting in an even and odd
+one-dimensional irrep with ``\mathsf{U}_1`` charge ``0``. Given
+``\mathsf{U}_1 ≂ \mathsf{SO}_2``, this group is also simply known as ``\mathsf{O}_2``, and
+the two representations with `` n = 0`` are the scalar and pseudo-scalar, respectively.
+However, because we also allow for half integer representations, we refer to it as
+`Irrep[CU₁]` or `CU1Irrep` in full.
+
 ```julia
 struct CU1Irrep <: AbstractIrrep{CU₁}
     j::HalfInt # value of the U1 charge
@@ -556,8 +558,8 @@ the different cases for the arguments of `Fsymbol`. For the dihedrial groups
 the representation theory is obtained quite similarly, and is implmented as the type
 [`DNIrrep{N}`](@ref).
 
-By default, none of the groups mentioned above have a reprenenstation theory for which
-`FusionStyle(I) == GenericFusion()`, i.e. where fusion mulitplicities are required. An
+Of the aforementioned groups, only ``mathsf{A}_4`` has a representation theory for which
+`FusionStyle(I) == GenericFusion()`, i.e. where fusion mulitplicities are required. Another
 example where this does appear is for the irreps of `SU{N}` for `N>2`. Such sectors are
 supported through
 [SUNRepresentations.jl](https://github.com/QuantumKitHub/SUNRepresentations.jl), which
@@ -575,22 +577,22 @@ examples
 ```@repl sectors
 a = Z3Irrep(1) ⊠ Irrep[U₁](1)
 typeof(a)
-conj(a)
-one(a)
+dual(a)
+unit(a)
 dim(a)
 collect(a ⊗ a)
 FusionStyle(a)
 b = Irrep[ℤ₃](1) ⊠ Irrep[SU₂](3//2)
 typeof(b)
-conj(b)
-one(b)
+dual(b)
+unit(b)
 dim(b)
 collect(b ⊗ b)
 FusionStyle(b)
 c = Irrep[SU₂](1) ⊠ SU2Irrep(3//2)
 typeof(c)
-conj(c)
-one(c)
+dual(c)
+unit(c)
 dim(c)
 collect(c ⊗ c)
 FusionStyle(c)
@@ -608,7 +610,7 @@ used to create `ProductSector{Tuple{Irrep[ℤ₃], Irrep[CU₁]}}`. Instances of
 constructed by giving a number of arguments, where the first argument is used to construct
 the first sector, and so forth. Furthermore, for representations of groups, we also enabled
 the notation `Irrep[ℤ₃ × CU₁]`, with `×` obtained using `\times+TAB`. However, this is
-merely for convience, as `Irrep[ℤ₃] ⊠ Irrep[CU₁]` is not a subtype of the abstract type
+merely for convenience, as `Irrep[ℤ₃] ⊠ Irrep[CU₁]` is not a subtype of the abstract type
 `AbstractIrrep{ℤ₃ × CU₁}`. As is often the case with the Julia type system, the purpose of
 subtyping `AbstractIrrep` was to share common functionality and thereby simplify the
 implementation of irreps of the different groups discussed above, but not to express a
@@ -831,13 +833,13 @@ Finally, as mentioned above, a recent extension prepares TensorKitSectors.jl to 
 multi-fusion categories, where the sectors (simple objects) are organized in a matrix-like
 structure and thus have an additional row and column index. Fusion between sectors is only
 possible when the row and column indices match appropriately; otherwise the fusion product
-is empty. In this structure, the different groups of "diagonal" sectors define separate
-fusion categories, whereas the off-diagonal sectors define bimodule categories between these
-fusion categories. Every diagonal group has its own unit sector, which also acts as the left
-/ right unit for other sectors in the same column / row. The global unit object is not
-simple, but rather given by the direct sum of all diagonal unit sectors. We do not document
-or illustrate this structure here, but refer to the relevant functions [`leftunit`](@ref),
-[`rightunit`](@ref), [`allunits`](@ref) and [`UnitStyle`](@ref) for more information.
-Furthermore, we refer to
+is empty. In this structure, the different *diagonal* sectors define separate fusion
+categories, whereas the *off-diagonal* sectors define bimodule categories between these
+fusion categories. Every diagonal set of sectors has its own unit sector, which also acts as
+the left / right unit for other sectors in the same column / row. The global unit object is
+not simple, but rather given by the direct sum of all diagonal unit sectors. We do not
+document or illustrate this structure here, but refer to the relevant functions
+[`leftunit`](@ref), [`rightunit`](@ref), [`allunits`](@ref) and [`UnitStyle`](@ref) for more
+information. Furthermore, we refer to
 [MultiTensorKit.jl](https://github.com/QuantumKitHub/MultiTensorKit.jl) for examples and
 ongoing development work on using multi-fusion categories.
