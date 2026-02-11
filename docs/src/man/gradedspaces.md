@@ -26,7 +26,7 @@ as really the instances of `GradedSpace` represent just general objects in a fus
 (or strictly speaking, a pre-fusion category, as we allow for an infinite number of simple
 objects, e.g. the irreps of a continuous group).
 
-### Implementation details
+## Implementation details
 
 As mentioned, the way in which the degeneracy dimensions ``n_a`` are stored depends on the
 specific sector type `I`, more specifically on the `IteratorSize` of `values(I)`. If
@@ -50,7 +50,7 @@ these types can be created in a type stable manner. Note however that this impli
 large values of `N`, it can be beneficial to define
 `IteratorSize(values(a)) = SizeUnknown()` to not overly burden the compiler.
 
-### Constructing instances
+## Constructing instances
 
 As mentioned, the convenience method `Vect[I]` will return the concrete type
 `GradedSpace{I,D}` with the matching value of `D`, so that should never be a user's concern.
@@ -106,7 +106,7 @@ Rep[ℤ₂ × SU₂]((0,0) => 3, (1,1/2) => 2, (0,1) => 1) ==
     GradedSpace((Z2Irrep(0) ⊠ SU2Irrep(0)) => 3, (Z2Irrep(1) ⊠ SU2Irrep(1/2)) => 2, (Z2Irrep(0) ⊠ SU2Irrep(1)) => 1)
 ```
 
-### Methods
+## Methods
 
 There are a number of methods to work with instances `V` of `GradedSpace`. The function
 [`sectortype`](@ref) returns the type of the sector labels. It also works on other vector
@@ -153,7 +153,7 @@ dimension of the coupled sector `a` in `W`. The machinery for computing this is 
 the next section on [Fusion trees](@ref ss_fusiontrees), but first, it's time for some
 examples.
 
-### Examples
+## Examples
 
 Let's start with an example involving ``\mathsf{U}_1``:
 ```@repl gradedspaces
