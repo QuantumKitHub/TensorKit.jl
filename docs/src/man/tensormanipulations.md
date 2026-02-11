@@ -71,11 +71,11 @@ Finally, there are a number of operations that also belong in this paragraph bec
 their analogy to common matrix operations. The tensor product of two `TensorMap` instances
 `t1` and `t2` is obtained as `t1 ⊗ t2` and results in a new `TensorMap` with
 `codomain(t1 ⊗ t2) = codomain(t1) ⊗ codomain(t2)` and
-`domain(t1 ⊗ t2) = domain(t1) ⊗ domain(t2)`. If we have two `TensorMap{T,S,N,1}` instances
-`t1` and `t2` with the same codomain, we can combine them in a way that is analoguous to
-`hcat`, i.e. we stack them such that the new tensor `catdomain(t1, t2)` has also the same
-codomain, but has a domain which is `domain(t1) ⊕ domain(t2)`. Similarly, if `t1` and `t2`
-are of type `TensorMap{T,S,1,N}` and have the same domain, the operation
+`domain(t1 ⊗ t2) = domain(t1) ⊗ domain(t2)`. If we have two `TensorMap{T, S, N, 1}`
+instances `t1` and `t2` with the same codomain, we can combine them in a way that is
+analoguous to `hcat`, i.e. we stack them such that the new tensor `catdomain(t1, t2)` has
+also the same codomain, but has a domain which is `domain(t1) ⊕ domain(t2)`. Similarly, if
+`t1` and `t2` are of type `TensorMap{T, S, 1, N}` and have the same domain, the operation
 `catcodomain(t1, t2)` results in a new tensor with the same domain and a codomain given by
 `codomain(t1) ⊕ codomain(t2)`, which is the analogy of `vcat`. Note that direct sum only
 makes sense between `ElementarySpace` objects, i.e. there is no way to give a tensor product
@@ -83,6 +83,9 @@ meaning to a direct sum of tensor product spaces.
 
 Time for some more examples:
 ```@repl tensors
+using TensorKit # hide
+V1 = ℂ^2
+t = randn(V1 ← V1 ⊗ V1 ⊗ V1)
 t == t + zero(t) == t * id(domain(t)) == id(codomain(t)) * t
 t2 = randn(ComplexF64, codomain(t), domain(t));
 dot(t2, t)
@@ -113,7 +116,7 @@ foreach(println, (domain(t4), domain(t6), domain(t8)))
 norm(t8) ≈ norm(t4)*norm(t6)
 ```
 
-## Index manipulations
+## [Index manipulations](@id ss_indexmanipulation)
 
 In many cases, the bipartition of tensor indices (i.e. `ElementarySpace` instances) between
 the codomain and domain is not fixed throughout the different operations that need to be
@@ -188,26 +191,25 @@ For all sector types `I` with `BraidingStyle(I) == Bosonic()`, all twists are `1
 have no effect. Let us start with some examples, in which we illustrate that, albeit
 `permute` might act highly non-trivial on the fusion trees and on the corresponding data,
 after conversion to a regular `Array` (when possible), it just acts like `permutedims`
+
 ```@repl tensors
 domain(t) → codomain(t)
 ta = convert(Array, t);
-t′ = permute(t, (1,2,3,4));
+t′ = permute(t, (1, 2, 3, 4));
 domain(t′) → codomain(t′)
 convert(Array, t′) ≈ ta
-t′′ = permute(t, (4,2,3),(1,));
+t′′ = permute(t, ((4, 2, 3), (1,)));
 domain(t′′) → codomain(t′′)
-convert(Array, t′′) ≈ permutedims(ta, (4,2,3,1))
-m
-transpose(m)
-convert(Array, transpose(t)) ≈ permutedims(ta,(4,3,2,1))
+convert(Array, t′′) ≈ permutedims(ta, (4, 2, 3, 1))
+transpose(t)
+convert(Array, transpose(t)) ≈ permutedims(ta, (4, 3, 2, 1))
 dot(t2, t) ≈ dot(transpose(t2), transpose(t))
 transpose(transpose(t)) ≈ t
 twist(t, 3) ≈ t
-# as twist acts trivially for
-BraidingStyle(sectortype(t))
 ```
-Note that `transpose` acts like one would expect on a `TensorMap{T,S,1,1}`. On a
-`TensorMap{TS,N₁,N₂}`, because `transpose` replaces the codomain with the dual of the
+
+Note that `transpose` acts like one would expect on a `TensorMap{T, S, 1, 1}`. On a
+`TensorMap{TS, N₁, N₂}`, because `transpose` replaces the codomain with the dual of the
 domain, which has its tensor product operation reversed, this in the end amounts in a
 complete reversal of all tensor indices when representing it as a plain mutli-dimensional
 `Array`. Also, note that we have not defined the conjugation of `TensorMap` instances. One
@@ -225,11 +227,11 @@ the resulting `TensorMap` to an `Array`, so we have to rely on indirect tests to
 results.
 
 ```@repl tensors
-V1 = GradedSpace{FibonacciAnyon}(:I=>3,:τ=>2)
-V2 = GradedSpace{FibonacciAnyon}(:I=>2,:τ=>1)
-m = TensorMap(randn, Float32, V1, V2)
+V1 = GradedSpace{FibonacciAnyon}(:I => 3, :τ => 2)
+V2 = GradedSpace{FibonacciAnyon}(:I => 2, :τ => 1)
+m = randn(Float32, V1, V2)
 transpose(m)
-twist(braid(m, (1,2), (2,), (1,)), 1)
+twist(braid(m, ((2,), (1,)), (1, 2)), 1)
 t1 = randn(V1 * V2', V2 * V1);
 t2 = randn(ComplexF64, V1 * V2', V2 * V1);
 dot(t1, t2) ≈ dot(transpose(t1), transpose(t2))
@@ -253,203 +255,22 @@ next section.
 
 ## [Tensor factorizations](@id ss_tensor_factorization)
 
-### Eigenvalue decomposition
+As tensors are linear maps, they suport various kinds of factorizations. These functions all
+interpret the provided `AbstractTensorMap` instances as a map from `domain` to `codomain`,
+which can be thought of as reshaping the tensor into a matrix according to the current
+bipartition of the indices.
 
-As tensors are linear maps, they have various kinds of factorizations. Endomorphism, i.e.
-tensor maps `t` with `codomain(t) == domain(t)`, have an eigenvalue decomposition. For this,
-we overload both `LinearAlgebra.eigen(t; kwargs...)` and
-`LinearAlgebra.eigen!(t; kwargs...)`, where the latter destroys `t` in the process. The
-keyword arguments are the same that are accepted by `LinearAlgebra.eigen(!)` for matrices.
-The result is returned as `D, V = eigen(t)`, such that `t * V ≈ V * D`. For given
-`t::TensorMap{T,S,N,N}`, `V` is a `TensorMap{T,S,N,1}`, whose codomain corresponds to that
-of `t`, but whose domain is a single space `S` (or more correctly a `ProductSpace{S,1}`),
-that corresponds to `fuse(codomain(t))`. The eigenvalues are encoded in `D`, a
-`TensorMap{S,1,1}`, whose domain and codomain correspond to the domain of `V`. Indeed, we
-cannot reasonably associate a tensor product structure with the different eigenvalues. Note
-that `D` stores the eigenvalues in a dedicated `DiagonalTensorMap` type.
+TensorKit's factorizations are provided by
+[MatrixAlgebraKit.jl](https://github.com/QuantumKitHub/MatrixAlgebraKit.jl), which is used
+to supply both the interface, as well as the implementation of the various operations on the
+blocks of data. For specific details on the provided functionality, we refer to its
+[documentation page](https://quantumkithub.github.io/MatrixAlgebraKit.jl/stable/user_interface/decompositions/).
 
-We also define `LinearAlgebra.ishermitian(t)`, which can only return true for spacetypes
-that have a Euclidean inner product. In all other cases, as the inner product is not
-defined, there is no notion of hermiticity (i.e. we are not working in a `†`-category). We
-also define and export the routines `eigh` and `eigh!`, which compute the eigenvalue
-decomposition under the guarantee (not checked) that the map is hermitian. Hence,
-eigenvalues will be real and `V` will be unitary with `eltype(V) == eltype(t)`. We also
-define and export `eig` and `eig!`, which similarly assume that the `TensorMap` is not
-hermitian (hence this does not require `EuclideanTensorMap`), and always returns complex
-values eigenvalues and eigenvectors. Like for matrices, `LinearAlgebra.eigen` is type
-unstable and checks hermiticity at run-time, then falling back to either `eig` or `eigh`.
-
-### Orthogonal factorizations
-
-Other factorizations that are provided by TensorKit.jl are orthogonal or unitary in nature,
-and thus always require a Euclidean inner product. However, they don't require equal domain
-and codomain. Let us first discuss the *singular value decomposition*, for which we define
-and export the methods [`tsvd`](@ref) and `tsvd!` (where as always, the latter destroys the
-input).
-
-```julia
-U, Σ, Vʰ, ϵ = tsvd(t; trunc = notrunc(), p::Real = 2,
-                        alg::OrthogonalFactorizationAlgorithm = SDD())
-```
-
-This computes a (possibly truncated) singular value decomposition of
-`t::TensorMap{T,S,N₁,N₂}` (with `InnerProductStyle(t)<:EuclideanProduct`), such that
-`norm(t - U * Σ * Vʰ) ≈ ϵ`, where `U::TensorMap{T,S,N₁,1}`,
-`Σ::DiagonalTensorMap{real(T),S}`, `Vʰ::TensorMap{T,S,1,N₂}` and `ϵ::Real`. `U` is an
-isometry, i.e. `U' * U` approximates the identity, whereas `U * U'` is an idempotent
-(squares to itself). The same holds for `adjoint(Vʰ)`. The domain of `U` equals the domain
-and codomain of `Σ` and the codomain of `Vʰ`. In the case of `trunc = notrunc()` (default
-value, see below), this space is given by `min(fuse(codomain(t)), fuse(domain(t)))`. The
-singular values are contained in `Σ` and are stored in a specialized `DiagonalTensorMap`,
-similar to the eigenvalues before.
-
-The keyword argument `trunc` provides a way to control the truncation, and is connected to
-the keyword argument `p`. The default value `notrunc()` implies no truncation, and thus
-`ϵ = 0`. Other valid options are
-
-*   `truncerr(η::Real)`: truncates such that the `p`-norm of the truncated singular values
-    is smaller than `η` times the `p`-norm of all singular values;
-
-*   `truncdim(χ::Integer)`: finds the optimal truncation such that the equivalent total
-    dimension of the internal vector space is no larger than `χ`;
-
-*   `truncspace(W)`: truncates such that the dimension of the internal vector space is no
-    greater than that of `W` in any sector, i.e. with
-    `W₀ = min(fuse(codomain(t)), fuse(domain(t)))` this option will result in
-    `domain(U) == domain(Σ) == codomain(Σ) == codomain(Vᵈ) == min(W, W₀)`;
-
-*   `trunbelow(η::Real)`: truncates such that every singular value is larger then `η`; this
-    is different from `truncerr(η)` with `p = Inf` because it works in absolute rather than
-    relative values.
-
-Furthermore, the `alg` keyword can be either `SVD()` or `SDD()` (default), which corresponds
-to two different algorithms in LAPACK to compute singular value decompositions. The default
-value `SDD()` uses a divide-and-conquer algorithm and is typically the fastest, but can
-loose some accuracy. The `SVD()` method uses a QR-iteration scheme and can be more accurate,
-but is typically slower. Since Julia 1.3, these two algorithms are also available in the
-`LinearAlgebra` standard library, where they are specified as
-`LinearAlgebra.DivideAndConquer()` and `LinearAlgebra.QRIteration()`.
-
-Note that we defined the new method `tsvd` (truncated or tensor singular value
-decomposition), rather than overloading `LinearAlgebra.svd`. We (will) also support
-`LinearAlgebra.svd(t)` as alternative for `tsvd(t; trunc = notrunc())`, but note that the
-return values are then given by `U, Σ, V = svd(t)` with `V = adjoint(Vʰ)`.
-
-We also define the following pair of orthogonal factorization algorithms, which are useful
-when one is not interested in truncating a tensor or knowing the singular values, but only
-in its image or coimage.
-
-*   `Q, R = leftorth(t; alg::OrthogonalFactorizationAlgorithm = QRpos(), kwargs...)`: this
-    produces an isometry `Q::TensorMap{T,S,N₁,1}` (i.e. `Q' * Q` approximates the identity,
-    `Q * Q'` is an idempotent, i.e. squares to itself) and a general tensor map
-    `R::TensorMap{T,1,N₂}`, such that `t ≈ Q * R`. Here, the domain of `Q` and thus codomain
-    of `R` is a single vector space of type `S` that is typically given by
-    `min(fuse(codomain(t)), fuse(domain(t)))`.
-
-    The underlying algorithm used to compute this decomposition can be chosen among `QR()`,
-    `QRpos()`, `QL()`, `QLpos()`, `SVD()`, `SDD()`, `Polar()`. `QR()` uses the underlying
-    `qr` decomposition from `LinearAlgebra`, while `QRpos()` (the default) adds a correction
-    to that to make sure that the diagonal elements of `R` are positive. Both result in
-    upper triangular `R`, which are square when `codomain(t) ≾ domain(t)` and wide
-    otherwise. `QL()` and `QLpos()` similarly result in a lower triangular matrices in `R`,
-    but only work in the former case, i.e. `codomain(t) ≾ domain(t)`, which amounts to
-    `blockdim(codomain(t), c) >= blockdim(domain(t), c)` for all `c ∈ blocksectors(t)`.
-
-    One can also use `alg = SVD()` or `alg = SDD()`, with extra keywords to control the
-    absolute (`atol`) or relative (`rtol`) tolerance. We then set `Q=U` and `R=Σ * Vʰ` from
-    the corresponding singular value decomposition, where only these singular values
-    `σ >= max(atol, norm(t) * rtol)` (and corresponding singular vectors in `U`) are kept.
-    More finegrained control on the chosen singular values can be obtained with `tsvd` and
-    its `trunc` keyword.
-
-    Finally, `Polar()` sets `Q = U * Vʰ` and `R = (Vʰ)' * Σ * Vʰ`, such that `R` is positive
-    definite; in this case `SDD()` is used to actually compute the singular value
-    decomposition and no `atol` or `rtol` can be provided.
-
-*   `L, Q = rightorth(t; alg::OrthogonalFactorizationAlgorithm = QRpos())`: this produces a
-    general tensor map `L::TensorMap{T,S,N₁,1}` and the adjoint of an isometry
-    `Q::TensorMap{T,S,1,N₂}`, such that `t ≈ L * Q`. Here, the domain of `L` and thus
-    codomain of `Q` is a single vector space of type `S` that is typically given by
-    `min(fuse(codomain(t)), fuse(domain(t)))`.
-
-    The underlying algorithm used to compute this decomposition can be chosen among `LQ()`,
-    `LQpos()`, `RQ()`, `RQpos()`, `SVD()`, `SDD()`, `Polar()`. `LQ()` uses the underlying
-    `qr` decomposition from `LinearAlgebra` on the transposed data, and leads to lower
-    triangular matrices in `L`; `LQpos()` makes sure the diagonal elements are positive. The
-    matrices `L` are square when `codomain(t) ≿ domain(t)` and tall otherwise. Similarly,
-    `RQ()` and `RQpos()` result in upper triangular matrices in `L`, but only works if
-    `codomain(t) ≿ domain(t)`, i.e. when
-    `blockdim(codomain(t), c) <= blockdim(domain(t), c)` for all `c ∈ blocksectors(t)`.
-
-    One can also use `alg = SVD()` or `alg = SDD()`, with extra keywords to control the
-    absolute (`atol`) or relative (`rtol`) tolerance. We then set `L = U * Σ` and `Q = Vʰ`
-    from the corresponding singular value decomposition, where only these singular values
-    `σ >= max(atol, norm(t) * rtol)` (and corresponding singular vectors in `Vʰ`) are kept.
-    More finegrained control on the chosen singular values can be obtained with `tsvd` and
-    its `trunc` keyword.
-
-    Finally, `Polar()` sets `L = U * Σ * U'` and `Q=U*Vʰ`, such that `L` is positive
-    definite; in this case `SDD()` is used to actually compute the singular value
-    decomposition and no `atol` or `rtol` can be provided.
-
-Furthermore, we can compute an orthonormal basis for the orthogonal complement of the image
-and of the co-image (i.e. the kernel) with the following methods:
-
-*   `N = leftnull(t; alg::OrthogonalFactorizationAlgorithm = QR(), kwargs...)`: returns an
-    isometric `TensorMap{T,S,N₁,1}` (i.e. `N' * N` approximates the identity) such that
-    `N' * t` is approximately zero.
-
-    Here, `alg` can be `QR()` (`QRpos()` acts identically in this case), which assumes that
-    `t` is full rank in all of its blocks and only returns an orthonormal basis for the
-    missing columns.
-
-    If this is not the case, one can also use `alg = SVD()` or `alg = SDD()`, with extra
-    keywords to control the absolute (`atol`) or relative (`rtol`) tolerance. We then
-    construct `N` from the left singular vectors corresponding to singular values
-    `σ < max(atol, norm(t) * rtol)`.
-
-*   `N = rightnull(t; alg::OrthogonalFactorizationAlgorithm = QR(), kwargs...)`: returns a
-    `TensorMap{T,S,1,N₂}` with isometric adjoint (i.e. `N * N'` approximates the identity)
-    such that `t * N'` is approximately zero.
-
-    Here, `alg` can be `LQ()` (`LQpos()` acts identically in this case), which assumes that
-    `t` is full rank in all of its blocks and only returns an orthonormal basis for the
-    missing rows.
-
-    If this is not the case, one can also use `alg = SVD()` or `alg = SDD()`, with extra
-    keywords to control the absolute (`atol`) or relative (`rtol`) tolerance. We then
-    construct `N` from the right singular vectors corresponding to singular values
-    `σ < max(atol, norm(t) * rtol)`.
-
-Note that the methods `leftorth`, `rightorth`, `leftnull` and `rightnull` also come in a
-form with exclamation mark, i.e. `leftorth!`, `rightorth!`, `leftnull!` and `rightnull!`,
-which destroy the input tensor `t`.
-
-### Factorizations for custom index bipartions
-
-Finally, note that each of the factorizations take a single argument, the tensor map `t`,
-and a number of keyword arguments. They perform the factorization according to the given
-codomain and domain of the tensor map. In many cases, we want to perform the factorization
-according to a different bipartition of the indices. When `BraidingStyle(sectortype(t)) isa
-SymmetricBraiding`, we can immediately specify an alternative bipartition of the indices of
-`t` in all of these methods, in the form
-
-```julia
-factorize(t::AbstracTensorMap, (pleft, pright)::Index2Tuple{N₁′,N₂′}; kwargs...)
-```
-
-where `pleft` will be the indices in the codomain of the new tensor map, and `pright` the
-indices of the domain. Here, `factorize` is any of the methods `LinearAlgebra.eigen`, `eig`,
-`eigh`, `tsvd`, `LinearAlgebra.svd`, `leftorth`, `rightorth`, `leftnull` and `rightnull`.
-This signature does not allow for the exclamation mark, because it amounts to
-
-```julia
-factorize!(permute(t, (pleft, pright); copy = true); kwargs...)
-```
-
-where [`permute`](@ref) was introduced and discussed in the previous section. When the
-braiding is not symmetric, the user should manually apply [`braid`](@ref) to bring the
-tensor map in proper form before performing the factorization.
+Finally, note that each of the factorizations takes the current partition of `domain` and
+`codomain` as the *axis* along which to matricize and perform the factorization. In order to
+obtain factorizations according to a different bipartition of the indices, we can use any of
+the previously mentioned [index manipulations](@ref ss_indexmanipulation) before the
+factorization.
 
 Some examples to conclude this section
 ```@repl tensors
@@ -457,24 +278,23 @@ V1 = SU₂Space(0=>2, 1/2=>1)
 V2 = SU₂Space(0=>1, 1/2=>1, 1=>1)
 
 t = randn(V1 ⊗ V1, V2);
-U, S, W = tsvd(t);
-t ≈ U * S * W
-D, V = eigh(t' * t);
+U, S, Vh = svd_compact(t);
+t ≈ U * S * Vh
+D, V = eigh_full(t' * t);
 D ≈ S * S
 U' * U ≈ id(domain(U))
 S
 
-Q, R = leftorth(t; alg = Polar());
-isposdef(R)
-Q ≈ U * W
-R ≈ W' * S * W
+Q, R = left_orth(t; alg = :svd);
+Q' * Q ≈ id(domain(Q))
+t ≈ Q * R
 
-U2, S2, W2, ε = tsvd(t; trunc = truncspace(V1));
-W2 * W2' ≈ id(codomain(W2))
+U2, S2, Vh2, ε = svd_trunc(t; trunc = truncspace(V1));
+Vh2 * Vh2' ≈ id(codomain(Vh2))
 S2
 ε ≈ norm(block(S, Irrep[SU₂](1))) * sqrt(dim(Irrep[SU₂](1)))
 
-L, Q = rightorth(t, (1,), (2,3));
+L, Q = right_orth(permute(t, ((1,), (2,3))));
 codomain(L), domain(L), domain(Q)
 Q * Q'
 P = Q' * Q;
@@ -547,9 +367,9 @@ indices with negative integers, and the contracted indices with positive integer
 A number of remarks are in order. TensorOperations.jl accepts both integers and any valid
 variable name as dummy label for indices, and everything in between `[ ]` is not resolved in
 the current context but interpreted as a dummy label. Here, we label the indices of a
-`TensorMap`, like `A::TensorMap{T,S,N₁,N₂}`, in a linear fashion, where the first position
+`TensorMap`, like `A::TensorMap{T, S, N₁, N₂}`, in a linear fashion, where the first position
 corresponds to the first space in `codomain(A)`, and so forth, up to position `N₁`. Index
-`N₁ + 1`then corresponds to the first space in `domain(A)`. However, because we have applied
+`N₁ + 1` then corresponds to the first space in `domain(A)`. However, because we have applied
 the coevaluation ``η``, it actually corresponds to the corresponding dual space, in
 accordance with the interface of [`space(A, i)`](@ref) that we introduced [above](@ref
 ss_tensor_properties), and as indiated by the dotted box around ``A`` in the above picture.
@@ -595,7 +415,7 @@ settings by appropriotely combining spaces into a single line, we indeed find
 <img src="../img/tensor-contractionreorder.svg" alt="tensor contraction reorder" class="color-invertible"/>
 ```
 
-or thus, the following to lines of code yield the same result
+or thus, the following two lines of code yield the same result
 ```julia
 @tensor C[i,j] := B[i,k] * A[k,j]
 @tensor C[i,j] := A[k,j] * B[i,k]
@@ -609,23 +429,24 @@ function, an we recommend reading the
 to learn more about the possibilities and how they work.
 
 A final remark involves the use of adjoints of tensors. The current framework is such that
-the user should not be to worried about the actual bipartition into codomain and domain of a
-given `TensorMap` instance. Indeed, for factorizations one just specifies the requested
-bipartition via the `factorize(t, (pleft, pright))` interface, and for tensor contractions
-the `@contract` macro figures out the correct manipulations automatically. However, when
-wanting to use the `adjoint` of an instance `t::TensorMap{T,S,N₁,N₂}`, the resulting
-`adjoint(t)` is a `AbstractTensorMap{T,S,N₂,N₁}` and one need to know the values of `N₁` and
-`N₂` to know exactly where the `i`th index of `t` will end up in `adjoint(t)`, and hence to
-know and understand the index order of `t'`. Within the `@tensor` macro, one can instead use
-`conj()` on the whole index expression so as to be able to use the original index ordering
-of `t`. Indeed, for matrices of thus, `TensorMap{T,S,1,1}` instances, this yields exactly
-the equivalence one expects, namely equivalence between the following to expressions.
+the user should not be too worried about the actual bipartition into codomain and domain of
+a given `TensorMap` instance. Indeed, for tensor contractions the `@tensor` macro figures
+out the correct manipulations automatically. However, when wanting to use the `adjoint` of
+an instance `t::TensorMap{T, S, N₁, N₂}`, the resulting `adjoint(t)` is an
+`AbstractTensorMap{T, S, N₂, N₁}` and one needs to know the values of `N₁` and `N₂` to know
+exactly where the `i`th index of `t` will end up in `adjoint(t)`, and hence to know and
+understand the index order of `t'`. Within the `@tensor` macro, one can instead use `conj()`
+on the whole index expression so as to be able to use the original index ordering of `t`.
+For example, for `TensorMap{T, S, 1, 1}` instances, this yields exactly the equivalence one
+expects, namely equivalence between the following two expressions:
+
 ```julia
 @tensor C[i,j] := B'[i,k] * A[k,j]
 @tensor C[i,j] := conj(B[k,i]) * A[k,j]
 ```
-For e.g. an instance `A::TensorMap{T,S,3,2}`, the following two syntaxes have the same
-effect within an `@tensor` expression: `conj(A[a,b,c,d,e])` and `A'[d,e,a,b,c]`.
+
+For e.g. an instance `A::TensorMap{T, S, 3, 2}`, the following two syntaxes have the same
+effect within an `@tensor` expression: `conj(A[a, b, c, d, e])` and `A'[d, e, a, b, c]`.
 
 Some examples:
 
