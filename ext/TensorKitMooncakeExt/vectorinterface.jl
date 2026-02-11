@@ -11,9 +11,8 @@ function Mooncake.rrule!!(::CoDual{typeof(scale!)}, C_ΔC::CoDual{<:AbstractTens
 
     function scale_pullback(::NoRData)
         copy!(C, C_cache)
+        Δαr = _needs_tangent(α) ? project_scalar(α, inner(C, ΔC)) : NoRData()
         scale!(ΔC, conj(α))
-        TΔα = Mooncake.rdata_type(Mooncake.tangent_type(typeof(α)))
-        Δαr = TΔα === NoRData ? NoRData() : inner(C, ΔC)
         return NoRData(), NoRData(), Δαr
     end
 
@@ -34,10 +33,9 @@ function Mooncake.rrule!!(::CoDual{typeof(scale!)}, C_ΔC::CoDual{<:AbstractTens
 
     function scale_pullback(::NoRData)
         copy!(C, C_cache)
+        add!(ΔA, ΔC, conj(α))
+        Δαr = _needs_tangent(α) ? project_scalar(α, inner(A, ΔC)) : NoRData()
         zerovector!(ΔC)
-        scale!(ΔA, conj(α))
-        TΔα = Mooncake.rdata_type(Mooncake.tangent_type(typeof(α)))
-        Δαr = TΔα === NoRData ? NoRData() : inner(C, ΔC)
         return NoRData(), NoRData(), NoRData(), Δαr
     end
 
@@ -59,13 +57,11 @@ function Mooncake.rrule!!(::CoDual{typeof(add!)}, C_ΔC::CoDual{<:AbstractTensor
 
     function add_pullback(::NoRData)
         copy!(C, C_cache)
-        scale!(ΔC, conj(β))
-        scale!(ΔA, conj(α))
 
-        TΔα = Mooncake.rdata_type(Mooncake.tangent_type(typeof(α)))
-        Δαr = TΔα === NoRData ? NoRData() : inner(A, ΔC)
-        TΔβ = Mooncake.rdata_type(Mooncake.tangent_type(typeof(β)))
-        Δβr = TΔβ === NoRData ? NoRData() : inner(C, ΔC)
+        Δαr = _needs_tangent(α) ? project_scalar(α, inner(A, ΔC)) : NoRData()
+        Δβr = _needs_tangent(β) ? project_scalar(β, inner(C, ΔC)) : NoRData()
+        add!(ΔA, ΔC, conj(α))
+        scale!(ΔC, conj(β))
 
         return NoRData(), NoRData(), NoRData(), Δαr, Δβr
     end
@@ -84,8 +80,8 @@ function Mooncake.rrule!!(::CoDual{typeof(inner)}, A_ΔA::CoDual{<:AbstractTenso
     s = inner(A, B)
 
     function inner_pullback(Δs)
-        scale!(ΔA, B, conj(Δs))
-        scale!(ΔB, A, Δs)
+        add!(ΔA, B, conj(Δs))
+        add!(ΔB, A, Δs)
         return NoRData(), NoRData(), NoRData()
     end
 
