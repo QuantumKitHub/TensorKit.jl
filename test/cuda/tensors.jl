@@ -56,7 +56,7 @@ for V in spacelist
                 @test typeof(t) == TensorMap{Float64, spacetype(t), 5, 0, CuVector{Float64, CUDA.DeviceMemory}}
             end
             for f in (Base.ones, Base.zeros)
-                t = @constinferred f(CuVector{Float64}, W)
+                t = @constinferred f(CuVector{Float64, CUDA.DeviceMemory}, W)
                 @test scalartype(t) == Float64
                 @test codomain(t) == W
                 @test space(t) == (W ← one(W))
