@@ -143,7 +143,7 @@ other requires a recoupling (F-move) which has a non-trivial action on the reduc
 We elaborate on this in the context of [Fusion categories](@ref ss_topologicalfusion) below.
 However, we can already note that we will always represent tensor products using a canonical
 order ``(…((V_1 ⊗ V_2) ⊗ V_3) … ⊗ V_N)``. A similar approach can be followed to turn any
-tensor category into a strict tensor category (see Section XI.5 of [^kassel]).
+tensor category into a strict tensor category (see Section XI.5 of [^Kassel]).
 
 The different natural isomorphisms involving the unit object have various relations, such as
 ``λ_{V⊗W} ∘ α_{I,V,W} = λ_V ⊗ \mathrm{id}_W`` and ``λ_I = ρ_I : I ⊗ I → I``. The last
@@ -365,7 +365,7 @@ refer to the trace ``\mathrm{tr}(f)`` of an endomorphism. The particular value
 object ``V``, referred to as `dim(V)` in TensorKit.jl.
 
 For further information and a more detailed treatment of rigid and pivotal categories, we
-refer to [^turaev] and [^selinger]. We conclude this section by studying the example of
+refer to [^Turaev] and [^Selinger]. We conclude this section by studying the example of
 ``\mathbf{SVect}``. Let us, in every super vector space ``V``, define a basis ``|n⟩`` that
 is compatible with the grading. The value ``|n|=0,1`` indicates that ``|n⟩ ∈ V_{|n|}``. We again
 define a dual basis ``{⟨m|}`` for ``V^*`` (such that ``⟨m|n⟩ = δ_{m,n}``), and then define
@@ -457,7 +457,7 @@ and
 ``θ^{\mathrm{r}}_V = (\mathrm{id}_V ⊗ \tilde{ϵ}_V)(τ_{V,V} ⊗ \mathrm{id}_{V*})(\mathrm{id}_V ⊗ ϵ_V)``
 
 where we omitted the necessary left and right unitors and associators. Graphically, the
-twists and their inverse (for which we refer to [^turaev]) are then represented as
+twists and their inverse (for which we refer to [^Turaev]) are then represented as
 
 ```@raw html
 <img src="../img/diagram-twists.svg" alt="twists" class="color-invertible"/>
