@@ -7,7 +7,8 @@ using DocumenterInterLinks
 
 links = InterLinks(
     "MatrixAlgebraKit" => "https://quantumkithub.github.io/MatrixAlgebraKit.jl/stable/",
-    "TensorOperations" => "https://quantumkithub.github.io/TensorOperations.jl/stable/"
+    "TensorOperations" => "https://quantumkithub.github.io/TensorOperations.jl/stable/",
+    "TensorKitSectors" => "https://quantumkithub.github.io/TensorKitSectors.jl/dev/"
 )
 
 pages = [

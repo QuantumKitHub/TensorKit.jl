@@ -31,8 +31,7 @@ braid(f::FusionTree{I,N}, levels::NTuple{N,Int}, p::NTuple{N,Int}) where {I<:Sec
 permute(f::FusionTree{I,N}, p::NTuple{N,Int}) where {I<:Sector,N}
 ```
 
-These can be composed to implement elementary manipulations of fusion-splitting tree pairs,
-according to the following methods
+These can be composed to implement elementary manipulations of fusion-splitting tree pairs, according to the following methods
 
 ```julia
 # TODO: add documentation for the following methods
@@ -44,9 +43,8 @@ TensorKit.cycleclockwise
 TensorKit.cycleanticlockwise
 ```
 
-Finally, these are used to define large manipulations of fusion-splitting tree pairs, which
-are then used in the index manipulation of `AbstractTensorMap` objects. The following
-methods defined on fusion splitting tree pairs have an associated definition for tensors.
+Finally, these are used to define large manipulations of fusion-splitting tree pairs, which are then used in the index manipulation of `AbstractTensorMap` objects.
+The following methods defined on fusion splitting tree pairs have an associated definition for tensors.
 ```@docs
 repartition(::FusionTree{I,N₁}, ::FusionTree{I,N₂}, ::Int) where {I<:Sector,N₁,N₂}
 transpose(::FusionTree{I}, ::FusionTree{I}, ::IndexTuple{N₁}, ::IndexTuple{N₂}) where {I<:Sector,N₁,N₂}
