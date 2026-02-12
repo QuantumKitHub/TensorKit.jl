@@ -46,7 +46,7 @@ adjoint operation, given by `adjoint(t)` or simply `t'`, such that
 `domain(t') == codomain(t)` and `codomain(t') == domain(t)`. Note that for an instance
 `t::TensorMap{S,N₁,N₂}`, `t'` is simply stored in a wrapper called
 `AdjointTensorMap{S,N₂,N₁}`, which is another subtype of `AbstractTensorMap`. This should be
-mostly unvisible to the user, as all methods should work for this type as well. It can be
+mostly invisible to the user, as all methods should work for this type as well. It can be
 hard to reason about the index order of `t'`, i.e. index `i` of `t` appears in `t'` at index
 position `j = TensorKit.adjointtensorindex(t, i)`, where the latter method is typically not
 necessary and hence unexported. There is also a plural `TensorKit.adjointtensorindices` to
@@ -73,7 +73,7 @@ their analogy to common matrix operations. The tensor product of two `TensorMap`
 `codomain(t1 ⊗ t2) = codomain(t1) ⊗ codomain(t2)` and
 `domain(t1 ⊗ t2) = domain(t1) ⊗ domain(t2)`. If we have two `TensorMap{T, S, N, 1}`
 instances `t1` and `t2` with the same codomain, we can combine them in a way that is
-analoguous to `hcat`, i.e. we stack them such that the new tensor `catdomain(t1, t2)` has
+analogous to `hcat`, i.e. we stack them such that the new tensor `catdomain(t1, t2)` has
 also the same codomain, but has a domain which is `domain(t1) ⊕ domain(t2)`. Similarly, if
 `t1` and `t2` are of type `TensorMap{T, S, 1, N}` and have the same domain, the operation
 `catcodomain(t1, t2)` results in a new tensor with the same domain and a codomain given by
@@ -183,7 +183,7 @@ twist) to one of the tensor map indices via [`twist(t, i; inv = false)`](@ref) o
 in a new destination tensor, but just modifies the tensor `t` in place. Twisting several
 indices simultaneously can be obtained by using the defining property
 
-``θ_{V⊗W} = τ_{W,V} ∘ (θ_W ⊗ θ_V) ∘ τ_{V,W} = (θ_V ⊗ θ_W) ∘ τ_{W,V} ∘ τ_{V,W}.``
+``θ_{V⊗W} = τ_{W,V} ∘ (θ_W ⊗ θ_V) ∘ τ_{V,W} = (θ_V ⊗ θ_W) ∘ τ_{W,V} ∘ τ_{V,W},``
 
 but is currently not implemented explicitly.
 
@@ -209,9 +209,9 @@ twist(t, 3) ≈ t
 ```
 
 Note that `transpose` acts like one would expect on a `TensorMap{T, S, 1, 1}`. On a
-`TensorMap{TS, N₁, N₂}`, because `transpose` replaces the codomain with the dual of the
+`TensorMap{T, S, N₁, N₂}`, because `transpose` replaces the codomain with the dual of the
 domain, which has its tensor product operation reversed, this in the end amounts in a
-complete reversal of all tensor indices when representing it as a plain mutli-dimensional
+complete reversal of all tensor indices when representing it as a plain multi-dimensional
 `Array`. Also, note that we have not defined the conjugation of `TensorMap` instances. One
 definition that one could think of is `conj(t) = adjoint(transpose(t))`. However note that
 `codomain(adjoint(tranpose(t))) == domain(transpose(t)) == dual(codomain(t))` and similarly
@@ -434,11 +434,11 @@ a given `TensorMap` instance. Indeed, for tensor contractions the `@tensor` macr
 out the correct manipulations automatically. However, when wanting to use the `adjoint` of
 an instance `t::TensorMap{T, S, N₁, N₂}`, the resulting `adjoint(t)` is an
 `AbstractTensorMap{T, S, N₂, N₁}` and one needs to know the values of `N₁` and `N₂` to know
-exactly where the `i`th index of `t` will end up in `adjoint(t)`, and hence to know and
-understand the index order of `t'`. Within the `@tensor` macro, one can instead use `conj()`
+exactly where the `i`th index of `t` will end up in `adjoint(t)`, and hence the index order of `t'`.
+Within the `@tensor` macro, one can instead use `conj()`
 on the whole index expression so as to be able to use the original index ordering of `t`.
 For example, for `TensorMap{T, S, 1, 1}` instances, this yields exactly the equivalence one
-expects, namely equivalence between the following two expressions:
+expects, namely one between the following two expressions:
 
 ```julia
 @tensor C[i,j] := B'[i,k] * A[k,j]

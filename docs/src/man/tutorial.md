@@ -116,7 +116,7 @@ A ≈ A′
 U
 ```
 
-Note that the `tsvd` routine returns the decomposition of the linear map as three factors,
+Note that the `svd_compact` routine returns the decomposition of the linear map as three factors,
 `U`, `S` and `Vd`, each of them a `TensorMap`, such that `Vd` is already what is commonly
 called `V'`. Furthermore, observe that `U` is printed differently then `A`, i.e. as a
 `TensorMap((ℝ^3 ⊗ ℝ^4) ← ProductSpace(ℝ^2))`. What this means is that tensors (or more
