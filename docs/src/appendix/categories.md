@@ -13,10 +13,10 @@ and which are useful to describe fermions.
 
 In the end, the goal of identifying tensor manipulations in TensorKit.jl with concepts from
 category theory is to put the diagrammatic formulation of tensor networks in the most
-general context on a firmer footing. The following exposition is mostly based on [^turaev],
-combined with input from [^selinger], [^kassel], [^kitaev], and
+general context on a firmer footing. The following exposition is mostly based on [^Turaev],
+combined with input from [^Selinger], [^Kassel], [^Kitaev], and
 [``n``Lab](https://ncatlab.org/), to which we refer for further information. Furthermore, we
-recommend the nice introduction of [^beer].
+recommend the nice introduction of [^Beer].
 
 ## [Categories, functors and natural transformations](@id ss_categoryfunctor)
 
@@ -988,19 +988,19 @@ information about modular categories.
 
 ## Bibliography
 
-[^turaev]:      Turaev, V. G., & Virelizier, A. (2017). Monoidal categories and topological field theory (Vol. 322).
+[^Turaev]:      Turaev, V. G., & Virelizier, A. (2017). Monoidal categories and topological field theory (Vol. 322).
                 Birkhäuser.
 
-[^selinger]:    Selinger, P. (2010). A survey of graphical languages for monoidal categories.
+[^Selinger]:    Selinger, P. (2010). A survey of graphical languages for monoidal categories.
                 In New structures for physics (pp. 289-355). Springer, Berlin, Heidelberg.
                 [https://arxiv.org/abs/0908.3347](https://arxiv.org/abs/0908.3347)
 
-[^kassel]:      Kassel, C. (2012). Quantum groups (Vol. 155).
+[^Kassel]:      Kassel, C. (2012). Quantum groups (Vol. 155).
                 Springer Science & Business Media.
 
-[^kitaev]:      Kitaev, A. (2006). Anyons in an exactly solved model and beyond.
+[^Kitaev]:      Kitaev, A. (2006). Anyons in an exactly solved model and beyond.
                 Annals of Physics, 321(1), 2-111.
 
-[^beer]:        From categories to anyons: a travelogue
+[^Beer]:        From categories to anyons: a travelogue
                 Kerstin Beer, Dmytro Bondarenko, Alexander Hahn, Maria Kalabakov, Nicole Knust, Laura Niermann, Tobias J. Osborne, Christin Schridde, Stefan Seckmeyer, Deniz E. Stiegemann, and Ramona Wolf
                 [https://arxiv.org/abs/1811.06670](https://arxiv.org/abs/1811.06670)
