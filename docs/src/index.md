@@ -19,7 +19,7 @@ By employing concepts from category theory, we can represent and manipulate tens
 At the same time, TensorKit.jl focusses on computational efficiency and performance.
 The underlying storage of a tensor's data can be any `DenseArray`.
 When the data is stored in main memory (corresponding to `Array`), multiple CPUs can be leveraged as many operations come with multithreaded implementations, either by distributing the different blocks in case of a structured tensor (i.e. with symmetries) or by using multithreading provided by the package [Strided.jl](https://github.com/Jutho/Strided.jl).
-Support for storing and manipulating tensors on NVidia and AMD GPUs is currently being developed, whereas support for distributed arrays is planned for the future.
+Support for storing and manipulating tensors on Nvidia and AMD GPUs is currently being developed, whereas support for distributed arrays is planned for the future.
 
 ## Contents of the manual
 

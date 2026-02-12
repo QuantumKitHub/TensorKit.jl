@@ -17,7 +17,7 @@ This convention is opposite to the mathematical notation, e.g. ``\mathrm{Hom}(W,
 This also explains why we have consistently used the symbol ``W`` for spaces in the domain and ``V`` for spaces in the codomain.
 A tensor map ``t : (W_1 ⊗ … ⊗ W_{N_2}) → (V_1 ⊗ … ⊗ V_{N_1})`` will be created in Julia as `TensorMap(..., V1 ⊗ ... ⊗ VN₁, W1 ⊗ ... ⊗ WN₂)`.
 
-Furthermore, the abstract type `AbstractTensor{S, N}` is just a synonym for `AbstractTensorMap{S, N, 0}`, i.e. for tensor maps with an empty domain, which is equivalent to the unit of the monoidal category, or thus, the field of scalars ``𝕜``.
+Furthermore, the abstract type `AbstractTensor{T, S, N}` is just a synonym for `AbstractTensorMap{T, S, N, 0}`, i.e. for tensor maps with an empty domain, which is equivalent to the unit of the monoidal category, or thus, the field of scalars ``𝕜``.
 
 Currently, `AbstractTensorMap` has three subtypes.
 `TensorMap` provides the actual implementation, where the data of the tensor is stored in a `DenseArray` (more specifically a `DenseMatrix` as will be explained below).
