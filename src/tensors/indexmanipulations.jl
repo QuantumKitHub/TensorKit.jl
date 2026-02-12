@@ -219,14 +219,15 @@ function LinearAlgebra.transpose(
 end
 
 """
-    repartition!(tdst::AbstractTensorMap{S}, tsrc::AbstractTensorMap{S}) where {S} -> tdst
+    repartition!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap) -> tdst
 
 Write into `tdst` the result of repartitioning the indices of `tsrc`. This is just a special
 case of a transposition that only changes the number of in- and outgoing indices.
 
 See [`repartition`](@ref) for creating a new tensor.
 """
-@propagate_inbounds function repartition!(tdst::AbstractTensorMap{S}, tsrc::AbstractTensorMap{S}) where {S}
+@propagate_inbounds function repartition!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap)
+    check_spacetype(tdst, tsrc)
     numind(tsrc) == numind(tdst) ||
         throw(ArgumentError("tsrc and tdst should have an equal amount of indices"))
     all_inds = (codomainind(tsrc)..., reverse(domainind(tsrc))...)
@@ -236,12 +237,12 @@ See [`repartition`](@ref) for creating a new tensor.
 end
 
 """
-    repartition(tsrc::AbstractTensorMap{S}, N₁::Int, N₂::Int; copy::Bool=false) where {S}
-        -> tdst::AbstractTensorMap{S,N₁,N₂}
+    repartition(
+        tsrc::AbstractTensorMap{T, S}, N₁::Int, N₂::Int; copy::Bool=false
+    ) where {T, S} -> tdst::AbstractTensorMap{T, S, N₁, N₂}
 
 Return tensor `tdst` obtained by repartitioning the indices of `t`.
-The codomain and domain of `tdst` correspond to the first `N₁` and last `N₂` spaces of `t`,
-respectively.
+The codomain and domain of `tdst` correspond to the first `N₁` and last `N₂` spaces of `t`, respectively.
 
 If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwise, a copy is always made.
 

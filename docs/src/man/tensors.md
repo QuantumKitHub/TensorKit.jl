@@ -10,7 +10,7 @@ As this is probably the most important part of the manual, we will also focus mo
 The only aspect of the implementation that we will address is the storage of the tensor data, as this is important to know how to create and initialize a tensor, but will in fact also shed light on how some of the methods work.
 
 As mentioned, all tensors in TensorKit.jl are interpreted as linear maps (morphisms) from a domain (a `ProductSpace{S, N₂}`) to a codomain (another `ProductSpace{S, N₁}`), with the same `S <: ElementarySpace` that labels the type of spaces associated with the individual tensor indices.
-The overall type for all such tensor maps is `AbstractTensorMap{S, N₁, N₂}`.
+The overall type for all such tensor maps is `AbstractTensorMap{T, S, N₁, N₂}`.
 Note that we place information about the codomain before that of the domain.
 Indeed, we have already encountered the constructor for the concrete parametric type `TensorMap` in the form `TensorMap(..., codomain, domain)`.
 This convention is opposite to the mathematical notation, e.g. ``\mathrm{Hom}(W, V)`` or ``f : W → V``, but originates from the fact that a normal matrix is also denoted as having size `m × n` or is constructed in Julia as `Array(..., (m, n))`, where the first integer `m` refers to the codomain being `m`- dimensional, and the seond integer `n` to the domain being `n`-dimensional.
@@ -379,9 +379,9 @@ Furthermore, note that they render the tensor block diagonal, but that now every
 
 ## [Tensor properties](@id ss_tensor_properties)
 
-Given a `t::AbstractTensorMap{S, N₁, N₂}`, there are various methods to query its properties.
+Given a `t::AbstractTensorMap{T, S, N₁, N₂}`, there are various methods to query its properties.
 The most important are clearly `codomain(t)` and `domain(t)`.
-For `t::AbstractTensor{S, N}`, i.e. `t::AbstractTensorMap{S, N, 0}`, we can use `space(t)` as synonym for `codomain(t)`.
+For `t::AbstractTensor{S, N}`, i.e. `t::AbstractTensorMap{T, S, N, 0}`, we can use `space(t)` as synonym for `codomain(t)`.
 However, for a general `AbstractTensorMap` this has no meaning.
 However, we can query `space(t, i)`, the space associated with the `i`th index.
 For `i ∈ 1:N₁`, this corresponds to `codomain(t, i) = codomain(t)[i]`.
