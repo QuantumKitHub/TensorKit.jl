@@ -37,11 +37,6 @@ for (fname, felt) in ((:zeros, :zero), (:ones, :one))
             fill!(t, $felt(T))
             return t
         end
-        function Base.$fname(
-                ::Type{TA}, codomain::TensorSpace{S}, domain::TensorSpace{S} = one(codomain)
-            ) where {TA <: CuArray, S <: IndexSpace}
-            return CUDA.$fname(eltype(TA), codomain ← domain)
-        end
     end
 end
 
