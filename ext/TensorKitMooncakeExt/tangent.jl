@@ -1,3 +1,5 @@
+# Arrayify is needed to make MatrixAlgebraKit function properly -
+# it turns coduals into argument types that MAK knows how to handle.
 Mooncake.arrayify(A_dA::CoDual{<:TensorMap}) = arrayify(primal(A_dA), tangent(A_dA))
 Mooncake.arrayify(A::TensorMap, dA::TensorMap) = (A, dA)
 
@@ -15,12 +17,10 @@ end
 # Define the tangent type of a TensorMap to be TensorMap itself.
 # This has a number of benefits, but also correctly alters the
 # inner product when dealing with non-abelian symmetries.
-#
-# Note: this implementation is technically a little lazy, since we are
-# assuming that the tangent type of the underlying storage is also given
-# by that same type. This should in principle work out fine, and will only
-# fail for types that would be self-referential, which we choose to not support
-# for now.
+
+# Define the tangent types
+# ------------------------
+const DiagOrTensorMap = Union{TensorMap, DiagonalTensorMap}
 
 Mooncake.@foldable Mooncake.tangent_type(::Type{T}, ::Type{NoRData}) where {T <: TensorMap} = T
 Mooncake.@foldable Mooncake.tangent_type(::Type{TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A} =
@@ -29,23 +29,40 @@ Mooncake.@foldable Mooncake.tangent_type(::Type{T}, ::Type{NoRData}) where {T <:
 Mooncake.@foldable Mooncake.tangent_type(::Type{DiagonalTensorMap{T, S, A}}) where {T, S, A} =
     DiagonalTensorMap{T, S, Mooncake.tangent_type(A)}
 
-const DiagOrTensorMap = Union{TensorMap, DiagonalTensorMap}
-
 Mooncake.@foldable Mooncake.fdata_type(::Type{T}) where {T <: DiagOrTensorMap} = Mooncake.tangent_type(T)
 Mooncake.@foldable Mooncake.rdata_type(::Type{T}) where {T <: DiagOrTensorMap} = NoRData
 
 Mooncake.tangent(t::DiagOrTensorMap, ::NoRData) = t
+
+
+# Required tangent methods
+# ------------------------
+# note that the internal functions have to be overloaded to make sure that tangents for types that share data are correctly handled.
+# E.g. the tangent for (t, t) should have a zero tangent (dt, dt), and not (dt1, dt2)
+# The cache objects are similar to how Base.deepcopy works
+
+# generate new tangents for accumulation
 Mooncake.zero_tangent_internal(t::TensorMap, c::Mooncake.MaybeCache) =
     TensorMap(Mooncake.zero_tangent_internal(t.data, c), space(t))
 Mooncake.zero_tangent_internal(t::DiagonalTensorMap, c::Mooncake.MaybeCache) =
     DiagonalTensorMap(Mooncake.zero_tangent_internal(t.data, c), space(t, 1))
 
+# generate random tangents for testing
 Mooncake.randn_tangent_internal(rng::AbstractRNG, p::TensorMap, c::Mooncake.MaybeCache) =
     TensorMap(Mooncake.randn_tangent_internal(rng, p.data, c), space(p))
 Mooncake.randn_tangent_internal(rng::AbstractRNG, p::DiagonalTensorMap, c::Mooncake.MaybeCache) =
     DiagonalTensorMap(Mooncake.randn_tangent_internal(rng, p.data, c), space(p, 1))
 
-Mooncake.set_to_zero_internal!!(::Mooncake.SetToZeroCache, t::DiagOrTensorMap) = zerovector!(t)
+
+function Mooncake.set_to_zero_internal!!(c::Mooncake.SetToZeroCache, t::TensorMap)
+    data = Mooncake.set_to_zero_internal!!(c, t.data)
+    return data === t.data ? t : TensorMap(data, space(t))
+end
+function Mooncake.set_to_zero_internal!!(c::Mooncake.SetToZeroCache, d::DiagonalTensorMap)
+    data = Mooncake.set_to_zero_internal!!(c, d.data)
+    return data === d.data ? d : DiagonalTensorMap(data, space(d, 1))
+end
+
 function Mooncake.increment!!(x::TensorMap, y::TensorMap)
     data = Mooncake.increment!!(x.data, y.data)
     return x.data === data ? x : TensorMap(data, space(x))
@@ -63,6 +80,8 @@ function Mooncake.increment_internal!!(c::Mooncake.IncCache, x::DiagonalTensorMa
     return x.data === data ? x : DiagonalTensorMap(data, space(x, 1))
 end
 
+# methods for converting between tangents and primals:
+# fuels the `friendly_tangents` feature in Mooncake
 Mooncake._add_to_primal_internal(c::Mooncake.MaybeCache, p::TensorMap, t::TensorMap, unsafe::Bool) =
     TensorMap(Mooncake._add_to_primal_internal(c, p.data, t.data, unsafe), space(p))
 function Mooncake.tangent_to_primal_internal!!(p::TensorMap, t::TensorMap, c::Mooncake.MaybeCache)
@@ -89,14 +108,23 @@ function Mooncake.primal_to_tangent_internal!!(t::DiagonalTensorMap, p::Diagonal
     return p
 end
 
+# to convert from/to chainrules tangents
+Mooncake.to_cr_tangent(x::DiagOrTensorMap) = x
+
+# Test utilities
+# --------------
+
+# to work with finite differences
 Mooncake._dot_internal(::Mooncake.MaybeCache, t::TensorMap, s::TensorMap) = Float64(real(inner(t, s)))
 Mooncake._dot_internal(::Mooncake.MaybeCache, t::DiagonalTensorMap, s::DiagonalTensorMap) = Float64(real(inner(t, s)))
 Mooncake._scale_internal(::Mooncake.MaybeCache, a::Float64, t::DiagOrTensorMap) = scale(t, a)
 
+# To verify that shared data is handled correctly
 Mooncake.TestUtils.populate_address_map_internal(m::Mooncake.TestUtils.AddressMap, primal::TensorMap, tangent::TensorMap) =
     Mooncake.populate_address_map_internal(m, primal.data, tangent.data)
 Mooncake.TestUtils.populate_address_map_internal(m::Mooncake.TestUtils.AddressMap, primal::DiagonalTensorMap, tangent::DiagonalTensorMap) =
     Mooncake.populate_address_map_internal(m, primal.data, tangent.data)
+
 @inline Mooncake.TestUtils.__get_data_field(t::DiagOrTensorMap, n) = getfield(t, n)
 
 function Mooncake.__verify_fdata_value(c::IdDict{Any, Nothing}, p::TensorMap, t::TensorMap)
@@ -110,11 +138,11 @@ function Mooncake.__verify_fdata_value(c::IdDict{Any, Nothing}, p::DiagonalTenso
     return Mooncake.__verify_fdata_value(c, p.data, t.data)
 end
 
-Mooncake.to_cr_tangent(x::DiagOrTensorMap) = x
 
+# Custom rules for constructors/getters/setters
+# ---------------------------------------------
 @is_primitive MinimalCtx Tuple{typeof(Mooncake.lgetfield), <:DiagOrTensorMap, Val}
 
-# TODO: double-check if this has to include quantum dimensinos for non-abelian?
 function Mooncake.frule!!(
         ::Dual{typeof(Mooncake.lgetfield)}, t::Dual{<:DiagOrTensorMap}, ::Dual{Val{FieldName}}
     ) where {FieldName}
@@ -136,10 +164,10 @@ function Mooncake.rrule!!(
     getfield_pullback = Mooncake.NoPullback(ntuple(Returns(NoRData()), 3))
 
     return if FieldName === 1 || FieldName === :data
-        dval = Mooncake.tangent(t).data
+        dval = tangent(t).data
         CoDual(val, dval), getfield_pullback
     else # cannot be invalid fieldname since already called `getfield`
-        Mooncake.zero_fcodual(val), getfield_pullback
+        zero_fcodual(val), getfield_pullback
     end
 end
 
@@ -165,10 +193,10 @@ Base.@constprop :aggressive function Mooncake.rrule!!(
     getfield_pullback = Mooncake.NoPullback(ntuple(Returns(NoRData()), 3))
 
     return if primal(name) === 1 || primal(name) === :data
-        dval = Mooncake.tangent(t).data
+        dval = tangent(t).data
         CoDual(val, dval), getfield_pullback
     else # cannot be invalid fieldname since already called `getfield`
-        Mooncake.zero_fcodual(val), getfield_pullback
+        zero_fcodual(val), getfield_pullback
     end
 end
 
@@ -192,10 +220,10 @@ Base.@constprop :aggressive function Mooncake.rrule!!(
     getfield_pullback = Mooncake.NoPullback(ntuple(Returns(NoRData()), 4))
 
     return if primal(name) === 1 || primal(name) === :data
-        dval = Mooncake.tangent(t).data
+        dval = tangent(t).data
         CoDual(val, dval), getfield_pullback
     else # cannot be invalid fieldname since already called `getfield`
-        Mooncake.zero_fcodual(val), getfield_pullback
+        zero_fcodual(val), getfield_pullback
     end
 end
 
@@ -223,16 +251,16 @@ function Mooncake.rrule!!(
     getfield_pullback = Mooncake.NoPullback(ntuple(Returns(NoRData()), 4))
 
     return if FieldName === 1 || FieldName === :data
-        dval = Mooncake.tangent(t).data
+        dval = tangent(t).data
         CoDual(val, dval), getfield_pullback
     else # cannot be invalid fieldname since already called `getfield`
-        Mooncake.zero_fcodual(val), getfield_pullback
+        zero_fcodual(val), getfield_pullback
     end
 end
 
 
-Mooncake.@zero_derivative Mooncake.MinimalCtx Tuple{typeof(Mooncake._new_), Type{TensorMap{T, S, N₁, N₂, A}}, UndefInitializer, TensorMapSpace{S, N₁, N₂}} where {T, S, N₁, N₂, A}
-@is_primitive Mooncake.MinimalCtx Tuple{typeof(Mooncake._new_), Type{TensorMap{T, S, N₁, N₂, A}}, A, TensorMapSpace{S, N₁, N₂}} where {T, S, N₁, N₂, A}
+Mooncake.@zero_derivative MinimalCtx Tuple{typeof(Mooncake._new_), Type{TensorMap{T, S, N₁, N₂, A}}, UndefInitializer, TensorMapSpace{S, N₁, N₂}} where {T, S, N₁, N₂, A}
+@is_primitive MinimalCtx Tuple{typeof(Mooncake._new_), Type{TensorMap{T, S, N₁, N₂, A}}, A, TensorMapSpace{S, N₁, N₂}} where {T, S, N₁, N₂, A}
 
 function Mooncake.frule!!(
         ::Dual{typeof(Mooncake._new_)}, ::Dual{Type{TensorMap{T, S, N₁, N₂, A}}}, data::Dual{A}, space::Dual{TensorMapSpace{S, N₁, N₂}}
@@ -245,7 +273,7 @@ end
 function Mooncake.rrule!!(
         ::CoDual{typeof(Mooncake._new_)}, ::CoDual{Type{TensorMap{T, S, N₁, N₂, A}}}, data::CoDual{A}, space::CoDual{TensorMapSpace{S, N₁, N₂}}
     ) where {T, S, N₁, N₂, A}
-    return Mooncake.zero_fcodual(Mooncake._new_(TensorMap{T, S, N₁, N₂, A}, primal(data), primal(space))),
+    return zero_fcodual(Mooncake._new_(TensorMap{T, S, N₁, N₂, A}, primal(data), primal(space))),
         Returns(ntuple(Returns(NoRData()), 4))
 end
 
@@ -264,6 +292,6 @@ end
 function Mooncake.rrule!!(
         ::CoDual{typeof(Mooncake._new_)}, ::CoDual{Type{DiagonalTensorMap{T, S, A}}}, data::CoDual{A}, space::CoDual{S}
     ) where {T, S, A}
-    return Mooncake.zero_fcodual(Mooncake._new_(DiagonalTensorMap{T, S, A}, primal(data), primal(space))),
+    return zero_fcodual(Mooncake._new_(DiagonalTensorMap{T, S, A}, primal(data), primal(space))),
         Returns(ntuple(Returns(NoRData()), 4))
 end
