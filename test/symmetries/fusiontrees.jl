@@ -38,11 +38,11 @@ using .TestSetup
     @constinferred Nothing iterate(it, s)
     @test f == @constinferred first(it)
 
-    @testset "Fusion tree $Istr: printing" begin
+    @testset "Fusion tree: printing" begin
         @test eval(Meta.parse(sprint(show, f; context = (:module => @__MODULE__)))) == f
     end
 
-    @testset "Fusion tree $Istr: constructor properties" begin
+    @testset "Fusion tree: constructor properties" begin
         for u in allunits(I)
             @constinferred FusionTree((), u, (), (), ())
             @constinferred FusionTree((u,), u, (false,), (), ())
@@ -92,7 +92,7 @@ using .TestSetup
     end
 
     # Basic associativity manipulations of individual fusion trees
-    @testset "Fusion tree $Istr: split and join" begin
+    @testset "Fusion tree: split and join" begin
         N = 6
         uncoupled = random_fusion(I, Val(N))
         coupled = rand(collect(⊗(uncoupled...)))
@@ -107,7 +107,7 @@ using .TestSetup
         end
     end
 
-    @testset "Fusion tree $Istr: multi_Fmove" begin
+    @testset "Fusion tree: multi_Fmove" begin
         N = 6
         uncoupled = random_fusion(I, Val(N))
         coupled = rand(collect(⊗(uncoupled...)))
@@ -169,7 +169,7 @@ using .TestSetup
         end
     end
 
-    @testset "Fusion tree $Istr: insertat" begin
+    @testset "Fusion tree: insertat" begin
         # just check some basic consistency properties here
         # correctness should follow from multi_Fmove tests
         N = 4
@@ -209,7 +209,7 @@ using .TestSetup
         end
     end
 
-    @testset "Fusion tree $Istr: merging" begin
+    @testset "Fusion tree: merging" begin
         N = 3
         out1 = random_fusion(I, Val(N))
         out2 = random_fusion(I, Val(N))
@@ -261,6 +261,63 @@ using .TestSetup
     end
 
     # Duality tests
+    @testset "Fusion tree: elementary planar trace" begin
+        N = 5
+        uncoupled = random_fusion(I, Val(N))
+        coupled = rand(collect(⊗(uncoupled...)))
+        isdual = ntuple(n -> rand(Bool), N)
+        f = rand(collect(fusiontrees(uncoupled, coupled, isdual)))
+        for i in 0:N # insert a (b b̄ ← 1) vertex in the tree after ith uncoupled sector and then trace it away
+            f₁, f₂ = TK.split(f, i)
+            c = f₁.coupled
+            funit = FusionTree{I}((c, rightunit(c)), c, (false, false), (), (1,))
+            f′ = TK.join(TK.join(f₁, funit), f₂)
+            for b in smallset(I)
+                leftunit(b) == rightunit(c) || continue
+                out = Dict(f => -sqrtdim(b) * one(fusionscalartype(I)))
+                fbb = FusionTree{I}((b, dual(b)), leftunit(b), (false, true), (), (1,))
+                for (f′′, coeff) in TK.insertat(f′, i + 1, fbb)
+                    d = @constinferred TK.elementary_trace(f′′, i + 1)
+                    for (tree, coeff2) in d
+                        out[tree] = get(out, tree, zero(eltype(coeff2))) + coeff * coeff2
+                    end
+                end
+                @test norm(values(out)) < 1.0e-12
+                out = Dict(f => -frobenius_schur_phase(b) * sqrtdim(b) * one(fusionscalartype(I)))
+                fbb = FusionTree{I}((b, dual(b)), leftunit(b), (true, false), (), (1,))
+                for (f′′, coeff) in TK.insertat(f′, i + 1, fbb)
+                    for (tree, coeff2) in TK.elementary_trace(f′′, i + 1)
+                        out[tree] = get(out, tree, zero(eltype(coeff2))) + coeff * coeff2
+                    end
+                end
+                @test norm(values(out)) < 1.0e-12
+            end
+        end
+        # insert f′ in between the two legs of a (b b̄ ← 1) vertex and then trace the outer legs away
+        f′ = TK.join(f, FusionTree{I}((coupled, dual(coupled)), leftunit(coupled), (false, true), (), (1,)))
+        for b in smallset(I)
+            rightunit(b) == leftunit(coupled) || continue
+            fbb = FusionTree{I}((b, rightunit(b), dual(b)), leftunit(b), (false, false, true), (b,), (1, 1))
+            out = Dict(f′ => -sqrtdim(b) * one(fusionscalartype(I)))
+            for (f′′, coeff) in TK.insertat(fbb, 2, f′)
+                d = @constinferred TK.elementary_trace(f′′, N + 3)
+                for (tree, coeff2) in d
+                    out[tree] = get(out, tree, zero(eltype(coeff2))) + coeff * coeff2
+                end
+            end
+            @test norm(values(out)) < 1.0e-12
+            fbb = FusionTree{I}((b, rightunit(b), dual(b)), leftunit(b), (true, false, false), (b,), (1, 1))
+            out = Dict(f′ => -frobenius_schur_phase(b) * sqrtdim(b) * one(fusionscalartype(I)))
+            for (f′′, coeff) in TK.insertat(fbb, 2, f′)
+                for (tree, coeff2) in TK.elementary_trace(f′′, N + 3)
+                    out[tree] = get(out, tree, zero(eltype(coeff2))) + coeff * coeff2
+                end
+            end
+            @test norm(values(out)) < 1.0e-12
+        end
+    end
+
+    # from here: splitting-fusion tree pairs
     if I <: ProductSector
         N = 3
     else
@@ -305,7 +362,7 @@ using .TestSetup
         end
     end
 
-    @testset "Double fusion tree $Istr: bending" begin
+    @testset "Double fusion tree: bending" begin
         # single bend
         dst, U = @constinferred TK.bendright(src)
         dst2, U2 = @constinferred TK.bendleft(dst)
@@ -336,7 +393,7 @@ using .TestSetup
         end
     end
 
-    @testset "Double fusion tree $Istr: folding" begin
+    @testset "Double fusion tree: folding" begin
         # single bend
         dst, U = @constinferred TK.foldleft(src)
         dst2, U2 = @constinferred TK.foldright(dst)
@@ -367,7 +424,7 @@ using .TestSetup
         end
     end
 
-    @testset "Double fusion tree $Istr: repartitioning" begin
+    @testset "Double fusion tree: repartitioning" begin
         for n in 0:(2 * N)
             dst, U = @constinferred TK.repartition(src, $n)
             # @test _isunitary(U)
@@ -392,105 +449,170 @@ using .TestSetup
         end
     end
 
+    @testset "Double fusion tree: transposition" begin
+        for n in 0:(2N)
+            i0 = rand(1:(2N))
+            p = mod1.(i0 .+ (1:(2N)), 2N)
+            ip = mod1.(-i0 .+ (1:(2N)), 2N)
+            p′ = tuple(getindex.(Ref(vcat(1:N, (2N):-1:(N + 1))), p)...)
+            p1, p2 = p′[1:n], p′[(2N):-1:(n + 1)]
+            ip′ = tuple(getindex.(Ref(vcat(1:n, (2N):-1:(n + 1))), ip)...)
+            ip1, ip2 = ip′[1:N], ip′[(2N):-1:(N + 1)]
 
-    # TODO: find better test for this
-    @testset "Fusion tree $Istr: planar trace" begin
-        if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
-            s = randsector(I)
-            N = 6
-            outgoing = (s, dual(s), s, dual(s), s, dual(s))
-            for bool in (true, false)
-                isdual = (bool, !bool, bool, !bool, bool, !bool)
-                for f in fusiontrees(outgoing, unit(s), isdual)
-                    af = convert(Array, f)
-                    T = eltype(af)
+            dst, U = @constinferred transpose(src, (p1, p2))
+            dst′, U′ = @constinferred transpose(dst, (ip1, ip2))
+            @test _isone(U * U′)
 
-                    for i in 1:N
-                        d = @constinferred TK.elementary_trace(f, i)
-                        j = mod1(i + 1, N)
-                        inds = collect(1:(N + 1))
-                        inds[i] = inds[j]
-                        bf = tensortrace(af, inds)
-                        bf′ = zero(bf)
-                        for (f′, coeff) in d
-                            bf′ .+= coeff .* convert(Array, f′)
-                        end
-                        @test bf ≈ bf′ atol = 1.0e-12
+            if BraidingStyle(I) isa Bosonic
+                dst″, U″ = permute(src, (p1, p2))
+                @test U″ ≈ U
+            end
+
+            if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
+                if FusionStyle(I) isa UniqueFusion
+                    @test permutedims(A, (p1..., p2...)) ≈ U * fusiontensor(dst)
+                else
+                    A′ = map(Base.Fix2(permutedims, (p1..., p2...)), A)
+                    A″ = map(fusiontensor, fusiontrees(dst))
+                    for (i, Ai) in enumerate(A′)
+                        @test Ai ≈ sum(U[:, i] .* A″)
                     end
-
-                    d2 = @constinferred TK.planar_trace(f, ((1, 3), (2, 4)))
-                    oind2 = (5, 6, 7)
-                    bf2 = tensortrace(af, (:a, :a, :b, :b, :c, :d, :e))
-                    bf2′ = zero(bf2)
-                    for (f2′, coeff) in d2
-                        bf2′ .+= coeff .* convert(Array, f2′)
-                    end
-                    @test bf2 ≈ bf2′ atol = 1.0e-12
-
-                    d2 = @constinferred TK.planar_trace(f, ((5, 6), (2, 1)))
-                    oind2 = (3, 4, 7)
-                    bf2 = tensortrace(af, (:a, :b, :c, :d, :b, :a, :e))
-                    bf2′ = zero(bf2)
-                    for (f2′, coeff) in d2
-                        bf2′ .+= coeff .* convert(Array, f2′)
-                    end
-                    @test bf2 ≈ bf2′ atol = 1.0e-12
-
-                    d2 = @constinferred TK.planar_trace(f, ((1, 4), (6, 3)))
-                    bf2 = tensortrace(af, (:a, :b, :c, :c, :d, :a, :e))
-                    bf2′ = zero(bf2)
-                    for (f2′, coeff) in d2
-                        bf2′ .+= coeff .* convert(Array, f2′)
-                    end
-                    @test bf2 ≈ bf2′ atol = 1.0e-12
-
-                    q1 = (1, 3, 5)
-                    q2 = (2, 4, 6)
-                    d3 = @constinferred TK.planar_trace(f, (q1, q2))
-                    bf3 = tensortrace(af, (:a, :a, :b, :b, :c, :c, :d))
-                    bf3′ = zero(bf3)
-                    for (f3′, coeff) in d3
-                        bf3′ .+= coeff .* convert(Array, f3′)
-                    end
-                    @test bf3 ≈ bf3′ atol = 1.0e-12
-
-                    q1 = (1, 3, 5)
-                    q2 = (6, 2, 4)
-                    d3 = @constinferred TK.planar_trace(f, (q1, q2))
-                    bf3 = tensortrace(af, (:a, :b, :b, :c, :c, :a, :d))
-                    bf3′ = zero(bf3)
-                    for (f3′, coeff) in d3
-                        bf3′ .+= coeff .* convert(Array, f3′)
-                    end
-                    @test bf3 ≈ bf3′ atol = 1.0e-12
-
-                    q1 = (1, 2, 3)
-                    q2 = (6, 5, 4)
-                    d3 = @constinferred TK.planar_trace(f, (q1, q2))
-                    bf3 = tensortrace(af, (:a, :b, :c, :c, :b, :a, :d))
-                    bf3′ = zero(bf3)
-                    for (f3′, coeff) in d3
-                        bf3′ .+= coeff .* convert(Array, f3′)
-                    end
-                    @test bf3 ≈ bf3′ atol = 1.0e-12
-
-                    q1 = (1, 2, 4)
-                    q2 = (6, 3, 5)
-                    d3 = @constinferred TK.planar_trace(f, (q1, q2))
-                    bf3 = tensortrace(af, (:a, :b, :b, :c, :c, :a, :d))
-                    bf3′ = zero(bf3)
-                    for (f3′, coeff) in d3
-                        bf3′ .+= coeff .* convert(Array, f3′)
-                    end
-                    @test bf3 ≈ bf3′ atol = 1.0e-12
                 end
             end
         end
     end
 
+    # @testset "Double fusion tree: planar trace" begin
+    #     if FusionStyle(I) isa UniqueFusion
+    #         f1, f1 = src
+    #         dst, U = transpose((f1, f1), ((N + 1, 1:N..., ((2N):-1:(N + 3))...), (N + 2,)))
+    #         d1 = zip((dst,), (U,))
+    #     else
+    #         f1, f1 = first(fusiontrees(src))
+    #         src′ = FusionTreeBlock{I}((f1.uncoupled, f1.uncoupled), (f1.isdual, f1.isdual))
+    #         dst, U = transpose(src′, ((N + 1, 1:N..., ((2N):-1:(N + 3))...), (N + 2,)))
+    #         d1 = zip(fusiontrees(dst), U[:, 1])
+    #     end
+
+    #     f1front, = TK.split(f1, N - 1)
+    #     T = sectorscalartype(I)
+    #     d2 = Dict{typeof((f1front, f1front)), T}()
+    #     for ((f1′, f2′), coeff′) in d1
+    #         for ((f1′′, f2′′), coeff′′) in TK.planar_trace(
+    #                 (f1′, f2′), ((2:N...,), (1, ((2N):-1:(N + 3))...)), ((N + 1,), (N + 2,))
+    #             )
+    #             coeff = coeff′ * coeff′′
+    #             d2[(f1′′, f2′′)] = get(d2, (f1′′, f2′′), zero(coeff)) + coeff
+    #         end
+    #     end
+    #     for ((f1_, f2_), coeff) in d2
+    #         if (f1_, f2_) == (f1front, f1front)
+    #             @test coeff ≈ dim(f1.coupled) / dim(f1front.coupled)
+    #         else
+    #             @test abs(coeff) < 1.0e-12
+    #         end
+    #     end
+    # end
+
+
+    # # TODO: find better test for this
+    # @testset "Fusion tree: planar trace" begin
+    #     if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
+    #         s = randsector(I)
+    #         N = 6
+    #         outgoing = (s, dual(s), s, dual(s), s, dual(s))
+    #         for bool in (true, false)
+    #             isdual = (bool, !bool, bool, !bool, bool, !bool)
+    #             for f in fusiontrees(outgoing, unit(s), isdual)
+    #                 af = convert(Array, f)
+    #                 T = eltype(af)
+
+    #                 for i in 1:N
+    #                     d = @constinferred TK.elementary_trace(f, i)
+    #                     j = mod1(i + 1, N)
+    #                     inds = collect(1:(N + 1))
+    #                     inds[i] = inds[j]
+    #                     bf = tensortrace(af, inds)
+    #                     bf′ = zero(bf)
+    #                     for (f′, coeff) in d
+    #                         bf′ .+= coeff .* convert(Array, f′)
+    #                     end
+    #                     @test bf ≈ bf′ atol = 1.0e-12
+    #                 end
+
+    #                 d2 = @constinferred TK.planar_trace(f, ((1, 3), (2, 4)))
+    #                 oind2 = (5, 6, 7)
+    #                 bf2 = tensortrace(af, (:a, :a, :b, :b, :c, :d, :e))
+    #                 bf2′ = zero(bf2)
+    #                 for (f2′, coeff) in d2
+    #                     bf2′ .+= coeff .* convert(Array, f2′)
+    #                 end
+    #                 @test bf2 ≈ bf2′ atol = 1.0e-12
+
+    #                 d2 = @constinferred TK.planar_trace(f, ((5, 6), (2, 1)))
+    #                 oind2 = (3, 4, 7)
+    #                 bf2 = tensortrace(af, (:a, :b, :c, :d, :b, :a, :e))
+    #                 bf2′ = zero(bf2)
+    #                 for (f2′, coeff) in d2
+    #                     bf2′ .+= coeff .* convert(Array, f2′)
+    #                 end
+    #                 @test bf2 ≈ bf2′ atol = 1.0e-12
+
+    #                 d2 = @constinferred TK.planar_trace(f, ((1, 4), (6, 3)))
+    #                 bf2 = tensortrace(af, (:a, :b, :c, :c, :d, :a, :e))
+    #                 bf2′ = zero(bf2)
+    #                 for (f2′, coeff) in d2
+    #                     bf2′ .+= coeff .* convert(Array, f2′)
+    #                 end
+    #                 @test bf2 ≈ bf2′ atol = 1.0e-12
+
+    #                 q1 = (1, 3, 5)
+    #                 q2 = (2, 4, 6)
+    #                 d3 = @constinferred TK.planar_trace(f, (q1, q2))
+    #                 bf3 = tensortrace(af, (:a, :a, :b, :b, :c, :c, :d))
+    #                 bf3′ = zero(bf3)
+    #                 for (f3′, coeff) in d3
+    #                     bf3′ .+= coeff .* convert(Array, f3′)
+    #                 end
+    #                 @test bf3 ≈ bf3′ atol = 1.0e-12
+
+    #                 q1 = (1, 3, 5)
+    #                 q2 = (6, 2, 4)
+    #                 d3 = @constinferred TK.planar_trace(f, (q1, q2))
+    #                 bf3 = tensortrace(af, (:a, :b, :b, :c, :c, :a, :d))
+    #                 bf3′ = zero(bf3)
+    #                 for (f3′, coeff) in d3
+    #                     bf3′ .+= coeff .* convert(Array, f3′)
+    #                 end
+    #                 @test bf3 ≈ bf3′ atol = 1.0e-12
+
+    #                 q1 = (1, 2, 3)
+    #                 q2 = (6, 5, 4)
+    #                 d3 = @constinferred TK.planar_trace(f, (q1, q2))
+    #                 bf3 = tensortrace(af, (:a, :b, :c, :c, :b, :a, :d))
+    #                 bf3′ = zero(bf3)
+    #                 for (f3′, coeff) in d3
+    #                     bf3′ .+= coeff .* convert(Array, f3′)
+    #                 end
+    #                 @test bf3 ≈ bf3′ atol = 1.0e-12
+
+    #                 q1 = (1, 2, 4)
+    #                 q2 = (6, 3, 5)
+    #                 d3 = @constinferred TK.planar_trace(f, (q1, q2))
+    #                 bf3 = tensortrace(af, (:a, :b, :b, :c, :c, :a, :d))
+    #                 bf3′ = zero(bf3)
+    #                 for (f3′, coeff) in d3
+    #                     bf3′ .+= coeff .* convert(Array, f3′)
+    #                 end
+    #                 @test bf3 ≈ bf3′ atol = 1.0e-12
+    #             end
+    #         end
+    #     end
+    # end
+
 
     # TODO: disabled because errors for ZNElement; needs to be fixed
-    # BraidingStyle(I) isa HasBraiding && @testset "Double fusion tree $Istr: permutation and braiding" begin
+    # BraidingStyle(I) isa HasBraiding && @testset "Double fusion tree: permutation and braiding" begin
     #     for n in 0:(2N)
     #         p = (randperm(2 * N)...,)
     #         p1, p2 = p[1:n], p[(n + 1):(2N)]
@@ -545,42 +667,8 @@ using .TestSetup
     # end
 
     # TODO: even these ones fail for ZNElement, which is unexpected as they do not rely on braiding
-    # @testset "Double fusion tree $Istr: transposition" begin
-    #     for n in 0:(2N)
-    #         i0 = rand(1:(2N))
-    #         p = mod1.(i0 .+ (1:(2N)), 2N)
-    #         ip = mod1.(-i0 .+ (1:(2N)), 2N)
-    #         p′ = tuple(getindex.(Ref(vcat(1:N, (2N):-1:(N + 1))), p)...)
-    #         p1, p2 = p′[1:n], p′[(2N):-1:(n + 1)]
-    #         ip′ = tuple(getindex.(Ref(vcat(1:n, (2N):-1:(n + 1))), ip)...)
-    #         ip1, ip2 = ip′[1:N], ip′[(2N):-1:(N + 1)]
 
-    #         dst, U = @constinferred transpose(src, (p1, p2))
-    #         # @test _isunitary(U)
-    #         dst′, U′ = @constinferred transpose(dst, (ip1, ip2))
-    #         # @test U' ≈ U′
-    #         @test _isone(U * U′)
-
-    #         if BraidingStyle(I) isa Bosonic
-    #             dst″, U″ = permute(src, (p1, p2))
-    #             @test U″ ≈ U
-    #         end
-
-    #         if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
-    #             if FusionStyle(I) isa UniqueFusion
-    #                 @test permutedims(A, (p1..., p2...)) ≈ U * fusiontensor(dst)
-    #             else
-    #                 A′ = map(Base.Fix2(permutedims, (p1..., p2...)), A)
-    #                 A″ = map(fusiontensor, fusiontrees(dst))
-    #                 for (i, Ai) in enumerate(A′)
-    #                     Aj = sum(U[:, i] .* A″)
-    #                     @test Ai ≈ Aj
-    #                 end
-    #             end
-    #         end
-    #     end
-    # end
-    # @testset "Double fusion tree $Istr: planar trace" begin
+    # @testset "Double fusion tree: planar trace" begin
     #     if FusionStyle(I) isa UniqueFusion
     #         f1, f1 = src
     #         dst, U = transpose((f1, f1), ((N + 1, 1:N..., ((2N):-1:(N + 3))...), (N + 2,)))

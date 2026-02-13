@@ -82,7 +82,7 @@ function bendright(src::FusionTreeBlock)
 
     dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst; sizehint = length(src))
     indexmap = treeindex_map(dst)
-    U = zeros(sectorscalartype(I), length(dst), length(src))
+    U = zeros(fusionscalartype(I), length(dst), length(src))
 
     for (col, (f₁, f₂)) in enumerate(fusiontrees(src))
         (a, b, c), (f₁′, f₂′) = _bendright_treepair((f₁, f₂))
@@ -161,7 +161,7 @@ function bendleft(src::FusionTreeBlock)
 
     dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst; sizehint = length(src))
     indexmap = treeindex_map(dst)
-    U = zeros(sectorscalartype(I), length(dst), length(src))
+    U = zeros(fusionscalartype(I), length(dst), length(src))
 
     for (col, (f₁, f₂)) in enumerate(fusiontrees(src))
         (a, b, c), (f₂′, f₁′) = _bendright_treepair((f₂, f₁))
@@ -228,7 +228,7 @@ function foldright((f₁, f₂)::FusionTreePair)
     f₁′, coeff₁ = map(only, multi_Fmove(f₁))
     b = f₁′.coupled
     c = f₁.coupled
-    
+
     f₂′, coeff₂ = map(only, multi_Fmove_inv(dual(a), b, f₂, !isduala))
     coeff = sqrtdim(f₁.coupled) * invsqrtdim(b) * coeff₁ * Asymbol(a, b, c) * conj(coeff₂)
 
@@ -618,7 +618,7 @@ end
 function _repartition_body(N)
     if N == 0
         ex = quote
-            T = sectorscalartype(sectortype(src))
+            T = fusionscalartype(sectortype(src))
             if FusionStyle(src) === UniqueFusion()
                 return src => one(T)
             else
@@ -654,9 +654,10 @@ repartitioning and permuting the tree such that sectors `p1` become outgoing and
 `p2` become incoming.
 """
 function Base.transpose(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple)
-    numind(src) == length(p[1]) + length(p[2]) || throw(ArgumentError("invalid permutation p"))
+    N = numind(src)
+    N == length(p[1]) + length(p[2]) || throw(ArgumentError("invalid permutation p = $p of length N = $N"))
     p′ = linearizepermutation(p..., numout(src), numin(src))
-    iscyclicpermutation(p′) || throw(ArgumentError("invalid permutation p"))
+    iscyclicpermutation(p′) || throw(ArgumentError("invalid cyclic or planar permutation p = $p"))
     return fstranspose((src, p))
 end
 
@@ -664,13 +665,13 @@ const FSPTransposeKey{I, N₁, N₂} = Tuple{FusionTreePair{I}, Index2Tuple{N₁
 const FSBTransposeKey{I, N₁, N₂} = Tuple{FusionTreeBlock{I}, Index2Tuple{N₁, N₂}}
 
 Base.@assume_effects :foldable function _fsdicttype(::Type{T}) where {I, N₁, N₂, T <: FSPTransposeKey{I, N₁, N₂}}
-    E = sectorscalartype(I)
+    E = fusionscalartype(I)
     return Pair{fusiontreetype(I, N₁, N₂), E}
 end
 Base.@assume_effects :foldable function _fsdicttype(::Type{T}) where {I, N₁, N₂, T <: FSBTransposeKey{I, N₁, N₂}}
     F₁ = fusiontreetype(I, N₁)
     F₂ = fusiontreetype(I, N₂)
-    E = sectorscalartype(I)
+    E = fusionscalartype(I)
     return Pair{FusionTreeBlock{I, N₁, N₂, Tuple{F₁, F₂}}, Matrix{E}}
 end
 
@@ -718,6 +719,7 @@ function planar_trace(
     if N₃ == 0
         return transpose((f₁, f₂), (p1, p2))
     end
+    @assert FusionStyle(I) === UniqueFusion()
 
     linearindex = (
         ntuple(identity, Val(length(f₁)))...,
@@ -733,7 +735,7 @@ function planar_trace(
         )
     end
 
-    T = sectorscalartype(I)
+    T = fusionscalartype(I)
     F₁ = fusiontreetype(I, N₁)
     F₂ = fusiontreetype(I, N₂)
     newtrees = FusionTreeDict{Tuple{F₁, F₂}, T}()
@@ -771,7 +773,7 @@ Perform a planar trace of the uncoupled indices of the fusion tree `f` at `q1` w
 of output trees and corresponding coefficients.
 """
 function planar_trace(f::FusionTree{I, N}, (q1, q2)::Index2Tuple{N₃, N₃}) where {I, N, N₃}
-    T = sectorscalartype(I)
+    T = fusionscalartype(I)
     F = fusiontreetype(I, N - 2 * N₃)
     newtrees = FusionTreeDict{F, T}()
     N₃ === 0 && return push!(newtrees, f => one(T))
@@ -780,6 +782,10 @@ function planar_trace(f::FusionTree{I, N}, (q1, q2)::Index2Tuple{N₃, N₃}) wh
         (f.uncoupled[i] == dual(f.uncoupled[j]) && f.isdual[i] != f.isdual[j]) ||
             return newtrees
     end
+    # Planar traces are over neighboring indices, but might be nested, so that
+    # index i can be traced with i+3, if index i+1 is also traced with index i+2.
+    # We thus handle the total trace recursively, by first looking for and
+    # tracing away neighbouring pairs.
     k = 1
     local i, j
     while k <= N₃
@@ -828,7 +834,7 @@ function elementary_trace(f::FusionTree{I, N}, i) where {I, N}
     i < N || isunit(f.coupled) ||
         throw(ArgumentError("Cannot trace outputs i=$N and 1 of fusion tree that couples to non-trivial sector"))
 
-    T = sectorscalartype(I)
+    T = fusionscalartype(I)
     F = fusiontreetype(I, N - 2)
     newtrees = FusionTreeDict{F, T}()
 
@@ -838,72 +844,34 @@ function elementary_trace(f::FusionTree{I, N}, i) where {I, N}
     # if trace is zero, return empty dict
     (b == dual(b′) && f.isdual[i] != f.isdual[j]) || return newtrees
     if i < N
-        inner_extended = (leftunit(f.uncoupled[1]), f.uncoupled[1], f.innerlines..., f.coupled)
-        a = inner_extended[i]
-        d = inner_extended[i + 2]
+        fleft, fremainder = split(f, i - 1)
+        ftrace, fright = split(fremainder, 3)
+        a = ftrace.uncoupled[1] # == fleft.coupled
+        d = ftrace.coupled # == fright.uncoupled[1]
         a == d || return newtrees
-        uncoupled′ = TupleTools.deleteat(TupleTools.deleteat(f.uncoupled, i + 1), i)
-        isdual′ = TupleTools.deleteat(TupleTools.deleteat(f.isdual, i + 1), i)
-        coupled′ = f.coupled
-        if N <= 4
-            inner′ = ()
-        else
-            inner′ = i <= 2 ? Base.tail(Base.tail(f.innerlines)) :
-                TupleTools.deleteat(TupleTools.deleteat(f.innerlines, i - 1), i - 2)
-        end
-        if N <= 3
-            vertices′ = ()
-        else
-            vertices′ = i <= 2 ? Base.tail(Base.tail(f.vertices)) :
-                TupleTools.deleteat(TupleTools.deleteat(f.vertices, i), i - 1)
-        end
-        f′ = FusionTree{I}(uncoupled′, coupled′, isdual′, inner′, vertices′)
+        f′ = join(fleft, fright)
         coeff = sqrtdim(b)
         if i > 1
-            c = f.innerlines[i - 1]
-            if FusionStyle(I) isa MultiplicityFreeFusion
-                coeff *= Fsymbol(a, b, dual(b), a, c, rightunit(a))
-            else
-                μ = f.vertices[i - 1]
-                ν = f.vertices[i]
-                coeff *= Fsymbol(a, b, dual(b), a, c, rightunit(a))[μ, ν, 1, 1]
-            end
+            c = ftrace.innerlines[1]
+            μ, ν = ftrace.vertices
+            coeff *= Fsymbol(a, b, dual(b), a, c, rightunit(a))[μ, ν, 1, 1]
         end
-        if f.isdual[i]
+        if ftrace.isdual[2]
             coeff *= frobenius_schur_phase(b)
         end
         push!(newtrees, f′ => coeff)
         return newtrees
     else # i == N
-        unit = leftunit(b)
-        if N == 2
-            f′ = FusionTree{I}((), unit, (), (), ())
-            coeff = sqrtdim(b)
-            if !(f.isdual[N])
-                coeff *= conj(frobenius_schur_phase(b))
-            end
-            push!(newtrees, f′ => coeff)
-            return newtrees
-        end
-        uncoupled_ = TupleTools.front(f.uncoupled)
-        inner_ = TupleTools.front(f.innerlines)
-        coupled_ = f.innerlines[end]
-        isdual_ = TupleTools.front(f.isdual)
-        vertices_ = TupleTools.front(f.vertices)
-        f_ = FusionTree(uncoupled_, coupled_, isdual_, inner_, vertices_)
-        fs = FusionTree((b,), b, (!f.isdual[1],), (), ())
-        for (f_′, coeff) in merge(fs, f_, unit, 1)
-            f_′.innerlines[1] == unit || continue
-            uncoupled′ = Base.tail(Base.tail(f_′.uncoupled))
-            isdual′ = Base.tail(Base.tail(f_′.isdual))
-            inner′ = N <= 4 ? () : Base.tail(Base.tail(f_′.innerlines))
-            vertices′ = N <= 3 ? () : Base.tail(Base.tail(f_′.vertices))
-            f′ = FusionTree(uncoupled′, unit, isdual′, inner′, vertices′)
+        fleft, fremainder = split(f, N - 1)
+        trees, coeffvecs = multi_Fmove(fleft)
+        for (f′, coeffvec) in zip(trees, coeffvecs)
+            isunit(f′.coupled) || continue
+            coeff = only(coeffvec)
             coeff *= sqrtdim(b)
             if !(f.isdual[N])
                 coeff *= conj(frobenius_schur_phase(b))
             end
-            newtrees[f′] = get(newtrees, f′, zero(coeff)) + coeff
+            push!(newtrees, f′ => coeff)
         end
         return newtrees
     end
