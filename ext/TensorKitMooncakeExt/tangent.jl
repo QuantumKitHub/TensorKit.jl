@@ -23,11 +23,21 @@ end
 const DiagOrTensorMap = Union{TensorMap, DiagonalTensorMap}
 
 Mooncake.@foldable Mooncake.tangent_type(::Type{T}, ::Type{NoRData}) where {T <: TensorMap} = T
-Mooncake.@foldable Mooncake.tangent_type(::Type{TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A} =
-    TK.tensormaptype(S, N₁, N₂, Mooncake.tangent_type(A))
+Mooncake.@foldable function Mooncake.tangent_type(::Type{TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A}
+    Mooncake.tangent_type(T) isa NoTangent && return NoTangent
+    TA = Mooncake.tangent_type(A)
+    Mooncake.rdata_type(TA) === NoRData ||
+        throw(ArgumentError("Mooncake support with storagetype `$A` is currently not implemented"))
+    return TK.tensormaptype(S, N₁, N₂, TA)
+end
 Mooncake.@foldable Mooncake.tangent_type(::Type{T}, ::Type{NoRData}) where {T <: DiagonalTensorMap} = T
-Mooncake.@foldable Mooncake.tangent_type(::Type{DiagonalTensorMap{T, S, A}}) where {T, S, A} =
-    DiagonalTensorMap{T, S, Mooncake.tangent_type(A)}
+Mooncake.@foldable function Mooncake.tangent_type(::Type{DiagonalTensorMap{T, S, A}}) where {T, S, A}
+    Mooncake.tangent_type(T) isa NoTangent && return NoTangent
+    TA = Mooncake.tangent_type(A)
+    Mooncake.rdata_type(TA) === NoRData ||
+        throw(ArgumentError("Mooncake support with storagetype `$A` is currently not implemented"))
+    return DiagonalTensorMap{scalartype(TA), S, TA}
+end
 
 Mooncake.@foldable Mooncake.fdata_type(::Type{T}) where {T <: DiagOrTensorMap} = Mooncake.tangent_type(T)
 Mooncake.@foldable Mooncake.rdata_type(::Type{T}) where {T <: DiagOrTensorMap} = NoRData
