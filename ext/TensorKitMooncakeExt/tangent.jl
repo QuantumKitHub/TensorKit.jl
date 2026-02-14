@@ -89,7 +89,11 @@ function Mooncake.tangent_to_primal_internal!!(p::TensorMap, t::TensorMap, c::Mo
     data === p.data || copy!(p.data, data)
     return p
 end
-Mooncake.primal_to_tangent_internal!!(t::T, p::T, ::Mooncake.MaybeCache) where {T <: TensorMap} = copy!(t, p)
+function Mooncake.primal_to_tangent_internal!!(t::TensorMap, p::TensorMap, c::Mooncake.MaybeCache)
+    data = Mooncake.primal_to_tangent_internal!!(t.data, p.data, c)
+    data === t.data || copy!(t.data, data)
+    return t
+end
 Mooncake._add_to_primal_internal(c::Mooncake.MaybeCache, p::DiagonalTensorMap, t::DiagonalTensorMap, unsafe::Bool) =
     DiagonalTensorMap(Mooncake._add_to_primal_internal(c, p.data, t.data, unsafe), space(p))
 function Mooncake.tangent_to_primal_internal!!(p::DiagonalTensorMap, t::DiagonalTensorMap, c::Mooncake.MaybeCache)
