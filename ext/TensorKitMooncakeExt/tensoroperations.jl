@@ -1,5 +1,11 @@
 # tensorcontract!
 # ---------------
+# TODO: it might be beneficial to compare here if it would make sense to simply compute the
+# rrule of permute-permute-gemm-permute, rather than using the contractions directly.
+# This could possibly out save some permutations being carried out twice, at the cost of having
+# to store some more intermediate objects.
+# For example, the combination `ΔC, pΔC, false` appears in the pullback for ΔA and ΔB, so effectively
+# this permutation is done multiple times.
 @is_primitive(
     DefaultCtx,
     ReverseMode,
@@ -31,7 +37,13 @@ function Mooncake.rrule!!(
 
     # primal call
     C_cache = copy(C)
-    TensorKit.blas_contract!(C, A, pA, B, pB, pAB, α, β, backend, allocator)
+    AB = if _needs_tangent(α)
+        AB = TO.tensorcontract(A, pA, false, B, pB, false, pAB, One(), backend, allocator)
+        add!(C, AB, α, β)
+    else
+        TensorKit.blas_contract!(C, A, pA, B, pB, pAB, α, β, backend, allocator)
+        nothing
+    end
 
     function blas_contract_pullback(::NoRData)
         copy!(C, C_cache)
@@ -42,9 +54,7 @@ function Mooncake.rrule!!(
         ΔBr = blas_contract_pullback_ΔB!(
             ΔB, ΔC, A, pA, B, pB, pAB, α, backend, allocator
         ) # this typically returns NoRData()
-        Δαr = blas_contract_pullback_Δα(
-            ΔC, A, pA, B, pB, pAB, α, backend, allocator
-        )
+        Δαr = isnothing(AB) ? NoRData() : project_scalar(α, inner(AB, ΔC))
         Δβr = pullback_dβ(ΔC, C, β)
         ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
 
@@ -109,16 +119,6 @@ function blas_contract_pullback_ΔB!(
     return NoRData()
 end
 
-function blas_contract_pullback_Δα(
-        ΔC, A, pA, B, pB, pAB, α, backend, allocator
-    )
-    _needs_tangent(α) || return NoRData()
-
-    AB = TO.tensorcontract(A, pA, false, B, pB, false, pAB, One(), backend, allocator)
-    Δα = inner(AB, ΔC)
-    return project_scalar(α, Δα)
-end
-
 # tensortrace!
 # ------------
 @is_primitive(
@@ -150,13 +150,20 @@ function Mooncake.rrule!!(
 
     # primal call
     C_cache = copy(C)
-    TensorKit.trace_permute!(C, A, p, q, α, β, backend)
+    At = if _needs_tangent(α)
+        At = TO.tensortrace(A, p, q, false, One(), backend)
+        add!(C, A, α, β)
+    else
+        TensorKit.trace_permute!(C, A, p, q, α, β, backend)
+        nothing
+    end
 
     function trace_permute_pullback(::NoRData)
         copy!(C, C_cache)
 
         ΔAr = trace_permute_pullback_ΔA!(ΔA, ΔC, A, p, q, α, backend) # this typically returns NoRData()
-        Δαr = trace_permute_pullback_Δα(ΔC, A, p, q, α, backend)
+
+        Δαr = isnothing(At) ? NoRData() : project_scalar(α, inner(At, ΔC))
         Δβr = pullback_dβ(ΔC, C, β)
         ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
 
@@ -181,16 +188,4 @@ function trace_permute_pullback_ΔA!(
         ΔA, ΔC, pΔC, false, E, pE, false, pdA, conj(α), One(), backend
     )
     return NoRData()
-end
-
-function trace_permute_pullback_Δα(
-        ΔC, A, p, q, α, backend
-    )
-    _needs_tangent(α) || return NoRData()
-
-    # TODO: this result might be easier to compute as:
-    # C′ = βC + α * trace(A) ⟹ At = (C′ - βC) / α
-    At = TO.tensortrace(A, p, q, false, One(), backend)
-    Δα = inner(At, ΔC)
-    return Δα
 end
