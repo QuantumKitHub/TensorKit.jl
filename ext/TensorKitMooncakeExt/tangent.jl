@@ -211,39 +211,79 @@ Mooncake.rrule!!(::CoDual{typeof(getfield)}, t_dt::CoDual{<:DiagOrTensorMap}, f_
 
 # Custom rules for constructors
 # -----------------------------
-Mooncake.@zero_derivative MinimalCtx Tuple{typeof(Mooncake._new_), Type{TensorMap{T, S, N₁, N₂, A}}, UndefInitializer, TensorMapSpace{S, N₁, N₂}} where {T, S, N₁, N₂, A}
-@is_primitive MinimalCtx Tuple{typeof(Mooncake._new_), Type{TensorMap{T, S, N₁, N₂, A}}, A, TensorMapSpace{S, N₁, N₂}} where {T, S, N₁, N₂, A}
+# undef has zero derivative
+@zero_derivative(
+    MinimalCtx,
+    Tuple{
+        typeof(Mooncake._new_), Type{TensorMap{T, S, N₁, N₂, A}},
+        UndefInitializer, TensorMapSpace{S, N₁, N₂},
+    } where {T, S, N₁, N₂, A}
+)
+@zero_derivative(
+    MinimalCtx,
+    Tuple{
+        typeof(Mooncake._new_), Type{DiagonalTensorMap{T, S, A}},
+        UndefInitializer, S,
+    } where {T, S, A}
+)
+
+@is_primitive(
+    MinimalCtx, Tuple{
+        typeof(Mooncake._new_), Type{TensorMap{T, S, N₁, N₂, A}},
+        A, TensorMapSpace{S, N₁, N₂},
+    } where {T, S, N₁, N₂, A}
+)
+@is_primitive(
+    MinimalCtx, Tuple{
+        typeof(Mooncake._new_), Type{DiagonalTensorMap{T, S, A}},
+        A, S,
+    } where {T, S, A}
+)
 
 function Mooncake.frule!!(
         ::Dual{typeof(Mooncake._new_)}, ::Dual{Type{TensorMap{T, S, N₁, N₂, A}}}, data::Dual{A}, space::Dual{TensorMapSpace{S, N₁, N₂}}
     ) where {T, S, N₁, N₂, A}
-    t = Mooncake._new_(TensorMap{T, S, N₁, N₂, A}, primal(data), primal(space))
-    dt = Mooncake._new_(TensorMap{T, S, N₁, N₂, A}, tangent(data), primal(space))
+    t = TensorMap(primal(data), primal(space))
+    dt = TensorMap(tangent(data), primal(space))
     return Dual(t, dt)
 end
-
-function Mooncake.rrule!!(
-        ::CoDual{typeof(Mooncake._new_)}, ::CoDual{Type{TensorMap{T, S, N₁, N₂, A}}}, data::CoDual{A}, space::CoDual{TensorMapSpace{S, N₁, N₂}}
-    ) where {T, S, N₁, N₂, A}
-    return zero_fcodual(Mooncake._new_(TensorMap{T, S, N₁, N₂, A}, primal(data), primal(space))),
-        Returns(ntuple(Returns(NoRData()), 4))
-end
-
-
-Mooncake.@zero_derivative Mooncake.MinimalCtx Tuple{typeof(Mooncake._new_), Type{DiagonalTensorMap{T, S, A}}, UndefInitializer, S} where {T, S, A}
-@is_primitive Mooncake.MinimalCtx Tuple{typeof(Mooncake._new_), Type{DiagonalTensorMap{T, S, A}}, A, S} where {T, S, A}
-
 function Mooncake.frule!!(
         ::Dual{typeof(Mooncake._new_)}, ::Dual{Type{DiagonalTensorMap{T, S, A}}}, data::Dual{A}, space::Dual{S}
     ) where {T, S, A}
-    t = Mooncake._new_(DiagonalTensorMap{T, S, A}, primal(data), primal(space))
-    dt = Mooncake._new_(DiagonalTensorMap{T, S, A}, tangent(data), primal(space))
+    t = DiagonalTensorMap(primal(data), primal(space))
+    dt = DiagonalTensorMap(tangent(data), primal(space))
     return Dual(t, dt)
 end
 
 function Mooncake.rrule!!(
-        ::CoDual{typeof(Mooncake._new_)}, ::CoDual{Type{DiagonalTensorMap{T, S, A}}}, data::CoDual{A}, space::CoDual{S}
+        ::CoDual{typeof(Mooncake._new_)}, ::CoDual{Type{TensorMap{T, S, N₁, N₂, A}}},
+        data_ddata::CoDual{A}, space::CoDual{TensorMapSpace{S, N₁, N₂}}
+    ) where {T, S, N₁, N₂, A}
+    data = primal(data_ddata)
+    ddata = tangent(data_ddata)
+    t = TensorMap(data, primal(space))
+    dt = TensorMap(ddata, primal(space))
+    t_dt = CoDual(t, Mooncake.fdata(dt))
+    function TensorMap_pullback(Δt_rdata)
+        Δt_rdata isa Mooncake.NoRData && return ntuple(Returns(NoRData()), 4)
+        ddata′ = Mooncake.increment_rdata!!(ddata, Δt_rdata.data)
+        return NoRData(), NoRData(), ddata′, NoRData()
+    end
+    return t_dt, TensorMap_pullback
+end
+function Mooncake.rrule!!(
+        ::CoDual{typeof(Mooncake._new_)}, ::CoDual{Type{DiagonalTensorMap{T, S, A}}},
+        data_ddata::CoDual{A}, space::CoDual{S}
     ) where {T, S, A}
-    return zero_fcodual(Mooncake._new_(DiagonalTensorMap{T, S, A}, primal(data), primal(space))),
-        Returns(ntuple(Returns(NoRData()), 4))
+    data = primal(data_ddata)
+    ddata = tangent(data_ddata)
+    t = DiagonalTensorMap(data, primal(space))
+    dt = DiagonalTensorMap(ddata, primal(space))
+    t_dt = CoDual(t, Mooncake.fdata(dt))
+    function DiagonalTensorMap_pullback(Δt_rdata)
+        Δt_rdata isa Mooncake.NoRData && return ntuple(Returns(NoRData()), 4)
+        ddata′ = Mooncake.increment_rdata!!(ddata, Δt_rdata.data)
+        return NoRData(), NoRData(), ddata′, NoRData()
+    end
+    return t_dt, DiagonalTensorMap_pullback
 end
