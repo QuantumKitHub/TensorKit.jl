@@ -105,6 +105,11 @@ TensorMapWithStorage{T, A}(::UndefInitializer, codomain::TensorSpace, domain::Te
     TensorMapWithStorage{T, A}(undef, codomain ← domain)
 TensorWithStorage{T, A}(::UndefInitializer, V::TensorSpace) where {T, A} = TensorMapWithStorage{T, A}(undef, V ← one(V))
 
+# Utility constructors
+# --------------------
+TensorMap(t::TensorMap) = copy(t)
+
+
 # raw data constructors
 # ---------------------
 # - dispatch starts with TensorMap{T}(::DenseVector{T}, ...)
@@ -301,14 +306,14 @@ for (fname, felt) in ((:zeros, :zero), (:ones, :one))
             return Base.$fname(codomain ← domain)
         end
         function Base.$fname(
-                ::Type{T}, codomain::TensorSpace{S}, domain::TensorSpace{S} = one(codomain)
-            ) where {T, S <: IndexSpace}
-            return Base.$fname(T, codomain ← domain)
+                ::Type{TorA}, codomain::TensorSpace{S}, domain::TensorSpace{S} = one(codomain)
+            ) where {TorA, S <: IndexSpace}
+            return Base.$fname(TorA, codomain ← domain)
         end
         Base.$fname(V::TensorMapSpace) = Base.$fname(Float64, V)
-        function Base.$fname(::Type{T}, V::TensorMapSpace) where {T}
-            t = TensorMap{T}(undef, V)
-            fill!(t, $felt(T))
+        function Base.$fname(::Type{TorA}, V::TensorMapSpace) where {TorA}
+            t = tensormaptype(spacetype(V), numout(V), numin(V), TorA)(undef, V)
+            fill!(t, $felt(scalartype(t)))
             return t
         end
     end
@@ -555,7 +560,6 @@ end
 function Base.promote_rule(
         ::Type{<:TT₁}, ::Type{<:TT₂}
     ) where {S, N₁, N₂, TT₁ <: TensorMap{<:Any, S, N₁, N₂}, TT₂ <: TensorMap{<:Any, S, N₁, N₂}}
-    T = VectorInterface.promote_add(scalartype(TT₁), scalartype(TT₂))
-    A = promote_storagetype(similarstoragetype(TT₁, T), similarstoragetype(TT₂, T))
+    A = promote_storagetype(VectorInterface.promote_add(scalartype(TT₁), scalartype(TT₂)), TT₁, TT₂)
     return tensormaptype(S, N₁, N₂, A)
 end

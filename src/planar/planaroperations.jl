@@ -69,8 +69,7 @@ function planartrace!(
         α::Number, β::Number,
         backend, allocator
     )
-    (S = spacetype(C)) == spacetype(A) ||
-        throw(SpaceMismatch("incompatible spacetypes"))
+    S = check_spacetype(C, A)
     if BraidingStyle(sectortype(S)) == Bosonic()
         return trace_permute!(C, A, (p₁, p₂), (q₁, q₂), α, β, backend)
     end

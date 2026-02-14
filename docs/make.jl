@@ -8,14 +8,18 @@ using DocumenterInterLinks
 
 links = InterLinks(
     "MatrixAlgebraKit" => "https://quantumkithub.github.io/MatrixAlgebraKit.jl/stable/",
-    "TensorOperations" => "https://quantumkithub.github.io/TensorOperations.jl/stable/"
+    "TensorOperations" => "https://quantumkithub.github.io/TensorOperations.jl/stable/",
+    "TensorKitSectors" => "https://quantumkithub.github.io/TensorKitSectors.jl/dev/"
 )
 
 pages = [
     "Home" => "index.md",
     "Manual" => [
         "man/intro.md", "man/tutorial.md",
-        "man/spaces.md", "man/sectors.md", "man/tensors.md",
+        "man/spaces.md", "man/symmetries.md",
+        "man/sectors.md", "man/gradedspaces.md",
+        "man/fusiontrees.md", "man/tensors.md",
+        "man/tensormanipulations.md",
     ],
     "Library" => [
         "lib/sectors.md", "lib/fusiontrees.md",

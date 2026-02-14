@@ -196,6 +196,9 @@ for V in spacelist
                 @test s′ ≈ diagview(s)
                 @test s′ isa TensorKit.SectorVector
 
+                s2 = @constinferred DiagonalTensorMap(s′)
+                @test s2 ≈ s
+
                 v, c = @constinferred left_orth(t; alg = :svd)
                 @test v * c ≈ t
                 @test isisometric(v)
@@ -246,6 +249,14 @@ for V in spacelist
                 @constinferred normalize!(t)
 
                 U, S, Vᴴ, ϵ = @constinferred svd_trunc(t; trunc = notrunc())
+                @test U * S * Vᴴ ≈ t
+                @test ϵ ≈ 0
+                @test isisometric(U)
+                @test isisometric(Vᴴ; side = :right)
+
+                # when rank of t is already smaller than truncrank
+                t_rank = ceil(Int, min(dim(codomain(t)), dim(domain(t))))
+                U, S, Vᴴ, ϵ = @constinferred svd_trunc(t; trunc = truncrank(t_rank + 1))
                 @test U * S * Vᴴ ≈ t
                 @test ϵ ≈ 0
                 @test isisometric(U)
@@ -315,6 +326,9 @@ for V in spacelist
                 d′ = @constinferred eig_vals(t)
                 @test d′ ≈ diagview(d)
                 @test d′ isa TensorKit.SectorVector
+
+                d2 = @constinferred DiagonalTensorMap(d′)
+                @test d2 ≈ d
 
                 vdv = project_hermitian!(v' * v)
                 @test @constinferred isposdef(vdv)

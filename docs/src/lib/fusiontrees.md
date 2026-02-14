@@ -30,8 +30,7 @@ braid(f::FusionTree{I, N}, p::IndexTuple{N}, levels::IndexTuple{N}) where {I, N}
 permute(f::FusionTree{I, N}, p::IndexTuple{N}) where {I, N}
 ```
 
-These can be composed to implement elementary manipulations of fusion-splitting tree pairs,
-according to the following methods
+These can be composed to implement elementary manipulations of fusion-splitting tree pairs, according to the following methods
 
 ```@docs
 TensorKit.bendright
@@ -40,10 +39,8 @@ TensorKit.foldright
 TensorKit.foldleft
 ```
 
-Finally, these are used to define large manipulations of fusion-splitting tree pairs, which
-are then used in the index manipulation of `AbstractTensorMap` objects. The following methods
-defined on fusion splitting tree pairs have an associated definition for tensors.
-
+Finally, these are used to define large manipulations of fusion-splitting tree pairs, which are then used in the index manipulation of `AbstractTensorMap` objects.
+The following methods defined on fusion splitting tree pairs have an associated definition for tensors.
 ```@docs
 repartition(src::Union{FusionTreePair, FusionTreeBlock}, N::Int)
 Base.transpose(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple)

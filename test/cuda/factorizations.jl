@@ -217,6 +217,9 @@ for V in spacelist
                 @test parent(s′) ≈ parent(diagview(s))
                 @test s′ isa TensorKit.SectorVector
 
+                s2 = @constinferred DiagonalTensorMap(s′)
+                @test s2 ≈ s
+
                 v, c = @constinferred left_orth(t; alg = :svd)
                 @test v * c ≈ t
                 @test isisometric(v)
@@ -344,6 +347,9 @@ for V in spacelist
                 d′ = @constinferred eig_vals(t)
                 @test parent(d′) ≈ parent(diagview(d))
                 @test d′ isa TensorKit.SectorVector
+
+                d2 = @constinferred DiagonalTensorMap(d′)
+                @test d2 ≈ d
 
                 vdv = project_hermitian!(v' * v)
                 @test @constinferred isposdef(vdv)
