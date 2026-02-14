@@ -143,126 +143,74 @@ function Mooncake.__verify_fdata_value(c::IdDict{Any, Nothing}, p::DiagonalTenso
 end
 
 
-# Custom rules for constructors/getters/setters
-# ---------------------------------------------
+# Custom rules for getters/setters
+# --------------------------------
+# both getfield and lgetfield are needed for cases where the field name is and isn't constant propagated
+# no setfield because not a mutable struct
+
 @is_primitive MinimalCtx Tuple{typeof(Mooncake.lgetfield), <:DiagOrTensorMap, Val}
-
-function Mooncake.frule!!(
-        ::Dual{typeof(Mooncake.lgetfield)}, t::Dual{<:DiagOrTensorMap}, ::Dual{Val{FieldName}}
-    ) where {FieldName}
-    val = getfield(primal(t), FieldName)
-    getfield_pullback = Mooncake.NoPullback(ntuple(Returns(NoRData()), 3))
-
-    return if FieldName === 1 || FieldName === :data
-        dval = tangent(t).data
-        Dual(val, dval)
-    else # cannot be invalid fieldname since already called `getfield`
-        Dual(val, NoFData()), getfield_pullback
-    end
-end
-
-function Mooncake.rrule!!(
-        ::CoDual{typeof(Mooncake.lgetfield)}, t::CoDual{<:DiagOrTensorMap}, ::CoDual{Val{FieldName}}
-    ) where {FieldName}
-    val = getfield(primal(t), FieldName)
-    getfield_pullback = Mooncake.NoPullback(ntuple(Returns(NoRData()), 3))
-
-    return if FieldName === 1 || FieldName === :data
-        dval = tangent(t).data
-        CoDual(val, dval), getfield_pullback
-    else # cannot be invalid fieldname since already called `getfield`
-        zero_fcodual(val), getfield_pullback
-    end
-end
-
-@is_primitive MinimalCtx Tuple{typeof(getfield), <:DiagOrTensorMap, Any, Vararg{Symbol}}
-
-Base.@constprop :aggressive function Mooncake.frule!!(
-        ::Dual{typeof(getfield)}, t::Dual{<:DiagOrTensorMap}, name::Dual
-    )
-    val = getfield(primal(t), primal(name))
-
-    return if primal(name) === 1 || primal(name) === :data
-        dval = tangent(t).data
-        Dual(val, dval)
-    else # cannot be invalid fieldname since already called `getfield`
-        Dual(val, NoFData())
-    end
-end
-
-Base.@constprop :aggressive function Mooncake.rrule!!(
-        ::CoDual{typeof(getfield)}, t::CoDual{<:DiagOrTensorMap}, name::CoDual
-    )
-    val = getfield(primal(t), primal(name))
-    getfield_pullback = Mooncake.NoPullback(ntuple(Returns(NoRData()), 3))
-
-    return if primal(name) === 1 || primal(name) === :data
-        dval = tangent(t).data
-        CoDual(val, dval), getfield_pullback
-    else # cannot be invalid fieldname since already called `getfield`
-        zero_fcodual(val), getfield_pullback
-    end
-end
-
-Base.@constprop :aggressive function Mooncake.frule!!(
-        ::Dual{typeof(getfield)}, t::Dual{<:DiagOrTensorMap}, name::Dual, order::Dual
-    )
-    y = getfield(primal(t), primal(name), primal(order))
-
-    return if primal(name) === 1 || primal(name) === :data
-        dval = tangent(t).data
-        Dual(val, dval)
-    else # cannot be invalid fieldname since already called `getfield`
-        Dual(val, NoFData())
-    end
-end
-
-Base.@constprop :aggressive function Mooncake.rrule!!(
-        ::CoDual{typeof(getfield)}, t::CoDual{<:DiagOrTensorMap}, name::CoDual, order::CoDual
-    )
-    val = getfield(primal(t), primal(name), primal(order))
-    getfield_pullback = Mooncake.NoPullback(ntuple(Returns(NoRData()), 4))
-
-    return if primal(name) === 1 || primal(name) === :data
-        dval = tangent(t).data
-        CoDual(val, dval), getfield_pullback
-    else # cannot be invalid fieldname since already called `getfield`
-        zero_fcodual(val), getfield_pullback
-    end
-end
-
-
 @is_primitive MinimalCtx Tuple{typeof(Mooncake.lgetfield), <:DiagOrTensorMap, Val, Val}
+@is_primitive MinimalCtx Tuple{typeof(getfield), <:DiagOrTensorMap, Symbol}
+@is_primitive MinimalCtx Tuple{typeof(getfield), <:DiagOrTensorMap, Symbol, Symbol}
+@is_primitive MinimalCtx Tuple{typeof(getfield), <:DiagOrTensorMap, Int, Symbol}
 
-# TODO: double-check if this has to include quantum dimensinos for non-abelian?
-function Mooncake.frule!!(
-        ::Dual{typeof(Mooncake.lgetfield)}, t::Dual{<:DiagOrTensorMap}, ::Dual{Val{FieldName}}, ::Dual{Val{Order}}
-    ) where {FieldName, Order}
-    y = getfield(primal(t), FieldName, Order)
+_field_symbol(f::Symbol) = f
+_field_symbol(i::Int) = i == 1 ? :x : i == 2 ? :a : throw(ArgumentError("Invalid field index '$i' for type A."))
+_field_symbol(::Type{Val{F}}) where {F} = _field_symbol(F)
+_field_symbol(::Val{F}) where {F} = _field_symbol(F)
 
-    return if FieldName === 1 || FieldName === :data
-        dval = tangent(t).data
-        Dual(val, dval)
-    else # cannot be invalid fieldname since already called `getfield`
-        Dual(val, NoFData())
+# frules
+_frule_getfield_common(t_dt::Dual{<:DiagOrTensorMap}, field_sym::Symbol) =
+    Dual(getfield(primal(t), field_sym), field_sym === :data ? tangent(t).data : NoFData())
+
+Mooncake.frule!!(::Dual{typeof(Mooncake.lgetfield)}, t_dt::Dual{<:DiagOrTensorMap}, f_df::Dual) =
+    _frule_getfield_common(t_dt, _field_symbol(primal(f_df)))
+Mooncake.frule!!(::Dual{typeof(Mooncake.lgetfield)}, t_dt::Dual{<:DiagOrTensorMap}, f_df::Dual, o_do::Dual) =
+    _frule_getfield_common(t_dt, _field_symbol(primal(f_df)))
+Mooncake.frule!!(::Dual{typeof(getfield)}, t_dt::Dual{<:DiagOrTensorMap}, f_df::Dual) =
+    _frule_getfield_common(t_dt, _field_symbol(primal(f_df)))
+Mooncake.frule!!(::Dual{typeof(getfield)}, t_dt::Dual{<:DiagOrTensorMap}, f_df::Dual, o_do::Dual) =
+    _frule_getfield_common(t_dt, _field_symbol(primal(f_df)))
+
+# rrules
+function _rrule_getfield_common(t_dt::CoDual{<:DiagOrTensorMap}, field_sym::Symbol, n_args::Int)
+    t = primal(t)
+    dt = tangent(t)
+
+    value_primal = getfield(t, field_sym)
+    value_dvalue = Mooncake.CoDual(
+        value_primal,
+        # fieldname is definitely valid here because `getfield` is called
+        Mooncake.fdata(field_sym === :data ? dt.data : NoTangent())
+    )
+
+    function getfield_pullback(Δvalue_rdata)
+        if field_sym === :data
+            if !(Δvalue_rdata isa Mooncake.NoRData)
+                data′ = Mooncake.increment_rdata!!(dt.data, Δvalue_rdata)
+                data′ === dt.data || copy!(dt.data, data′)
+            end
+        else
+            @assert Δvalue_rdata isa Mooncake.NoRData
+        end
+        return ntuple(Returns(Mooncake.NoRData()), n_args)
     end
+
+    return value_dvalue, getfield_pullback
 end
 
-function Mooncake.rrule!!(
-        ::CoDual{typeof(Mooncake.lgetfield)}, t::CoDual{<:DiagOrTensorMap}, ::CoDual{Val{FieldName}}, ::CoDual{Val{Order}}
-    ) where {FieldName, Order}
-    val = getfield(primal(t), FieldName, Order)
-    getfield_pullback = Mooncake.NoPullback(ntuple(Returns(NoRData()), 4))
-
-    return if FieldName === 1 || FieldName === :data
-        dval = tangent(t).data
-        CoDual(val, dval), getfield_pullback
-    else # cannot be invalid fieldname since already called `getfield`
-        zero_fcodual(val), getfield_pullback
-    end
-end
+Mooncake.rrule!!(::CoDual{typeof(Mooncake.lgetfield)}, t_dt::CoDual{<:DiagOrTensorMap}, f_df::CoDual) =
+    _rrule_getfield_common(t_dt, _field_symbol(primal(f_df)), 3)
+Mooncake.rrule!!(::CoDual{typeof(Mooncake.lgetfield)}, t_dt::CoDual{<:DiagOrTensorMap}, f_df::CoDual, o_do::CoDual) =
+    _rrule_getfield_common(t_dt, _field_symbol(primal(f_df)), 4)
+Mooncake.rrule!!(::CoDual{typeof(getfield)}, t_dt::CoDual{<:DiagOrTensorMap}, f_df::CoDual) =
+    _rrule_getfield_common(t_dt, _field_symbol(primal(f_df)), 3)
+Mooncake.rrule!!(::CoDual{typeof(getfield)}, t_dt::CoDual{<:DiagOrTensorMap}, f_df::CoDual, o_do::CoDual) =
+    _rrule_getfield_common(t_dt, _field_symbol(primal(f_df)), 4)
 
 
+# Custom rules for constructors
+# -----------------------------
 Mooncake.@zero_derivative MinimalCtx Tuple{typeof(Mooncake._new_), Type{TensorMap{T, S, N₁, N₂, A}}, UndefInitializer, TensorMapSpace{S, N₁, N₂}} where {T, S, N₁, N₂, A}
 @is_primitive MinimalCtx Tuple{typeof(Mooncake._new_), Type{TensorMap{T, S, N₁, N₂, A}}, A, TensorMapSpace{S, N₁, N₂}} where {T, S, N₁, N₂, A}
 
