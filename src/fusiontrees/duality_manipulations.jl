@@ -719,7 +719,6 @@ function planar_trace(
     if N₃ == 0
         return transpose((f₁, f₂), (p1, p2))
     end
-    @assert FusionStyle(I) === UniqueFusion()
 
     linearindex = (
         ntuple(identity, Val(length(f₁)))...,
