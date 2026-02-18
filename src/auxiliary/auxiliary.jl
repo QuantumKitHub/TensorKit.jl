@@ -60,7 +60,7 @@ end
 # Low-overhead implementation of `copyto!` for specific case of `stride(B, 1) < stride(B, 2)`
 # used in indexmanipulations: avoids the overhead of Strided.jl
 function _copyto!(A::StridedView{<:Any, 1}, B::StridedView{<:Any, 2})
-    length(A) == length(B) || throw(DimensionMismatch())
+    length(A) == length(B) || throw(DimensionMismatch(lazy"length of A ($(length(A))) does not match length of B ($(length(B))"))
 
     Adata = parent(A)
     Astr = stride(A, 1)

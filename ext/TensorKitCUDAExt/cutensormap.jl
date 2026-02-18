@@ -7,6 +7,17 @@ function CuTensorMap(t::TensorMap{T, S, N₁, N₂, A}) where {T, S, N₁, N₂,
     return CuTensorMap{T, S, N₁, N₂}(CuArray{T}(t.data), space(t))
 end
 
+#=function TensorKit.TensorMap{T, S₁, N₁, N₂, A}(
+    ::UndefInitializer, space::TensorMapSpace{S₂, N₁, N₂}
+) where {T, S₁, S₂ <: TensorKit.ElementarySpace, N₁, N₂, A <: CuVector{T}}
+        d = TensorKit.fusionblockstructure(space).totaldim
+        data = A(undef, d)
+    if !isbitstype(T)
+        zerovector!(data)
+    end
+    return TensorKit.TensorMap{T, S₂,  A}(data, space)
+end=#
+
 # project_symmetric! doesn't yet work for GPU types, so do this on the host, then copy
 function TensorKit.project_symmetric_and_check(::Type{T}, ::Type{A}, data::AbstractArray, V::TensorMapSpace; tol = sqrt(eps(real(float(eltype(data)))))) where {T, A <: CuVector{T}}
     h_t = TensorKit.TensorMapWithStorage{T, Vector{T}}(undef, V)
@@ -15,6 +26,10 @@ function TensorKit.project_symmetric_and_check(::Type{T}, ::Type{A}, data::Abstr
     isapprox(Array(reshape(data, dims(h_t))), convert(Array, h_t); atol = tol) ||
         throw(ArgumentError("Data has non-zero elements at incompatible positions"))
     return TensorKit.TensorMapWithStorage{T, A}(A(h_t.data), V)
+end
+
+function TensorKit.blocktype(::Type{<:CuTensorMap{T, S}}) where {T, S}
+    return SubArray{T, 1, CuVector{T, CUDA.DeviceMemory}, Tuple{UnitRange{Int}}, true}
 end
 
 for (fname, felt) in ((:zeros, :zero), (:ones, :one))
@@ -102,9 +117,21 @@ function TensorKit.scalar(t::CuTensorMap{T, S, 0, 0}) where {T, S}
 end
 
 function Base.convert(
-        TT::Type{CuTensorMap{T, S, N₁, N₂}},
-        t::AbstractTensorMap{<:Any, S, N₁, N₂}
-    ) where {T, S, N₁, N₂}
+        TT::Type{TensorMap{T, S, N₁, N₂, A}},
+        t::TensorMap{T, S, N₁, N₂, AA}
+    ) where {T, S, N₁, N₂, A <: CuArray{T}, AA}
+    if typeof(t) === TT
+        return t
+    else
+        tnew = TT(undef, space(t))
+        return copy!(tnew, t)
+    end
+end
+
+function Base.convert(
+        TT::Type{TensorMap{T, S, N₁, N₂, A}},
+        t::AdjointTensorMap
+    ) where {T, S, N₁, N₂, A <: CuArray{T}}
     if typeof(t) === TT
         return t
     else
@@ -140,6 +167,8 @@ end
 
 TensorKit.promote_storage_rule(::Type{CuArray{T, N}}, ::Type{<:CuArray{T, N}}) where {T, N} =
     CuArray{T, N, CUDA.default_memory}
+TensorKit.promote_storage_rule(::Type{<:CuArray{T, N}}, ::Type{CuArray{T, N}}) where {T, N} =
+    CuArray{T, N, CUDA.default_memory}
 
 
 # CuTensorMap exponentation:
@@ -167,4 +196,22 @@ for f in (:sqrt, :log, :asin, :acos, :acosh, :atanh, :acoth)
         end
         return tf
     end
+end
+
+function TensorKit._add_general_kernel_nonthreaded!(
+        tdst::CuTensorMap, tsrc::CuTensorMap, p, transformer::TensorKit.GenericTreeTransformer, α, β, backend...
+    )
+    # preallocate buffers
+    buffers = TensorKit.allocate_buffers(tdst, tsrc, transformer)
+
+    for subtransformer in transformer.data
+        # Special case without intermediate buffers whenever there is only a single block
+        if length(subtransformer[1]) == 1
+            TensorKit._add_transform_single!(tdst, tsrc, p, subtransformer, α, β, backend...)
+        else
+            cu_subtransformer = tuple(CUDA.adapt(CuArray, subtransformer[1]), subtransformer[2:end]...)
+            TensorKit._add_transform_multi!(tdst, tsrc, p, cu_subtransformer, buffers, α, β, backend...)
+        end
+    end
+    return nothing
 end
