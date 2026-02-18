@@ -10,7 +10,7 @@ using TensorKit.Factorizations
 using TensorKit.Strided
 using TensorKit.Factorizations: AbstractAlgorithm
 using TensorKit: SectorDict, tensormaptype, scalar, similarstoragetype, AdjointTensorMap, scalartype, project_symmetric_and_check
-import TensorKit: randisometry, rand, randn
+import TensorKit: randisometry, rand, randn, _copyto!, _add_general_kernel_nonthreaded!, blocktype
 
 using TensorKit: MatrixAlgebraKit
 
@@ -18,5 +18,6 @@ using Random
 
 include("cutensormap.jl")
 include("truncation.jl")
+include("auxiliary.jl")
 
 end
