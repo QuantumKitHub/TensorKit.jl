@@ -153,7 +153,7 @@ function Mooncake.rrule!!(
     C_cache = copy(C)
     At = if _needs_tangent(α)
         At = TO.tensortrace(A, p, q, false, One(), backend)
-        add!(C, A, α, β)
+        add!(C, At, α, β)
         At
     else
         TensorKit.trace_permute!(C, A, p, q, α, β, backend)

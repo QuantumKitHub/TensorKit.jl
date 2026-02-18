@@ -198,8 +198,8 @@ Mooncake.frule!!(::Dual{typeof(getfield)}, t_dt::Dual{<:DiagOrTensorMap}, f_df::
 
 # rrules
 function _rrule_getfield_common(t_dt::CoDual{<:DiagOrTensorMap}, field_sym::Symbol, n_args::Int)
-    t = primal(t)
-    dt = tangent(t)
+    t = primal(t_dt)
+    dt = tangent(t_dt)
 
     value_primal = getfield(t, field_sym)
     value_dvalue = Mooncake.CoDual(
@@ -224,13 +224,13 @@ function _rrule_getfield_common(t_dt::CoDual{<:DiagOrTensorMap}, field_sym::Symb
 end
 
 Mooncake.rrule!!(::CoDual{typeof(Mooncake.lgetfield)}, t_dt::CoDual{<:DiagOrTensorMap}, f_df::CoDual) =
-    _rrule_getfield_common(t_dt, _field_symbol(primal(f_df)), 3)
+    _rrule_getfield_common(t_dt, _field_symbol(primal(t_dt), primal(f_df)), 3)
 Mooncake.rrule!!(::CoDual{typeof(Mooncake.lgetfield)}, t_dt::CoDual{<:DiagOrTensorMap}, f_df::CoDual, o_do::CoDual) =
-    _rrule_getfield_common(t_dt, _field_symbol(primal(f_df)), 4)
+    _rrule_getfield_common(t_dt, _field_symbol(primal(t_dt), primal(f_df)), 4)
 Mooncake.rrule!!(::CoDual{typeof(getfield)}, t_dt::CoDual{<:DiagOrTensorMap}, f_df::CoDual) =
-    _rrule_getfield_common(t_dt, _field_symbol(primal(f_df)), 3)
+    _rrule_getfield_common(t_dt, _field_symbol(primal(t_dt), primal(f_df)), 3)
 Mooncake.rrule!!(::CoDual{typeof(getfield)}, t_dt::CoDual{<:DiagOrTensorMap}, f_df::CoDual, o_do::CoDual) =
-    _rrule_getfield_common(t_dt, _field_symbol(primal(f_df)), 4)
+    _rrule_getfield_common(t_dt, _field_symbol(primal(t_dt), primal(f_df)), 4)
 
 
 # Custom rules for constructors
