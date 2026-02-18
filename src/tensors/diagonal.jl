@@ -280,7 +280,7 @@ end
 # ----------------
 function TO.tensoradd_type(TC, A::DiagonalTensorMap, ::Index2Tuple{1, 1}, ::Bool)
     M = similarstoragetype(A, TC)
-    return DiagonalTensorMap{TC, spacetype(A), M}
+    return DiagonalTensorMap{scalartype(M), spacetype(A), M}
 end
 
 function TO.tensorcontract_type(

@@ -6,6 +6,9 @@ const AdjointCuTensorMap{T, S, N₁, N₂} = AdjointTensorMap{T, S, N₁, N₂, 
 function CuTensorMap(t::TensorMap{T, S, N₁, N₂, A}) where {T, S, N₁, N₂, A}
     return CuTensorMap{T, S, N₁, N₂}(CuArray{T}(t.data), space(t))
 end
+function TensorMap{T, S, N₁, N₂, DA}(t::TensorMap{T, S, N₁, N₂, HA}) where {T, S, N₁, N₂, DA <: CuArray{T}, HA <: Array{T}}
+    return CuTensorMap{T, S, N₁, N₂}(CuArray{T}(t.data), space(t))
+end
 
 # project_symmetric! doesn't yet work for GPU types, so do this on the host, then copy
 function TensorKit.project_symmetric_and_check(::Type{T}, ::Type{A}, data::AbstractArray, V::TensorMapSpace; tol = sqrt(eps(real(float(eltype(data)))))) where {T, A <: CuVector{T}}
@@ -101,18 +104,6 @@ function TensorKit.scalar(t::CuTensorMap{T, S, 0, 0}) where {T, S}
     return isempty(inds) ? zero(scalartype(t)) : @allowscalar @inbounds t.data[only(inds)]
 end
 
-function Base.convert(
-        TT::Type{CuTensorMap{T, S, N₁, N₂}},
-        t::AbstractTensorMap{<:Any, S, N₁, N₂}
-    ) where {T, S, N₁, N₂}
-    if typeof(t) === TT
-        return t
-    else
-        tnew = TT(undef, space(t))
-        return copy!(tnew, t)
-    end
-end
-
 function LinearAlgebra.isposdef(t::CuTensorMap)
     domain(t) == codomain(t) ||
         throw(SpaceMismatch("`isposdef` requires domain and codomain to be the same"))
@@ -138,9 +129,8 @@ function Base.promote_rule(
     return CuTensorMap{T, S, N₁, N₂}
 end
 
-TensorKit.promote_storage_rule(::Type{CuArray{T, N}}, ::Type{<:CuArray{T, N}}) where {T, N} =
+TensorKit.promote_storage_rule(::Type{<:CuArray{T, N}}, ::Type{<:CuArray{T, N}}) where {T, N} =
     CuArray{T, N, CUDA.default_memory}
-
 
 # CuTensorMap exponentation:
 function TensorKit.exp!(t::CuTensorMap)
@@ -167,4 +157,22 @@ for f in (:sqrt, :log, :asin, :acos, :acosh, :atanh, :acoth)
         end
         return tf
     end
+end
+
+function TensorKit.add_kernel_nonthreaded!(
+        tdst::CuTensorMap, tsrc::CuTensorMap, p, transformer::TensorKit.GenericTreeTransformer, α, β, backend...
+    )
+    # preallocate buffers
+    buffers = TensorKit.allocate_buffers(tdst, tsrc, transformer)
+
+    for subtransformer in transformer.data
+        # Special case without intermediate buffers whenever there is only a single block
+        if length(subtransformer[1]) == 1
+            TensorKit._add_transform_single!(tdst, tsrc, p, subtransformer, α, β, backend...)
+        else
+            cu_subtransformer = tuple(CUDA.adapt(CuArray, subtransformer[1]), subtransformer[2:end]...)
+            TensorKit._add_transform_multi!(tdst, tsrc, p, cu_subtransformer, buffers, α, β, backend...)
+        end
+    end
+    return nothing
 end
