@@ -52,17 +52,36 @@ Mooncake.tangent(t::DiagOrTensorMap, ::NoRData) = t
 # The cache objects are similar to how Base.deepcopy works
 
 # generate new tangents for accumulation
-Mooncake.zero_tangent_internal(t::TensorMap, c::Mooncake.MaybeCache) =
-    TensorMap(Mooncake.zero_tangent_internal(t.data, c), space(t))
-Mooncake.zero_tangent_internal(t::DiagonalTensorMap, c::Mooncake.MaybeCache) =
-    DiagonalTensorMap(Mooncake.zero_tangent_internal(t.data, c), space(t, 1))
+function Mooncake.zero_tangent_internal(t::TensorMap, c::Mooncake.MaybeCache)
+    return if Mooncake.tangent_type(typeof(t)) !== NoTangent
+        TensorMap(Mooncake.zero_tangent_internal(t.data, c), space(t))
+    else
+        NoTangent()
+    end
+end
+function Mooncake.zero_tangent_internal(t::DiagonalTensorMap, c::Mooncake.MaybeCache)
+    return if Mooncake.tangent_type(typeof(t)) !== NoTangent
+        DiagonalTensorMap(Mooncake.zero_tangent_internal(t.data, c), space(t, 1))
+    else
+        NoTangent()
+    end
+end
 
 # generate random tangents for testing
-Mooncake.randn_tangent_internal(rng::AbstractRNG, p::TensorMap, c::Mooncake.MaybeCache) =
-    TensorMap(Mooncake.randn_tangent_internal(rng, p.data, c), space(p))
-Mooncake.randn_tangent_internal(rng::AbstractRNG, p::DiagonalTensorMap, c::Mooncake.MaybeCache) =
-    DiagonalTensorMap(Mooncake.randn_tangent_internal(rng, p.data, c), space(p, 1))
-
+function Mooncake.randn_tangent_internal(rng::AbstractRNG, t::TensorMap, c::Mooncake.MaybeCache)
+    return if Mooncake.tangent_type(typeof(t)) !== NoTangent
+        TensorMap(Mooncake.randn_tangent_internal(rng, t.data, c), space(t))
+    else
+        NoTangent()
+    end
+end
+function Mooncake.randn_tangent_internal(rng::AbstractRNG, t::DiagonalTensorMap, c::Mooncake.MaybeCache)
+    return if Mooncake.tangent_type(typeof(t)) !== NoTangent
+        DiagonalTensorMap(Mooncake.randn_tangent_internal(rng, t.data, c), space(t, 1))
+    else
+        NoTangent()
+    end
+end
 
 function Mooncake.set_to_zero_internal!!(c::Mooncake.SetToZeroCache, t::TensorMap)
     data = Mooncake.set_to_zero_internal!!(c, t.data)
