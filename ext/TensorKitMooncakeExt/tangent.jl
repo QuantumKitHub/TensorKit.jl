@@ -159,23 +159,23 @@ end
 @is_primitive MinimalCtx Tuple{typeof(getfield), <:DiagOrTensorMap, Symbol, Symbol}
 @is_primitive MinimalCtx Tuple{typeof(getfield), <:DiagOrTensorMap, Int, Symbol}
 
-_field_symbol(f::Symbol) = f
-_field_symbol(i::Int) = i == 1 ? :x : i == 2 ? :a : throw(ArgumentError("Invalid field index '$i' for type A."))
-_field_symbol(::Type{Val{F}}) where {F} = _field_symbol(F)
-_field_symbol(::Val{F}) where {F} = _field_symbol(F)
+_field_symbol(t, f::Symbol) = f
+_field_symbol(t, i::Int) = fieldnames(typeof(t))[i]
+_field_symbol(t, ::Type{Val{F}}) where {F} = _field_symbol(t, F)
+_field_symbol(t, ::Val{F}) where {F} = _field_symbol(t, F)
 
 # frules
 _frule_getfield_common(t_dt::Dual{<:DiagOrTensorMap}, field_sym::Symbol) =
     Dual(getfield(primal(t), field_sym), field_sym === :data ? tangent(t).data : NoFData())
 
 Mooncake.frule!!(::Dual{typeof(Mooncake.lgetfield)}, t_dt::Dual{<:DiagOrTensorMap}, f_df::Dual) =
-    _frule_getfield_common(t_dt, _field_symbol(primal(f_df)))
+    _frule_getfield_common(t_dt, _field_symbol(primal(t_dt), primal(f_df)))
 Mooncake.frule!!(::Dual{typeof(Mooncake.lgetfield)}, t_dt::Dual{<:DiagOrTensorMap}, f_df::Dual, o_do::Dual) =
-    _frule_getfield_common(t_dt, _field_symbol(primal(f_df)))
+    _frule_getfield_common(t_dt, _field_symbol(primal(t_dt), primal(f_df)))
 Mooncake.frule!!(::Dual{typeof(getfield)}, t_dt::Dual{<:DiagOrTensorMap}, f_df::Dual) =
-    _frule_getfield_common(t_dt, _field_symbol(primal(f_df)))
+    _frule_getfield_common(t_dt, _field_symbol(primal(t_dt), primal(f_df)))
 Mooncake.frule!!(::Dual{typeof(getfield)}, t_dt::Dual{<:DiagOrTensorMap}, f_df::Dual, o_do::Dual) =
-    _frule_getfield_common(t_dt, _field_symbol(primal(f_df)))
+    _frule_getfield_common(t_dt, _field_symbol(primal(t_dt), primal(f_df)))
 
 # rrules
 function _rrule_getfield_common(t_dt::CoDual{<:DiagOrTensorMap}, field_sym::Symbol, n_args::Int)
