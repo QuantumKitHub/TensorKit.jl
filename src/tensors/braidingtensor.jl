@@ -189,12 +189,15 @@ end
 has_shared_permute(t::BraidingTensor, ::Index2Tuple) = false
 function add_transform!(
         tdst::AbstractTensorMap,
-        tsrc::BraidingTensor, (p₁, p₂)::Index2Tuple,
+        tsrc::BraidingTensor{T, S},
+        (p₁, p₂)::Index2Tuple,
         fusiontreetransform,
         α::Number, β::Number, backend::AbstractBackend...
-    )
+    ) where {T, S}
+    tsrc_map = similar(tdst, storagetype(tdst), space(tsrc))
+    copy!(tsrc_map, tsrc)
     return add_transform!(
-        tdst, TensorMap(tsrc), (p₁, p₂), fusiontreetransform, α, β,
+        tdst, tsrc_map, (p₁, p₂), fusiontreetransform, α, β,
         backend...
     )
 end
@@ -294,11 +297,15 @@ function planarcontract!(
         backend, allocator
     )
     # special case only defined for contracting 2 indices
-    length(oindB) == length(cindB) == 2 ||
+    if !(length(oindB) == length(cindB) == 2)
+        # horrible!!!!!
+        tB′ = TensorMap(B)
+        tB = TensorMapWithStorage{eltype(B), similarstoragetype(A, eltype(B)), spacetype(tB′), numout(tB′), numin(tB′)}(tB′)
         return planarcontract!(
-        C, A, (oindA, cindA), TensorMap(B), (cindB, oindB), (p1, p2),
-        α, β, backend, allocator
-    )
+            C, A, (oindA, cindA), tB, (cindB, oindB), (p1, p2),
+            α, β, backend, allocator
+        )
+    end
 
     codA, domA = codomainind(A), domainind(A)
     codB, domB = codomainind(B), domainind(B)

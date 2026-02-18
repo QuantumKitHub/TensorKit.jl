@@ -22,6 +22,8 @@ Base.adjoint(t::AbstractTensorMap) = AdjointTensorMap(t)
 space(t::AdjointTensorMap) = adjoint(space(parent(t)))
 dim(t::AdjointTensorMap) = dim(parent(t))
 storagetype(::Type{AdjointTensorMap{T, S, N₁, N₂, TT}}) where {T, S, N₁, N₂, TT} = storagetype(TT)
+similarstoragetype(::AdjointTensorMap{T, S, N₁, N₂, TT}, ::Type{T′}) where {T, S, N₁, N₂, TT, T′ <: Number} = similarstoragetype(TT, T′)
+similarstoragetype(::AdjointTensorMap{T, S, N₁, N₂, TT}, ::Type{TA}) where {T, S, N₁, N₂, TT, TA <: DenseVector} = similarstoragetype(TT, TA)
 
 # Blocks and subblocks
 #----------------------
