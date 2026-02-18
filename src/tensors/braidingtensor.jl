@@ -76,6 +76,29 @@ function Base.getindex(b::BraidingTensor)
     return sreshape(StridedView(block(b, Trivial())), d)
 end
 
+function _braiding_factor(f₁, f₂, inv::Bool = false)
+    f₁.uncoupled == reverse(f₂.uncoupled) || return nothing
+    I = sectortype(f₁)
+    a, b = f₂.uncoupled
+    c = f₂.coupled
+
+    # braiding with unit is always possible
+    # valid fusiontree pairs don't have to check Nsymbol(a, b, c)
+    (isunit(a) || isunit(b)) && return one(sectorscalartype(I))
+
+    BraidingStyle(I) isa NoBraiding && throw(SectorMismatch(lazy"Cannot braid sectors $a and $b"))
+
+    if FusionStyle(I) isa MultiplicityFreeFusion
+        r = inv ? conj(Rsymbol(b, a, c)) : Rsymbol(a, b, c)
+    else
+        Rmat = inv ? Rsymbol(b, a, c)' : Rsymbol(a, b, c)
+        μ = only(f₂.vertices)
+        ν = only(f₁.vertices)
+        r = Rmat[μ, ν]
+    end
+    return r
+end
+
 @inline function Base.getindex(
         b::BraidingTensor, f₁::FusionTree{I, 2}, f₂::FusionTree{I, 2}
     ) where {I <: Sector}
@@ -89,21 +112,19 @@ end
         ((f₁.uncoupled[2] ∈ sectors(V1)) && (f₂.uncoupled[2] ∈ sectors(V2))) ||
             throw(SectorMismatch())
     end
-    @inbounds begin
-        d = (dims(codomain(b), f₁.uncoupled)..., dims(domain(b), f₂.uncoupled)...)
-        n1 = d[1] * d[2]
-        n2 = d[3] * d[4]
-        data = sreshape(StridedView(Matrix{eltype(b)}(undef, n1, n2)), d)
-        fill!(data, zero(eltype(b)))
-        if f₁.uncoupled == reverse(f₂.uncoupled)
-            braiddict = artin_braid(f₂, 1; inv = b.adjoint)
-            r = get(braiddict, f₁, zero(valtype(braiddict)))
-            @inbounds for i in axes(data, 1), j in axes(data, 2)
-                data[i, j, j, i] = r
-            end
+    d = (dims(codomain(b), f₁.uncoupled)..., dims(domain(b), f₂.uncoupled)...)
+    n1 = d[1] * d[2]
+    n2 = d[3] * d[4]
+    data = sreshape(StridedView(Matrix{eltype(b)}(undef, n1, n2)), d)
+    fill!(data, zero(eltype(b)))
+
+    r = _braiding_factor(f₁, f₂, b.adjoint)
+    if !isnothing(r)
+        @inbounds for i in axes(data, 1), j in axes(data, 2)
+            data[i, j, j, i] = r
         end
-        return data
     end
+    return data
 end
 @inline function Base.getindex(b::BraidingTensor, ::Nothing, ::Nothing)
     sectortype(b) === Trivial || throw(SectorMismatch())
@@ -122,7 +143,8 @@ function Base.complex(b::BraidingTensor)
 end
 
 function block(b::BraidingTensor, s::Sector)
-    sectortype(b) == typeof(s) || throw(SectorMismatch())
+    I = sectortype(b)
+    I == typeof(s) || throw(SectorMismatch())
 
     # TODO: probably always square?
     m = blockdim(codomain(b), s)
@@ -146,16 +168,10 @@ function block(b::BraidingTensor, s::Sector)
     structure = fusionblockstructure(b)
     base_offset = first(structure.blockstructure[s][2]) - 1
 
-    for ((f1, f2), (sz, str, off)) in
-        zip(structure.fusiontreelist, structure.fusiontreestructure)
-        if (f1.uncoupled != reverse(f2.uncoupled)) || !(f1.coupled == f2.coupled == s)
-            continue
-        end
-
-        braiddict = artin_braid(f2, 1; inv = b.adjoint)
-        haskey(braiddict, f1) || continue
-        r = braiddict[f1]
-
+    for ((f₁, f₂), (sz, str, off)) in zip(structure.fusiontreelist, structure.fusiontreestructure)
+        (f₁.coupled == f₂.coupled == s) || continue
+        r = _braiding_factor(f₁, f₂)
+        isnothing(r) && continue
         # change offset to account for single block
         subblock = StridedView(data, sz, str, off - base_offset)
         @inbounds for i in axes(subblock, 1), j in axes(subblock, 2)
@@ -247,7 +263,7 @@ function planarcontract!(
     inv_braid = τ_levels[cindA[1]] > τ_levels[cindA[2]]
     for (f₁, f₂) in fusiontrees(B)
         local newtrees
-        for ((f₁′, f₂′), coeff′) in transpose(f₁, f₂, cindB, oindB)
+        for ((f₁′, f₂′), coeff′) in transpose((f₁, f₂), (cindB, oindB))
             for (f₁′′, coeff′′) in artin_braid(f₁′, 1; inv = inv_braid)
                 f12 = (f₁′′, f₂′)
                 coeff = coeff′ * coeff′′
@@ -292,35 +308,10 @@ function planarcontract!(
         throw(SpaceMismatch("$(space(C)) ≠ permute($(space(A))[$oindA, $cindA] * $(space(B))[$cindB, $oindB], ($p1, $p2)"))
     end
 
-    if BraidingStyle(sectortype(A)) isa Bosonic
-        return add_permute!(C, A, (oindA, reverse(cindA)), α, β, backend)
-    end
-
-    scale!(C, β)
-    τ_levels = B.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
-    inv_braid = τ_levels[cindB[1]] > τ_levels[cindB[2]]
-
-    for (f₁, f₂) in fusiontrees(A)
-        local newtrees
-        for ((f₁′, f₂′), coeff′) in transpose(f₁, f₂, oindA, cindA)
-            for (f₂′′, coeff′′) in artin_braid(f₂′, 1; inv = inv_braid)
-                f12 = (f₁′, f₂′′)
-                coeff = coeff′ * conj(coeff′′)
-                if @isdefined newtrees
-                    newtrees[f12] = get(newtrees, f12, zero(coeff)) + coeff
-                else
-                    newtrees = Dict(f12 => coeff)
-                end
-            end
-        end
-        for ((f₁′, f₂′), coeff) in newtrees
-            TO.tensoradd!(
-                C[f₁′, f₂′], A[f₁, f₂], (oindA, reverse(cindA)), false, α * coeff,
-                One(), backend, allocator
-            )
-        end
-    end
-    return C
+    p = (oindA, reverse(cindA))
+    N = length(oindA)
+    levels = (ntuple(identity, N)..., (B.adjoint ? (N + 1, N + 2) : (N + 2, N + 1))...)
+    return add_braid!(C, A, p, levels, α, β, backend)
 end
 
 # ambiguity fix:
