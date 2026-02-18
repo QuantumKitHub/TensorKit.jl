@@ -40,6 +40,7 @@ function Mooncake.rrule!!(
     AB = if _needs_tangent(α)
         AB = TO.tensorcontract(A, pA, false, B, pB, false, pAB, One(), backend, allocator)
         add!(C, AB, α, β)
+        AB
     else
         TensorKit.blas_contract!(C, A, pA, B, pB, pAB, α, β, backend, allocator)
         nothing
@@ -153,6 +154,7 @@ function Mooncake.rrule!!(
     At = if _needs_tangent(α)
         At = TO.tensortrace(A, p, q, false, One(), backend)
         add!(C, A, α, β)
+        At
     else
         TensorKit.trace_permute!(C, A, p, q, α, β, backend)
         nothing
