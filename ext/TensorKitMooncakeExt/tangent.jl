@@ -260,6 +260,8 @@ function Mooncake.frule!!(
     return Dual(t, dt)
 end
 
+# rrules are trivial here because the magic is already happening in the construction of the
+# `t_dt`, which already contains the `dt` correctly.
 function Mooncake.rrule!!(
         ::CoDual{typeof(Mooncake._new_)}, ::CoDual{Type{TensorMap{T, S, N₁, N₂, A}}},
         data_ddata::CoDual{A}, space::CoDual{TensorMapSpace{S, N₁, N₂}}
@@ -269,11 +271,7 @@ function Mooncake.rrule!!(
     t = TensorMap(data, primal(space))
     dt = TensorMap(ddata, primal(space))
     t_dt = CoDual(t, Mooncake.fdata(dt))
-    function TensorMap_pullback(Δt_rdata)
-        Δt_rdata isa Mooncake.NoRData && return ntuple(Returns(NoRData()), 4)
-        ddata′ = Mooncake.increment_rdata!!(ddata, Δt_rdata.data)
-        return NoRData(), NoRData(), ddata′, NoRData()
-    end
+    TensorMap_pullback(Δt_rdata) = ntuple(Returns(NoRData()), 4)
     return t_dt, TensorMap_pullback
 end
 function Mooncake.rrule!!(
@@ -285,10 +283,6 @@ function Mooncake.rrule!!(
     t = DiagonalTensorMap(data, primal(space))
     dt = DiagonalTensorMap(ddata, primal(space))
     t_dt = CoDual(t, Mooncake.fdata(dt))
-    function DiagonalTensorMap_pullback(Δt_rdata)
-        Δt_rdata isa Mooncake.NoRData && return ntuple(Returns(NoRData()), 4)
-        ddata′ = Mooncake.increment_rdata!!(ddata, Δt_rdata.data)
-        return NoRData(), NoRData(), ddata′, NoRData()
-    end
+    DiagonalTensorMap_pullback(Δt_rdata) = ntuple(Returns(NoRData()), 4)
     return t_dt, DiagonalTensorMap_pullback
 end
