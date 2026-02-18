@@ -17,6 +17,8 @@ for (operation, manipulation) in (
         $promote_op(::Type{T}, ::Type{I}) where {T <: Number, I <: Sector} =
             sectorscalartype(I) <: Integer ? T :
             sectorscalartype(I) <: Real ? float(T) : complex(T)
+        $promote_op(::Type{TA}, ::Type{I}) where {TA <: DenseVector, I <: Sector} =
+            similarstoragetype(TA, $promote_op(eltype(TA), I))
         # TODO: currently the manipulations all use sectorscalartype, change to:
         # $manipulation_scalartype(I) <: Integer ? T :
         # $manipulation_scalartype(I) <: Real ? float(T) : complex(T)
@@ -342,11 +344,11 @@ See also [`insertrightunit`](@ref insertrightunit(::AbstractTensorMap, ::Val{i})
 """
 function insertleftunit(
         t::AbstractTensorMap, ::Val{i} = Val(numind(t) + 1);
-        copy::Bool = false, conj::Bool = false, dual::Bool = false
+        copy::Bool = false, conj::Bool = false, dual::Bool = false,
     ) where {i}
     W = insertleftunit(space(t), Val(i); conj, dual)
     if t isa TensorMap
-        return TensorMap{scalartype(t)}(copy ? Base.copy(t.data) : t.data, W)
+        return TensorMapWithStorage{scalartype(t), storagetype(t)}(copy ? Base.copy(t.data) : t.data, W)
     else
         tdst = similar(t, W)
         for (c, b) in blocks(t)
@@ -371,11 +373,11 @@ See also [`insertleftunit`](@ref insertleftunit(::AbstractTensorMap, ::Val{i}) w
 """
 function insertrightunit(
         t::AbstractTensorMap, ::Val{i} = Val(numind(t));
-        copy::Bool = false, conj::Bool = false, dual::Bool = false
+        copy::Bool = false, conj::Bool = false, dual::Bool = false,
     ) where {i}
     W = insertrightunit(space(t), Val(i); conj, dual)
     if t isa TensorMap
-        return TensorMap{scalartype(t)}(copy ? Base.copy(t.data) : t.data, W)
+        return TensorMapWithStorage{scalartype(t), storagetype(t)}(copy ? Base.copy(t.data) : t.data, W)
     else
         tdst = similar(t, W)
         for (c, b) in blocks(t)
@@ -400,7 +402,7 @@ and [`insertrightunit`](@ref insertrightunit(::AbstractTensorMap, ::Val{i}) wher
 function removeunit(t::AbstractTensorMap, ::Val{i}; copy::Bool = false) where {i}
     W = removeunit(space(t), Val(i))
     if t isa TensorMap
-        return TensorMap{scalartype(t)}(copy ? Base.copy(t.data) : t.data, W)
+        return TensorMapWithStorage{scalartype(t), storagetype(t)}(copy ? Base.copy(t.data) : t.data, W)
     else
         tdst = similar(t, W)
         for (c, b) in blocks(t)
