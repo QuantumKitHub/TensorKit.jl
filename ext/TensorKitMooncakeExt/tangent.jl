@@ -115,25 +115,21 @@ Mooncake._add_to_primal_internal(c::Mooncake.MaybeCache, p::TensorMap, t::Tensor
     TensorMap(Mooncake._add_to_primal_internal(c, p.data, t.data, unsafe), space(p))
 function Mooncake.tangent_to_primal_internal!!(p::TensorMap, t::TensorMap, c::Mooncake.MaybeCache)
     data = Mooncake.tangent_to_primal_internal!!(p.data, t.data, c)
-    data === p.data || copy!(p.data, data)
-    return p
+    return data === p.data ? p : TensorMap(data, space(p))
 end
 function Mooncake.primal_to_tangent_internal!!(t::TensorMap, p::TensorMap, c::Mooncake.MaybeCache)
     data = Mooncake.primal_to_tangent_internal!!(t.data, p.data, c)
-    data === t.data || copy!(t.data, data)
-    return t
+    return data === t.data ? t : TensorMap(data, space(t))
 end
 Mooncake._add_to_primal_internal(c::Mooncake.MaybeCache, p::DiagonalTensorMap, t::DiagonalTensorMap, unsafe::Bool) =
     DiagonalTensorMap(Mooncake._add_to_primal_internal(c, p.data, t.data, unsafe), space(p))
 function Mooncake.tangent_to_primal_internal!!(p::DiagonalTensorMap, t::DiagonalTensorMap, c::Mooncake.MaybeCache)
     data = Mooncake.tangent_to_primal_internal!!(p.data, t.data, c)
-    data === p.data || copy!(p.data, data)
-    return p
+    return data === p.data ? p : DiagonalTensorMap(data, space(p, 1))
 end
 function Mooncake.primal_to_tangent_internal!!(t::DiagonalTensorMap, p::DiagonalTensorMap, c::Mooncake.MaybeCache)
     data = Mooncake.primal_to_tangent_internal!!(t.data, p.data, c)
-    data === t.data || copy!(t.data, data)
-    return p
+    return data === t.data ? t : DiagonalTensorMap(data, space(t, 1))
 end
 
 # to convert from/to chainrules tangents
