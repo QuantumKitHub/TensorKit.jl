@@ -7,17 +7,6 @@ function CuTensorMap(t::TensorMap{T, S, N₁, N₂, A}) where {T, S, N₁, N₂,
     return CuTensorMap{T, S, N₁, N₂}(CuArray{T}(t.data), space(t))
 end
 
-#=function TensorKit.TensorMap{T, S₁, N₁, N₂, A}(
-    ::UndefInitializer, space::TensorMapSpace{S₂, N₁, N₂}
-) where {T, S₁, S₂ <: TensorKit.ElementarySpace, N₁, N₂, A <: CuVector{T}}
-        d = TensorKit.fusionblockstructure(space).totaldim
-        data = A(undef, d)
-    if !isbitstype(T)
-        zerovector!(data)
-    end
-    return TensorKit.TensorMap{T, S₂,  A}(data, space)
-end=#
-
 # project_symmetric! doesn't yet work for GPU types, so do this on the host, then copy
 function TensorKit.project_symmetric_and_check(::Type{T}, ::Type{A}, data::AbstractArray, V::TensorMapSpace; tol = sqrt(eps(real(float(eltype(data)))))) where {T, A <: CuVector{T}}
     h_t = TensorKit.TensorMapWithStorage{T, Vector{T}}(undef, V)
@@ -29,7 +18,7 @@ function TensorKit.project_symmetric_and_check(::Type{T}, ::Type{A}, data::Abstr
 end
 
 function TensorKit.blocktype(::Type{<:CuTensorMap{T, S}}) where {T, S}
-    return SubArray{T, 1, CuVector{T, CUDA.DeviceMemory}, Tuple{UnitRange{Int}}, true}
+    return CuMatrix{T, CUDA.DeviceMemory}
 end
 
 for (fname, felt) in ((:zeros, :zero), (:ones, :one))

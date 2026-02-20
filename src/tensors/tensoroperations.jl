@@ -419,10 +419,8 @@ end
 # Scalar implementation
 #-----------------------
 function scalar(t::AbstractTensorMap{T, S, 0, 0}) where {T, S}
-    Bs = blocks(t)
-    B_ends = collect.(map(last, Bs))
-    nz_B_ends = [!iszero.(B) for B in B_ends]
-    valid_Bs = filter(any, B_ends)
-    isempty(valid_Bs) && return zero(scalartype(t))
-    return only(last(first(valid_Bs)))
+    Bs = collect(blocks(t))
+    inds = findall(!iszero ∘ last, Bs)
+    isempty(inds) && return zero(scalartype(t))
+    return only(last(Bs[only(inds)]))
 end
