@@ -45,8 +45,7 @@ function DiagonalTensorMap{T}(::UndefInitializer, V::TensorMapSpace) where {T}
     return DiagonalTensorMap{T}(undef, domain(V))
 end
 function DiagonalTensorMap{T}(::UndefInitializer, V::ProductSpace) where {T}
-    length(V) == 1 ||
-        throw(ArgumentError("DiagonalTensorMap requires `numin(d) == numout(d) == 1`"))
+    length(V) == 1 || throw(ArgumentError("DiagonalTensorMap requires `numin(d) == numout(d) == 1`"))
     return DiagonalTensorMap{T}(undef, only(V))
 end
 function DiagonalTensorMap{T}(::UndefInitializer, V::S) where {T, S <: IndexSpace}
@@ -62,6 +61,10 @@ end
 
 function DiagonalTensorMap(data::DenseVector{T}, V::IndexSpace) where {T}
     return DiagonalTensorMap{T}(data, V)
+end
+function DiagonalTensorMap(data::DenseVector{T}, V::TensorMapSpace) where {T}
+    (numin(V) == numout(V) == 1) || throw(ArgumentError("DiagonalTensorMap requires `numin(d) == numout(d) == 1`"))
+    return DiagonalTensorMap{T}(data, V[1])
 end
 
 function DiagonalTensorMap(t::AbstractTensorMap{T, S, 1, 1}) where {T, S}
