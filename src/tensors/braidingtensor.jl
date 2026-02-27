@@ -176,7 +176,7 @@ function add_transform!(
         fusiontreetransform,
         α::Number, β::Number, backend::AbstractBackend...
     ) where {T, S}
-    tsrc_map = TensorMapWithStorage{scalartype(tdst), storagetype(tdst)}(undef, (tsrc.V2 ⊗ tsrc.V1) ← (tsrc.V1 ⊗ tsrc.V2))
+    tsrc_map = similar(tdst, storagetype(tdst), space(tsrc))
     copy!(tsrc_map, tsrc)
     return add_transform!(
         tdst, tsrc_map, (p₁, p₂), fusiontreetransform, α, β,

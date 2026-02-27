@@ -105,30 +105,6 @@ function TensorKit.scalar(t::CuTensorMap{T, S, 0, 0}) where {T, S}
     return isempty(inds) ? zero(scalartype(t)) : @allowscalar @inbounds t.data[only(inds)]
 end
 
-function Base.convert(
-        TT::Type{TensorMap{T, S, N₁, N₂, A}},
-        t::TensorMap{T, S, N₁, N₂, AA}
-    ) where {T, S, N₁, N₂, A <: CuArray{T}, AA}
-    if typeof(t) === TT
-        return t
-    else
-        tnew = TT(undef, space(t))
-        return copy!(tnew, t)
-    end
-end
-
-function Base.convert(
-        TT::Type{TensorMap{T, S, N₁, N₂, A}},
-        t::AdjointTensorMap
-    ) where {T, S, N₁, N₂, A <: CuArray{T}}
-    if typeof(t) === TT
-        return t
-    else
-        tnew = TT(undef, space(t))
-        return copy!(tnew, t)
-    end
-end
-
 function LinearAlgebra.isposdef(t::CuTensorMap)
     domain(t) == codomain(t) ||
         throw(SpaceMismatch("`isposdef` requires domain and codomain to be the same"))
@@ -154,11 +130,8 @@ function Base.promote_rule(
     return CuTensorMap{T, S, N₁, N₂}
 end
 
-TensorKit.promote_storage_rule(::Type{CuArray{T, N}}, ::Type{<:CuArray{T, N}}) where {T, N} =
+TensorKit.promote_storage_rule(::Type{<:CuArray{T, N}}, ::Type{<:CuArray{T, N}}) where {T, N} =
     CuArray{T, N, CUDA.default_memory}
-TensorKit.promote_storage_rule(::Type{<:CuArray{T, N}}, ::Type{CuArray{T, N}}) where {T, N} =
-    CuArray{T, N, CUDA.default_memory}
-
 
 # CuTensorMap exponentation:
 function TensorKit.exp!(t::CuTensorMap)
