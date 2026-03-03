@@ -18,6 +18,5 @@ using Random
 
 include("cutensormap.jl")
 include("truncation.jl")
-include("auxiliary.jl")
 
 end
