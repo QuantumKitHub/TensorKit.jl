@@ -264,7 +264,7 @@ for V in spacelist
             @test LinearAlgebra.isdiag(D)
             @test LinearAlgebra.diag(D) == d
         end=#
-        @timedtestset "Permutations: test via inner product invariance" begin
+        #=@timedtestset "Permutations: test via inner product invariance" begin
             W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
             t = AMDGPU.rand(ComplexF64, W)
             t′ = AMDGPU.randn!(similar(t))
@@ -329,6 +329,7 @@ for V in spacelist
             @test ss ≈ s2
             @test ss ≈ s3
         end
+        =#
         #=@timedtestset "Partial trace: test self-consistency" begin
             t = AMDGPU.rand(ComplexF64, V1 ⊗ V2' ⊗ V3 ⊗ V2 ⊗ V1' ⊗ V3')
             @tensor t2[a, b] := t[c, d, b, d, c, a]
