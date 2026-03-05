@@ -706,7 +706,7 @@ function _add_transform_multi!(
 
     # Resummation into a second buffer using BLAS
     buffer_dst = StridedView(buffer1, (blocksize, rows), (1, blocksize), 0)
-    mul!(buffer_dst, buffer_src, basistransform, α, Zero())
+    mul!(buffer_dst, buffer_src, StridedView(basistransform), α, Zero())
 
     # Filling up the output
     for (i, struct_dst) in enumerate(structs_dst)
