@@ -57,11 +57,11 @@ function _interleave(a::NTuple{N}, b::NTuple{N}) where {N}
     return (a[1], b[1], _interleave(tail(a), tail(b))...)
 end
 
-_copyto!(A, B) = copyto!(A, B)
+_copyto!(A, B) = copy!(A, B)
 
 # Low-overhead implementation of `copyto!` for specific case of `stride(B, 1) < stride(B, 2)`
 # for CPU-hosted Arrays # used in indexmanipulations: avoids the overhead of Strided.jl
-function _copyto!(A::StridedView{TA, 1, AA}, B::StridedView{TB, 2, BB}) where {TA <: Number, TB <: Number, AA <: DenseArray{TA}, BB <: DenseArray{TB}}
+function _copyto!(A::StridedView{TA, 1, AA}, B::StridedView{TB, 2, BB}) where {TA <: Number, TB <: Number, AA <: Memory{TA}, BB <: Memory{TB}}
     length(A) == length(B) || throw(DimensionMismatch(lazy"length of A ($(length(A))) does not match length of B ($(length(B))"))
 
     Adata = parent(A)
