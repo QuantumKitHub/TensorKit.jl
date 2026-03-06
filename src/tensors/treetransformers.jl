@@ -46,7 +46,7 @@ function AbelianTreeTransformer(transform, p, Vdst, Vsrc)
 end
 
 const _GenericTransformerData{T, N} = Tuple{
-    DenseMatrix{T},
+    Matrix{T},
     Tuple{NTuple{N, Int}, Vector{Tuple{NTuple{N, Int}, Int}}},
     Tuple{NTuple{N, Int}, Vector{Tuple{NTuple{N, Int}, Int}}},
 }
