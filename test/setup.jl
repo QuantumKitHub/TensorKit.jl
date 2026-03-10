@@ -15,7 +15,7 @@ using TensorKit: ℙ, PlanarTrivial
 using TensorKitSectors
 using TensorOperations: IndexTuple, Index2Tuple
 using Base.Iterators: take, product
-using TupleTools
+using TupleTools, FiniteDifferences
 
 Random.seed!(123456)
 
