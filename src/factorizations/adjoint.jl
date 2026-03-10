@@ -81,6 +81,23 @@ for (left_f, right_f) in zip(
     end
 end
 
+# 2-arg functions
+for (left_f, right_f) in zip(
+        (:qr_full, :qr_compact),
+        (:lq_full, :lq_compact)
+    )
+    left_f! = Symbol(left_f, :!)
+    right_f! = Symbol(right_f, :!)
+    @eval function MAK.$left_f!(t::AdjointTensorMap, F, alg::MAK.Algorithm{:Householder})
+        F′ = $right_f!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
+        return reverse(adjoint.(F′))
+    end
+    @eval function MAK.$right_f!(t::AdjointTensorMap, F, alg::MAK.Algorithm{:Householder})
+        F′ = $left_f!(adjoint(t), reverse(adjoint.(F)), _adjoint(alg))
+        return reverse(adjoint.(F′))
+    end
+end
+
 # 3-arg functions
 for f in (:svd_full, :svd_compact, :svd_trunc)
     f! = Symbol(f, :!)
