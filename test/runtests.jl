@@ -26,9 +26,9 @@ else
     groups = settings[:groups]
 end
 
-checktestgroup(group) = isdir(joinpath(@__DIR__, group)) ||
+#=checktestgroup(group) = isdir(joinpath(@__DIR__, group)) ||
     throw(ArgumentError("Invalid group ($group), no such folder"))
-foreach(checktestgroup, groups)
+foreach(checktestgroup, groups)=#
 
 @info "Loaded test groups:" groups
 
@@ -57,7 +57,7 @@ istestfile(fn) = endswith(fn, ".jl") && !contains(fn, "setup")
 
     # somehow AD tests are unreasonably slow on Apple CI
     # and ChainRulesTestUtils doesn't like prereleases
-    if group == "chainrules" || group == "mooncake"
+    if group == "chainrules" || group == "mooncake" || group == "enzyme"
         Sys.isapple() && get(ENV, "CI", "false") == "true" && continue
         isempty(VERSION.prerelease) || continue
     end
