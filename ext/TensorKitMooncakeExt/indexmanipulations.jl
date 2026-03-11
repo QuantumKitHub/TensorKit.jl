@@ -283,7 +283,7 @@ for insertunit in (:insertleftunit, :insertrightunit)
                 tsrc_cache = copy(tsrc)
                 tdst_Δtdst = CoDual(
                     $insertunit(tsrc, ival; kwargs...),
-                    $insertunit(Mooncake.tangent(tsrc_Δtsrc), ival; kwargs...)
+                    $insertunit(Δtsrc, ival; kwargs...)
                 )
             else
                 tsrc_cache = nothing
