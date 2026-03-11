@@ -281,7 +281,6 @@ for insertunit in (:insertleftunit, :insertrightunit)
             # sharing address spaces
             if tsrc isa TensorMap && !get(kwargs, :copy, false)
                 tsrc_cache = copy(tsrc)
-                tdst = $insertunit(tsrc, ival; kwargs...)
                 tdst_Δtdst = CoDual(
                     $insertunit(tsrc, ival; kwargs...),
                     $insertunit(Mooncake.tangent(tsrc_Δtsrc), ival; kwargs...)
