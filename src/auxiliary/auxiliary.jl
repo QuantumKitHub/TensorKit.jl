@@ -61,7 +61,13 @@ _copyto!(A, B) = copy!(A, B)
 
 # Low-overhead implementation of `copyto!` for specific case of `stride(B, 1) < stride(B, 2)`
 # for CPU-hosted Arrays # used in indexmanipulations: avoids the overhead of Strided.jl
-function _copyto!(A::StridedView{TA, 1, AA}, B::StridedView{TB, 2, BB}) where {TA <: Number, TB <: Number, AA <: Memory{TA}, BB <: Memory{TB}}
+
+@static if VERSION < v"1.11" # TODO: remove once support for v1.10 is dropped
+    const AT = Array
+else
+    const AT = Memory
+end
+function _copyto!(A::StridedView{TA, 1, <:AT}, B::StridedView{TB, 2, <:AT}) where {TA <: Number, TB <: Number}
     length(A) == length(B) || throw(DimensionMismatch(lazy"length of A ($(length(A))) does not match length of B ($(length(B))"))
 
     Adata = parent(A)
