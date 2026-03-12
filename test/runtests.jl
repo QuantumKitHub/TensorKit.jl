@@ -57,9 +57,17 @@ istestfile(fn) = endswith(fn, ".jl") && !contains(fn, "setup")
 
     # somehow AD tests are unreasonably slow on Apple CI
     # and ChainRulesTestUtils doesn't like prereleases
-    if group == "chainrules" || group == "mooncake"
+    if group == "chainrules" || group == "mooncake" || group == "enzyme"
         Sys.isapple() && get(ENV, "CI", "false") == "true" && continue
         isempty(VERSION.prerelease) || continue
+    end
+
+    if group == "enzyme"
+        include("enzyme/factorizations.jl")
+        include("enzyme/tensoroperations.jl")
+        include("enzyme/vectorinterface.jl")
+        include("enzyme/linalg.jl")
+        include("enzyme/indexmanipulations.jl")
     end
 
     grouppath = joinpath(@__DIR__, group)
