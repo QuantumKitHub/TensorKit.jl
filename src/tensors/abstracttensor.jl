@@ -53,9 +53,11 @@ storagetype(t) = storagetype(typeof(t))
 function storagetype(::Type{T}) where {T <: AbstractTensorMap}
     if T isa Union
         # attempt to be slightly more specific by promoting unions
-        Ma = storagetype(T.a)
-        Mb = storagetype(T.b)
-        return promote_storagetype(Ma, Mb)
+        return promote_storagetype(T.a, T.b)
+    elseif eltype(T) isa Union
+        # attempt to be slightly more specific by promoting unions
+        TU = eltype(T)
+        return promote_storagetype(TU.a, TU.b)
     else
         # fallback definition by using scalartype
         return similarstoragetype(scalartype(T))
@@ -103,8 +105,9 @@ similarstoragetype(X::Type, ::Type{T}) where {T <: Number} =
 
 # implement on tensors
 similarstoragetype(::Type{TT}) where {TT <: AbstractTensorMap} = similarstoragetype(storagetype(TT))
-similarstoragetype(::Type{TT}, ::Type{T}) where {TT <: AbstractTensorMap, T <: Number} =
-    similarstoragetype(storagetype(TT), T)
+function similarstoragetype(::Type{TT}, ::Type{T}) where {TT <: AbstractTensorMap, T <: Number}
+    return similarstoragetype(storagetype(TT), T)
+end
 
 # implement on arrays
 similarstoragetype(::Type{A}) where {A <: DenseVector{<:Number}} = A
