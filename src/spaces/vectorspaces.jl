@@ -376,18 +376,30 @@ abstract type CompositeSpace{S <: ElementarySpace} <: VectorSpace end
 InnerProductStyle(::Type{<:CompositeSpace{S}}) where {S} = InnerProductStyle(S)
 
 """
-    spacetype(a) -> Type{S<:IndexSpace}
-    spacetype(::Type) -> Type{S<:IndexSpace}
+    spacetype(a) -> Type{S <: IndexSpace}
+    spacetype(::Type) -> Type{S <: IndexSpace}
 
-Return the type of the elementary space `S` of object `a` (e.g. a tensor). Also works in
-type domain.
+Return the type of the elementary space `S` of object `a` (e.g. a tensor).
+Also works in type domain.
 """
 spacetype(x) = spacetype(typeof(x))
-function spacetype(::Type{T}) where {T}
-    throw(MethodError(spacetype, (T,)))
-end
+spacetype(::Type{T}) where {T} = throw(MethodError(spacetype, (T,)))
 spacetype(::Type{E}) where {E <: ElementarySpace} = E
 spacetype(::Type{S}) where {E, S <: CompositeSpace{E}} = E
+
+"""
+    check_spacetype(Bool, x, y, z...) -> Bool
+    check_spacetype(x, y, z...) -> Type{<:IndexSpace}
+
+Check whether the given inputs have matching spacetypes.
+The first signature returns a `Bool` to indicate whether all spacetypes are equal,
+while the second will return the spacetype if all types are equal, and throw a [`SpaceMismatch`](@ref) if not.
+"""
+check_spacetype(::Type{Bool}, x, y, z...) = _allequal(spacetype, (x, y, z...))
+@noinline function check_spacetype(x, y, z...)
+    check_spacetype(Bool, x, y, z...) || throw(SpaceMismatch("incompatible space types"))
+    return spacetype(x)
+end
 
 # make ElementarySpace instances behave similar to ProductSpace instances
 blocksectors(V::ElementarySpace) = collect(sectors(V))

@@ -38,18 +38,157 @@ function InnerProductStyle(::Type{TT}) where {TT <: AbstractTensorMap}
     return InnerProductStyle(spacetype(TT))
 end
 
+# storage types and promotion system
+# ----------------------------------
 @doc """
     storagetype(t::AbstractTensorMap) -> Type{A<:AbstractVector}
     storagetype(T::Type{<:AbstractTensorMap}) -> Type{A<:AbstractVector}
 
 Return the type of vector that stores the data of a tensor.
+If this is not overloaded for a given tensor type, the default value of `storagetype(scalartype(t))` is returned.
+
+See also [`similarstoragetype`](@ref).
 """ storagetype
-
-similarstoragetype(TT::Type{<:AbstractTensorMap}) = similarstoragetype(TT, scalartype(TT))
-
-function similarstoragetype(TT::Type{<:AbstractTensorMap}, ::Type{T}) where {T}
-    return Core.Compiler.return_type(similar, Tuple{storagetype(TT), Type{T}})
+storagetype(t) = storagetype(typeof(t))
+function storagetype(::Type{T}) where {T <: AbstractTensorMap}
+    if T isa Union
+        # attempt to be slightly more specific by promoting unions
+        Ma = storagetype(T.a)
+        Mb = storagetype(T.b)
+        return promote_storagetype(Ma, Mb)
+    else
+        # fallback definition by using scalartype
+        return similarstoragetype(scalartype(T))
+    end
 end
+storagetype(T::Type) = throw(MethodError(storagetype, T))
+
+# storage type determination and promotion - hooks for specializing
+# the default implementation tries to leverarge inference and `similar`
+@doc """
+    similarstoragetype(t, [T = scalartype(t)]) -> Type{<:DenseVector{T}}
+    similarstoragetype(TT, [T = scalartype(TT)]) -> Type{<:DenseVector{T}}
+    similarstoragetype(A, [T = scalartype(A)]) -> Type{<:DenseVector{T}}
+    similarstoragetype(D, [T = scalartype(D)]) -> Type{<:DenseVector{T}}
+
+    similarstoragetype(T::Type{<:Number}) -> Vector{T}
+
+For a given tensor `t`, tensor type `TT <: AbstractTensorMap`, array type `A <: AbstractArray`,
+or sector dictionary type `D <: AbstractDict{<:Sector, <:AbstractMatrix}`, compute an appropriate
+storage type for tensors. Optionally, a different scalar type `T` can be supplied as well.
+
+This function determines the type of newly allocated `TensorMap`s throughout TensorKit.jl.
+It does so by leveraging type inference and calls to `Base.similar` for automatically determining
+appropriate storage types. Additionally this registers the default storage type when only a type
+`T <: Number` is provided, which is `Vector{T}`.
+
+!!! note
+    There is a slight semantic difference in the single and two-argument version. The former is
+    used in constructor-like calls, and therefore will return the exact same type for a `DenseVector`
+    input. The latter is used in `similar`-like calls, and therefore will return the type of calling
+    `similar` on the given `DenseVector`, which need not coincide with the original type.
+
+See also [`promote_storagetype`](@ref).
+""" similarstoragetype
+
+# implement in type domain
+similarstoragetype(t) = similarstoragetype(typeof(t))
+similarstoragetype(t, ::Type{T}) where {T <: Number} = similarstoragetype(typeof(t), T)
+
+# avoid infinite recursion
+similarstoragetype(X::Type) =
+    throw(ArgumentError("Cannot determine a storagetype for tensor / array type `$X`"))
+similarstoragetype(X::Type, ::Type{T}) where {T <: Number} =
+    throw(ArgumentError("Cannot determine a storagetype for tensor / array type `$X` and/or scalar type `$T`"))
+
+# implement on tensors
+similarstoragetype(::Type{TT}) where {TT <: AbstractTensorMap} = similarstoragetype(storagetype(TT))
+similarstoragetype(::Type{TT}, ::Type{T}) where {TT <: AbstractTensorMap, T <: Number} =
+    similarstoragetype(storagetype(TT), T)
+
+# implement on arrays
+similarstoragetype(::Type{A}) where {A <: DenseVector{<:Number}} = A
+Base.@assume_effects :foldable similarstoragetype(::Type{A}) where {A <: AbstractArray{<:Number}} =
+    Core.Compiler.return_type(similar, Tuple{A, Int})
+Base.@assume_effects :foldable similarstoragetype(::Type{A}, ::Type{T}) where {A <: AbstractArray, T <: Number} =
+    Core.Compiler.return_type(similar, Tuple{A, Type{T}, Int})
+
+# implement on sectordicts
+similarstoragetype(::Type{D}) where {D <: AbstractDict{<:Sector, <:AbstractMatrix}} =
+    similarstoragetype(valtype(D))
+similarstoragetype(::Type{D}, ::Type{T}) where {D <: AbstractDict{<:Sector, <:AbstractMatrix}, T <: Number} =
+    similarstoragetype(valtype(D), T)
+
+# default storage type for numbers
+similarstoragetype(::Type{T}) where {T <: Number} = Vector{T}
+
+@doc """
+    promote_storagetype([T], A, B, C...)
+    promote_storagetype([T], TA, TB, TC...)
+
+Determine an appropriate storage type for the combination of tensors `A` and `B`, or tensors of type `TA` and `TB`.
+Optionally, a scalartype `T` for the destination can be supplied that might differ from the inputs.
+""" promote_storagetype
+
+@inline promote_storagetype(A::AbstractTensorMap, B::AbstractTensorMap, Cs::AbstractTensorMap...) =
+    promote_storagetype(storagetype(A), storagetype(B), map(storagetype, Cs)...)
+@inline promote_storagetype(::Type{T}, A::AbstractTensorMap, B::AbstractTensorMap, Cs::AbstractTensorMap...) where {T <: Number} =
+    promote_storagetype(similarstoragetype(A, T), similarstoragetype(B, T), map(Base.Fix2(similarstoragetype, T), Cs)...)
+
+@inline function promote_storagetype(
+        ::Type{A}, ::Type{B}, Cs::Type{<:AbstractTensorMap}...
+    ) where {A <: AbstractTensorMap, B <: AbstractTensorMap}
+    return promote_storagetype(storagetype(A), storagetype(B), map(storagetype, Cs)...)
+end
+@inline function promote_storagetype(
+        ::Type{T}, ::Type{A}, ::Type{B}, Cs::Type{<:AbstractTensorMap}...
+    ) where {T <: Number, A <: AbstractTensorMap, B <: AbstractTensorMap}
+    return promote_storagetype(similarstoragetype(A, T), similarstoragetype(B, T), map(Base.Fix2(similarstoragetype, T), Cs)...)
+end
+
+# promotion system in the same spirit as base/promotion.jl
+promote_storagetype(::Type{Base.Bottom}, ::Type{Base.Bottom}) = Base.Bottom
+promote_storagetype(::Type{T}, ::Type{T}) where {T} = T
+promote_storagetype(::Type{T}, ::Type{Base.Bottom}) where {T} = T
+promote_storagetype(::Type{Base.Bottom}, ::Type{T}) where {T} = T
+
+function promote_storagetype(::Type{T}, ::Type{S}) where {T, S}
+    @inline
+    # Try promote_storage_rule in both orders. Typically only one is defined,
+    # and there is a fallback returning Bottom below, so the common case is
+    #   promote_storagetype(T, S) =>
+    #   promote_storage_result(T, S, result, Bottom) =>
+    #   typejoin(result, Bottom) => result
+    return promote_storage_result(T, S, promote_storage_rule(T, S), promote_storage_rule(S, T))
+end
+
+@inline promote_storagetype(T, S, U) = promote_storagetype(promote_storagetype(T, S), U)
+@inline promote_storagetype(T, S, U, V...) = promote_storagetype(promote_storagetype(T, S), U, V...)
+
+@doc """
+    promote_storage_rule(type1, type2)
+
+Specifies what type should be used by [`promote_storagetype`](@ref) when given values of types `type1` and
+`type2`. This function should not be called directly, but should have definitions added to
+it for new types as appropriate.
+""" promote_storage_rule
+
+promote_storage_rule(::Type, ::Type) = Base.Bottom
+# Define some methods to avoid needing to enumerate unrelated possibilities when presented
+# with Type{<:T}, and return a value in general accordance with the result given by promote_type
+promote_storage_rule(::Type{Base.Bottom}, slurp...) = Base.Bottom
+promote_storage_rule(::Type{Base.Bottom}, ::Type{Base.Bottom}, slurp...) = Base.Bottom # not strictly necessary, since the next method would match unambiguously anyways
+promote_storage_rule(::Type{Base.Bottom}, ::Type{T}, slurp...) where {T} = T
+promote_storage_rule(::Type{T}, ::Type{Base.Bottom}, slurp...) where {T} = T
+
+promote_storage_result(::Type, ::Type, ::Type{T}, ::Type{S}) where {T, S} = (@inline; promote_storagetype(T, S))
+# If no promote_storage_rule is defined, both directions give Bottom => error
+promote_storage_result(T::Type, S::Type, ::Type{Base.Bottom}, ::Type{Base.Bottom}) =
+    throw(ArgumentError("No promotion rule defined for storagetype `$T` and `$S`"))
+
+# promotion rules for common vector types
+promote_storage_rule(::Type{T}, ::Type{S}) where {T <: DenseVector, S <: DenseVector} =
+    T === S ? T : throw(ArgumentError("No promotion rule defined for storagetype `$T` and `$S`"))
 
 # tensor characteristics: space and index information
 #-----------------------------------------------------
@@ -173,9 +312,8 @@ end
 # tensor characteristics: work on instances and pass to type
 #------------------------------------------------------------
 InnerProductStyle(t::AbstractTensorMap) = InnerProductStyle(typeof(t))
-storagetype(t::AbstractTensorMap) = storagetype(typeof(t))
+
 blocktype(t::AbstractTensorMap) = blocktype(typeof(t))
-similarstoragetype(t::AbstractTensorMap, T = scalartype(t)) = similarstoragetype(typeof(t), T)
 
 numout(t::AbstractTensorMap) = numout(typeof(t))
 numin(t::AbstractTensorMap) = numin(typeof(t))
@@ -491,56 +629,79 @@ The structure may be specified either as a single `HomSpace` argument or as `cod
 
 By default, this will result in `TensorMap{T}(undef, V)` when custom objects do not
 specialize this method.
+
+See also [`similar_diagonal`](@ref).
 """ Base.similar(::AbstractTensorMap, args...)
 
 function Base.similar(
-        t::AbstractTensorMap, ::Type{T}, codomain::TensorSpace{S}, domain::TensorSpace{S}
-    ) where {T, S}
+        t::AbstractTensorMap, ::Type{T}, codomain::TensorSpace, domain::TensorSpace
+    ) where {T}
     return similar(t, T, codomain ← domain)
 end
+
 # 3 arguments
-function Base.similar(
-        t::AbstractTensorMap, codomain::TensorSpace{S}, domain::TensorSpace{S}
-    ) where {S}
-    return similar(t, similarstoragetype(t), codomain ← domain)
-end
-function Base.similar(t::AbstractTensorMap, ::Type{T}, codomain::TensorSpace) where {T}
-    return similar(t, T, codomain ← one(codomain))
-end
+Base.similar(t::AbstractTensorMap, codomain::TensorSpace, domain::TensorSpace) =
+    similar(t, similarstoragetype(t, scalartype(t)), codomain ← domain)
+Base.similar(t::AbstractTensorMap, ::Type{T}, codomain::TensorSpace) where {T} =
+    similar(t, T, codomain ← one(codomain))
+
 # 2 arguments
-function Base.similar(t::AbstractTensorMap, codomain::TensorSpace)
-    return similar(t, similarstoragetype(t), codomain ← one(codomain))
-end
-Base.similar(t::AbstractTensorMap, P::TensorMapSpace) = similar(t, storagetype(t), P)
+Base.similar(t::AbstractTensorMap, codomain::TensorSpace) =
+    similar(t, codomain ← one(codomain))
+Base.similar(t::AbstractTensorMap, V::TensorMapSpace) = similar(t, scalartype(t), V)
 Base.similar(t::AbstractTensorMap, ::Type{T}) where {T} = similar(t, T, space(t))
 # 1 argument
-Base.similar(t::AbstractTensorMap) = similar(t, similarstoragetype(t), space(t))
+Base.similar(t::AbstractTensorMap) = similar(t, scalartype(t), space(t))
 
 # generic implementation for AbstractTensorMap -> returns `TensorMap`
-function Base.similar(t::AbstractTensorMap, ::Type{TorA}, P::TensorMapSpace{S}) where {TorA, S}
-    if TorA <: Number
-        T = TorA
-        A = similarstoragetype(t, T)
-    elseif TorA <: DenseVector
-        A = TorA
-        T = scalartype(A)
-    else
-        throw(ArgumentError("Type $TorA not supported for similar"))
-    end
-
-    N₁ = length(codomain(P))
-    N₂ = length(domain(P))
-    return TensorMap{T, S, N₁, N₂, A}(undef, P)
+function Base.similar(t::AbstractTensorMap, ::Type{TorA}, V::TensorMapSpace) where {TorA}
+    A = TorA <: Number ? similarstoragetype(t, TorA) : TorA
+    TT = tensormaptype(spacetype(V), numout(V), numin(V), A)
+    return TT(undef, V)
 end
 
 # implementation in type-domain
-function Base.similar(::Type{TT}, P::TensorMapSpace) where {TT <: AbstractTensorMap}
-    return TensorMap{scalartype(TT)}(undef, P)
+function Base.similar(::Type{TT}, V::TensorMapSpace) where {TT <: AbstractTensorMap}
+    TT′ = tensormaptype(spacetype(V), numout(V), numin(V), similarstoragetype(TT, scalartype(TT)))
+    return TT′(undef, V)
 end
-function Base.similar(
-        ::Type{TT}, cod::TensorSpace{S}, dom::TensorSpace{S}
-    ) where {TT <: AbstractTensorMap, S}
-    return TensorMap{scalartype(TT)}(undef, cod, dom)
+Base.similar(::Type{TT}, cod::TensorSpace, dom::TensorSpace) where {TT <: AbstractTensorMap} =
+    similar(TT, cod ← dom)
+
+# similar diagonal
+# ----------------
+# The implementation is again written for similar_diagonal(t, TorA, V::ElementarySpace) -> DiagonalTensorMap
+# and all other methods are just filling in default arguments
+@doc """
+    similar_diagonal(t::AbstractTensorMap, [AorT=scalartype(t)], [V::ElementarySpace])
+
+Creates an uninitialized mutable diagonal tensor with the given scalar or storagetype `AorT` and
+structure `V ← V`, based on the source tensormap. The second argument is optional and defaults
+to the given tensor's `storagetype`, while the third argument can only be omitted for square
+input tensors of space `V ← V`, to conform with the diagonal structure.
+
+By default, this will result in `DiagonalTensorMap{T}(undef, V)` when custom objects do not
+specialize this method. Furthermore, the method will throw if the provided space is not compatible
+with a diagonal structure.
+
+See also [`Base.similar`](@ref).
+""" similar_diagonal(::AbstractTensorMap, args...)
+
+# 3 arguments
+function similar_diagonal(t::AbstractTensorMap, ::Type{TorA}, V::ElementarySpace) where {TorA}
+    A = similarstoragetype(TorA <: Number ? similarstoragetype(t, TorA) : TorA)
+    return DiagonalTensorMap{scalartype(A), spacetype(V), A}(undef, V)
+end
+
+similar_diagonal(t::AbstractTensorMap) = similar_diagonal(t, scalartype(t), _diagspace(t))
+similar_diagonal(t::AbstractTensorMap, V::ElementarySpace) = similar_diagonal(t, scalartype(t), V)
+similar_diagonal(t::AbstractTensorMap, T::Type) = similar_diagonal(t, T, _diagspace(t))
+
+function _diagspace(t)
+    cod, dom = codomain(t), domain(t)
+    length(cod) == 1 && cod == dom ||
+        throw(ArgumentError("space does not support a DiagonalTensorMap"))
+    return only(cod)
 end
 
 # Equality and approximality
@@ -609,8 +770,8 @@ function Base.imag(t::AbstractTensorMap)
     end
 end
 
-# Conversion to Array:
-#----------------------
+# Conversion to/from Array:
+#--------------------------
 # probably not optimized for speed, only for checking purposes
 function Base.convert(::Type{Array}, t::AbstractTensorMap)
     I = sectortype(t)
@@ -631,9 +792,55 @@ function Base.convert(::Type{Array}, t::AbstractTensorMap)
     end
 end
 
+"""
+    project_symmetric!(t::AbstractTensorMap, data::AbstractArray) -> t
+
+Project the data from a dense array `data` into the tensor map `t`. This function discards 
+any data that does not fit the symmetry structure of `t`.
+"""
+function project_symmetric!(t::AbstractTensorMap, data::AbstractArray)
+    # dimension check
+    codom, dom = codomain(t), domain(t)
+    arraysize = dims(t)
+    matsize = (dim(codom), dim(dom))
+    (size(data) == arraysize || size(data) == matsize) ||
+        throw(DimensionMismatch("input data has incompatible size for the given tensor"))
+    data = reshape(collect(data), arraysize)
+
+    I = sectortype(t)
+    if I === Trivial && t isa TensorMap
+        copy!(t.data, reshape(data, length(t.data)))
+        return t
+    end
+
+    for ((f₁, f₂), subblock) in subblocks(t)
+        F = convert(Array, (f₁, f₂))
+        dataslice = sview(
+            data, axes(codomain(t), f₁.uncoupled)..., axes(domain(t), f₂.uncoupled)...
+        )
+        if FusionStyle(I) === UniqueFusion()
+            Fscalar = only(F) # contains a single element
+            scale!(subblock, dataslice, conj(Fscalar))
+        else
+            szbF = _interleave(size(F), size(subblock))
+            indset1 = ntuple(identity, numind(t))
+            indset2 = 2 .* indset1
+            indset3 = indset2 .- 1
+            TensorOperations.tensorcontract!(
+                subblock,
+                F, ((), indset1), true,
+                sreshape(dataslice, szbF), (indset3, indset2), false,
+                (indset1, ()),
+                inv(dim(f₁.coupled)), false
+            )
+        end
+    end
+
+    return t
+end
+
 # Show and friends
 # ----------------
-
 function Base.dims2string(V::HomSpace)
     str_cod = numout(V) == 0 ? "()" : join(dim.(codomain(V)), '×')
     str_dom = numin(V) == 0 ? "()" : join(dim.(domain(V)), '×')

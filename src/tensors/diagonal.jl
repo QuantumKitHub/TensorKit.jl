@@ -45,8 +45,7 @@ function DiagonalTensorMap{T}(::UndefInitializer, V::TensorMapSpace) where {T}
     return DiagonalTensorMap{T}(undef, domain(V))
 end
 function DiagonalTensorMap{T}(::UndefInitializer, V::ProductSpace) where {T}
-    length(V) == 1 ||
-        throw(ArgumentError("DiagonalTensorMap requires `numin(d) == numout(d) == 1`"))
+    length(V) == 1 || throw(ArgumentError("DiagonalTensorMap requires `numin(d) == numout(d) == 1`"))
     return DiagonalTensorMap{T}(undef, only(V))
 end
 function DiagonalTensorMap{T}(::UndefInitializer, V::S) where {T, S <: IndexSpace}
@@ -63,6 +62,10 @@ end
 function DiagonalTensorMap(data::DenseVector{T}, V::IndexSpace) where {T}
     return DiagonalTensorMap{T}(data, V)
 end
+function DiagonalTensorMap(data::DenseVector{T}, V::TensorMapSpace) where {T}
+    (numin(V) == numout(V) == 1) || throw(ArgumentError("DiagonalTensorMap requires `numin(d) == numout(d) == 1`"))
+    return DiagonalTensorMap{T}(data, V[1])
+end
 
 function DiagonalTensorMap(t::AbstractTensorMap{T, S, 1, 1}) where {T, S}
     isa(t, DiagonalTensorMap) && return t
@@ -78,9 +81,22 @@ function DiagonalTensorMap(t::AbstractTensorMap{T, S, 1, 1}) where {T, S}
     return d
 end
 
-Base.similar(d::DiagonalTensorMap) = DiagonalTensorMap(similar(d.data), d.domain)
-function Base.similar(d::DiagonalTensorMap, ::Type{T}) where {T <: Number}
-    return DiagonalTensorMap(similar(d.data, T), d.domain)
+Base.similar(d::DiagonalTensorMap) = similar_diagonal(d)
+Base.similar(d::DiagonalTensorMap, ::Type{T}) where {T} = similar_diagonal(d, T)
+
+similar_diagonal(d::DiagonalTensorMap) = DiagonalTensorMap(similar(d.data), d.domain)
+similar_diagonal(d::DiagonalTensorMap, ::Type{T}) where {T <: Number} =
+    DiagonalTensorMap(similar(d.data, T), d.domain)
+
+"""
+    DiagonalTensorMap(s::SectorVector)
+
+Construct a `DiagonalTensorMap` directly from a `SectorVector`,
+from which the codomain (assumed non-dual) is inferred automatically.
+"""
+function DiagonalTensorMap(s::SectorVector)
+    V = Vect[sectortype(s)](c => length(b) for (c, b) in blocks(s))
+    return DiagonalTensorMap(s.data, V)
 end
 
 # TODO: more constructors needed?
@@ -209,7 +225,29 @@ function permute(
         end
         return d′
     else
-        throw(ArgumentError("invalid permutation $((p₁, p₂)) for tensor in space $(space(d))"))
+        throw(ArgumentError(lazy"invalid permutation $((p₁, p₂)) for tensor in space $(space(d))"))
+    end
+end
+
+function LinearAlgebra.transpose(
+        d::DiagonalTensorMap, (p₁, p₂)::Index2Tuple{1, 1}; copy::Bool = false
+    )
+    if p₁ === (1,) && p₂ === (2,)
+        return copy ? Base.copy(d) : d
+    elseif p₁ === (2,) && p₂ === (1,) # transpose
+        if has_shared_permute(d, (p₁, p₂)) # tranpose for bosonic sectors
+            return DiagonalTensorMap(copy ? Base.copy(d.data) : d.data, dual(d.domain))
+        end
+        d′ = typeof(d)(undef, dual(d.domain))
+        for (c, b) in blocks(d)
+            f = only(fusiontrees(codomain(d), c))
+            ((f′, _), coeff) = only(transpose(f, f, p₁, p₂))
+            c′ = f′.coupled
+            scale!(block(d′, c′), b, coeff)
+        end
+        return d′
+    else
+        throw(ArgumentError(lazy"invalid transposition $((p₁, p₂)) for tensor in space $(space(d))"))
     end
 end
 
@@ -236,11 +274,9 @@ function TO.tensorcontract_type(
         B::DiagonalTensorMap, ::Index2Tuple{1, 1}, ::Bool,
         ::Index2Tuple{1, 1}
     )
-    M = similarstoragetype(A, TC)
-    M == similarstoragetype(B, TC) ||
-        throw(ArgumentError("incompatible storage types:\n$(M) ≠ $(similarstoragetype(B, TC))"))
-    spacetype(A) == spacetype(B) || throw(SpaceMismatch("incompatible space types"))
-    return DiagonalTensorMap{TC, spacetype(A), M}
+    S = check_spacetype(A, B)
+    M = promote_storagetype(promote_permute(TC, sectortype(S)), A, B)
+    return DiagonalTensorMap{scalartype(M), S, M}
 end
 
 function TO.tensoralloc(
@@ -265,6 +301,14 @@ function Base.one(d::DiagonalTensorMap)
 end
 function Base.zero(d::DiagonalTensorMap)
     return DiagonalTensorMap(zero.(d.data), d.domain)
+end
+
+function compose_dest(A::DiagonalTensorMap, B::DiagonalTensorMap)
+    S = check_spacetype(A, B)
+    M = promote_storagetype(TO.promote_contract(scalartype(A), scalartype(B), One), A, B)
+    TTC = DiagonalTensorMap{scalartype(M), S, M}
+    structure = codomain(A) ← domain(B)
+    return TO.tensoralloc(TTC, structure, Val(false))
 end
 
 function LinearAlgebra.mul!(

@@ -6,14 +6,13 @@ function TO.tensorstructure(t::AbstractTensorMap, iA::Int, conjA::Bool)
 end
 
 function TO.tensoralloc(
-        ::Type{TT}, structure::TensorMapSpace{S, N₁, N₂},
-        istemp::Val, allocator = TO.DefaultAllocator()
-    ) where {T, S, N₁, N₂, TT <: AbstractTensorMap{T, S, N₁, N₂}}
+        ::Type{TT}, structure::TensorMapSpace, istemp::Val, allocator = TO.DefaultAllocator()
+    ) where {TT <: AbstractTensorMap}
     A = storagetype(TT)
     dim = fusionblockstructure(structure).totaldim
     data = TO.tensoralloc(A, dim, istemp, allocator)
-    # return TT(data, structure)
-    return TensorMap{T}(data, structure)
+    TT′ = tensormaptype(spacetype(structure), numout(structure), numin(structure), typeof(data))
+    return TT′(data, structure)
 end
 
 function TO.tensorfree!(t::TensorMap, allocator = TO.DefaultAllocator())
@@ -55,8 +54,7 @@ end
 function TO.tensoradd_type(
         TC, A::AbstractTensorMap, ::Index2Tuple{N₁, N₂}, ::Bool
     ) where {N₁, N₂}
-    I = sectortype(A)
-    M = similarstoragetype(A, sectorscalartype(I) <: Real ? TC : complex(TC))
+    M = similarstoragetype(A, promote_permute(TC, sectortype(A)))
     return tensormaptype(spacetype(A), N₁, N₂, M)
 end
 
@@ -104,7 +102,7 @@ end
         VB::TensorMapSpace, pB::Index2Tuple, conjB::Bool,
         pAB::Index2Tuple
     )
-    spacetype(VC) == spacetype(VA) == spacetype(VB) || throw(SectorMismatch("incompatible sector types"))
+    check_spacetype(VC, VA, VB)
     TO.tensorcontract(VA, pA, conjA, VB, pB, conjB, pAB) == VC ||
         throw(
         SpaceMismatch(
@@ -154,12 +152,9 @@ function TO.tensorcontract_type(
         B::AbstractTensorMap, ::Index2Tuple, ::Bool,
         ::Index2Tuple{N₁, N₂}
     ) where {N₁, N₂}
-    spacetype(A) == spacetype(B) || throw(SpaceMismatch("incompatible space types"))
-    I = sectortype(A)
-    M = similarstoragetype(A, sectorscalartype(I) <: Real ? TC : complex(TC))
-    MB = similarstoragetype(B, sectorscalartype(I) <: Real ? TC : complex(TC))
-    M == MB || throw(ArgumentError("incompatible storage types:\n$(M) ≠ $(MB)"))
-    return tensormaptype(spacetype(A), N₁, N₂, M)
+    S = check_spacetype(A, B)
+    M = promote_storagetype(promote_permute(TC, sectortype(S)), A, B)
+    return tensormaptype(S, N₁, N₂, M)
 end
 
 function TO.tensorcontract_structure(
@@ -210,8 +205,7 @@ function trace_permute!(
         backend = TO.DefaultBackend()
     )
     # some input checks
-    (S = spacetype(tdst)) == spacetype(tsrc) ||
-        throw(SpaceMismatch("incompatible spacetypes"))
+    S = check_spacetype(tdst, tsrc)
     if !(BraidingStyle(sectortype(S)) isa SymmetricBraiding)
         throw(SectorMismatch("only tensors with symmetric braiding rules can be contracted; try `@planar` instead"))
     end

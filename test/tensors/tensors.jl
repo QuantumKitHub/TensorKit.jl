@@ -44,6 +44,15 @@ for V in spacelist
                 @test space(t) == (W ← one(W))
                 @test domain(t) == one(W)
                 @test typeof(t) == TensorMap{T, spacetype(t), 5, 0, Vector{T}}
+                # Array type input
+                t = @constinferred zeros(Vector{T}, W)
+                @test @constinferred(hash(t)) == hash(deepcopy(t))
+                @test scalartype(t) == T
+                @test norm(t) == 0
+                @test codomain(t) == W
+                @test space(t) == (W ← one(W))
+                @test domain(t) == one(W)
+                @test typeof(t) == TensorMap{T, spacetype(t), 5, 0, Vector{T}}
                 # blocks
                 bs = @constinferred blocks(t)
                 if !isempty(blocksectors(t)) # multifusion space ending on module gives empty data

@@ -14,7 +14,7 @@ export UnitStyle, SimpleUnit, GenericUnit
 export BraidingStyle, SymmetricBraiding, Bosonic, Fermionic, Anyonic, NoBraiding, HasBraiding
 export Trivial, Z2Irrep, Z3Irrep, Z4Irrep, ZNIrrep, LargeZNIrrep
 export ZNElement, Z2Element, Z3Element, Z4Element, DNIrrep, A4Irrep, U1Irrep, SU2Irrep, CU1Irrep
-export ProductSector
+export ProductSector, TimeReversed
 export FermionParity, FermionNumber, FermionSpin
 export FibonacciAnyon, IsingAnyon, IsingBimodule
 
@@ -144,7 +144,6 @@ using LinearAlgebra: norm, dot, normalize, normalize!, tr,
     eigen, eigen!, svd, svd!,
     isposdef, isposdef!, rank, cond,
     Diagonal, Hermitian
-using MatrixAlgebraKit
 
 import Base.Meta
 

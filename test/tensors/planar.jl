@@ -1,4 +1,5 @@
 using Test, TestExtras
+using Adapt
 using TensorKit
 using TensorKit: PlanarTrivial, ℙ
 using TensorKit: planaradd!, planartrace!, planarcontract!
@@ -19,6 +20,9 @@ using .TestSetup
         t2 = @constinferred BraidingTensor{ComplexF64}(W)
         @test scalartype(t2) == ComplexF64
         @test storagetype(t2) == Vector{ComplexF64}
+        t3 = @testinferred adapt(storagetype(t2), t1)
+        @test storagetype(t3) == storagetype(t2)
+        @test t3 == t2
 
         W2 = reverse(codomain(W)) ← domain(W)
         @test_throws SpaceMismatch BraidingTensor(W2)

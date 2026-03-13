@@ -57,9 +57,17 @@ end
 
 space(b::BraidingTensor) = b.adjoint ? b.V1 ⊗ b.V2 ← b.V2 ⊗ b.V1 : b.V2 ⊗ b.V1 ← b.V1 ⊗ b.V2
 
-# TODO: this will probably give issues with GPUs, so we should try to avoid
-# calling this method alltogether
-storagetype(::Type{BraidingTensor{T, S}}) where {T, S} = Vector{T}
+# specializations to ignore the storagetype of BraidingTensor
+promote_storagetype(::Type{A}, ::Type{B}) where {A <: BraidingTensor, B <: AbstractTensorMap} = storagetype(B)
+promote_storagetype(::Type{A}, ::Type{B}) where {A <: AbstractTensorMap, B <: BraidingTensor} = storagetype(A)
+promote_storagetype(::Type{A}, ::Type{B}) where {A <: BraidingTensor, B <: BraidingTensor} = storagetype(A)
+
+promote_storagetype(::Type{T}, ::Type{A}, ::Type{B}) where {T <: Number, A <: BraidingTensor, B <: AbstractTensorMap} =
+    similarstoragetype(B, T)
+promote_storagetype(::Type{T}, ::Type{A}, ::Type{B}) where {T <: Number, A <: AbstractTensorMap, B <: BraidingTensor} =
+    similarstoragetype(A, T)
+promote_storagetype(::Type{T}, ::Type{A}, ::Type{B}) where {T <: Number, A <: BraidingTensor, B <: BraidingTensor} =
+    similarstoragetype(A, T)
 
 function Base.getindex(b::BraidingTensor)
     sectortype(b) === Trivial || throw(SectorMismatch())
@@ -338,10 +346,10 @@ function planartrace!(
     return planartrace!(C, TensorMap(A), p, q, α, β, backend, allocator)
 end
 
-# function planarcontract!(C::AbstractTensorMap{S,N₁,N₂},
+# function planarcontract!(C::AbstractTensorMap{<:Any,S,N₁,N₂},
 #                          A::BraidingTensor{S},
 #                          (oindA, cindA)::Index2Tuple{0,4},
-#                          B::AbstractTensorMap{S},
+#                          B::AbstractTensorMap{<:Any,S},
 #                          (cindB, oindB)::Index2Tuple{4,<:Any},
 #                          (p1, p2)::Index2Tuple{N₁,N₂},
 #                          α::Number, β::Number,
@@ -406,8 +414,8 @@ end
 #     end
 #     return C
 # end
-# function planarcontract!(C::AbstractTensorMap{S,N₁,N₂},
-#                          A::AbstractTensorMap{S},
+# function planarcontract!(C::AbstractTensorMap{<:Any,S,N₁,N₂},
+#                          A::AbstractTensorMap{<:Any,S},
 #                          (oindA, cindA)::Index2Tuple{0,4},
 #                          B::BraidingTensor{S},
 #                          (cindB, oindB)::Index2Tuple{4,<:Any},
@@ -474,10 +482,10 @@ end
 #     end
 #     return C
 # end
-# function planarcontract!(C::AbstractTensorMap{S,N₁,N₂},
+# function planarcontract!(C::AbstractTensorMap{<:Any,S,N₁,N₂},
 #                          A::BraidingTensor{S},
 #                          (oindA, cindA)::Index2Tuple{1,3},
-#                          B::AbstractTensorMap{S},
+#                          B::AbstractTensorMap{<:Any,S},
 #                          (cindB, oindB)::Index2Tuple{1,<:Any},
 #                          (p1, p2)::Index2Tuple{N₁,N₂},
 #                          α::Number, β::Number,
@@ -536,8 +544,8 @@ end
 #     end
 #     return C
 # end
-# function planarcontract!(C::AbstractTensorMap{S,N₁,N₂},
-#                          A::AbstractTensorMap{S},
+# function planarcontract!(C::AbstractTensorMap{<:Any,S,N₁,N₂},
+#                          A::AbstractTensorMap{<:Any,S},
 #                          (oindA, cindA)::Index2Tuple{<:Any,3},
 #                          B::BraidingTensor{S},
 #                          (cindB, oindB)::Index2Tuple{3,1},

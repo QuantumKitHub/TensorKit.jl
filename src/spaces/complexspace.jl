@@ -11,26 +11,27 @@ struct ComplexSpace <: ElementarySpace
     d::Int
     dual::Bool
 end
-ComplexSpace(d::Integer = 0; dual = false) = ComplexSpace(Int(d), dual)
-function ComplexSpace(dim::Pair; dual = false)
-    if dim.first === Trivial()
-        return ComplexSpace(dim.second; dual = dual)
-    else
-        msg = "$(dim) is not a valid dimension for ComplexSpace"
-        throw(SectorMismatch(msg))
-    end
+
+ComplexSpace(d::Integer = 0; dual::Bool = false) = ComplexSpace(Int(d), dual)
+ComplexSpace(dim::Pair; kwargs...) = ComplexSpace((dim,); kwargs...)
+function ComplexSpace(dims; dual::Bool = false)
+    # using manual iteration here to avoid depending on `length` while still checking it is
+    # 0 ≤ length ≤ 1
+    next = Base.iterate(dims)
+    isnothing(next) && return ComplexSpace(0, dual)
+
+    (c, d), state = next
+    convert(Trivial, c) === Trivial() ||
+        throw(SectorMismatch(lazy"$c is not a valid charge for ComplexSpace"))
+
+    V = ComplexSpace(d, dual)
+
+    next = Base.iterate(dims, state)
+    isnothing(next) ||
+        throw(SectorMismatch(lazy"$dims is not a valid dimension iterable for ComplexSpace"))
+
+    return V
 end
-function ComplexSpace(dims::AbstractDict; kwargs...)
-    if length(dims) == 0
-        return ComplexSpace(0; kwargs...)
-    elseif length(dims) == 1
-        return ComplexSpace(first(dims); kwargs...)
-    else
-        msg = "$(dims) is not a valid dimension dictionary for ComplexSpace"
-        throw(SectorMismatch(msg))
-    end
-end
-ComplexSpace(g::Base.Generator; kwargs...) = ComplexSpace(g...; kwargs...)
 
 # convenience constructor
 Base.getindex(::ComplexNumbers) = ComplexSpace

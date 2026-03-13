@@ -11,27 +11,31 @@ vector space that is implicitly assumed in most of matrix algebra.
 """
 struct CartesianSpace <: ElementarySpace
     d::Int
+
+    # required to avoid CartesianSpace(::Any) default constructor:
+    CartesianSpace(d::Int) = new(d)
 end
+
 CartesianSpace(d::Integer = 0; dual = false) = CartesianSpace(Int(d))
-function CartesianSpace(dim::Pair; dual = false)
-    if dim.first === Trivial()
-        return CartesianSpace(dim.second; dual = dual)
-    else
-        msg = "$(dim) is not a valid dimension for CartesianSpace"
-        throw(SectorMismatch(msg))
-    end
+CartesianSpace(dim::Pair; kwargs...) = CartesianSpace((dim,); kwargs...)
+function CartesianSpace(dims; dual::Bool = false)
+    # using manual iteration here to avoid depending on `length` while still checking it is
+    # 0 ≤ length ≤ 1
+    next = Base.iterate(dims)
+    isnothing(next) && return CartesianSpace(0)
+
+    (c, d), state = next
+    convert(Trivial, c) === Trivial() ||
+        throw(SectorMismatch(lazy"$c is not a valid charge for CartesianSpace"))
+
+    V = CartesianSpace(d)
+
+    next = Base.iterate(dims, state)
+    isnothing(next) ||
+        throw(SectorMismatch(lazy"$dims is not a valid dimension iterable for CartesianSpace"))
+
+    return V
 end
-function CartesianSpace(dims::AbstractDict; kwargs...)
-    if length(dims) == 0
-        return CartesianSpace(0; kwargs...)
-    elseif length(dims) == 1
-        return CartesianSpace(first(dims); kwargs...)
-    else
-        msg = "$(dims) is not a valid dimension dictionary for CartesianSpace"
-        throw(SectorMismatch(msg))
-    end
-end
-CartesianSpace(g::Base.Generator; kwargs...) = CartesianSpace(g...; kwargs...)
 
 # convenience constructor
 Base.getindex(::RealNumbers) = CartesianSpace

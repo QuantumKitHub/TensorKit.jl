@@ -18,7 +18,84 @@ When making changes to this project, please update the "Unreleased" section with
 
 When releasing a new version, move the "Unreleased" changes to a new version section with the release date.
 
-## [Unreleased](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.16.0...HEAD)
+## [Unreleased](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.16.3...HEAD)
+
+### Added
+
+
+### Changed
+
+
+### Deprecated
+
+
+### Removed
+
+
+### Fixed
+
+
+## [0.16.3](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.16.2...v0.16.3) - 2026-02-22
+
+### Added
+
+- Expanded set of Mooncake AD rules ([#356](https://github.com/QuantumKitHub/TensorKit.jl/pull/356))
+- Adapt support for `BraidingTensor` ([#374](https://github.com/QuantumKitHub/TensorKit.jl/pull/374))
+
+### Changed
+
+- Documentation improvements and updates ([#345](https://github.com/QuantumKitHub/TensorKit.jl/pull/345))
+
+### Fixed
+
+- Small fixes for upstream compatibility and CUDA support, including `Base.ones`/`zeros` accepting `CuArray` ([#373](https://github.com/QuantumKitHub/TensorKit.jl/pull/373))
+
+## [0.16.2](https://github.com/QuantumKitHub/TensorKit.jl/releases/tag/v0.16.2) - 2026-02-10
+
+### Added
+
+- A more robust promotion system for `storagetype`s to better handle working with unions and other abstract tensor map types ([#370](https://github.com/QuantumKitHub/TensorKit.jl/pull/370)).
+
+### Fixed
+
+- Fix `findtruncated` with `truncspace` ([#369](https://github.com/QuantumKitHub/TensorKit.jl/pull/369))
+- Fix `truncrank` when kept rank is larger than input ([#368](https://github.com/QuantumKitHub/TensorKit.jl/pull/368))
+- Added missing `similar` definition for `SectorVector` ([#367](https://github.com/QuantumKitHub/TensorKit.jl/pull/367))
+- Small fixes for CUDA support ([#366](https://github.com/QuantumKitHub/TensorKit.jl/pull/366))
+
+## [0.16.1](https://github.com/QuantumKitHub/TensorKit.jl/releases/tag/v0.16.1) - 2026-02-05
+
+### Added
+
+- Extended support for selecting storage types in the `TensorMap` constructors ([#327](https://github.com/QuantumKitHub/TensorKit.jl/pull/327))
+- `similar_diagonal` to handle storage types when constructing diagonals ([#330](https://github.com/QuantumKitHub/TensorKit.jl/pull/330))
+- Support for CUDA.jl ([#336](https://github.com/QuantumKitHub/TensorKit.jl/pull/336),[#325](https://github.com/QuantumKitHub/TensorKit.jl/pull/325))
+- Support for Adapt.jl ([#344](https://github.com/QuantumKitHub/TensorKit.jl/pull/344))
+- Preliminary support for Mooncake ([#352](https://github.com/QuantumKitHub/TensorKit.jl/pull/352))
+- Export `TimeReversed` symbol ([#337](https://github.com/QuantumKitHub/TensorKit.jl/pull/337))
+
+### Fixed
+
+- Issue with using relative tolerances in truncation schemes ([#314](https://github.com/QuantumKitHub/TensorKit.jl/issues/314))
+- Using `scalartype` instead of `eltype` in BLAS contraction ([#326](https://github.com/QuantumKitHub/TensorKit.jl/pull/326))
+- Divide by zero error in `show` for empty tensors ([#329](https://github.com/QuantumKitHub/TensorKit.jl/pull/329))
+- `svd_vals(::DiagonalTensorMap)` correctly outputs `SectorVector` and implementation fix. ([#333](https://github.com/QuantumKitHub/TensorKit.jl/pull/329))
+- Fix handling of real tensors with complex scalartype ([#360](https://github.com/QuantumKitHub/TensorKit.jl/pull/360))
+- Sorted diagonal eigenvalues to ensure consistent ordering ([#350](https://github.com/QuantumKitHub/TensorKit.jl/pull/350))
+- Adding tensors of different types now correctly promotes ([#364](https://github.com/QuantumKitHub/TensorKit.jl/pull/364))
+
+### Changed
+
+- `convert(TensorMap, t)` now retains `storagetype` when converting ([#357](https://github.com/QuantumKitHub/TensorKit.jl/pull/357))
+- `transpose` specialization for `DiagonalTensorMap` for improved correctness/performance ([#335](https://github.com/QuantumKitHub/TensorKit.jl/pull/335))
+- Uniformized `CartesianSpace` and `ComplexSpace` constructors ([#334](https://github.com/QuantumKitHub/TensorKit.jl/pull/334))
+
+### Performance
+
+- GPU-friendly truncation implementations ([#349](https://github.com/QuantumKitHub/TensorKit.jl/pull/349))
+- `norm` performance optimizations ([#351](https://github.com/QuantumKitHub/TensorKit.jl/pull/351))
+- TensorOperations ChainRules performance improvements ([#343](https://github.com/QuantumKitHub/TensorKit.jl/pull/343))
+- Type-stability and small test fixes (various commits)
 
 ## [0.16.0](https://github.com/QuantumKitHub/TensorKit.jl/releases/tag/v0.16.0) - 2025-12-08
 

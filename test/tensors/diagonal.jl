@@ -53,7 +53,7 @@ diagspacelist = (
             @test norm(t) ≈ norm(t')
 
             @test t == @constinferred(TensorMap(t))
-            @test norm(t + TensorMap(t)) ≈ 2 * norm(t)
+            @test norm(t + TensorMap(t)) ≈ norm(TensorMap(t) + t) ≈ 2 * norm(t)
 
             @test norm(zerovector!(t)) == 0
             @test norm(one!(t)) ≈ sqrt(dim(V))
@@ -61,6 +61,9 @@ diagspacelist = (
             if T != BigFloat # seems broken for now
                 @test norm(one!(t) - id(V)) == 0
             end
+
+            t2 = randn!(TensorMap(t))
+            @test t2 + t ≈ t + t2 ≈ t2 + TensorMap(t)
 
             t1 = DiagonalTensorMap(rand(T, reduceddim(V)), V)
             t2 = DiagonalTensorMap(rand(T, reduceddim(V)), V)
@@ -121,19 +124,26 @@ diagspacelist = (
     if BraidingStyle(I) isa SymmetricBraiding
         @timedtestset "Permutations" begin
             t = DiagonalTensorMap(randn(ComplexF64, reduceddim(V)), V)
+            t_tm = convert(TensorMap, t)
+
+            # preserving diagonal
             t1 = @constinferred permute(t, $(((2,), (1,))))
-            if BraidingStyle(sectortype(V)) isa Bosonic
-                @test t1 ≈ transpose(t)
-            end
-            @test convert(TensorMap, t1) == permute(convert(TensorMap, t), (((2,), (1,))))
+            @test t1 isa DiagonalTensorMap
+            @test convert(TensorMap, t1) == permute(t_tm, (((2,), (1,))))
+            t1′ = @constinferred transpose(t)
+            @test t1′ isa DiagonalTensorMap
+            @test convert(TensorMap, t1′) == transpose(t_tm)
+            BraidingStyle(I) isa Bosonic && @test t1 ≈ t1′
+
+            # not preserving diagonal
             t2 = @constinferred permute(t, $(((1, 2), ())))
-            @test convert(TensorMap, t2) == permute(convert(TensorMap, t), (((1, 2), ())))
+            @test convert(TensorMap, t2) == permute(t_tm, (((1, 2), ())))
             t3 = @constinferred permute(t, $(((2, 1), ())))
-            @test convert(TensorMap, t3) == permute(convert(TensorMap, t), (((2, 1), ())))
+            @test convert(TensorMap, t3) == permute(t_tm, (((2, 1), ())))
             t4 = @constinferred permute(t, $(((), (1, 2))))
-            @test convert(TensorMap, t4) == permute(convert(TensorMap, t), (((), (1, 2))))
+            @test convert(TensorMap, t4) == permute(t_tm, (((), (1, 2))))
             t5 = @constinferred permute(t, $(((), (2, 1))))
-            @test convert(TensorMap, t5) == permute(convert(TensorMap, t), (((), (2, 1))))
+            @test convert(TensorMap, t5) == permute(t_tm, (((), (2, 1))))
         end
     end
     @timedtestset "Trace, Multiplication and inverse" begin

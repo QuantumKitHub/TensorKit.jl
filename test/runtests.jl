@@ -2,8 +2,6 @@
 # ------------
 using ArgParse: ArgParse
 using SafeTestsets: @safetestset
-# using CUDA: CUDA
-# using AMDGPU: AMDGPU
 
 function parse_commandline(args = ARGS)
     s = ArgParse.ArgParseSettings()
@@ -49,16 +47,17 @@ istestfile(fn) = endswith(fn, ".jl") && !contains(fn, "setup")
 
     # handle GPU cases separately
     if group == "cuda"
-        # CUDA.functional() || continue
-    elseif group == "amd"
-        # AMDGPU.functional() || continue
+        using CUDA
+        CUDA.functional() || continue
+        @time include("cuda/tensors.jl")
+        @time include("cuda/factorizations.jl")
     elseif is_buildkite
         continue
     end
 
     # somehow AD tests are unreasonably slow on Apple CI
     # and ChainRulesTestUtils doesn't like prereleases
-    if group == "autodiff"
+    if group == "chainrules" || group == "mooncake"
         Sys.isapple() && get(ENV, "CI", "false") == "true" && continue
         isempty(VERSION.prerelease) || continue
     end

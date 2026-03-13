@@ -6,10 +6,13 @@ module Factorizations
 export copy_oftype, factorisation_scalartype, one!, truncspace
 
 using ..TensorKit
-using ..TensorKit: AdjointTensorMap, SectorDict, SectorVector, blocktype, foreachblock, one!
+using ..TensorKit: AdjointTensorMap, SectorDict, SectorVector,
+    blocktype, foreachblock, one!,
+    similar_diagonal, similarstoragetype
 
-using LinearAlgebra: LinearAlgebra, BlasFloat, Diagonal, svdvals, svdvals!, eigen, eigen!,
-    isposdef, isposdef!, ishermitian
+using LinearAlgebra: LinearAlgebra, BlasFloat, Diagonal,
+    svdvals, svdvals!, eigen, eigen!,
+    isposdef, isposdef!
 
 using TensorOperations: Index2Tuple
 
@@ -34,10 +37,10 @@ TensorKit.one!(A::AbstractMatrix) = MatrixAlgebraKit.one!(A)
 #------------------------------#
 
 function LinearAlgebra.eigen(t::AbstractTensorMap; kwargs...)
-    return ishermitian(t) ? eigh_full(t; kwargs...) : eig_full(t; kwargs...)
+    return LinearAlgebra.ishermitian(t) ? eigh_full(t; kwargs...) : eig_full(t; kwargs...)
 end
 function LinearAlgebra.eigen!(t::AbstractTensorMap; kwargs...)
-    return ishermitian(t) ? eigh_full!(t; kwargs...) : eig_full!(t; kwargs...)
+    return LinearAlgebra.ishermitian(t) ? eigh_full!(t; kwargs...) : eig_full!(t; kwargs...)
 end
 
 function LinearAlgebra.eigvals(t::AbstractTensorMap; kwargs...)
