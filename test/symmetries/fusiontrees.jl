@@ -105,7 +105,7 @@ using .TestSetup
             @test length(TK.insertat(f1b, 1, f1a)) == 1
             @test first(TK.insertat(f1b, 1, f1a)) == (f1 => 1)
 
-            if UnitStyle(I) isa SimpleUnit
+            if UnitStyle(I) isa SimpleUnit && BraidingStyle(I) isa HasBraiding
                 levels = ntuple(identity, N)
                 function _reinsert_partial_tree(t, f)
                     (t′, c′) = first(TK.insertat(t, 1, f))
