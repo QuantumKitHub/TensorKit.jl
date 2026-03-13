@@ -11,17 +11,17 @@ spacelist = try
     if get(ENV, "CI", "false") == "true"
         println("Detected running on CI")
         if Sys.iswindows()
-            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VIB_diag)
+            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VA₄, VU₁, VfU₁, VCU₁, VSU₂, VIB_diag)
         elseif Sys.isapple()
-            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VfU₁, VfSU₂, VSU₂U₁, VIB_M) #, VSU₃)
+            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VA₄, VfU₁, VfSU₂, VSU₂U₁, VIB_M)
         else
-            (Vtr, Vℤ₂, Vfℤ₂, VU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M) #, VSU₃)
+            (Vtr, Vℤ₂, Vfℤ₂, VA₄, VU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M)
         end
     else
-        (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M) #, VSU₃)
+        (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VA₄, Vfib, VZ2ω, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M)
     end
 catch
-    (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M) #, VSU₃)
+    (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VA₄, Vfib, VZ2ω, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M)
 end
 
 for V in spacelist
@@ -53,6 +53,8 @@ for V in spacelist
                 @test space(t) == (W ← one(W))
                 @test domain(t) == one(W)
                 @test typeof(t) == TensorMap{T, spacetype(t), 5, 0, Vector{T}}
+                @test complex(t) == real(t) + im * imag(t)
+                @test T <: Real ? real(t) == t : complex(t) == t
                 # blocks
                 bs = @constinferred blocks(t)
                 if !isempty(blocksectors(t)) # multifusion space ending on module gives empty data
@@ -157,6 +159,21 @@ for V in spacelist
                 @test dim(w) == 2 * dim(V1 ← V1)
                 @test w' * w == id(Vector{T}, V1)
                 @test w * w' == (w * w')^2
+
+                # concatenation
+                t3 = rand(T, V1 ⊗ V2 ← V2)
+                t3data2 = T[]
+                for c in blocksectors(t3)
+                    append!(t3data2, repeat(block(t3, c), 1, 2))
+                end
+                @test @constinferred(catdomain(t3, t3)) == TensorMap(t3data2, V1 ⊗ V2 ← V2 ⊕ V2)
+
+                t4 = rand(T, V2 ← V1 ⊗ V2)
+                t4data2 = T[]
+                for c in blocksectors(t4)
+                    append!(t4data2, repeat(block(t4, c), 2, 1))
+                end
+                @test @constinferred(catcodomain(t4, t4)) == TensorMap(t4data2, V2 ⊕ V2 ← V1 ⊗ V2)
             end
         end
         @timedtestset "Trivial space insertion and removal" begin
@@ -242,13 +259,14 @@ for V in spacelist
             @test Base.promote_typeof(tc, t) == typeof(tc + t)
         end
         symmetricbraiding && @timedtestset "Permutations: test via inner product invariance" begin
-            W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
+            W = V1 ⊗ V2 ⊗ V3 ⊗ V4
+            n = length(W)
             t = rand(ComplexF64, W)
             t′ = randn!(similar(t))
-            for k in 0:5
-                for p in permutations(1:5)
+            for k in 0:n
+                for p in permutations(1:n)
                     p1 = ntuple(n -> p[n], k)
-                    p2 = ntuple(n -> p[k + n], 5 - k)
+                    p2 = ntuple(n -> p[k + n], n - k)
                     t2 = @constinferred permute(t, (p1, p2))
                     @test norm(t2) ≈ norm(t)
                     t2′ = permute(t′, (p1, p2))
@@ -264,24 +282,25 @@ for V in spacelist
         end
         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
             @timedtestset "Permutations: test via conversion" begin
-                W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
+                W = V1 ⊗ V2 ⊗ V3 ⊗ V4
+                N = length(W)
                 t = rand(ComplexF64, W)
                 a = convert(Array, t)
-                for k in 0:5
-                    for p in permutations(1:5)
+                for k in 0:N
+                    for p in permutations(1:N)
                         p1 = ntuple(n -> p[n], k)
-                        p2 = ntuple(n -> p[k + n], 5 - k)
+                        p2 = ntuple(n -> p[k + n], N - k)
                         t2 = permute(t, (p1, p2))
                         a2 = convert(Array, t2)
                         @test a2 ≈ permutedims(a, (p1..., p2...))
                         @test convert(Array, transpose(t2)) ≈
-                            permutedims(a2, (5, 4, 3, 2, 1))
+                            permutedims(a2, reverse(ntuple(i -> i, N)))
                     end
 
                     t3 = repartition(t, k)
                     a3 = convert(Array, t3)
                     @test a3 ≈ permutedims(
-                        a, (ntuple(identity, k)..., reverse(ntuple(i -> i + k, 5 - k))...)
+                        a, (ntuple(identity, k)..., reverse(ntuple(i -> i + k, N - k))...)
                     )
                 end
             end
@@ -545,9 +564,17 @@ for V in spacelist
                 if UnitStyle(I) isa SimpleUnit || !isempty(blocksectors(V2 ⊗ V1))
                     t1 = rand(T, V2 ⊗ V3 ⊗ V1, V1 ⊗ V2)
                     t2 = rand(T, V2 ⊗ V1 ⊗ V3, V1 ⊗ V1)
+                    if dim(t1) * dim(t2) > 1.0e7 # make t1⊗t2 factor dim(V3)^2 smaller
+                        t1 = rand(T, V2 ⊗ V1, V1 ⊗ V2)
+                        t2 = rand(T, V2 ⊗ V1, V1 ⊗ V1)
+                    end
                 else
                     t1 = rand(T, V3 ⊗ V4 ⊗ V5, V1 ⊗ V2)
                     t2 = rand(T, V5' ⊗ V4' ⊗ V3', V2' ⊗ V1')
+                    if dim(t1) * dim(t2) > 1.0e7 # make t1⊗t2 factor dim(V5)^2 smaller
+                        t1 = rand(T, V3 ⊗ V4, V1 ⊗ V2)
+                        t2 = rand(T, V4' ⊗ V3', V2' ⊗ V1')
+                    end
                 end
                 t = @constinferred (t1 ⊗ t2)
                 @test norm(t) ≈ norm(t1) * norm(t2)

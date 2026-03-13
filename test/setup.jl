@@ -78,9 +78,9 @@ function randsector(::Type{I}) where {I <: Sector}
     return a
 end
 function hasfusiontensor(I::Type{<:Sector})
-    isa(UnitStyle(I), GenericUnit) && return false
     try
-        TensorKit.fusiontensor(unit(I), unit(I), unit(I))
+        u = first(allunits(I))
+        TensorKit.fusiontensor(u, u, u)
         return true
     catch e
         if e isa MethodError
@@ -145,14 +145,30 @@ function test_dim_isapprox(V::ProductSpace, d::Int)
     return @test max(0, d - dim_c_max) ≤ dim(V) ≤ d + dim_c_max
 end
 
-sectorlist = (
+uniquefusionsectorlist = (
     Z2Irrep, Z3Irrep, Z4Irrep, Z3Irrep ⊠ Z4Irrep,
-    U1Irrep, CU1Irrep, SU2Irrep,
-    FermionParity, FermionParity ⊠ FermionParity,
-    FermionParity ⊠ U1Irrep ⊠ SU2Irrep, FermionParity ⊠ SU2Irrep ⊠ SU2Irrep, # Hubbard-like
-    FibonacciAnyon, IsingAnyon,
-    Z2Irrep ⊠ FibonacciAnyon ⊠ FibonacciAnyon,
+    U1Irrep, FermionParity, FermionParity ⊠ FermionParity, FermionNumber,
+    Z3Element{1}, Z4Element{2}, ZNElement{5, 2},
+)
+simplefusionsectorlist = (
+    CU1Irrep, SU2Irrep, FibonacciAnyon, IsingAnyon,
+    FermionParity ⊠ U1Irrep ⊠ SU2Irrep, FermionParity ⊠ SU2Irrep ⊠ SU2Irrep,
+    Z3Element{1} ⊠ FibonacciAnyon ⊠ FibonacciAnyon,
+)
+genericfusionsectorlist = (
+    A4Irrep, A4Irrep ⊠ FermionParity, A4Irrep ⊠ SU2Irrep,
+    A4Irrep ⊠ Z3Element{2}, A4Irrep ⊠ A4Irrep,
+)
+multifusionsectorlist = (
     IsingBimodule, IsingBimodule ⊠ SU2Irrep, IsingBimodule ⊠ IsingBimodule,
+    IsingBimodule ⊠ Z3Element{1}, IsingBimodule ⊠ FibonacciAnyon ⊠ A4Irrep,
+)
+
+sectorlist = (
+    uniquefusionsectorlist...,
+    simplefusionsectorlist...,
+    genericfusionsectorlist...,
+    multifusionsectorlist...,
 )
 
 # spaces
@@ -177,6 +193,20 @@ Vℤ₃ = (
     Vect[Z3Irrep](0 => 1, 1 => 2, 2 => 1)',
     Vect[Z3Irrep](0 => 1, 1 => 2, 2 => 3),
     Vect[Z3Irrep](0 => 1, 1 => 3, 2 => 3)',
+)
+VZ2ω = (
+    Vect[Z2Element{1}](0 => 2, 1 => 1),
+    Vect[Z2Element{1}](0 => 1, 1 => 2)',
+    Vect[Z2Element{1}](0 => 2, 1 => 1)',
+    Vect[Z2Element{1}](0 => 2, 1 => 3),
+    Vect[Z2Element{1}](0 => 2, 1 => 5),
+)
+VA₄ = (
+    Vect[A4Irrep](0 => 1, 1 => 1, 2 => 1, 3 => 3), # dim large enough for truncated factorization tests
+    Vect[A4Irrep](0 => 1, 1 => 2, 2 => 1, 3 => 1),
+    Vect[A4Irrep](0 => 1, 1 => 1, 2 => 2, 3 => 1)',
+    Vect[A4Irrep](0 => 1, 1 => 2, 2 => 2, 3 => 2),
+    Vect[A4Irrep](0 => 1, 1 => 2, 2 => 2, 3 => 3)',
 )
 VU₁ = (
     Vect[U1Irrep](0 => 1, 1 => 2, -1 => 2),
@@ -224,7 +254,7 @@ VSU₂U₁ = (
     Vect[SU2Irrep ⊠ U1Irrep]((0, 0) => 1, (1 // 2, 1) => 1)',
 )
 Vfib = (
-    Vect[FibonacciAnyon](:I => 1, :τ => 1),
+    Vect[FibonacciAnyon](:I => 2, :τ => 1),
     Vect[FibonacciAnyon](:I => 1, :τ => 2)',
     Vect[FibonacciAnyon](:I => 3, :τ => 2)',
     Vect[FibonacciAnyon](:I => 2, :τ => 3),
