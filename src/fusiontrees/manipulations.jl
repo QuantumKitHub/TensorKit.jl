@@ -351,9 +351,21 @@ function foldright(f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}) where {
     isdual = Base.tail(f₁.isdual)
     if FusionStyle(I) isa UniqueFusion
         c = first(c1 ⊗ c2)
-        fl = FusionTree{I}(Base.tail(f₁.uncoupled), c, Base.tail(f₁.isdual))
-        fr = FusionTree{I}((c1, f₂.uncoupled...), c, (!isduala, f₂.isdual...))
-        return fusiontreedict(I)((fl, fr) => factor)
+        cvalid = N₁ == 1 ? leftunit(c1) : only(⊗(uncoupled...))
+        @assert c == cvalid
+        fc = FusionTree((c1, c2), c, (!isduala, false))
+        fl′, coeff1 = only(insertat(fc, 2, f₁)) # this coeff is not always 1
+        N₁ > 1 && @assert isunit(fl′.innerlines[1])
+
+        coupled = fl′.coupled
+        uncoupled = Base.tail(Base.tail(fl′.uncoupled))
+        isdual = Base.tail(Base.tail(fl′.isdual))
+        inner = N₁ <= 3 ? () : Base.tail(Base.tail(fl′.innerlines))
+        vertices = N₁ <= 2 ? () : Base.tail(Base.tail(fl′.vertices))
+        fl = FusionTree{I}(uncoupled, coupled, isdual, inner, vertices)
+        fr, coeff2 = only(insertat(fc, 2, f₂)) # same here
+        coeff = factor * coeff1 * conj(coeff2)
+        return fusiontreedict(I)((fl, fr) => coeff)
     else
         hasmultiplicities = FusionStyle(a) isa GenericFusion
         local newtrees
