@@ -148,7 +148,7 @@ end
 uniquefusionsectorlist = (
     Z2Irrep, Z3Irrep, Z4Irrep, Z3Irrep ⊠ Z4Irrep,
     U1Irrep, FermionParity, FermionParity ⊠ FermionParity, FermionNumber,
-    Z3Element{1}, Z4Element{2}, ZNElement{5, 2}
+    Z3Element{1}, Z4Element{2}, ZNElement{5, 2},
 )
 simplefusionsectorlist = (
     CU1Irrep, SU2Irrep, FibonacciAnyon, IsingAnyon,

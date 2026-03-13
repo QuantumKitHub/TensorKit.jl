@@ -53,7 +53,7 @@ for V in spacelist
                 @test space(t) == (W ← one(W))
                 @test domain(t) == one(W)
                 @test typeof(t) == TensorMap{T, spacetype(t), 5, 0, Vector{T}}
-                @test complex(t) == real(t) + im*imag(t)
+                @test complex(t) == real(t) + im * imag(t)
                 @test T <: Real ? real(t) == t : complex(t) == t
                 # blocks
                 bs = @constinferred blocks(t)
@@ -159,7 +159,7 @@ for V in spacelist
                 @test dim(w) == 2 * dim(V1 ← V1)
                 @test w' * w == id(Vector{T}, V1)
                 @test w * w' == (w * w')^2
-                
+
                 # concatenation
                 t3 = rand(T, V1 ⊗ V2 ← V2)
                 t3data2 = T[]
@@ -564,14 +564,14 @@ for V in spacelist
                 if UnitStyle(I) isa SimpleUnit || !isempty(blocksectors(V2 ⊗ V1))
                     t1 = rand(T, V2 ⊗ V3 ⊗ V1, V1 ⊗ V2)
                     t2 = rand(T, V2 ⊗ V1 ⊗ V3, V1 ⊗ V1)
-                    if dim(t1) * dim(t2) > 1e7 # make t1⊗t2 factor dim(V3)^2 smaller
+                    if dim(t1) * dim(t2) > 1.0e7 # make t1⊗t2 factor dim(V3)^2 smaller
                         t1 = rand(T, V2 ⊗ V1, V1 ⊗ V2)
                         t2 = rand(T, V2 ⊗ V1, V1 ⊗ V1)
                     end
                 else
                     t1 = rand(T, V3 ⊗ V4 ⊗ V5, V1 ⊗ V2)
                     t2 = rand(T, V5' ⊗ V4' ⊗ V3', V2' ⊗ V1')
-                    if dim(t1) * dim(t2) > 1e7 # make t1⊗t2 factor dim(V5)^2 smaller
+                    if dim(t1) * dim(t2) > 1.0e7 # make t1⊗t2 factor dim(V5)^2 smaller
                         t1 = rand(T, V3 ⊗ V4, V1 ⊗ V2)
                         t2 = rand(T, V4' ⊗ V3', V2' ⊗ V1')
                     end
