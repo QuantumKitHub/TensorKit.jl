@@ -9,6 +9,8 @@ diagspacelist = (
     Vect[FermionNumber](0 => 2, 1 => 2, -1 => 1),
     Vect[SU2Irrep](0 => 2, 1 => 1)',
     Vect[FibonacciAnyon](:I => 2, :τ => 2),
+    Vect[Z3Element{1}](0 => 2, 1 => 2, 2 => 1),
+    Vect[IsingBimodule](C0 => 2, C1 => 3)
 )
 
 @testset "DiagonalTensor with domain $V" for V in diagspacelist
