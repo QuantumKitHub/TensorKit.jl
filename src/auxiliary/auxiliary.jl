@@ -57,30 +57,6 @@ function _interleave(a::NTuple{N}, b::NTuple{N}) where {N}
     return (a[1], b[1], _interleave(tail(a), tail(b))...)
 end
 
-# Low-overhead implementation of `copyto!` for specific case of `stride(B, 1) < stride(B, 2)`
-# used in indexmanipulations: avoids the overhead of Strided.jl
-function _copyto!(A::StridedView{<:Any, 1}, B::StridedView{<:Any, 2})
-    length(A) == length(B) || throw(DimensionMismatch())
-
-    Adata = parent(A)
-    Astr = stride(A, 1)
-    IA = A.offset
-
-    Bdata = parent(B)
-    Bstr = strides(B)
-
-    IB_1 = B.offset
-    @inbounds for _ in axes(B, 2)
-        IB = IB_1
-        for _ in axes(B, 1)
-            Adata[IA += Astr] = Bdata[IB += Bstr[1]]
-        end
-        IB_1 += Bstr[2]
-    end
-
-    return A
-end
-
 @static if VERSION < v"1.11" # TODO: remove once support for v1.10 is dropped
     _allequal(f, xs) = allequal(Base.Generator(f, xs))
 else
