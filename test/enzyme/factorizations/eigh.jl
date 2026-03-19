@@ -6,7 +6,7 @@ using MatrixAlgebraKit
 using Enzyme, EnzymeTestUtils
 using Random
 
-@isdefined(TestSetup) || include("../setup.jl")
+@isdefined(TestSetup) || include("../../setup.jl")
 using .TestSetup
 
 spacelist = (

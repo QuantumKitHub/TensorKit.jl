@@ -42,23 +42,21 @@ spacelist = (
 eltypes = (Float64, ComplexF64)
 
 @timedtestset "Enzyme - Index Manipulations (add_braid!):" begin
-    @timedtestset "$(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes
+    @timedtestset "$(TensorKit.type_repr(sectortype(eltype(V)))) ($T) Tα $Tα Tβ $Tβ" for V in spacelist, T in eltypes, Tα in (Active, Const), Tβ in (Active, Const)
         atol = default_tol(T)
         rtol = default_tol(T)
         Vstr = TensorKit.type_repr(sectortype(eltype(V)))
-        @timedtestset "add_braid! Tα $Tα Tβ $Tβ" for Tα in (Active, Const), Tβ in (Active, Const)
-            A = randn(T, V[1] ⊗ V[2] ← V[4] ⊗ V[5])
-            α = randn(T)
-            β = randn(T)
-            p = randcircshift(numout(A), numin(A))
-            levels = Tuple(randperm(numind(A)))
-            C = randn!(transpose(A, p))
-            EnzymeTestUtils.test_reverse(TensorKit.add_braid!, Duplicated, (C, Duplicated), (A, Duplicated), (p, Const), (levels, Const), (α, Tα), (β, Tβ); atol, rtol, testset_name = "add_braid! V $Vstr Tα $Tα Tβ $Tβ")
-            if !(T <: Real)
-                EnzymeTestUtils.test_reverse(TensorKit.add_braid!, Duplicated, (C, Duplicated), (real(A), Duplicated), (p, Const), (levels, Const), (α, Tα), (β, Tβ); atol, rtol, testset_name = "add_braid! V $Vstr Tα $Tα Tβ $Tβ")
-                EnzymeTestUtils.test_reverse(TensorKit.add_braid!, Duplicated, (C, Duplicated), (A, Duplicated), (p, Const), (levels, Const), (real(α), Tα), (β, Tβ); atol, rtol, testset_name = "add_braid! V $Vstr Tα $Tα Tβ $Tβ")
-                EnzymeTestUtils.test_reverse(TensorKit.add_braid!, Duplicated, (C, Duplicated), (A, Duplicated), (p, Const), (levels, Const), (real(α), Tα), (real(β), Tβ); atol, rtol, testset_name = "add_braid! V $Vstr Tα $Tα Tβ $Tβ")
-            end
+        A = randn(T, V[1] ⊗ V[2] ← V[4] ⊗ V[5])
+        α = randn(T)
+        β = randn(T)
+        p = randcircshift(numout(A), numin(A))
+        levels = Tuple(randperm(numind(A)))
+        C = randn!(transpose(A, p))
+        EnzymeTestUtils.test_reverse(TensorKit.add_braid!, Duplicated, (C, Duplicated), (A, Duplicated), (p, Const), (levels, Const), (α, Tα), (β, Tβ); atol, rtol, testset_name = "add_braid! V $Vstr Tα $Tα Tβ $Tβ")
+        if !(T <: Real)
+            EnzymeTestUtils.test_reverse(TensorKit.add_braid!, Duplicated, (C, Duplicated), (real(A), Duplicated), (p, Const), (levels, Const), (α, Tα), (β, Tβ); atol, rtol, testset_name = "add_braid! V $Vstr Tα $Tα Tβ $Tβ")
+            EnzymeTestUtils.test_reverse(TensorKit.add_braid!, Duplicated, (C, Duplicated), (A, Duplicated), (p, Const), (levels, Const), (real(α), Tα), (β, Tβ); atol, rtol, testset_name = "add_braid! V $Vstr Tα $Tα Tβ $Tβ")
+            EnzymeTestUtils.test_reverse(TensorKit.add_braid!, Duplicated, (C, Duplicated), (A, Duplicated), (p, Const), (levels, Const), (real(α), Tα), (real(β), Tβ); atol, rtol, testset_name = "add_braid! V $Vstr Tα $Tα Tβ $Tβ")
         end
     end
 end

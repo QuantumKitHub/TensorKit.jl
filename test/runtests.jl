@@ -26,9 +26,9 @@ else
     groups = settings[:groups]
 end
 
-#=checktestgroup(group) = isdir(joinpath(@__DIR__, group)) ||
+checktestgroup(group) = isdir(joinpath(@__DIR__, group)) ||
     throw(ArgumentError("Invalid group ($group), no such folder"))
-foreach(checktestgroup, groups)=#
+foreach(checktestgroup, groups)
 
 @info "Loaded test groups:" groups
 

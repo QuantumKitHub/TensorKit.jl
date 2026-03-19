@@ -42,28 +42,22 @@ spacelist = (
 eltypes = (Float64, ComplexF64)
 
 @timedtestset "Enzyme - Index Manipulations (add_transpose!):" begin
-    @timedtestset "$(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes
+    @timedtestset "$(TensorKit.type_repr(sectortype(eltype(V)))) ($T) Tα $Tα Tβ $Tβ" for V in spacelist, T in eltypes, Tα in (Const, Active), Tβ in (Const, Active)
         atol = default_tol(T)
         rtol = default_tol(T)
+        A = randn(T, V[1] ⊗ V[2] ← V[4] ⊗ V[5])
+        α = randn(T)
+        β = randn(T)
 
-        @timedtestset "add_transpose! Tα $Tα Tβ $Tβ" for Tα in (Const, Active), Tβ in (Const, Active)
-            A = randn(T, V[1] ⊗ V[2] ← V[4] ⊗ V[5])
-            α = randn(T)
-            β = randn(T)
-
-            # repeat a couple times to get some distribution of arrows
-            @testet for ri in 1:2
-                p = randcircshift(numout(A), numin(A))
-                C = randn!(transpose(A, p))
-                EnzymeTestUtils.test_reverse(TensorKit.add_transpose!, Duplicated, (C, Duplicated), (A, Duplicated), (p, Const), (One(), Const), (Zero(), Const); atol, rtol)
-                EnzymeTestUtils.test_reverse(TensorKit.add_transpose!, Duplicated, (C, Duplicated), (A, Duplicated), (p, Const), (α, Tα), (β, Tβ); atol, rtol)
-                if !(T <: Real)
-                    EnzymeTestUtils.test_reverse(TensorKit.add_transpose!, Duplicated, (C, Duplicated), (real(A), Duplicated), (p, Const), (α, Tα), (β, Tβ); atol, rtol)
-                    EnzymeTestUtils.test_reverse(TensorKit.add_transpose!, Duplicated, (C, Duplicated), (A, Duplicated), (p, Const), (real(α), Tα), (β, Tβ); atol, rtol)
-                    EnzymeTestUtils.test_reverse(TensorKit.add_transpose!, Duplicated, (C, Duplicated), (real(A), Duplicated), (p, Const), (real(α), Tα), (β, Tβ); atol, rtol)
-                end
-                A = C
-            end
+        # repeat a couple times to get some distribution of arrows
+        p = randcircshift(numout(A), numin(A))
+        C = randn!(transpose(A, p))
+        EnzymeTestUtils.test_reverse(TensorKit.add_transpose!, Duplicated, (C, Duplicated), (A, Duplicated), (p, Const), (One(), Const), (Zero(), Const); atol, rtol)
+        EnzymeTestUtils.test_reverse(TensorKit.add_transpose!, Duplicated, (C, Duplicated), (A, Duplicated), (p, Const), (α, Tα), (β, Tβ); atol, rtol)
+        if !(T <: Real)
+            EnzymeTestUtils.test_reverse(TensorKit.add_transpose!, Duplicated, (C, Duplicated), (real(A), Duplicated), (p, Const), (α, Tα), (β, Tβ); atol, rtol)
+            EnzymeTestUtils.test_reverse(TensorKit.add_transpose!, Duplicated, (C, Duplicated), (A, Duplicated), (p, Const), (real(α), Tα), (β, Tβ); atol, rtol)
+            EnzymeTestUtils.test_reverse(TensorKit.add_transpose!, Duplicated, (C, Duplicated), (real(A), Duplicated), (p, Const), (real(α), Tα), (β, Tβ); atol, rtol)
         end
     end
 end

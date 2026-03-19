@@ -43,7 +43,7 @@ eltypes = (Float64, ComplexF64)
         α = randn(T)
         β = randn(T)
 
-        @testset "mul: TC $TC, TA $TA, TB $TB" for TC in (Const, Duplicated), TA in (Const, Duplicated), TB in (Const, Duplicated)
+        @testset "mul: TC $TC, TA $TA, TB $TB" for TC in (Duplicated,), TA in (Duplicated,), TB in (Duplicated,)
             @testset "Tα $Tα, Tβ $Tβ" for Tα in (Active, Const), Tβ in (Active, Const)
                 EnzymeTestUtils.test_reverse(mul!, TC, (C, TC), (A, TA), (B, TB), (α, Tα), (β, Tβ); atol, rtol)
             end

@@ -90,8 +90,8 @@ function EnzymeRules.augmented_primal(
         β::Annotation{<:Number},
         ba::Const...
     ) where {RT}
-    C_cache = !isa(β, Const) ? copy(C.val) : nothing
-    A_cache = EnzymeRules.overwritten(config)[3] ? copy(A.val) : nothing
+    C_cache = !isa(β, Const) ? deepcopy(C.val) : nothing
+    A_cache = EnzymeRules.overwritten(config)[3] ? deepcopy(A.val) : nothing
     # if we need to compute Δa, it is faster to allocate an intermediate braided A
     # and store that instead of repeating the permutation in the pullback each time.
     # effectively, we replace `add_permute` by `add ∘ permute`.

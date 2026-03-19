@@ -110,7 +110,47 @@ function EnzymeRules.reverse(
     )
     return (nothing,)
 end
-
+function EnzymeRules.augmented_primal(
+        config::EnzymeRules.RevConfigWidth{1},
+        func::Const{typeof(norm)},
+        ::Type{RT},
+        A::Annotation{<:AbstractTensorMap},
+        p::Const{<:Real},
+    ) where {RT}
+    ret = func.val(A.val, p.val)
+    primal = EnzymeRules.needs_primal(config) ? ret : nothing
+    shadow = EnzymeRules.needs_shadow(config) ? zero(ret) : nothing
+    cacheA = EnzymeRules.overwritten(config)[2] ? copy(A.val) : nothing
+    cache = (ret, cacheA)
+    return EnzymeRules.AugmentedReturn(primal, shadow, cache)
+end
+function EnzymeRules.reverse(
+        config::EnzymeRules.RevConfigWidth{1},
+        func::Const{typeof(norm)},
+        dret::Active,
+        cache,
+        A::Annotation{<:AbstractTensorMap},
+        p::Const{<:Real},
+    )
+    n, cacheA = cache
+    Δn = dret.val
+    Aval = something(cacheA, A.val)
+    if !isa(A, Const)
+        x = (Δn' + Δn) / 2 / hypot(n, eps(one(n)))
+        add!(A.dval, A.val, x)
+    end
+    return (nothing, nothing)
+end
+function EnzymeRules.reverse(
+        config::EnzymeRules.RevConfigWidth{1},
+        func::Const{typeof(norm)},
+        ::Type{<:Const},
+        cache,
+        A::Annotation{<:AbstractTensorMap},
+        p::Const{<:Real},
+    )
+    return (nothing, nothing)
+end
 function EnzymeRules.augmented_primal(
         config::EnzymeRules.RevConfigWidth{1},
         func::Const{typeof(inv)},

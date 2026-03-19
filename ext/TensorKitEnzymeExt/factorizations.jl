@@ -28,9 +28,10 @@ for (f, pb) in (
                 alg::Const,
             ) where {RT}
             ret = $f(A.val, alg.val)
-            dret = make_zero(ret)
-            cache = (ret, dret)
-            return EnzymeRules.AugmentedReturn(ret, dret, cache)
+            primal = EnzymeRules.needs_primal(config) ? ret : nothing
+            shadow = EnzymeRules.needs_shadow(config) ? make_zero(ret) : nothing
+            cache = (ret, shadow)
+            return EnzymeRules.AugmentedReturn(primal, shadow, cache)
         end
         function EnzymeRules.reverse(
                 config::EnzymeRules.RevConfigWidth{1},
@@ -40,8 +41,7 @@ for (f, pb) in (
                 A::Annotation{<:AbstractTensorMap},
                 alg::Const,
             ) where {RT}
-            ret, dret = cache
-            $pb(A.dval, A.val, ret, dret)
+            !isa(A, Const) && $pb(A.dval, A.val, cache...)
             return (nothing, nothing)
         end
     end
@@ -57,9 +57,10 @@ for f in (:svd_compact, :svd_full)
                 alg::Const,
             ) where {RT}
             USVᴴ = $f(A.val, alg.val)
-            dUSVᴴ = make_zero(USVᴴ)
-            cache = (USVᴴ, dUSVᴴ)
-            return EnzymeRules.AugmentedReturn(USVᴴ, dUSVᴴ, cache)
+            primal = EnzymeRules.needs_primal(config) ? USVᴴ : nothing
+            shadow = EnzymeRules.needs_shadow(config) ? make_zero(USVᴴ) : nothing
+            cache = (USVᴴ, shadow)
+            return EnzymeRules.AugmentedReturn(primal, shadow, cache)
         end
         function EnzymeRules.reverse(
                 config::EnzymeRules.RevConfigWidth{1},
@@ -69,8 +70,7 @@ for f in (:svd_compact, :svd_full)
                 A::Annotation{<:AbstractTensorMap},
                 alg::Const,
             ) where {RT}
-            USVᴴ, dUSVᴴ = cache
-            MatrixAlgebraKit.svd_pullback!(A.dval, A.val, USVᴴ, dUSVᴴ)
+            !isa(A, Const) && MatrixAlgebraKit.svd_pullback!(A.dval, A.val, cache...)
             return (nothing, nothing)
         end
     end

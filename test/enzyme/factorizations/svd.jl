@@ -6,7 +6,7 @@ using MatrixAlgebraKit
 using Enzyme, EnzymeTestUtils
 using Random
 
-@isdefined(TestSetup) || include("../setup.jl")
+@isdefined(TestSetup) || include("../../setup.jl")
 using .TestSetup
 
 spacelist = (
@@ -58,7 +58,7 @@ end
     atol = default_tol(T)
     rtol = default_tol(T)
     USVᴴ = svd_compact(t)
-    ΔUSVᴴ = (TensorMap(randn!(similar(USVᴴ[1].data)), space(USVᴴ[1])), DiagonalTensorMap(randn!(similar(USVᴴ[2].data)), space(USVᴴ[2], 1)), TensorMap(randn!(similar(USVᴴ[3].data)), space(USVᴴ[3])))
+    ΔUSVᴴ = EnzymeTestUtils.rand_tangent.(USVᴴ)
     remove_svdgauge_dependence!(ΔUSVᴴ[1], ΔUSVᴴ[3], USVᴴ...)
     EnzymeTestUtils.test_reverse(svd_compact, Duplicated, (t, Duplicated); output_tangent = ΔUSVᴴ, atol, rtol)
 
@@ -70,8 +70,8 @@ end
     V_trunc = spacetype(t)(c => min(size(b)...) ÷ 2 for (c, b) in blocks(t))
     trunc = truncspace(V_trunc)
     alg = MatrixAlgebraKit.select_algorithm(svd_trunc_no_error, t, nothing; trunc)
-    USVᴴtrunc = svd_trunc(t, alg)
-    ΔUSVᴴtrunc = randn!(similar.(USVᴴtrunc))
+    USVᴴtrunc = svd_trunc_no_error(t, alg)
+    ΔUSVᴴtrunc = EnzymeTestUtils.rand_tangent.(USVᴴtrunc)
     remove_svdgauge_dependence!(ΔUSVᴴtrunc[1], ΔUSVᴴtrunc[3], USVᴴtrunc...)
     EnzymeTestUtils.test_reverse(svd_trunc_no_error, Duplicated, (t, Duplicated), (alg, Const); output_tangent = ΔUSVᴴtrunc, atol, rtol)
 end
