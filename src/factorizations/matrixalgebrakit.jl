@@ -60,6 +60,8 @@ for f! in (
     end
 end
 
+MAK.zero!(t::AbstractTensorMap) = zerovector!(t)
+
 # Singular value decomposition
 # ----------------------------
 function MAK.initialize_output(::typeof(svd_full!), t::AbstractTensorMap, ::AbstractAlgorithm)

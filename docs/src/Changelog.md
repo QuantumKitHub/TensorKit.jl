@@ -18,7 +18,7 @@ When making changes to this project, please update the "Unreleased" section with
 
 When releasing a new version, move the "Unreleased" changes to a new version section with the release date.
 
-## [Unreleased](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.16.2...HEAD)
+## [Unreleased](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.16.3...HEAD)
 
 ### Added
 
@@ -35,6 +35,20 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 ### Fixed
 
 
+## [0.16.3](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.16.2...v0.16.3) - 2026-02-22
+
+### Added
+
+- Expanded set of Mooncake AD rules ([#356](https://github.com/QuantumKitHub/TensorKit.jl/pull/356))
+- Adapt support for `BraidingTensor` ([#374](https://github.com/QuantumKitHub/TensorKit.jl/pull/374))
+
+### Changed
+
+- Documentation improvements and updates ([#345](https://github.com/QuantumKitHub/TensorKit.jl/pull/345))
+
+### Fixed
+
+- Small fixes for upstream compatibility and CUDA support, including `Base.ones`/`zeros` accepting `CuArray` ([#373](https://github.com/QuantumKitHub/TensorKit.jl/pull/373))
 
 ## [0.16.2](https://github.com/QuantumKitHub/TensorKit.jl/releases/tag/v0.16.2) - 2026-02-10
 

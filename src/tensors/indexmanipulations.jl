@@ -293,6 +293,8 @@ function twist!(t::AbstractTensorMap, inds; inv::Bool = false)
         msg = "Can't twist indices $inds of a tensor with only $(numind(t)) indices."
         throw(ArgumentError(msg))
     end
+    (scalartype(t) <: Real && !(sectorscalartype(sectortype(t)) <: Real)) &&
+        throw(ArgumentError("Can't in-place twist a real tensor with complex sector type"))
     has_shared_twist(t, inds) && return t
 
     (scalartype(t) <: Real && !(sectorscalartype(sectortype(t)) <: Real)) &&
@@ -778,7 +780,8 @@ function _add_transform_multi!(
     buffer_src = StridedView(buffer2, (blocksize, cols), (1, blocksize), 0)
     for (i, struct_src) in enumerate(structs_src)
         subblock_src = sreshape(StridedView(tsrc.data, sz_src, struct_src...), matsize)
-        _copyto!(buffer_src[:, i], subblock_src)
+        bufblock_src = sreshape(buffer_src[:, i], matsize)
+        copy!(bufblock_src, subblock_src)
     end
 
     # Resummation into a second buffer using BLAS
