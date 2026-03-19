@@ -13,7 +13,7 @@ using CUDA: rand as curand, rand! as curand!, randn as curandn, randn! as curand
 @isdefined(TestSetup) || include("../setup.jl")
 using .TestSetup
 
-for V in (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂) #, VSU₃)
+for V in (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VA₄, Vfib, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂) #, VSU₃)
     V1, V2, V3, V4, V5 = V
     @assert V3 * V4 * V2 ≿ V1' * V5' # necessary for leftorth tests
     @assert V3 * V4 ≾ V1' * V2' * V5' # necessary for rightorth tests
@@ -23,17 +23,17 @@ spacelist = try
     if ENV["CI"] == "true"
         println("Detected running on CI")
         if Sys.iswindows()
-            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂)
+            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VA₄, VU₁, VfU₁, VCU₁, VSU₂)
         elseif Sys.isapple()
-            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VfU₁, VfSU₂) #, VSU₃)
+            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VA₄, Vfib, VfU₁, VfSU₂) #, VSU₃)
         else
-            (Vtr, Vℤ₂, Vfℤ₂, VU₁, VCU₁, VSU₂, VfSU₂) #, VSU₃)
+            (Vtr, Vℤ₂, Vfℤ₂, VA₄, Vfib, VU₁, VCU₁, VSU₂, VfSU₂) #, VSU₃)
         end
     else
-        (Vtr, VU₁, VSU₂, Vfℤ₂)
+        (Vtr, VU₁, VSU₂, Vfℤ₂, VA₄)
     end
 catch
-    (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂) #, VSU₃)
+    (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VA₄, Vfib, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂) #, VSU₃)
 end
 
 for V in spacelist
