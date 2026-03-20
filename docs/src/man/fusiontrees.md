@@ -122,7 +122,7 @@ In the case of `FusionStyle(I) isa UniqueFusion`, their is only one resulting fu
 With the elementary `artin_braid`, we can then compute a more general braid.
 For this, we provide an interface
 
-[`braid(f::FusionTree{I, N}, levels::NTuple{N, Int}, permutation::NTuple{N, Int})`](@ref braid(f::FusionTree{I, N}, levels::NTuple{N, Int}, p::NTuple{N, Int}) where {I <: Sector, N})
+[`braid(f::FusionTree{I, N}, levels::IndexTuple{N}, p::IndexTuple{N})`](@ref braid(::FusionTree{I, N}, ::IndexTuple{N}, ::IndexTuple{N}) where {I, N})
 
 where the braid is specified as a permutation, such that the new sector at position `i` was originally at position `permutation[i]`, and where every uncoupled sector is also assigned a level or depth.
 The permutation is decomposed into swaps between neighbouring sectors, and when two sectors are swapped, their respective level will determine whether the left sector is braided over or under its right neighbor.
@@ -139,17 +139,17 @@ We sketch this operation both as a general braid on the left hand side, and as a
 When `BraidingStyle(I) == SymmetricBraiding()`, there is no distinction between applying the braiding or its inverse (i.e. lines crossing over or under each other in the graphical notation) and the whole operation simplifies down to a permutation.
 We then also support the interface
 
-[`permute(f::FusionTree{I, N}, permutation::NTuple{N, Int})`](@ref permute(f::FusionTree{I, N}, p::NTuple{N, Int}) where {I <: Sector, N})
+[`permute(f::FusionTree{I, N}, permutation::IndexTuple{N})`](@ref permute(f::FusionTree{I, N}, p::IndexTuple{N}) where {I, N})
 
 Other manipulations which are sometimes needed are
 
-*   [`insertat(f1::FusionTree{I,N₁}, i::Int, f2::FusionTree{I,N₂})`](@ref TensorKit.insertat) : inserts a fusion tree `f2` at the `i`th uncoupled sector of fusion tree `f1` (this requires that the coupled sector `f2` matches with the `i`th uncoupled sector of `f1`, and that `!f1.isdual[i]`, i.e. that there is no ``Z``-isomorphism on the `i`th line of `f1`), and recouple this into a linear combination of trees in canonical order, with `N₁ + N₂ - 1` uncoupled sectors, i.e. diagrammatically for `i = 3`
+*   [`insertat(f1::FusionTree{I, N₁}, i::Int, f2::FusionTree{I, N₂})`](@ref TensorKit.insertat) : inserts a fusion tree `f2` at the `i`th uncoupled sector of fusion tree `f1` (this requires that the coupled sector `f2` matches with the `i`th uncoupled sector of `f1`, and that `!f1.isdual[i]`, i.e. that there is no ``Z``-isomorphism on the `i`th line of `f1`), and recouple this into a linear combination of trees in canonical order, with `N₁ + N₂ - 1` uncoupled sectors, i.e. diagrammatically for `i = 3`
 
 ```@raw html
 <img src="../img/tree-insertat.svg" alt="insertat" class="color-invertible"/>
 ```
 
-*   [`split(f::FusionTree{I,N}, M::Int)`](@ref TensorKit.split) : splits a fusion tree `f` into two trees `f1` and `f2`, such that `f1` has the first `M` uncoupled sectors of `f`, and `f2` the remaining `N - M`.
+*   [`split(f::FusionTree{I, N}, M::Int)`](@ref TensorKit.split) : splits a fusion tree `f` into two trees `f1` and `f2`, such that `f1` has the first `M` uncoupled sectors of `f`, and `f2` the remaining `N - M`.
     This function is type stable if `M` is a compile time constant.
 
     `split(f, M)` is the inverse of `insertat` in the sense that `insertat(f2, 1, f1)` should return a dictionary with a single key-value pair `f=>1`.
@@ -159,7 +159,7 @@ Other manipulations which are sometimes needed are
 <img src="../img/tree-split.svg" alt="split" class="color-invertible"/>
 ```
 
-*   [`merge(f1::FusionTree{I,N₁}, f2::FusionTree{I,N₂}, c::I, [μ=1])`](@ref TensorKit.merge) : merges two fusion trees `f1` and `f2` by fusing the coupled sectors of `f1` and `f2` into a sector `c` (with vertex label `μ` if `FusionStyle(I) == GenericFusion()`), and reexpressing the result as a linear combination of fusion trees with `N₁ + N₂` uncoupled sectors in canonical order.
+*   [`merge(f1::FusionTree{I, N₁}, f2::FusionTree{I, N₂}, c::I, [μ = 1])`](@ref TensorKit.merge) : merges two fusion trees `f1` and `f2` by fusing the coupled sectors of `f1` and `f2` into a sector `c` (with vertex label `μ` if `FusionStyle(I) == GenericFusion()`), and reexpressing the result as a linear combination of fusion trees with `N₁ + N₂` uncoupled sectors in canonical order.
     This is a simple application of `insertat`.
     Diagrammatically, this operation is represented as:
 
@@ -210,7 +210,7 @@ We again use the adjoint of this relation to bend an `isdual` sector from the fu
 
 The `FusionTree` interface to duality and line bending is given by
 
-[`repartition(f1::FusionTree{I,N₁}, f2::FusionTree{I,N₂}, N::Int)`](@ref repartition)
+[`repartition(src::Union{FusionTreePair, FusionTreeBlock}, N::Int)`](@ref repartition(src::Union{FusionTreePair, FusionTreeBlock}, N::Int))
 
 which takes a splitting tree `f1` with `N₁` outgoing sectors, a fusion tree `f2` with `N₂` incoming sectors, and applies line bending such that the resulting splitting and fusion trees have `N` outgoing sectors, corresponding to the first `N` sectors out of the list ``(a_1, a_2, …, a_{N_1}, b_{N_2}^*, …, b_{1}^*)`` and `N₁ + N₂ - N` incoming sectors, corresponding to the dual of the last `N₁ + N₂ - N` sectors from the previous list, in reverse.
 This return values are correctly inferred if `N` is a compile time constant.
@@ -227,7 +227,7 @@ Note that the summation is only over the ``κ_j`` labels, such that, in the case
 With this basic function, we can now perform arbitrary combinations of braids or permutations with line bendings, to completely reshuffle where sectors appear.
 The interface provided for this is given by
 
-[`braid(f1::FusionTree{I,N₁}, f2::FusionTree{I,N₂}, levels1::NTuple{N₁,Int}, levels2::NTuple{N₂,Int}, p1::NTuple{N₁′,Int}, p2::NTuple{N₂′,Int})`](@ref braid(::FusionTree{I}, ::FusionTree{I}, ::IndexTuple, ::IndexTuple, ::IndexTuple{N₁}, ::IndexTuple{N₂}) where {I<:Sector,N₁,N₂})
+[`braid(f::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple, levels::Index2Tuple)`](@ref braid(::Union{FusionTreePair, FusionTreeBlock}, ::Index2Tuple, ::Index2Tuple))
 
 where we now have splitting tree `f1` with `N₁` outgoing sectors, a fusion tree `f2` with `N₂` incoming sectors, `levels1` and `levels2` assign a level or depth to the corresponding uncoupled sectors in `f1` and `f2`, and we represent the new configuration as a pair `p1` and `p2`.
 Together, `(p1..., p2...)` represents a permutation of length `N₁ + N₂ = N₁′ + N₂′`, where `p1` indicates which of the original sectors should appear as outgoing sectors in the new splitting tree and `p2` indicates which appear as incoming sectors in the new fusion tree.
@@ -240,7 +240,7 @@ The result is again returned as a dictionary where the keys are `(f1′, f2′)`
 As before, there is a simplified interface for the case where `BraidingStyle(I) isa SymmetricBraiding` and the levels are not needed.
 This is simply given by
 
-[`permute(f1::FusionTree{I,N₁}, f2::FusionTree{I,N₂}, p1::NTuple{N₁′,Int}, p2::NTuple{N₂′,Int})`](@ref permute(::FusionTree{I}, ::FusionTree{I}, ::IndexTuple{N₁}, ::IndexTuple{N₂}) where {I<:Sector,N₁,N₂})
+[`permute(f::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple)`](@ref permute(::Union{FusionTreePair, FusionTreeBlock}, ::Index2Tuple))
 
 The `braid` and `permute` routines for double fusion trees will be the main access point for corresponding manipulations on tensors.
 As a consequence, results from this routine are memoized, i.e. they are stored in some package wide 'least-recently used' cache (from [LRUCache.jl](https://github.com/JuliaCollections/LRUCache.jl)) that can be accessed as `TensorKit.
