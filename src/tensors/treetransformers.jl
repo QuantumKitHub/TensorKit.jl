@@ -107,7 +107,6 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
     else
         for (i, fs_src) in enumerate(fblocks)
             fs_dst, U = transform(fs_src)
-            matrix = copy(transpose(U)) # TODO: should we avoid this
 
             trees_src = fusiontrees(fs_src)
             inds_src = map(Base.Fix1(getindex, structure_src.fusiontreeindices), trees_src)
@@ -123,7 +122,7 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
                 fusionstructure_dst, inds_dst
             )
 
-            data[i] = matrix, (sz_dst, newstructs_dst), (sz_src, newstructs_src)
+            data[i] = U, (sz_dst, newstructs_dst), (sz_src, newstructs_src)
         end
         transformer = GenericTreeTransformer{T, N}(data)
     end

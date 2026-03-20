@@ -743,18 +743,22 @@ function _add_transform_multi!(tdst, tsrc, p, src::FusionTreeBlock, transformer,
     rows, cols = size(U)
     sz_src = size(tsrc[first(fusiontrees(src))...])
     blocksize = prod(sz_src)
+    matsize = (
+        prod(TupleTools.getindices(sz_src, codomainind(tsrc))),
+        prod(TupleTools.getindices(sz_src, domainind(tsrc))),
+    )
 
     # Filling up a buffer with contiguous data
     buffer_src = StridedView(buffer2, (blocksize, cols), (1, blocksize), 0)
     for (i, (f₁, f₂)) in enumerate(fusiontrees(src))
-        subblock_src = tsrc[f₁, f₂]
-        subblock_dst = sreshape(buffer_src[:, i], sz_src)
-        copy!(subblock_dst, subblock_src)
+        subblock_src = sreshape(tsrc[f₁, f₂], matsize)
+        bufblock_src = sreshape(buffer_src[:, i], matsize)
+        copy!(bufblock_src, subblock_src)
     end
 
     # Resummation into a second buffer using BLAS
     buffer_dst = StridedView(buffer1, (blocksize, rows), (1, blocksize), 0)
-    mul!(buffer_dst, buffer_src, StridedView(U), α, Zero())
+    mul!(buffer_dst, buffer_src, transpose(StridedView(U)), α, Zero())
 
     # Filling up the output
     for (i, (f₃, f₄)) in enumerate(fusiontrees(dst))
@@ -766,10 +770,10 @@ function _add_transform_multi!(tdst, tsrc, p, src::FusionTreeBlock, transformer,
     return nothing
 end
 function _add_transform_multi!(
-        tdst, tsrc, p, (basistransform, (sz_dst, structs_dst), (sz_src, structs_src)),
+        tdst, tsrc, p, (U, (sz_dst, structs_dst), (sz_src, structs_src)),
         (buffer1, buffer2), α, β, backend...
     )
-    rows, cols = size(basistransform)
+    rows, cols = size(U)
     blocksize = prod(sz_src)
     matsize = (
         prod(TupleTools.getindices(sz_src, codomainind(tsrc))),
@@ -786,7 +790,7 @@ function _add_transform_multi!(
 
     # Resummation into a second buffer using BLAS
     buffer_dst = StridedView(buffer1, (blocksize, rows), (1, blocksize), 0)
-    mul!(buffer_dst, buffer_src, StridedView(basistransform), α, Zero())
+    mul!(buffer_dst, buffer_src, transpose(StridedView(U)), α, Zero())
 
     # Filling up the output
     for (i, struct_dst) in enumerate(structs_dst)
