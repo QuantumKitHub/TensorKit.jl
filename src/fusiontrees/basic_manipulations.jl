@@ -23,20 +23,20 @@ See also [`join`](@ref) and [`insertat`](@ref).
     innerlines_extended = (f.uncoupled[1], f.innerlines..., f.coupled)
     vertices_extended = (1, f.vertices...)
 
-    uncoupled1 = ntuple(n -> f.uncoupled[n], M)
-    isdual1 = ntuple(n -> f.isdual[n], M)
-    coupled1 = M == 0 ? leftunit(f.uncoupled[1]) : innerlines_extended[M]
-    innerlines1 = ntuple(n -> f.innerlines[n], max(0, M - 2))
-    vertices1 = ntuple(n -> f.vertices[n], max(0, M - 1))
+    uncoupled₁ = ntuple(n -> f.uncoupled[n], M)
+    isdual₁ = ntuple(n -> f.isdual[n], M)
+    coupled₁ = M == 0 ? leftunit(f.uncoupled[1]) : innerlines_extended[M]
+    innerlines₁ = ntuple(n -> f.innerlines[n], max(0, M - 2))
+    vertices₁ = ntuple(n -> f.vertices[n], max(0, M - 1))
 
-    uncoupled2 = (coupled1, ntuple(n -> f.uncoupled[M + n], N - M)...)
-    isdual2 = (false, ntuple(n -> f.isdual[M + n], N - M)...)
-    coupled2 = f.coupled
-    innerlines2 = ntuple(n -> innerlines_extended[M + n], max(0, N - M - 1))
-    vertices2 = ntuple(n -> vertices_extended[M + n], N - M)
+    uncoupled₂ = (coupled₁, ntuple(n -> f.uncoupled[M + n], N - M)...)
+    isdual₂ = (false, ntuple(n -> f.isdual[M + n], N - M)...)
+    coupled₂ = f.coupled
+    innerlines₂ = ntuple(n -> innerlines_extended[M + n], max(0, N - M - 1))
+    vertices₂ = ntuple(n -> vertices_extended[M + n], N - M)
 
-    f₁ = FusionTree{I}(uncoupled1, coupled1, isdual1, innerlines1, vertices1)
-    f₂ = FusionTree{I}(uncoupled2, coupled2, isdual2, innerlines2, vertices2)
+    f₁ = FusionTree{I}(uncoupled₁, coupled₁, isdual₁, innerlines₁, vertices₁)
+    f₂ = FusionTree{I}(uncoupled₂, coupled₂, isdual₂, innerlines₂, vertices₂)
     return f₁, f₂
 end
 
@@ -476,9 +476,6 @@ function insertat(f₁::FusionTree{I, N₁}, i, f₂::FusionTree{I, N₂}) where
 
     i == 1 && return fusiontreedict(I){F, T}(join(f₂, f₁) => one(T))
 
-    innerlines_extended = (f₁.uncoupled[1], f₁.innerlines..., f₁.coupled)
-    as = (innerlines_extended[i - 1], f₂.uncoupled...)
-    c = innerlines_extended[i]
     fleft, = split(f₁, i - 1)
     _, fright = split(f₁, i)
     a, c, λ = VertexGetter(i)(f₁)

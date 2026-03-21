@@ -38,17 +38,17 @@ function _bendright_treepair((f₁, f₂)::FusionTreePair)
     b = f₁.uncoupled[N₁]
 
     # construct the new fusiontree pair
-    uncoupled1 = TupleTools.front(f₁.uncoupled)
-    isdual1 = TupleTools.front(f₁.isdual)
-    inner1 = N₁ > 2 ? TupleTools.front(f₁.innerlines) : ()
-    vertices1 = N₁ > 1 ? TupleTools.front(f₁.vertices) : ()
-    f₁′ = FusionTree{I}(uncoupled1, a, isdual1, inner1, vertices1)
+    uncoupled₁ = TupleTools.front(f₁.uncoupled)
+    isdual₁ = TupleTools.front(f₁.isdual)
+    inner₁ = N₁ > 2 ? TupleTools.front(f₁.innerlines) : ()
+    vertices₁ = N₁ > 1 ? TupleTools.front(f₁.vertices) : ()
+    f₁′ = FusionTree{I}(uncoupled₁, a, isdual₁, inner₁, vertices₁)
 
-    uncoupled2 = (f₂.uncoupled..., dual(b))
-    isdual2 = (f₂.isdual..., !(f₁.isdual[N₁]))
-    inner2 = N₂ > 1 ? (f₂.innerlines..., c) : ()
-    vertices2 = N₂ > 0 ? (f₂.vertices..., 1) : ()
-    f₂′ = FusionTree{I}(uncoupled2, a, isdual2, inner2, vertices2)
+    uncoupled₂ = (f₂.uncoupled..., dual(b))
+    isdual₂ = (f₂.isdual..., !(f₁.isdual[N₁]))
+    inner₂ = N₂ > 1 ? (f₂.innerlines..., c) : ()
+    vertices₂ = N₂ > 0 ? (f₂.vertices..., 1) : ()
+    f₂′ = FusionTree{I}(uncoupled₂, a, isdual₂, inner₂, vertices₂)
 
     return (a, b, c), (f₁′, f₂′)
 end
@@ -254,13 +254,13 @@ function foldright(src::FusionTreeBlock)
     isduala = f₁.isdual[1]
 
     cache₁ = Dict(f₁ => multi_Fmove(f₁))
-    f₁′, coef₁ = first.(cache₁[f₁])
+    f₁′, coeff₁ = first.(cache₁[f₁])
     b::I = f₁′.coupled
     cache₂ = Dict((b, f₂) => multi_Fmove_inv(dual(a), b, f₂, !isduala))
     c::I = f₁.coupled
     cache₃ = Dict((b, c) => Asymbol(a, b, c))
 
-    U = zeros(eltype(coef₁), length(dst), length(src))
+    U = zeros(eltype(coeff₁), length(dst), length(src))
     for (col, (f₁, f₂)) in enumerate(fusiontrees(src))
         f₁′s, coeffs₁ = get!(cache₁, f₁) do
             multi_Fmove(f₁)
@@ -341,13 +341,13 @@ function foldleft(src::FusionTreeBlock)
     isduala = f₂.isdual[1]
 
     cache₂ = Dict(f₂ => multi_Fmove(f₂))
-    f₂′, coef₂ = first.(cache₂[f₂])
+    f₂′, coeff₂ = first.(cache₂[f₂])
     b::I = f₂′.coupled
     cache₁ = Dict((b, f₁) => multi_Fmove_inv(dual(a), b, f₁, !isduala))
     c::I = f₂.coupled
     cache₃ = Dict((b, c) => Asymbol(a, b, c))
 
-    U = zeros(eltype(coef₂), length(dst), length(src))
+    U = zeros(eltype(coeff₂), length(dst), length(src))
     for (col, (f₁, f₂)) in enumerate(fusiontrees(src))
         f₂′s, coeffs₂ = get!(cache₂, f₂) do
             multi_Fmove(f₂)
