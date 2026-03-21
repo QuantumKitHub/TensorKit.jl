@@ -22,6 +22,7 @@ For manipulating single fusion trees, the following internal methods are defined
 ```@docs
 insertat
 split
+TensorKit.join
 merge
 elementary_trace
 planar_trace(f::FusionTree{I, N}, q::Index2Tuple{N₃, N₃}) where {I, N, N₃}
