@@ -263,3 +263,24 @@ function Base.:(==)(d1::SortedVectorDict, d2::SortedVectorDict)
     end
     return true
 end
+
+"""
+    Hashed(value, hashfunction = Base.hash, isequal = Base.isequal)
+
+Wrapper struct to alter the `hash` and `isequal` implementations of a given value.
+This is useful in the contexts of dictionaries, where you either want to customize the hashfunction,
+or consider various values as equal with a different notion of equality.
+"""
+struct Hashed{T, Hash, Eq}
+    val::T
+end
+
+Hashed(val, hash = Base.hash, eq = Base.isequal) = Hashed{typeof(val), hash, eq}(val)
+
+Base.parent(h::Hashed) = h.val
+
+# hash overload
+Base.hash(h::Hashed{T, Hash}, seed::UInt) where {T, Hash} = Hash(parent(h), seed)
+
+# isequal overload
+Base.isequal(h1::H, h2::H) where {Eq, H <: Hashed{<:Any, <:Any, Eq}} = Eq(parent(h1), parent(h2))
