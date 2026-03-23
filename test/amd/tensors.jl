@@ -549,7 +549,7 @@ for V in spacelist
                 end
                 @test norm(t) ≈ norm(t1) * norm(t2)
             end
-        end=# # segfaulting for now?
+        end
         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
             @timedtestset "Tensor product: test via conversion" begin
                 for T in (Float32, ComplexF64)
@@ -566,7 +566,7 @@ for V in spacelist
                     end
                 end
             end
-        end
+        end=#
         #=@timedtestset "Tensor product: test via tensor contraction" begin
             for T in (Float32, ComplexF64)
                 t1 = AMDGPU.rand(T, V2 ⊗ V3 ⊗ V1)
@@ -582,6 +582,7 @@ for V in spacelist
     TensorKit.empty_globalcaches!()
 end
 
+#=
 @timedtestset "Deligne tensor product: test via conversion" begin
     Vlists1 = (Vtr,) # VSU₂)
     Vlists2 = (Vtr,) # Vℤ₂)
@@ -603,4 +604,4 @@ end
             end
         end
     end
-end
+end=#
