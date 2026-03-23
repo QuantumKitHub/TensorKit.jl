@@ -43,7 +43,7 @@ partitioned into symmetry blocks and sub-blocks indexed by fusion tree pairs.
   strided view into the flat data vector. The insertion order of the dictionary matches
   the canonical enumeration order from [`fusiontreelist`](@ref).
 
-See also [`fusionblockstructure`](@ref), [`fusiontreelist`](@ref).
+See also [`fusionblockstructure`](@ref), [`fusiontrees`](@ref).
 """
 struct FusionBlockStructure{I, N, F₁, F₂}
     totaldim::Int
@@ -61,7 +61,7 @@ function fusionblockstructuretype(W::HomSpace)
     return FusionBlockStructure{I, N, F₁, F₂}
 end
 
-Base.@assume_effects :foldable function fusiontreelisttype(key::Hashed{S}) where {S <: HomSpace}
+Base.@assume_effects :foldable function fusiontreestype(key::Hashed{S}) where {S <: HomSpace}
     I = sectortype(S)
     F₁ = fusiontreetype(I, numout(S))
     F₂ = fusiontreetype(I, numin(S))
@@ -69,7 +69,7 @@ Base.@assume_effects :foldable function fusiontreelisttype(key::Hashed{S}) where
 end
 
 """
-    fusiontreelist(W::HomSpace) -> Indices{Tuple{F₁,F₂}}
+    fusiontrees(W::HomSpace) -> Indices{Tuple{F₁,F₂}}
 
 Return an `Indices` of all valid fusion tree pairs `(f₁, f₂)` for `W`, providing a
 bijection to sequential integer positions via `gettoken`/`gettokenvalue`. The result is
@@ -79,9 +79,9 @@ object.
 
 See also [`fusionblockstructure`](@ref).
 """
-fusiontreelist(W::HomSpace) = fusiontreelist(Hashed(W, sectorhash, sectorequal))
+fusiontrees(W::HomSpace) = fusiontrees(Hashed(W, sectorhash, sectorequal))
 
-@cached function fusiontreelist(key::Hashed{S})::fusiontreelisttype(key) where {S <: HomSpace}
+@cached function fusiontrees(key::Hashed{S})::fusiontreestype(key) where {S <: HomSpace}
     W = parent(key)
     codom, dom = codomain(W), domain(W)
     I = sectortype(S)
@@ -114,7 +114,7 @@ fusiontreelist(W::HomSpace) = fusiontreelist(Hashed(W, sectorhash, sectorequal))
     return Indices(trees)
 end
 
-CacheStyle(::typeof(fusiontreelist), ::Hashed{S}) where {S <: HomSpace} = GlobalLRUCache()
+CacheStyle(::typeof(fusiontrees), ::Hashed{S}) where {S <: HomSpace} = GlobalLRUCache()
 
 @doc """
     fusionblockstructure(W::HomSpace) -> FusionBlockStructure
@@ -124,7 +124,7 @@ data vector is laid out in terms of symmetry blocks and fusion-tree sub-blocks. 
 is cached per `HomSpace` instance (keyed by object identity, not sector structure, since
 degeneracy dimensions affect the block sizes and offsets).
 
-See also [`FusionBlockStructure`](@ref), [`fusiontreelist`](@ref).
+See also [`FusionBlockStructure`](@ref), [`fusiontrees`](@ref).
 """ fusionblockstructure(::HomSpace)
 
 @cached function fusionblockstructure(W::HomSpace)::fusionblockstructuretype(W)
@@ -133,7 +133,7 @@ See also [`FusionBlockStructure`](@ref), [`fusiontreelist`](@ref).
     N = length(codom) + length(dom)
     I = sectortype(W)
 
-    treelist = fusiontreelist(W)
+    treelist = fusiontrees(W)
     L = length(treelist)
     structurevalues = sizehint!(Vector{StridedStructure{N}}(), L)
     blockstructure = SectorDict{I, Tuple{Tuple{Int, Int}, UnitRange{Int}}}()
