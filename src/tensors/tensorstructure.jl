@@ -32,12 +32,33 @@ end
 
 Charge-only structure encoding a bijection between the fusion tree pairs and a linear index.
 This encodes the symmetry structure of a `HomSpace`, shared across all `HomSpace`s with the same `sectors` but varying degeneracies.
+
+See also [`fusiontreelist`](@ref).
 """
 struct FusionTreeList{F₁, F₂}
     fusiontreelist::Vector{Tuple{F₁, F₂}}
     fusiontreeindices::FusionTreeDict{Tuple{F₁, F₂}, Int}
 end
 
+"""
+    FusionBlockStructure{I, N, F₁, F₂}
+
+Full block structure of a `HomSpace`, encoding how a tensor's flat data vector is
+partitioned into symmetry blocks and sub-blocks indexed by fusion tree pairs.
+
+## Fields
+- `totaldim`: total number of elements in the flat data vector.
+- `blockstructure`: maps each coupled sector `c::I` to a tuple `((d₁, d₂), r)`, where
+  `d₁` and `d₂` are the block dimensions for the codomain and domain respectively, and
+  `r` is the corresponding index range in the flat data vector.
+- `fusiontreestructure`: for each fusion tree pair `(f₁, f₂)` (in the same order as
+  `treelist`), a [`StridedStructure`](@ref) `(sizes, strides, offset)` describing the
+  sub-block as a strided view into the flat data vector.
+- `treelist`: the underlying [`FusionTreeList`](@ref) providing the bijection between
+  fusion tree pairs and linear indices.
+
+See also [`fusionblockstructure`](@ref), [`FusionTreeList`](@ref).
+"""
 struct FusionBlockStructure{I, N, F₁, F₂}
     totaldim::Int
     blockstructure::SectorDict{I, Tuple{Tuple{Int, Int}, UnitRange{Int}}}
@@ -62,6 +83,16 @@ Base.@assume_effects :foldable function fusiontreelisttype(key::Hashed{S}) where
     return FusionTreeList{F₁, F₂}
 end
 
+"""
+    fusiontreelist(W::HomSpace) -> FusionTreeList
+
+Return the [`FusionTreeList`](@ref) for `W`, enumerating all valid fusion tree pairs
+`(f₁, f₂)` and providing a bijection to linear indices. The result is cached based on
+the sector structure of `W` (ignoring degeneracy dimensions), so `HomSpace`s that share
+the same sectors, dualities, and index count will reuse the same object.
+
+See also [`FusionTreeList`](@ref), [`fusionblockstructure`](@ref).
+"""
 fusiontreelist(W::HomSpace) = fusiontreelist(Hashed(W, sectorhash, sectorequal))
 
 @cached function fusiontreelist(key::Hashed{S})::fusiontreelisttype(key) where {S <: HomSpace}
@@ -103,6 +134,17 @@ fusiontreelist(W::HomSpace) = fusiontreelist(Hashed(W, sectorhash, sectorequal))
 end
 
 CacheStyle(::typeof(fusiontreelist), ::Hashed{S}) where {S <: HomSpace} = GlobalLRUCache()
+
+@doc """
+    fusionblockstructure(W::HomSpace) -> FusionBlockStructure
+
+Compute the full [`FusionBlockStructure`](@ref) for `W`, describing how a tensor's flat
+data vector is laid out in terms of symmetry blocks and fusion-tree sub-blocks. The result
+is cached per `HomSpace` instance (keyed by object identity, not sector structure, since
+degeneracy dimensions affect the block sizes and offsets).
+
+See also [`FusionBlockStructure`](@ref), [`fusiontreelist`](@ref).
+""" fusionblockstructure(::HomSpace)
 
 @cached function fusionblockstructure(W::HomSpace)::fusionblockstructuretype(W)
     codom = codomain(W)
@@ -190,7 +232,6 @@ CacheStyle(::typeof(fusionblockstructure), W::HomSpace) = GlobalLRUCache()
 
 # Diagonal ranges
 #----------------
-# TODO: is this something we want to cache?
 function diagonalblockstructure(W::HomSpace)
     ((numin(W) == numout(W) == 1) && domain(W) == codomain(W)) ||
         throw(SpaceMismatch("Diagonal only support on V←V with a single space V"))
