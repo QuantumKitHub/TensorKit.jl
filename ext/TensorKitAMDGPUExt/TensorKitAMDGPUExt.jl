@@ -7,9 +7,10 @@ import AMDGPU: rand as rocrand, rand! as rocrand!, randn as rocrandn, randn! as 
 using TensorKit
 using TensorKit.Factorizations
 using TensorKit.Strided
-using TensorKit.Factorizations: AbstractAlgorithm
+using MatrixAlgebraKit: AbstractAlgorithm
 using TensorKit: SectorDict, tensormaptype, scalar, similarstoragetype, AdjointTensorMap, scalartype, project_symmetric_and_check
-import TensorKit: randisometry, rand, randn
+import TensorKit: randisometry
+using Base: rand, randn
 
 using TensorKit: MatrixAlgebraKit
 
