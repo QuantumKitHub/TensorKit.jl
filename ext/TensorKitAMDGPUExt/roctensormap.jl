@@ -86,7 +86,7 @@ for randfun in (:rocrand, :rocrandn)
         end
 
         function $randfun!(rng::Random.AbstractRNG, t::ROCTensorMap)
-            $randfun!(rng, b.data)
+            $randfun!(rng, t.data)
             return t
         end
     end
