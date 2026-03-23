@@ -6,13 +6,13 @@ import AMDGPU: rand as rocrand, rand! as rocrand!, randn as rocrandn, randn! as 
 
 using TensorKit
 using TensorKit.Factorizations
-using TensorKit.Strided
+using Strided
+using MatrixAlgebraKit
 using MatrixAlgebraKit: AbstractAlgorithm
 using TensorKit: SectorDict, tensormaptype, scalar, similarstoragetype, AdjointTensorMap, scalartype, project_symmetric_and_check
 import TensorKit: randisometry
 using Base: rand, randn
 
-using TensorKit: MatrixAlgebraKit
 
 using Random
 
