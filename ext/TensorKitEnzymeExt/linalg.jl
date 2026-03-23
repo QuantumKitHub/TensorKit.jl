@@ -159,7 +159,7 @@ function EnzymeRules.augmented_primal(
     ) where {RT}
     ret = inv(A.val)
     primal = EnzymeRules.needs_primal(config) ? ret : nothing
-    shadow = EnzymeRules.needs_shadow(config) ? zero(ret) : nothing
+    shadow = EnzymeRules.needs_shadow(config) ? make_zero(ret) : nothing
     cache = (ret, shadow)
     return EnzymeRules.AugmentedReturn(primal, shadow, cache)
 end
