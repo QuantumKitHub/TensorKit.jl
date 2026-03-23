@@ -136,7 +136,7 @@ dims(W::HomSpace) = (dims(codomain(W))..., dims(domain(W))...)
 
 Return the fusiontrees corresponding to all valid fusion channels of a given `HomSpace`.
 """
-fusiontrees(W::HomSpace) = fusionblockstructure(W).fusiontreelist
+fusiontrees(W::HomSpace) = fusiontreelist(W).fusiontreelist
 
 """
     fusionblocks(W::HomSpace)
@@ -315,12 +315,45 @@ end
 # sizes, strides, offset
 const StridedStructure{N} = Tuple{NTuple{N, Int}, NTuple{N, Int}, Int}
 
+function sectorequal(W₁::HomSpace, W₂::HomSpace)
+    check_spacetype(W₁, W₂)
+    (numout(W₁) == numout(W₂) && numin(W₁) == numin(W₂)) || return false
+    for (w₁, w₂) in zip(codomain(W₁), codomain(W₂))
+        isdual(w₁) == isdual(w₂) || return false
+        isequal(sectors(w₁), sectors(w₂)) || return false
+    end
+    for (w₁, w₂) in zip(domain(W₁), domain(W₂))
+        isdual(w₁) == isdual(w₂) || return false
+        isequal(sectors(w₁), sectors(w₂)) || return false
+    end
+    return true
+end
+function sectorhash(W::HomSpace, h::UInt)
+    for w in codomain(W)
+        h = hash(sectors(w), hash(isdual(w), h))
+    end
+    for w in domain(W)
+        h = hash(sectors(w), hash(isdual(w), h))
+    end
+    return h
+end
+
+"""
+    FusionTreeList{F₁, F₂}
+
+Charge-only structure encoding a bijection between the fusion tree pairs and a linear index.
+This encodes the symmetry structure of a `HomSpace`, shared across all `HomSpace`s with the same `sectors` but varying degeneracies.
+"""
+struct FusionTreeList{F₁, F₂}
+    fusiontreelist::Vector{Tuple{F₁, F₂}}
+    fusiontreeindices::FusionTreeDict{Tuple{F₁, F₂}, Int}
+end
+
 struct FusionBlockStructure{I, N, F₁, F₂}
     totaldim::Int
     blockstructure::SectorDict{I, Tuple{Tuple{Int, Int}, UnitRange{Int}}}
-    fusiontreelist::Vector{Tuple{F₁, F₂}}
     fusiontreestructure::Vector{StridedStructure{N}}
-    fusiontreeindices::FusionTreeDict{Tuple{F₁, F₂}, Int}
+    treelist::FusionTreeList{F₁, F₂}
 end
 
 function fusionblockstructuretype(W::HomSpace)
@@ -333,73 +366,129 @@ function fusionblockstructuretype(W::HomSpace)
     return FusionBlockStructure{I, N, F₁, F₂}
 end
 
-@cached function fusionblockstructure(W::HomSpace)::fusionblockstructuretype(W)
-    codom = codomain(W)
-    dom = domain(W)
-    N₁ = length(codom)
-    N₂ = length(dom)
-    I = sectortype(W)
+Base.@assume_effects :foldable function fusiontreelisttype(key::Hashed{S}) where {S <: HomSpace}
+    I = sectortype(S)
+    F₁ = fusiontreetype(I, numout(S))
+    F₂ = fusiontreetype(I, numin(S))
+    return FusionTreeList{F₁, F₂}
+end
+
+fusiontreelist(W::HomSpace) = fusiontreelist(Hashed(W, sectorhash, sectorequal))
+
+@cached function fusiontreelist(key::Hashed{S})::fusiontreelisttype(key) where {S <: HomSpace}
+    W = parent(key)
+    codom, dom = codomain(W), domain(W)
+    I = sectortype(S)
+    N₁, N₂ = numout(S), numin(S)
     F₁ = fusiontreetype(I, N₁)
     F₂ = fusiontreetype(I, N₂)
 
-    # output structure
-    blockstructure = SectorDict{I, Tuple{Tuple{Int, Int}, UnitRange{Int}}}() # size, range
-    fusiontreelist = Vector{Tuple{F₁, F₂}}()
-    fusiontreestructure = Vector{Tuple{NTuple{N₁ + N₂, Int}, NTuple{N₁ + N₂, Int}, Int}}() # size, strides, offset
+    trees = Vector{Tuple{F₁, F₂}}()
+
+    for c in blocksectors(W)
+        codom_start = length(trees) + 1
+        n₁ = 0
+        for f₂ in fusiontrees(dom, c)
+            if n₁ == 0
+                # First f₂ for this sector: enumerate codomain trees and record how many there are.
+                for f₁ in fusiontrees(codom, c)
+                    push!(trees, (f₁, f₂))
+                end
+                n₁ = length(trees) - codom_start + 1
+            else
+                # Subsequent f₂s: the codomain trees are already in the list at
+                # codom_start:codom_start+n₁-1, so read them back instead of recomputing.
+                for j in codom_start:(codom_start + n₁ - 1)
+                    push!(trees, (trees[j][1], f₂))
+                end
+            end
+        end
+    end
+
+    treeindices = sizehint!(
+        FusionTreeDict{Tuple{F₁, F₂}, Int}(), length(trees)
+    )
+    for (i, f₁₂) in enumerate(trees)
+        treeindices[f₁₂] = i
+    end
+
+    return FusionTreeList{F₁, F₂}(trees, treeindices)
+end
+
+CacheStyle(::typeof(fusiontreelist), ::Hashed{S}) where {S <: HomSpace} = GlobalLRUCache()
+
+@cached function fusionblockstructure(W::HomSpace)::fusionblockstructuretype(W)
+    codom = codomain(W)
+    dom = domain(W)
+    N = length(codom) + length(dom)
+    I = sectortype(W)
+
+    treelist = fusiontreelist(W)
+    trees = treelist.fusiontreelist
+    L = length(trees)
+    fusiontreestructure = sizehint!(Vector{StridedStructure{N}}(), L)
+    blockstructure = SectorDict{I, Tuple{Tuple{Int, Int}, UnitRange{Int}}}()
+
 
     # temporary data structures
-    splittingtrees = Vector{F₁}()
-    splittingstructure = Vector{Tuple{Int, Int}}()
+    splittingstructure = Vector{NTuple{numout(W), Int}}()
 
-    # main computational routine
     blockoffset = 0
-    for c in blocksectors(W)
-        empty!(splittingtrees)
-        empty!(splittingstructure)
+    tree_index = 1
+    while tree_index <= L
+        f₁, f₂ = trees[tree_index]
+        c = f₁.coupled
 
+        # compute subblock structure
+        # splitting tree data
+        empty!(splittingstructure)
         offset₁ = 0
-        for f₁ in fusiontrees(codom, c)
-            push!(splittingtrees, f₁)
-            d₁ = dim(codom, f₁.uncoupled)
-            push!(splittingstructure, (offset₁, d₁))
+        for (f₁′, f₂′) in view(trees, tree_index:L)
+            f₂′ == f₂ || break
+            s₁ = f₁′.uncoupled
+            d₁s = dims(codom, s₁)
+            d₁ = prod(d₁s)
             offset₁ += d₁
+            push!(splittingstructure, d₁s)
         end
         blockdim₁ = offset₁
+        n₁ = length(splittingstructure)
         strides = (1, blockdim₁)
 
+        # fusion tree data and combine
         offset₂ = 0
-        for f₂ in fusiontrees(dom, c)
-            s₂ = f₂.uncoupled
-            d₂ = dim(dom, s₂)
-            for (f₁, (offset₁, d₁)) in zip(splittingtrees, splittingstructure)
-                push!(fusiontreelist, (f₁, f₂))
+        n₂ = 0
+        for (f₁′, f₂′) in view(trees, tree_index:n₁:L)
+            f₂′.coupled == c || break
+            n₂ += 1
+            s₂ = f₂′.uncoupled
+            d₂s = dims(dom, s₂)
+            d₂ = prod(d₂s)
+            offset₁ = 0
+            for d₁s in splittingstructure
+                d₁ = prod(d₁s)
                 totaloffset = blockoffset + offset₂ * blockdim₁ + offset₁
-                subsz = (dims(codom, f₁.uncoupled)..., dims(dom, f₂.uncoupled)...)
-                @assert !any(isequal(0), subsz)
+                subsz = (d₁s..., d₂s...)
+                @assert !any(==(0), subsz)
                 substr = _subblock_strides(subsz, (d₁, d₂), strides)
                 push!(fusiontreestructure, (subsz, substr, totaloffset))
+                offset₁ += d₁
             end
             offset₂ += d₂
         end
-        blockdim₂ = offset₂
-        blocksize = (blockdim₁, blockdim₂)
-        blocklength = blockdim₁ * blockdim₂
-        blockrange = (blockoffset + 1):(blockoffset + blocklength)
-        blockoffset = last(blockrange)
-        blockstructure[c] = (blocksize, blockrange)
-    end
 
-    fusiontreeindices = sizehint!(
-        FusionTreeDict{Tuple{F₁, F₂}, Int}(), length(fusiontreelist)
-    )
-    for (i, f₁₂) in enumerate(fusiontreelist)
-        fusiontreeindices[f₁₂] = i
+        # compute block structure
+        blockdim₂ = offset₂
+        blockrange = (blockoffset + 1):(blockoffset + blockdim₁ * blockdim₂)
+        blockstructure[c] = ((blockdim₁, blockdim₂), blockrange)
+
+        # reset
+        blockoffset = last(blockrange)
+        tree_index += n₁ * n₂
     end
-    totaldim = blockoffset
-    structure = FusionBlockStructure(
-        totaldim, blockstructure, fusiontreelist, fusiontreestructure, fusiontreeindices
-    )
-    return structure
+    @assert length(fusiontreestructure) == L
+
+    return FusionBlockStructure(blockoffset, blockstructure, fusiontreestructure, treelist)
 end
 
 function _subblock_strides(subsz, sz, str)
@@ -410,9 +499,7 @@ function _subblock_strides(subsz, sz, str)
     return strides
 end
 
-function CacheStyle(::typeof(fusionblockstructure), W::HomSpace)
-    return GlobalLRUCache()
-end
+CacheStyle(::typeof(fusionblockstructure), W::HomSpace) = GlobalLRUCache()
 
 # Diagonal ranges
 #----------------
