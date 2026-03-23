@@ -86,9 +86,7 @@ for randfun in (:rocrand, :rocrandn)
         end
 
         function $randfun!(rng::Random.AbstractRNG, t::ROCTensorMap)
-            for (_, b) in blocks(t)
-                $randfun!(rng, b)
-            end
+            $randfun!(rng, b.data)
             return t
         end
     end
