@@ -231,6 +231,7 @@ end
 # Definitions and methods for tensors
 #-------------------------------------
 # general definitions
+include("tensors/tensorstructure.jl")
 include("tensors/abstracttensor.jl")
 include("tensors/backends.jl")
 include("tensors/blockiterator.jl")
