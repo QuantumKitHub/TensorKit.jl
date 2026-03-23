@@ -19,15 +19,15 @@ function AbelianTreeTransformer(transform, p, Vdst, Vsrc)
     structure_dst = fusionblockstructure(Vdst)
     structure_src = fusionblockstructure(Vsrc)
 
-    L = length(structure_src.treelist.fusiontreelist)
+    L = length(structure_src.treelist)
     T = sectorscalartype(sectortype(Vdst))
     N = numind(Vsrc)
     data = Vector{Tuple{T, StridedStructure{N}, StridedStructure{N}}}(undef, L)
 
     for i in 1:L
-        f₁, f₂ = structure_src.treelist.fusiontreelist[i]
+        f₁, f₂ = gettokenvalue(structure_src.treelist, i)
         (f₃, f₄), coeff = only(transform(f₁, f₂))
-        j = structure_dst.treelist.fusiontreeindices[(f₃, f₄)]
+        _, j = gettoken(structure_dst.treelist, (f₃, f₄))
         stridestructure_dst = structure_dst.fusiontreestructure[j]
         stridestructure_src = structure_src.fusiontreestructure[i]
         data[i] = (coeff, stridestructure_dst, stridestructure_src)

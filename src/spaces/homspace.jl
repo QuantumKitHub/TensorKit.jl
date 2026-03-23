@@ -130,7 +130,7 @@ dims(W::HomSpace) = (dims(codomain(W))..., dims(domain(W))...)
 
 Return the fusiontrees corresponding to all valid fusion channels of a given `HomSpace`.
 """
-fusiontrees(W::HomSpace) = fusiontreelist(W).fusiontreelist
+fusiontrees(W::HomSpace) = fusiontreelist(W)
 
 """
     fusionblocks(W::HomSpace)

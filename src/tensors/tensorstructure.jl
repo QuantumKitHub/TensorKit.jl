@@ -28,19 +28,6 @@ function sectorhash(W::HomSpace, h::UInt)
 end
 
 """
-    FusionTreeList{F₁, F₂}
-
-Charge-only structure encoding a bijection between the fusion tree pairs and a linear index.
-This encodes the symmetry structure of a `HomSpace`, shared across all `HomSpace`s with the same `sectors` but varying degeneracies.
-
-See also [`fusiontreelist`](@ref).
-"""
-struct FusionTreeList{F₁, F₂}
-    fusiontreelist::Vector{Tuple{F₁, F₂}}
-    fusiontreeindices::FusionTreeDict{Tuple{F₁, F₂}, Int}
-end
-
-"""
     FusionBlockStructure{I, N, F₁, F₂}
 
 Full block structure of a `HomSpace`, encoding how a tensor's flat data vector is
@@ -54,16 +41,16 @@ partitioned into symmetry blocks and sub-blocks indexed by fusion tree pairs.
 - `fusiontreestructure`: for each fusion tree pair `(f₁, f₂)` (in the same order as
   `treelist`), a [`StridedStructure`](@ref) `(sizes, strides, offset)` describing the
   sub-block as a strided view into the flat data vector.
-- `treelist`: the underlying [`FusionTreeList`](@ref) providing the bijection between
-  fusion tree pairs and linear indices.
+- `treelist`: an `Indices{Tuple{F₁,F₂}}` providing a bijection between fusion tree pairs
+  and sequential integer positions.
 
-See also [`fusionblockstructure`](@ref), [`FusionTreeList`](@ref).
+See also [`fusionblockstructure`](@ref), [`fusiontreelist`](@ref).
 """
 struct FusionBlockStructure{I, N, F₁, F₂}
     totaldim::Int
     blockstructure::SectorDict{I, Tuple{Tuple{Int, Int}, UnitRange{Int}}}
     fusiontreestructure::Vector{StridedStructure{N}}
-    treelist::FusionTreeList{F₁, F₂}
+    treelist::Indices{Tuple{F₁, F₂}}
 end
 
 function fusionblockstructuretype(W::HomSpace)
@@ -80,18 +67,19 @@ Base.@assume_effects :foldable function fusiontreelisttype(key::Hashed{S}) where
     I = sectortype(S)
     F₁ = fusiontreetype(I, numout(S))
     F₂ = fusiontreetype(I, numin(S))
-    return FusionTreeList{F₁, F₂}
+    return Indices{Tuple{F₁, F₂}}
 end
 
 """
-    fusiontreelist(W::HomSpace) -> FusionTreeList
+    fusiontreelist(W::HomSpace) -> Indices{Tuple{F₁,F₂}}
 
-Return the [`FusionTreeList`](@ref) for `W`, enumerating all valid fusion tree pairs
-`(f₁, f₂)` and providing a bijection to linear indices. The result is cached based on
-the sector structure of `W` (ignoring degeneracy dimensions), so `HomSpace`s that share
-the same sectors, dualities, and index count will reuse the same object.
+Return an `Indices` of all valid fusion tree pairs `(f₁, f₂)` for `W`, providing a
+bijection to sequential integer positions via `gettoken`/`gettokenvalue`. The result is
+cached based on the sector structure of `W` (ignoring degeneracy dimensions), so
+`HomSpace`s that share the same sectors, dualities, and index count will reuse the same
+object.
 
-See also [`FusionTreeList`](@ref), [`fusionblockstructure`](@ref).
+See also [`fusionblockstructure`](@ref).
 """
 fusiontreelist(W::HomSpace) = fusiontreelist(Hashed(W, sectorhash, sectorequal))
 
@@ -125,12 +113,7 @@ fusiontreelist(W::HomSpace) = fusiontreelist(Hashed(W, sectorhash, sectorequal))
         end
     end
 
-    treeindices = sizehint!(FusionTreeDict{Tuple{F₁, F₂}, Int}(), length(trees))
-    for (i, f₁₂) in enumerate(trees)
-        treeindices[f₁₂] = i
-    end
-
-    return FusionTreeList{F₁, F₂}(trees, treeindices)
+    return Indices(trees)
 end
 
 CacheStyle(::typeof(fusiontreelist), ::Hashed{S}) where {S <: HomSpace} = GlobalLRUCache()
@@ -153,8 +136,7 @@ See also [`FusionBlockStructure`](@ref), [`fusiontreelist`](@ref).
     I = sectortype(W)
 
     treelist = fusiontreelist(W)
-    trees = treelist.fusiontreelist
-    L = length(trees)
+    L = length(treelist)
     fusiontreestructure = sizehint!(Vector{StridedStructure{N}}(), L)
     blockstructure = SectorDict{I, Tuple{Tuple{Int, Int}, UnitRange{Int}}}()
 
@@ -165,14 +147,15 @@ See also [`FusionBlockStructure`](@ref), [`fusiontreelist`](@ref).
     blockoffset = 0
     tree_index = 1
     while tree_index <= L
-        f₁, f₂ = trees[tree_index]
+        f₁, f₂ = gettokenvalue(treelist, tree_index)
         c = f₁.coupled
 
         # compute subblock structure
         # splitting tree data
         empty!(splittingstructure)
         offset₁ = 0
-        for (f₁′, f₂′) in view(trees, tree_index:L)
+        for i in tree_index:L
+            f₁′, f₂′ = gettokenvalue(treelist, i)
             f₂′ == f₂ || break
             s₁ = f₁′.uncoupled
             d₁s = dims(codom, s₁)
@@ -187,7 +170,8 @@ See also [`FusionBlockStructure`](@ref), [`fusiontreelist`](@ref).
         # fusion tree data and combine
         offset₂ = 0
         n₂ = 0
-        for (f₁′, f₂′) in view(trees, tree_index:n₁:L)
+        for i in tree_index:n₁:L
+            f₁′, f₂′ = gettokenvalue(treelist, i)
             f₂′.coupled == c || break
             n₂ += 1
             s₂ = f₂′.uncoupled
