@@ -38,19 +38,17 @@ partitioned into symmetry blocks and sub-blocks indexed by fusion tree pairs.
 - `blockstructure`: maps each coupled sector `c::I` to a tuple `((d₁, d₂), r)`, where
   `d₁` and `d₂` are the block dimensions for the codomain and domain respectively, and
   `r` is the corresponding index range in the flat data vector.
-- `fusiontreestructure`: for each fusion tree pair `(f₁, f₂)` (in the same order as
-  `treelist`), a [`StridedStructure`](@ref) `(sizes, strides, offset)` describing the
-  sub-block as a strided view into the flat data vector.
-- `treelist`: an `Indices{Tuple{F₁,F₂}}` providing a bijection between fusion tree pairs
-  and sequential integer positions.
+- `fusiontreestructure`: a `Dictionary` mapping each fusion tree pair `(f₁, f₂)` to a
+  [`StridedStructure`](@ref) `(sizes, strides, offset)` describing the sub-block as a
+  strided view into the flat data vector. The insertion order of the dictionary matches
+  the canonical enumeration order from [`fusiontreelist`](@ref).
 
 See also [`fusionblockstructure`](@ref), [`fusiontreelist`](@ref).
 """
 struct FusionBlockStructure{I, N, F₁, F₂}
     totaldim::Int
     blockstructure::SectorDict{I, Tuple{Tuple{Int, Int}, UnitRange{Int}}}
-    fusiontreestructure::Vector{StridedStructure{N}}
-    treelist::Indices{Tuple{F₁, F₂}}
+    fusiontreestructure::Dictionary{Tuple{F₁, F₂}, StridedStructure{N}}
 end
 
 function fusionblockstructuretype(W::HomSpace)
@@ -137,9 +135,8 @@ See also [`FusionBlockStructure`](@ref), [`fusiontreelist`](@ref).
 
     treelist = fusiontreelist(W)
     L = length(treelist)
-    fusiontreestructure = sizehint!(Vector{StridedStructure{N}}(), L)
+    structurevalues = sizehint!(Vector{StridedStructure{N}}(), L)
     blockstructure = SectorDict{I, Tuple{Tuple{Int, Int}, UnitRange{Int}}}()
-
 
     # temporary data structures
     splittingstructure = Vector{NTuple{numout(W), Int}}()
@@ -184,7 +181,7 @@ See also [`FusionBlockStructure`](@ref), [`fusiontreelist`](@ref).
                 subsz = (d₁s..., d₂s...)
                 @assert !any(==(0), subsz)
                 substr = _subblock_strides(subsz, (d₁, d₂), strides)
-                push!(fusiontreestructure, (subsz, substr, totaloffset))
+                push!(structurevalues, (subsz, substr, totaloffset))
                 offset₁ += d₁
             end
             offset₂ += d₂
@@ -199,9 +196,10 @@ See also [`FusionBlockStructure`](@ref), [`fusiontreelist`](@ref).
         blockoffset = last(blockrange)
         tree_index += n₁ * n₂
     end
-    @assert length(fusiontreestructure) == L
+    @assert length(structurevalues) == L
 
-    return FusionBlockStructure(blockoffset, blockstructure, fusiontreestructure, treelist)
+    fusiontreestructure = Dictionary(treelist, structurevalues)
+    return FusionBlockStructure(blockoffset, blockstructure, fusiontreestructure)
 end
 
 function _subblock_strides(subsz, sz, str)

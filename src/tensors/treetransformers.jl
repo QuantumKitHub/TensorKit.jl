@@ -19,17 +19,15 @@ function AbelianTreeTransformer(transform, p, Vdst, Vsrc)
     structure_dst = fusionblockstructure(Vdst)
     structure_src = fusionblockstructure(Vsrc)
 
-    L = length(structure_src.treelist)
+    L = length(structure_src.fusiontreestructure)
     T = sectorscalartype(sectortype(Vdst))
     N = numind(Vsrc)
     data = Vector{Tuple{T, StridedStructure{N}, StridedStructure{N}}}(undef, L)
 
-    for i in 1:L
-        f₁, f₂ = gettokenvalue(structure_src.treelist, i)
+    for (i, ((f₁, f₂), stridestructure_src)) in enumerate(pairs(structure_src.fusiontreestructure))
         (f₃, f₄), coeff = only(transform(f₁, f₂))
-        _, j = gettoken(structure_dst.treelist, (f₃, f₄))
-        stridestructure_dst = structure_dst.fusiontreestructure[j]
-        stridestructure_src = structure_src.fusiontreestructure[i]
+        _, token = gettoken(structure_dst.fusiontreestructure, (f₃, f₄))
+        stridestructure_dst = gettokenvalue(structure_dst.fusiontreestructure, token)
         data[i] = (coeff, stridestructure_dst, stridestructure_src)
     end
 
@@ -64,7 +62,6 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
     fusionstructure_src = structure_src.fusiontreestructure
 
     I = sectortype(Vsrc)
-
     T = sectorscalartype(I)
     N = numind(Vdst)
     N₁ = numout(Vsrc)
@@ -153,9 +150,12 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
     return transformer
 end
 
-function repack_transformer_structure(structures, ids)
-    sz = structures[first(ids)][1]
-    strides_offsets = map(i -> (structures[i][2], structures[i][3]), ids)
+function repack_transformer_structure(structures::Dictionary, ids)
+    sz = gettokenvalue(structures, first(ids))[1]
+    strides_offsets = map(ids) do i
+        s = gettokenvalue(structures, i)
+        return (s[2], s[3])
+    end
     return sz, strides_offsets
 end
 
