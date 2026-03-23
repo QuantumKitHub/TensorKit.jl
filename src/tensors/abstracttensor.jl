@@ -390,7 +390,7 @@ hasblock(t::AbstractTensorMap, c::Sector) = c ∈ blocksectors(t)
 
 Return an iterator over all splitting - fusion tree pairs of a tensor.
 """
-fusiontrees(t::AbstractTensorMap) = fusionblockstructure(t).fusiontreelist
+fusiontrees(t::AbstractTensorMap) = fusiontrees(space(t))
 
 fusiontreetype(t::AbstractTensorMap) = fusiontreetype(typeof(t))
 function fusiontreetype(::Type{T}) where {T <: AbstractTensorMap}

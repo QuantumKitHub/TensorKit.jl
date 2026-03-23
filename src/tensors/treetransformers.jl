@@ -19,15 +19,15 @@ function AbelianTreeTransformer(transform, p, Vdst, Vsrc)
     structure_dst = fusionblockstructure(Vdst)
     structure_src = fusionblockstructure(Vsrc)
 
-    L = length(structure_src.fusiontreelist)
+    L = length(structure_src.treelist.fusiontreelist)
     T = sectorscalartype(sectortype(Vdst))
     N = numind(Vsrc)
     data = Vector{Tuple{T, StridedStructure{N}, StridedStructure{N}}}(undef, L)
 
     for i in 1:L
-        f₁, f₂ = structure_src.fusiontreelist[i]
-        (f₃, f₄), coeff = transform((f₁, f₂))
-        j = structure_dst.fusiontreeindices[(f₃, f₄)]
+        f₁, f₂ = structure_src.treelist.fusiontreelist[i]
+        (f₃, f₄), coeff = only(transform(f₁, f₂))
+        j = structure_dst.treelist.fusiontreeindices[(f₃, f₄)]
         stridestructure_dst = structure_dst.fusiontreestructure[j]
         stridestructure_src = structure_src.fusiontreestructure[i]
         data[i] = (coeff, stridestructure_dst, stridestructure_src)
@@ -64,6 +64,7 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
     fusionstructure_src = structure_src.fusiontreestructure
 
     I = sectortype(Vsrc)
+
     T = sectorscalartype(I)
     N = numind(Vdst)
     N₁ = numout(Vsrc)
@@ -83,7 +84,6 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
                     local_counter > nblocks && break
                     fs_src = fblocks[local_counter]
                     fs_dst, U = transform(fs_src)
-                    matrix = copy(transpose(U)) # TODO: should we avoid this
 
                     trees_src = fusiontrees(fs_src)
                     inds_src = map(Base.Fix1(getindex, structure_src.fusiontreeindices), trees_src)
@@ -99,7 +99,12 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
                         fusionstructure_dst, inds_dst
                     )
 
-                    data[local_counter] = (matrix, (sz_dst, newstructs_dst), (sz_src, newstructs_src))
+                    data[local_counter] = (U, (sz_dst, newstructs_dst), (sz_src, newstructs_src))
+
+                    @debug(
+                        "Created recoupling block for uncoupled: $(fs_src.uncoupled)",
+                        sz = size(U), sparsity = count(!iszero, U) / length(U)
+                    )
                 end
             end
         end
@@ -123,6 +128,11 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
             )
 
             data[i] = U, (sz_dst, newstructs_dst), (sz_src, newstructs_src)
+
+            @debug(
+                "Created recoupling block for uncoupled: $(fs_src.uncoupled)",
+                sz = size(U), sparsity = count(!iszero, U) / length(U)
+            )
         end
         transformer = GenericTreeTransformer{T, N}(data)
     end

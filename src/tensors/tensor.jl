@@ -487,10 +487,10 @@ function subblock(
     ) where {T, S, N₁, N₂, I <: Sector}
     structure = fusionblockstructure(t)
     @boundscheck begin
-        haskey(structure.fusiontreeindices, (f₁, f₂)) || throw(SectorMismatch())
+        haskey(structure.treelist.fusiontreeindices, (f₁, f₂)) || throw(SectorMismatch())
     end
     @inbounds begin
-        i = structure.fusiontreeindices[(f₁, f₂)]
+        i = structure.treelist.fusiontreeindices[(f₁, f₂)]
         sz, str, offset = structure.fusiontreestructure[i]
         return StridedView(t.data, sz, str, offset)
     end
