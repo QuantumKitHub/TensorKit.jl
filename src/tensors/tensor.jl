@@ -485,11 +485,11 @@ end
 function subblock(
         t::TensorMap{T, S, N₁, N₂}, (f₁, f₂)::Tuple{FusionTree{I, N₁}, FusionTree{I, N₂}}
     ) where {T, S, N₁, N₂, I <: Sector}
-    structure = fusionblockstructure(t)
-    found, token = gettoken(structure.fusiontreestructure, (f₁, f₂))
+    fts = fusiontreestructure(space(t))
+    found, token = gettoken(fts, (f₁, f₂))
     @boundscheck found || throw(SectorMismatch(lazy"fusion tree pair ($(f₁, f₂)) is not present"))
     @inbounds begin
-        sz, str, offset = gettokenvalue(structure.fusiontreestructure, token)
+        sz, str, offset = gettokenvalue(fts, token)
         return StridedView(t.data, sz, str, offset)
     end
 end

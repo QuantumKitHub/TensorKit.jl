@@ -28,7 +28,7 @@ function sectorhash(W::HomSpace, h::UInt)
 end
 
 """
-    FusionBlockStructure{I, N, F₁, F₂}
+    FusionBlockStructure{I, N}
 
 Full block structure of a `HomSpace`, encoding how a tensor's flat data vector is
 partitioned into symmetry blocks and sub-blocks indexed by fusion tree pairs.
@@ -38,27 +38,23 @@ partitioned into symmetry blocks and sub-blocks indexed by fusion tree pairs.
 - `blockstructure`: maps each coupled sector `c::I` to a tuple `((d₁, d₂), r)`, where
   `d₁` and `d₂` are the block dimensions for the codomain and domain respectively, and
   `r` is the corresponding index range in the flat data vector.
-- `fusiontreestructure`: a `Dictionary` mapping each fusion tree pair `(f₁, f₂)` to a
-  [`StridedStructure`](@ref) `(sizes, strides, offset)` describing the sub-block as a
-  strided view into the flat data vector. The insertion order of the dictionary matches
-  the canonical enumeration order from [`fusiontreelist`](@ref).
+- `fusiontreestructure`: a `Vector` of [`StridedStructure`](@ref) `(sizes, strides, offset)`
+  values, one per fusion tree pair, in the canonical enumeration order from
+  [`fusiontrees`](@ref). Use `fusiontrees` to obtain the corresponding `Indices` of
+  fusion tree pairs.
 
 See also [`fusionblockstructure`](@ref), [`fusiontrees`](@ref).
 """
-struct FusionBlockStructure{I, N, F₁, F₂}
+struct FusionBlockStructure{I, N}
     totaldim::Int
     blockstructure::SectorDict{I, Tuple{Tuple{Int, Int}, UnitRange{Int}}}
-    fusiontreestructure::Dictionary{Tuple{F₁, F₂}, StridedStructure{N}}
+    fusiontreestructure::Vector{StridedStructure{N}}
 end
 
 function fusionblockstructuretype(W::HomSpace)
-    N₁ = length(codomain(W))
-    N₂ = length(domain(W))
-    N = N₁ + N₂
+    N = length(codomain(W)) + length(domain(W))
     I = sectortype(W)
-    F₁ = fusiontreetype(I, N₁)
-    F₂ = fusiontreetype(I, N₂)
-    return FusionBlockStructure{I, N, F₁, F₂}
+    return FusionBlockStructure{I, N}
 end
 
 Base.@assume_effects :foldable function fusiontreestype(key::Hashed{S}) where {S <: HomSpace}
@@ -198,8 +194,7 @@ See also [`FusionBlockStructure`](@ref), [`fusiontrees`](@ref).
     end
     @assert length(structurevalues) == L
 
-    fusiontreestructure = Dictionary(treelist, structurevalues)
-    return FusionBlockStructure(blockoffset, blockstructure, fusiontreestructure)
+    return FusionBlockStructure(blockoffset, blockstructure, structurevalues)
 end
 
 function _subblock_strides(subsz, sz, str)
@@ -211,6 +206,18 @@ function _subblock_strides(subsz, sz, str)
 end
 
 CacheStyle(::typeof(fusionblockstructure), W::HomSpace) = GlobalLRUCache()
+
+"""
+    fusiontreestructure(W::HomSpace) -> Dictionary
+
+Return a `Dictionary` mapping each fusion tree pair `(f₁, f₂)` to its
+[`StridedStructure`](@ref) `(sizes, strides, offset)`. This wraps the cached
+[`fusiontrees`](@ref) `Indices` together with the values stored in
+[`fusionblockstructure`](@ref), with no data copying.
+"""
+function fusiontreestructure(W::HomSpace)
+    return Dictionary(fusiontrees(W), fusionblockstructure(W).fusiontreestructure)
+end
 
 # Diagonal ranges
 #----------------
