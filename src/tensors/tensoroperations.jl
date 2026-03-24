@@ -232,6 +232,7 @@ end
 function _trace_permute!(::UniqueFusion, tdst, tsrc, (p₁, p₂), (q₁, q₂), α, β, backend)
     scale!(tdst, β)
     r₁, r₂ = (p₁..., q₁...), (p₂..., q₂...)
+    N₁, N₂ = length(p₁), length(p₂)
 
     for (f₁, f₂) in fusiontrees(tsrc)
         (f₁′, f₂′), coeff = permute((f₁, f₂), (r₁, r₂))
@@ -256,12 +257,14 @@ end
 function _trace_permute!(::FusionStyle, tdst, tsrc, (p₁, p₂), (q₁, q₂), α, β, backend)
     scale!(tdst, β)
     r₁, r₂ = (p₁..., q₁...), (p₂..., q₂...)
+    N₁, N₂ = length(p₁), length(p₂)
 
     for src in fusionblocks(tsrc)
         dst, U = permute(src, (r₁, r₂))
         for (i, (f₁, f₂)) in enumerate(fusiontrees(src))
             for (j, (f₁′, f₂′)) in enumerate(fusiontrees(dst))
                 coeff = U[j, i]
+                iszero(coeff) && continue
                 f₁′′, g₁ = split(f₁′, N₁)
                 f₂′′, g₂ = split(f₂′, N₂)
                 g₁ == g₂ || continue
