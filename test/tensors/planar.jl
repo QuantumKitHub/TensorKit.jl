@@ -5,7 +5,7 @@ using TensorKit: PlanarTrivial, ℙ
 using TensorKit: planaradd!, planartrace!, planarcontract!
 using TensorOperations
 
-@isdefined(TestSetup) || include("../setup.jl")
+include("../setup.jl")
 using .TestSetup
 
 @testset "Braiding tensor" begin

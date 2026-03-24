@@ -5,7 +5,7 @@ using VectorInterface: One, Zero
 using Mooncake
 using Random
 
-@isdefined(TestSetup) || include("../setup.jl")
+include("../setup.jl")
 using .TestSetup
 
 mode = Mooncake.ReverseMode

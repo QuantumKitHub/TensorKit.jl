@@ -4,7 +4,7 @@ using Mooncake
 using Random
 using JET, AllocCheck
 
-@isdefined(TestSetup) || include("../setup.jl")
+include("../setup.jl")
 using .TestSetup
 using .TestSetup: _repartition
 

@@ -5,7 +5,7 @@ using VectorInterface: Zero, One
 using Mooncake
 using Random
 
-@isdefined(TestSetup) || include("../setup.jl")
+include("../setup.jl")
 using .TestSetup
 using .TestSetup: _repartition
 

@@ -4,7 +4,7 @@ using TensorKit: type_repr
 using Combinatorics: permutations
 using LinearAlgebra: LinearAlgebra
 
-@isdefined(TestSetup) || include("../setup.jl")
+include("../setup.jl")
 using .TestSetup
 
 spacelist = try
