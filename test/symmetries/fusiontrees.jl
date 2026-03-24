@@ -14,8 +14,7 @@ using TensorKitSectors
 _isunitary(x::Number; kwargs...) = isapprox(x * x', one(x); kwargs...)
 _isunitary(x; kwargs...) = isunitary(x; kwargs...)
 _isone(x; kwargs...) = isapprox(x, one(x); kwargs...)
-
-@isdefined(TestSetup) || include("../setup.jl")
+include("../setup.jl")
 using .TestSetup
 
 @timedtestset "Fusion trees for $(TensorKit.type_repr(I))" verbose = true for I in sectorlist

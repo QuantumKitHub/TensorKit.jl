@@ -3,7 +3,7 @@ using TensorKit
 using LinearAlgebra: LinearAlgebra
 using MatrixAlgebraKit: diagview
 
-@isdefined(TestSetup) || include("../setup.jl")
+include("../setup.jl")
 using .TestSetup
 
 spacelist = try
