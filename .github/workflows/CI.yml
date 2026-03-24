@@ -11,6 +11,7 @@ on:
     paths-ignore:
       - 'docs/**'
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
   workflow_dispatch:
 
 concurrency:
@@ -19,36 +20,61 @@ concurrency:
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 
 jobs:
+  setup-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.mk.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: mk
+        shell: bash
+        run: |
+          # Auto-discover test groups from all subdirectory names.
+          # CUDA tests are included but skipped at runtime if no GPU is available (see runtests.jl).
+          groups=$(find test -mindepth 1 -maxdepth 1 -type d \
+            | xargs -I{} basename {} | sort \
+            | jq -R -s -c '[split("\n")[] | select(length > 0)]')
+
+          # Draft PR: only run ubuntu-latest + version=1
+          if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.event.pull_request.draft }}" == "true" ]]; then
+            echo "matrix={\"version\":[\"1\"],\"os\":[\"ubuntu-latest\"],\"group\":${groups}}" >> "$GITHUB_OUTPUT"
+          else
+            echo "matrix={\"version\":[\"lts\",\"1\"],\"os\":[\"ubuntu-latest\",\"macOS-latest\",\"windows-latest\"],\"group\":${groups}}" >> "$GITHUB_OUTPUT"
+          fi
+
   test:
+    name: "Tests"
+    needs: setup-matrix
     strategy:
       fail-fast: false
-      matrix:
-        version:
-          - 'lts'
-          - '1'
-        group:
-          - symmetries
-          - tensors
-          - other
-          - mooncake
-          - chainrules
-        os:
-          - ubuntu-latest
-          - macOS-latest
-          - windows-latest
-    uses: "QuantumKitHub/QuantumKitHubActions/.github/workflows/Tests.yml@main"
-    with:
-      group: "${{ matrix.group }}"
-      julia-version: "${{ matrix.version }}"
-      os: "${{ matrix.os }}"
-      nthreads: 4
-      timeout-minutes: 120
-    secrets:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      matrix: ${{ fromJSON(needs.setup-matrix.outputs.matrix) }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+      - uses: julia-actions/cache@v2
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
+        with:
+          test_args: '${{ matrix.group }}'
+      - uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: 'src,ext'
+      - uses: codecov/codecov-action@v5
+        with:
+          files: lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
 
   test-nightly:
+    name: "Tests (nightly)"
     needs: test
+    if: github.event.pull_request.draft != true
     strategy:
+      fail-fast: false
       matrix:
         version:
           - 'nightly'
@@ -62,12 +88,24 @@ jobs:
           - ubuntu-latest
           - macOS-latest
           - windows-latest
-    uses: "QuantumKitHub/QuantumKitHubActions/.github/workflows/Tests.yml@main"
-    with:
-      group: "${{ matrix.group }}"
-      julia-version: "${{ matrix.version }}"
-      os: "${{ matrix.os }}"
-      nthreads: 4
-      timeout-minutes: 120
-    secrets:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+      - uses: julia-actions/cache@v2
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
+        with:
+          test_args: '${{ matrix.group }}'
+        continue-on-error: true
+      - uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: 'src,ext'
+      - uses: codecov/codecov-action@v5
+        with:
+          files: lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
