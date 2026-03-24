@@ -3,23 +3,19 @@ using TensorKit
 using LinearAlgebra: LinearAlgebra
 using MatrixAlgebraKit: diagview
 
-include("../setup.jl")
-using .TestSetup
 
-spacelist = try
-    if ENV["CI"] == "true"
-        println("Detected running on CI")
-        if Sys.iswindows()
-            (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VIB_diag)
-        elseif Sys.isapple()
-            (Vtr, Vℤ₃, VfU₁, VfSU₂, VIB_M)
-        else
-            (Vtr, VU₁, VCU₁, VSU₂, VfSU₂, VIB_diag, VIB_M)
-        end
+spacelist = if fast_tests
+    (Vtr, Vℤ₂, VSU₂)
+elseif get(ENV, "CI", "false") == "true"
+    println("Detected running on CI")
+    if Sys.iswindows()
+        (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VIB_diag)
+    elseif Sys.isapple()
+        (Vtr, Vℤ₃, VfU₁, VfSU₂, VIB_M)
     else
-        (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VIB_diag, VIB_M)
+        (Vtr, VU₁, VCU₁, VSU₂, VfSU₂, VIB_diag, VIB_M)
     end
-catch
+else
     (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VIB_diag, VIB_M)
 end
 

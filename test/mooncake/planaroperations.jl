@@ -5,8 +5,6 @@ using VectorInterface: Zero, One
 using Mooncake
 using Random
 
-include("../setup.jl")
-using .TestSetup
 using .TestSetup: _repartition
 
 mode = Mooncake.ReverseMode

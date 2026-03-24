@@ -4,7 +4,7 @@ export randindextuple, randcircshift, _repartition, trivtuple
 export default_tol
 export smallset, randsector, hasfusiontensor, force_planar
 export random_fusion
-export sectorlist
+export sectorlist, fast_sectorlist
 export test_dim_isapprox
 export Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, Vfib, VIB_diag, VIB_M
 
@@ -146,6 +146,11 @@ function test_dim_isapprox(V::ProductSpace, d::Int)
     return @test max(0, d - dim_c_max) ≤ dim(V) ≤ d + dim_c_max
 end
 
+_isunitary(x::Number; kwargs...) = isapprox(x * x', one(x); kwargs...)
+_isunitary(x; kwargs...) = isunitary(x; kwargs...)
+_isone(x; kwargs...) = isapprox(x, one(x); kwargs...)
+
+
 uniquefusionsectorlist = (
     Z2Irrep, Z3Irrep, Z4Irrep, Z3Irrep ⊠ Z4Irrep,
     U1Irrep, FermionParity, FermionParity ⊠ FermionParity, FermionNumber,
@@ -169,6 +174,7 @@ sectorlist = (
     genericfusionsectorlist...,
     multifusionsectorlist...,
 )
+fast_sectorlist = (Z2Irrep, SU2Irrep, FermionParity ⊠ U1Irrep ⊠ SU2Irrep, FibonacciAnyon)
 
 # spaces
 Vtr = (ℂ^2, (ℂ^3)', ℂ^4, ℂ^3, (ℂ^2)')

@@ -5,8 +5,6 @@ using TensorKit: hassector, type_repr, HomSpace
 # TODO: remove this once type_repr works for all included types
 using TensorKitSectors
 
-include("../setup.jl")
-using .TestSetup
 
 """
     eval_show(x)
