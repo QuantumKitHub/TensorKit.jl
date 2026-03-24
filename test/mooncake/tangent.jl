@@ -4,8 +4,6 @@ using Mooncake
 using Random
 using JET, AllocCheck
 
-include("../setup.jl")
-using .TestSetup
 using .TestSetup: _repartition
 
 mode = Mooncake.ReverseMode

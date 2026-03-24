@@ -11,13 +11,7 @@ using TupleTools
 # TODO: remove this once type_repr works for all included types
 using TensorKitSectors
 
-_isunitary(x::Number; kwargs...) = isapprox(x * x', one(x); kwargs...)
-_isunitary(x; kwargs...) = isunitary(x; kwargs...)
-_isone(x; kwargs...) = isapprox(x, one(x); kwargs...)
-include("../setup.jl")
-using .TestSetup
-
-@timedtestset "Fusion trees for $(TensorKit.type_repr(I))" verbose = true for I in sectorlist
+@timedtestset "Fusion trees for $(TensorKit.type_repr(I))" verbose = true for I in (fast_tests ? fast_sectorlist : sectorlist)
     Istr = TensorKit.type_repr(I)
     N = 5
     out = random_fusion(I, Val(N))

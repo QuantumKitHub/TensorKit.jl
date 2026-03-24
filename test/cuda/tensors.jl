@@ -10,8 +10,6 @@ const curandn = getglobal(CUDAExt, :curandn)
 const curand! = getglobal(CUDAExt, :curand!)
 using CUDA: rand as curand, rand! as curand!, randn as curandn, randn! as curandn!
 
-include("../setup.jl")
-using .TestSetup
 
 for V in (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂) #, VSU₃)
     V1, V2, V3, V4, V5 = V

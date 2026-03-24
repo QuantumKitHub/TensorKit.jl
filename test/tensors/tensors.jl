@@ -4,23 +4,19 @@ using TensorKit: type_repr
 using Combinatorics: permutations
 using LinearAlgebra: LinearAlgebra
 
-include("../setup.jl")
-using .TestSetup
 
-spacelist = try
-    if get(ENV, "CI", "false") == "true"
-        println("Detected running on CI")
-        if Sys.iswindows()
-            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VIB_diag)
-        elseif Sys.isapple()
-            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VfU₁, VfSU₂, VSU₂U₁, VIB_M) #, VSU₃)
-        else
-            (Vtr, Vℤ₂, Vfℤ₂, VU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M) #, VSU₃)
-        end
+spacelist = if fast_tests
+    (Vtr, Vℤ₂, VSU₂)
+elseif get(ENV, "CI", "false") == "true"
+    println("Detected running on CI")
+    if Sys.iswindows()
+        (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VIB_diag)
+    elseif Sys.isapple()
+        (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VfU₁, VfSU₂, VSU₂U₁, VIB_M) #, VSU₃)
     else
-        (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M) #, VSU₃)
+        (Vtr, Vℤ₂, Vfℤ₂, VU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M) #, VSU₃)
     end
-catch
+else
     (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M) #, VSU₃)
 end
 
@@ -35,7 +31,7 @@ for V in spacelist
         V1, V2, V3, V4, V5 = V
         @timedtestset "Basic tensor properties" begin
             W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
-            for T in (Int, Float32, Float64, ComplexF32, ComplexF64, BigFloat)
+            for T in (fast_tests ? (Float64, ComplexF64) : (Int, Float32, Float64, ComplexF32, ComplexF64, BigFloat))
                 t = @constinferred zeros(T, W)
                 @test @constinferred(hash(t)) == hash(deepcopy(t))
                 @test scalartype(t) == T

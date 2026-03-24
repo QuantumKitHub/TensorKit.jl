@@ -5,8 +5,6 @@ using TensorKit: PlanarTrivial, ℙ
 using TensorKit: planaradd!, planartrace!, planarcontract!
 using TensorOperations
 
-include("../setup.jl")
-using .TestSetup
 
 @testset "Braiding tensor" begin
     for V in (Vtr, VU₁, VfU₁, VfSU₂, Vfib)

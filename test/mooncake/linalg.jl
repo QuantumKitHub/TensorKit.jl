@@ -3,8 +3,6 @@ using TensorKit
 using Mooncake
 using Random
 
-include("../setup.jl")
-using .TestSetup
 
 mode = Mooncake.ReverseMode
 rng = Random.default_rng()
