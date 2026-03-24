@@ -141,7 +141,7 @@ fusiontrees(W::HomSpace) = fusionblockstructure(W).fusiontreelist
 """
     fusionblocks(W::HomSpace)
 
-Return the fusionblocks corresponding to all valid fusion channels of a given `HomSpace`,
+Return the [`FusionTreeBlock`](@ref)s corresponding to all valid fusion channels of a given `HomSpace`,
 grouped by their uncoupled charges.
 """
 function fusionblocks(W::HomSpace)

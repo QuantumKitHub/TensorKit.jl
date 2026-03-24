@@ -573,13 +573,15 @@ CacheStyle(::typeof(fstranspose), k::FSBTransposeKey{I}) where {I} =
 # -> composite manipulations that depend on the duality (rigidity) and pivotal structure
 # -> planar manipulations that do not require braiding, everything is in Fsymbol (A/Bsymbol)
 
-function planar_trace(
-        (f₁, f₂)::FusionTreePair{I}, (p1, p2)::Index2Tuple{N₁, N₂}, (q1, q2)::Index2Tuple{N₃, N₃}
-    ) where {I, N₁, N₂, N₃}
-    N = N₁ + N₂ + 2N₃
-    @assert length(f₁) + length(f₂) == N
-    if N₃ == 0
-        return transpose((f₁, f₂), (p1, p2))
+function planar_trace((f₁, f₂)::FusionTreePair, (p₁, p₂)::Index2Tuple, (q₁, q₂)::Index2Tuple)
+    length(q₁) == length(q₂) ||
+        throw(ArgumentError(lazy"trace index tuples q₁ and q₂ must have equal length, got $(length(q₁)) and $(length(q₂))"))
+    I = sectortype(f₁)
+    N = length(p₁) + length(p₂) + 2 * length(q₁)
+    length(f₁) + length(f₂) == N ||
+        throw(ArgumentError(lazy"fusion tree pair has $(length(f₁) + length(f₂)) indices, but permutation expects $N = $(length(p₁)) + $(length(p₂)) + 2×$(length(q₁))"))
+    if isempty(q₁)
+        return transpose((f₁, f₂), (p₁, p₂))
     end
 
     linearindex = (
@@ -587,23 +589,23 @@ function planar_trace(
         reverse(length(f₁) .+ ntuple(identity, Val(length(f₂))))...,
     )
 
-    q1′ = TupleTools.getindices(linearindex, q1)
-    q2′ = TupleTools.getindices(linearindex, q2)
-    p1′, p2′ = let q′ = (q1′..., q2′...)
+    q₁′ = TupleTools.getindices(linearindex, q₁)
+    q₂′ = TupleTools.getindices(linearindex, q₂)
+    p₁′, p₂′ = let q′ = (q₁′..., q₂′...)
         (
-            map(l -> l - count(l .> q′), TupleTools.getindices(linearindex, p1)),
-            map(l -> l - count(l .> q′), TupleTools.getindices(linearindex, p2)),
+            map(l -> l - count(l .> q′), TupleTools.getindices(linearindex, p₁)),
+            map(l -> l - count(l .> q′), TupleTools.getindices(linearindex, p₂)),
         )
     end
 
     T = fusionscalartype(I)
-    F₁ = fusiontreetype(I, N₁)
-    F₂ = fusiontreetype(I, N₂)
+    F₁ = fusiontreetype(I, length(p₁))
+    F₂ = fusiontreetype(I, length(p₂))
     newtrees = FusionTreeDict{Tuple{F₁, F₂}, T}()
     if FusionStyle(I) isa UniqueFusion
         (f₁′, f₂′), coeff′ = repartition((f₁, f₂), N)
-        for (f₁′′, coeff′′) in planar_trace(f₁′, (q1′, q2′))
-            (f12′′′, coeff′′′) = transpose((f₁′′, f₂′), (p1′, p2′))
+        for (f₁′′, coeff′′) in planar_trace(f₁′, (q₁′, q₂′))
+            (f12′′′, coeff′′′) = transpose((f₁′′, f₂′), (p₁′, p₂′))
             coeff = coeff′ * coeff′′ * coeff′′′
             iszero(coeff) || (newtrees[f12′′′] = get(newtrees, f12′′′, zero(coeff)) + coeff)
         end
@@ -612,9 +614,9 @@ function planar_trace(
         src = FusionTreeBlock([(f₁, f₂)])
         dst, U = repartition(src, N)
         for ((f₁′, f₂′), coeff′) in zip(fusiontrees(dst), U)
-            for (f₁′′, coeff′′) in planar_trace(f₁′, (q1′, q2′))
+            for (f₁′′, coeff′′) in planar_trace(f₁′, (q₁′, q₂′))
                 src′ = FusionTreeBlock([(f₁′′, f₂′)])
-                dst′, U′ = transpose(src′, (p1′, p2′))
+                dst′, U′ = transpose(src′, (p₁′, p₂′))
                 for (f12′′′, coeff′′′) in zip(fusiontrees(dst′), U′)
                     coeff = coeff′ * coeff′′ * coeff′′′
                     iszero(coeff) || (newtrees[f12′′′] = get(newtrees, f12′′′, zero(coeff)) + coeff)
@@ -626,20 +628,23 @@ function planar_trace(
 end
 
 """
-    planar_trace(f::FusionTree{I,N}, (q1, q2)::Index2Tuple{N₃,N₃}) where {I,N,N₃}
-        -> <:AbstractDict{FusionTree{I,N-2*N₃}, <:Number}
+    planar_trace(f::FusionTree, (q₁, q₂)::Index2Tuple)
+        -> <:AbstractDict{<:FusionTree, <:Number}
 
-Perform a planar trace of the uncoupled indices of the fusion tree `f` at `q1` with those at
-`q2`, where `q1[i]` is connected to `q2[i]` for all `i`. The result is returned as a dictionary
-of output trees and corresponding coefficients.
+Perform a planar trace of the uncoupled indices of the fusion tree `f` at `q₁` with those at `q₂`,
+where `q₁[i]` is connected to `q₂[i]` for all `i`. The result is returned as a dictionary of output
+trees and corresponding coefficients.
 """
-function planar_trace(f::FusionTree{I, N}, (q1, q2)::Index2Tuple{N₃, N₃}) where {I, N, N₃}
+function planar_trace(f::FusionTree, (q₁, q₂)::Index2Tuple)
+    length(q₁) == length(q₂) ||
+        throw(ArgumentError(lazy"trace index tuples q₁ and q₂ must have equal length, got $(length(q₁)) and $(length(q₂))"))
+    I = sectortype(f)
     T = fusionscalartype(I)
-    F = fusiontreetype(I, N - 2 * N₃)
+    F = fusiontreetype(I, length(f) - 2 * length(q₁))
     newtrees = FusionTreeDict{F, T}()
-    N₃ === 0 && return push!(newtrees, f => one(T))
+    isempty(q₁) && return push!(newtrees, f => one(T))
 
-    for (i, j) in zip(q1, q2)
+    for (i, j) in zip(q₁, q₂)
         (f.uncoupled[i] == dual(f.uncoupled[j]) && f.isdual[i] != f.isdual[j]) ||
             return newtrees
     end
@@ -649,29 +654,30 @@ function planar_trace(f::FusionTree{I, N}, (q1, q2)::Index2Tuple{N₃, N₃}) wh
     # tracing away neighbouring pairs.
     k = 1
     local i, j
-    while k <= N₃
-        if mod1(q1[k] + 1, N) == q2[k]
-            i = q1[k]
-            j = q2[k]
+    while k <= length(q₁)
+        if mod1(q₁[k] + 1, length(f)) == q₂[k]
+            i = q₁[k]
+            j = q₂[k]
             break
-        elseif mod1(q2[k] + 1, N) == q1[k]
-            i = q2[k]
-            j = q1[k]
+        elseif mod1(q₂[k] + 1, length(f)) == q₁[k]
+            i = q₂[k]
+            j = q₁[k]
             break
         else
             k += 1
         end
     end
-    k > N₃ && throw(ArgumentError("Not a planar trace"))
+    k > length(q₁) &&
+        throw(ArgumentError(lazy"indices $q₁ and $q₂ do not form a valid planar trace on a fusion tree with $(length(f)) legs: no neighboring pair found among the remaining trace indices"))
 
-    q1′ = let i = i, j = j
-        map(l -> (l - (l > i) - (l > j)), TupleTools.deleteat(q1, k))
+    q₁′ = let i = i, j = j
+        map(l -> (l - (l > i) - (l > j)), TupleTools.deleteat(q₁, k))
     end
-    q2′ = let i = i, j = j
-        map(l -> (l - (l > i) - (l > j)), TupleTools.deleteat(q2, k))
+    q₂′ = let i = i, j = j
+        map(l -> (l - (l > i) - (l > j)), TupleTools.deleteat(q₂, k))
     end
     for (f′, coeff′) in elementary_trace(f, i)
-        for (f′′, coeff′′) in planar_trace(f′, (q1′, q2′))
+        for (f′′, coeff′′) in planar_trace(f′, (q₁′, q₂′))
             coeff = coeff′ * coeff′′
             if !iszero(coeff)
                 newtrees[f′′] = get(newtrees, f′′, zero(coeff)) + coeff

@@ -124,7 +124,7 @@ For this, we provide an interface
 
 [`braid(f::FusionTree{I, N}, p::IndexTuple{N}, levels::IndexTuple{N})`](@ref braid(::FusionTree{I, N}, ::IndexTuple{N}, ::IndexTuple{N}) where {I, N})
 
-where the braid is specified as a permutation, such that the new sector at position `i` was originally at position `permutation[i]`, and where every uncoupled sector is also assigned a level or depth.
+where the braid is specified as a permutation, such that the new sector at position `i` was originally at position `p[i]`, and where every uncoupled sector is also assigned a level or depth.
 The permutation is decomposed into swaps between neighbouring sectors, and when two sectors are swapped, their respective level will determine whether the left sector is braided over or under its right neighbor.
 This interface does not allow to specify the most general braid, and in particular will never wind one line around another, but can be used as a more general building block for arbitrary braids than the elementary Artin generators.
 A graphical example makes this probably more clear, i.e for `levels = (1, 2, 3, 4, 5)` and `permutation = (5, 3, 1, 4, 2)`, the corresponding braid is given by

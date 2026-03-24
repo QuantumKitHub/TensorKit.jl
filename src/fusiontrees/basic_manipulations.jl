@@ -3,8 +3,7 @@
 # -> rewrite generic fusion tree in basis of fusion trees in standard form
 # -> only depend on Fsymbol
 """
-    split(f::FusionTree{I, N}, M::Int)
-    -> (::FusionTree{I, M}, ::FusionTree{I, N-M+1})
+    split(f::FusionTree{I, N}, M::Int) -> (::FusionTree{I, M}, ::FusionTree{I, N - M + 1})
 
 Split a fusion tree into two. The first tree has as uncoupled sectors the first `M`
 uncoupled sectors of the input tree `f`, whereas its coupled sector corresponds to the
@@ -15,6 +14,18 @@ operation is the inverse of `join` in the sense that if `f == join(split(f, M)..
 holds for all `M` between `0` and `N`, where `N` is the number of uncoupled sectors of `f`.
 
 See also [`join`](@ref) and [`insertat`](@ref).
+
+## Examples
+
+```jldoctest
+julia> f = FusionTree{Z2Irrep}((1, 1, 0), 0, (false, false, false));
+
+julia> f₁, f₂ = TensorKit.split(f, 2)
+(FusionTree{Irrep[ℤ₂]}((1, 1), 0, (false, false), ()), FusionTree{Irrep[ℤ₂]}((0, 0), 0, (false, false), ()))
+
+julia> TensorKit.join(f₁, f₂) == f
+true
+```
 """
 @inline function split(f::FusionTree{I, N}, M::Int) where {I, N} # inline helps with constant propagation of M
     0 <= M <= N ||
@@ -52,6 +63,17 @@ operation is the inverse of split, in the sense that `f == join(split(f, M)...)`
 holds for all `M` between `0` and `N`, where `N` is the number of uncoupled sectors of `f`.
 
 See also [`split`](@ref) and [`insertat`](@ref).
+
+## Examples
+
+```jldoctest
+julia> f₁ = FusionTree{Z2Irrep}((1, 1), 0, (false, false));
+
+julia> f₂ = FusionTree{Z2Irrep}((0, 0), 0, (false, false));
+
+julia> f = TensorKit.join(f₁, f₂)
+FusionTree{Irrep[ℤ₂]}((1, 1, 0), 0, (false, false, false), (0,))
+```
 """
 @inline function join(f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}) where {I, N₁, N₂}
     (f₁.coupled == f₂.uncoupled[1] && !f₂.isdual[1]) ||
@@ -574,4 +596,3 @@ function flip((f₁, f₂)::FusionTreePair{I, N₁, N₂}, ind; inv::Bool = fals
     end
     return SingletonDict((f₁′, f₂′) => factor)
 end
-

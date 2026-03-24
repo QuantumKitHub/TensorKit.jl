@@ -50,6 +50,9 @@ mathengine = MathJax3(
     )
 )
 
+# docstrings don't need `using TensorKit`
+DocMeta.setdocmeta!(TensorKit, :DocTestSetup, :(using TensorKit); recursive = true)
+
 makedocs(;
     modules = [TensorKit, TensorKitSectors],
     sitename = "TensorKit.jl",

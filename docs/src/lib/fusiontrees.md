@@ -25,7 +25,7 @@ split
 TensorKit.join
 merge
 elementary_trace
-planar_trace(f::FusionTree{I, N}, q::Index2Tuple{N₃, N₃}) where {I, N, N₃}
+planar_trace(f::FusionTree, q::Index2Tuple)
 artin_braid
 braid(f::FusionTree{I, N}, p::IndexTuple{N}, levels::IndexTuple{N}) where {I, N}
 permute(f::FusionTree{I, N}, p::IndexTuple{N}) where {I, N}
