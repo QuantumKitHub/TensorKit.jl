@@ -69,16 +69,16 @@ function Base.show(io::IO, W::HomSpace)
     )
 end
 
-"""
-    blocksectors(W::HomSpace)
+@doc """
+    blocksectors(W::HomSpace) -> Indices{I}
 
-Return an iterator over the different unique coupled sector labels, i.e. the intersection
-of the different fusion outputs that can be obtained by fusing the sectors present in the
-domain, as well as from the codomain.
+Return an `Indices` of all coupled sectors for `W`. The result is cached based on the
+sector structure of `W` (ignoring degeneracy dimensions).
 
-See also [`hasblock`](@ref).
-"""
-function blocksectors(W::HomSpace)
+See also [`hasblock`](@ref), [`blockstructure`](@ref).
+""" blocksectors(::HomSpace)
+
+function _blocksectors(W::HomSpace)
     sectortype(W) === Trivial &&
         return OneOrNoneIterator(dim(domain(W)) != 0 && dim(codomain(W)) != 0, Trivial())
 
@@ -109,19 +109,12 @@ See also [`blocksectors`](@ref).
 """
 hasblock(W::HomSpace, c::Sector) = hasblock(codomain(W), c) && hasblock(domain(W), c)
 
-"""
-    dim(W::HomSpace)
+@doc """
+    dim(W::HomSpace) -> Int
 
 Return the total dimension of a `HomSpace`, i.e. the number of linearly independent
 morphisms that can be constructed within this space.
-"""
-function dim(W::HomSpace)
-    d = 0
-    for c in blocksectors(W)
-        d += blockdim(codomain(W), c) * blockdim(domain(W), c)
-    end
-    return d
-end
+""" dim(::HomSpace)
 
 dims(W::HomSpace) = (dims(codomain(W))..., dims(domain(W))...)
 

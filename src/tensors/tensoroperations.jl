@@ -9,8 +9,7 @@ function TO.tensoralloc(
         ::Type{TT}, structure::TensorMapSpace, istemp::Val, allocator = TO.DefaultAllocator()
     ) where {TT <: AbstractTensorMap}
     A = storagetype(TT)
-    dim = fusionblockstructure(structure).totaldim
-    data = TO.tensoralloc(A, dim, istemp, allocator)
+    data = TO.tensoralloc(A, dim(structure), istemp, allocator)
     TT′ = tensormaptype(spacetype(structure), numout(structure), numin(structure), typeof(data))
     return TT′(data, structure)
 end

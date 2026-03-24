@@ -165,8 +165,7 @@ function block(b::BraidingTensor, s::Sector)
         return data
     end
 
-    structure = fusionblockstructure(b)
-    base_offset = first(structure.blockstructure[s][2]) - 1
+    base_offset = first(blockstructure(b)[s][2]) - 1
 
     for ((f₁, f₂), (sz, str, off)) in pairs(fusiontreestructure(space(b)))
         (f₁.coupled == f₂.coupled == s) || continue

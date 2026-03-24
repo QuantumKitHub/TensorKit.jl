@@ -16,9 +16,6 @@ end
 function AbelianTreeTransformer(transform, p, Vdst, Vsrc)
     t₀ = Base.time()
     permute(Vsrc, p) == Vdst || throw(SpaceMismatch("Incompatible spaces for permuting."))
-    structure_dst = fusionblockstructure(Vdst)
-    structure_src = fusionblockstructure(Vsrc)
-
     fts_src = fusiontreestructure(Vsrc)
     fts_dst = fusiontreestructure(Vdst)
     L = length(fts_src)

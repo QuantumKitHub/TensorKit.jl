@@ -320,20 +320,12 @@ numind(t::AbstractTensorMap) = numind(typeof(t))
 # tensor characteristics: data structure and properties
 #------------------------------------------------------
 """
-    fusionblockstructure(t::AbstractTensorMap) -> TensorStructure
-
-Return the necessary structure information to decompose a tensor in blocks labeled by
-coupled sectors and in subblocks labeled by a splitting-fusion tree couple.
-"""
-fusionblockstructure(t::AbstractTensorMap) = fusionblockstructure(space(t))
-
-"""
     dim(t::AbstractTensorMap) -> Int
 
 The total number of free parameters of a tensor, discounting the entries that are fixed by
 symmetry. This is also the dimension of the `HomSpace` on which the `TensorMap` is defined.
 """
-dim(t::AbstractTensorMap) = fusionblockstructure(t).totaldim
+dim(t::AbstractTensorMap) = dim(space(t))
 
 dims(t::AbstractTensorMap) = dims(space(t))
 
@@ -342,7 +334,7 @@ dims(t::AbstractTensorMap) = dims(space(t))
 
 Return an iterator over all coupled sectors of a tensor.
 """
-blocksectors(t::AbstractTensorMap) = keys(fusionblockstructure(t).blockstructure)
+blocksectors(t::AbstractTensorMap) = blocksectors(space(t))
 
 """
     hasblock(t::AbstractTensorMap, c::Sector) -> Bool
