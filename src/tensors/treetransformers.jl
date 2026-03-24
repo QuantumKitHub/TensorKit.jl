@@ -16,8 +16,8 @@ end
 function AbelianTreeTransformer(transform, p, Vdst, Vsrc)
     t₀ = Base.time()
     permute(Vsrc, p) == Vdst || throw(SpaceMismatch("Incompatible spaces for permuting."))
-    fts_src = fusiontreestructure(Vsrc)
-    fts_dst = fusiontreestructure(Vdst)
+    fts_src = subblockstructure(Vsrc)
+    fts_dst = subblockstructure(Vdst)
     L = length(fts_src)
     T = sectorscalartype(sectortype(Vdst))
     N = numind(Vsrc)
@@ -55,11 +55,8 @@ end
 function GenericTreeTransformer(transform, p, Vdst, Vsrc)
     t₀ = Base.time()
     permute(Vsrc, p) == Vdst || throw(SpaceMismatch("Incompatible spaces for permuting."))
-    structure_dst = fusionblockstructure(Vdst)
-    fusionstructure_dst = structure_dst.fusiontreestructure
-    structure_src = fusionblockstructure(Vsrc)
-    fusionstructure_src = structure_src.fusiontreestructure
-
+    fusionstructure_dst = subblockstructure(Vdst)
+    fusionstructure_src = subblockstructure(Vsrc)
     I = sectortype(Vsrc)
     T = sectorscalartype(I)
     N = numind(Vdst)

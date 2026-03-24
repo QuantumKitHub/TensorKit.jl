@@ -485,7 +485,7 @@ end
 function subblock(
         t::TensorMap{T, S, N₁, N₂}, (f₁, f₂)::Tuple{FusionTree{I, N₁}, FusionTree{I, N₂}}
     ) where {T, S, N₁, N₂, I <: Sector}
-    fts = fusiontreestructure(space(t))
+    fts = subblockstructure(space(t))
     found, token = gettoken(fts, (f₁, f₂))
     @boundscheck found || throw(SectorMismatch(lazy"fusion tree pair ($(f₁, f₂)) is not present"))
     @inbounds begin
