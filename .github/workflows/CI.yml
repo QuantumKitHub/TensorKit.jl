@@ -23,23 +23,28 @@ jobs:
   setup-matrix:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.mk.outputs.matrix }}
+      groups: ${{ steps.mk.outputs.groups }}
+      version: ${{ steps.mk.outputs.version }}
+      os: ${{ steps.mk.outputs.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - id: mk
         shell: bash
         run: |
           # Auto-discover test groups from all subdirectory names.
-          # CUDA tests are included but skipped at runtime if no GPU is available (see runtests.jl).
           groups=$(find test -mindepth 1 -maxdepth 1 -type d \
             | xargs -I{} basename {} | sort \
             | jq -R -s -c '[split("\n")[] | select(length > 0)]')
 
+          echo "groups=${groups}" >> "$GITHUB_OUTPUT"
+
           # Draft PR: only run ubuntu-latest + version=1
           if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.event.pull_request.draft }}" == "true" ]]; then
-            echo "matrix={\"version\":[\"1\"],\"os\":[\"ubuntu-latest\"],\"group\":${groups}}" >> "$GITHUB_OUTPUT"
+            echo 'version=["1"]' >> "$GITHUB_OUTPUT"
+            echo 'os=["ubuntu-latest"]' >> "$GITHUB_OUTPUT"
           else
-            echo "matrix={\"version\":[\"lts\",\"1\"],\"os\":[\"ubuntu-latest\",\"macOS-latest\",\"windows-latest\"],\"group\":${groups}}" >> "$GITHUB_OUTPUT"
+            echo 'version=["lts","1"]' >> "$GITHUB_OUTPUT"
+            echo 'os=["ubuntu-latest","macOS-latest","windows-latest"]' >> "$GITHUB_OUTPUT"
           fi
 
   test:
@@ -47,11 +52,14 @@ jobs:
     needs: setup-matrix
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.setup-matrix.outputs.matrix) }}
+      matrix:
+        version: ${{ fromJSON(needs.setup-matrix.outputs.version) }}
+        os: ${{ fromJSON(needs.setup-matrix.outputs.os) }}
+        group: ${{ fromJSON(needs.setup-matrix.outputs.groups) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
@@ -60,6 +68,8 @@ jobs:
       - uses: julia-actions/julia-runtest@v1
         with:
           test_args: '${{ matrix.group }}${{ github.event.pull_request.draft == true && '' --fast'' || '''' }}'
+        env:
+          JULIA_NUM_THREADS: "4"
       - uses: julia-actions/julia-processcoverage@v1
         with:
           directories: 'src,ext'
@@ -71,19 +81,14 @@ jobs:
 
   test-nightly:
     name: "Tests (nightly)"
-    needs: test
+    needs: [setup-matrix, test]
     if: github.event.pull_request.draft != true
     strategy:
       fail-fast: false
       matrix:
         version:
           - 'nightly'
-        group:
-          - symmetries
-          - tensors
-          - other
-          - mooncake
-          - chainrules
+        group: ${{ fromJSON(needs.setup-matrix.outputs.groups) }}
         os:
           - ubuntu-latest
           - macOS-latest
@@ -91,7 +96,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
@@ -109,3 +114,27 @@ jobs:
           files: lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
+
+  compatcheck:
+    name: "Compat check - ${{ matrix.julia-version }}"
+    needs: [setup-matrix, test]
+    if: github.event.pull_request.draft != true
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        downgrade_mode: ['deps']
+        group: ${{ fromJSON(needs.setup-matrix.outputs.groups) }}
+        julia-version: ['1.10', '1']
+    steps:
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.julia-version }}
+      - uses: julia-actions/julia-downgrade-compat@v2
+        with:
+          mode: ${{ matrix.downgrade_mode }}
+          skip: Random, LinearAlgebra, Test, Combinatorics
+          julia_version: ${{ matrix.julia-version }}
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
