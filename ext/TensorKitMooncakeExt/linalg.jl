@@ -86,3 +86,48 @@ function Mooncake.rrule!!(::CoDual{typeof(inv)}, A_ΔA::CoDual{<:AbstractTensorM
 
     return Ainv_ΔAinv, inv_pullback
 end
+
+# single-output projections: project_hermitian!, project_antihermitian!
+for (f!, f, adj) in (
+        (:project_hermitian!, :project_hermitian, :project_hermitian_adjoint),
+        (:project_antihermitian!, :project_antihermitian, :project_antihermitian_adjoint),
+    )
+    @eval begin
+        function Mooncake.rrule!!(f_df::CoDual{typeof($f!)}, A_dA::CoDual{<:AbstractTensorMap}, arg_darg::CoDual, alg_dalg::CoDual{<:MatrixAlgebraKit.AbstractAlgorithm})
+            A, dA = arrayify(A_dA)
+            arg, darg = A_dA === arg_darg ? (A, dA) : arrayify(arg_darg)
+
+            # don't need to copy/restore A since projections don't mutate input
+            argc = copy(arg)
+            arg = $f!(A, arg, Mooncake.primal(alg_dalg))
+
+            function $adj(::NoRData)
+                $f!(darg)
+                if dA !== darg
+                    add!(dA, darg)
+                    MatrixAlgebraKit.zero!(darg)
+                end
+                copy!(arg, argc)
+                return ntuple(Returns(NoRData()), 4)
+            end
+
+            return arg_darg, $adj
+        end
+
+        function Mooncake.rrule!!(f_df::CoDual{typeof($f)}, A_dA::CoDual{<:AbstractTensorMap}, alg_dalg::CoDual{<:MatrixAlgebraKit.AbstractAlgorithm})
+            A, dA = arrayify(A_dA)
+            output = $f(A, Mooncake.primal(alg_dalg))
+            output_doutput = Mooncake.zero_fcodual(output)
+
+            doutput = last(arrayify(output_doutput))
+            function $adj(::NoRData)
+                # TODO: need accumulating projection to avoid intermediate here
+                add!(dA, $f(doutput))
+                MatrixAlgebraKit.zero!(doutput)
+                return ntuple(Returns(NoRData()), 3)
+            end
+
+            return output_doutput, $adj
+        end
+    end
+end
