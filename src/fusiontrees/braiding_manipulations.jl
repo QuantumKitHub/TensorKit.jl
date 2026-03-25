@@ -154,31 +154,13 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
         a = inner_extended[i - 1]
         c = inner_extended[i]
         e = inner_extended[i + 1]
-        if FusionStyle(I) isa UniqueFusion
-            c′ = first(a ⊗ d)
-            coeff = oftype(
-                oneT,
-                if inv
+        if FusionStyle(I) isa MultiplicityFreeFusion
+            for c′ in intersect(a ⊗ d, e ⊗ conj(b))
+                coeff = if inv
                     conj(Rsymbol(d, c, e) * Fsymbol(d, a, b, e, c′, c)) * Rsymbol(d, a, c′)
                 else
                     Rsymbol(c, d, e) * conj(Fsymbol(d, a, b, e, c′, c) * Rsymbol(a, d, c′))
                 end
-            )
-            inner′ = TupleTools.setindex(inner, c′, i - 1)
-            f′ = FusionTree{I}(uncoupled′, coupled′, isdual′, inner′)
-            row = indexmap[treeindex_data((f′, f₂))]
-            @inbounds U[row, col] = coeff
-        elseif FusionStyle(I) isa SimpleFusion
-            cs = collect(I, intersect(a ⊗ d, e ⊗ conj(b)))
-            for c′ in cs
-                coeff = oftype(
-                    oneT,
-                    if inv
-                        conj(Rsymbol(d, c, e) * Fsymbol(d, a, b, e, c′, c)) * Rsymbol(d, a, c′)
-                    else
-                        Rsymbol(c, d, e) * conj(Fsymbol(d, a, b, e, c′, c) * Rsymbol(a, d, c′))
-                    end
-                )
                 iszero(coeff) && continue
                 inner′ = TupleTools.setindex(inner, c′, i - 1)
                 f′ = FusionTree{I}(uncoupled′, coupled′, isdual′, inner′)
@@ -186,8 +168,7 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
                 @inbounds U[row, col] = coeff
             end
         else # GenericFusion
-            cs = collect(I, intersect(a ⊗ d, e ⊗ conj(b)))
-            for c′ in cs
+            for c′ in intersect(a ⊗ d, e ⊗ conj(b))
                 Rmat1 = inv ? Rsymbol(d, c, e)' : Rsymbol(c, d, e)
                 Rmat2 = inv ? Rsymbol(d, a, c′)' : Rsymbol(a, d, c′)
                 Fmat = Fsymbol(d, a, b, e, c′, c)
@@ -374,4 +355,77 @@ function permute(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple)
     levels1 = ntuple(identity, numout(src))
     levels2 = numout(src) .+ ntuple(identity, numin(src))
     return braid(src, p, (levels1, levels2))
+end
+
+"""
+    flip((f₁, f₂)::FusionTreePair, i::Int; inv::Bool = false)
+    -> SingletonDict{FusionTreePair, <:Number}
+
+Flip the duality flag of the `i`-th uncoupled leg of the fusion-splitting tree pair
+`(f₁, f₂)`, and return a `SingletonDict` containing the resulting tree pair together with
+the scalar coefficient arising from the Z-isomorphism that relates the outgoing `a` line and
+the incoming `dual(a)` line.
+
+The coefficient for flipping leg `i` of `f₁` is determined by the twist `θₐ` and the
+Frobenius-Schur phase `χₐ` of sector `a = f₁.uncoupled[i]`:
+- If `isdual[i]` is currently `true` (the leg has an extra Z): coefficient is `χₐ * θₐ`.
+- If `isdual[i]` is currently `false`: coefficient is `1`.
+
+For legs of the fusion tree `f₂`, the conjugated phases appear instead.
+
+The keyword `inv` inverts the operation, i.e. it exchanges the coefficients between the
+dual and non-dual cases, so that applying `flip` with `inv = true` to the output of `flip`
+with `inv = false` recovers the original tree with coefficient `1`.
+
+!!! warning
+    This operation is in general not an involution, and only `flip ∘ flip ∘ flip ∘ flip = identity`.
+
+See also the multi-index method `flip((f₁, f₂)::FusionTreePair, ind; inv)`.
+"""
+function flip((f₁, f₂)::FusionTreePair, i::Int; inv::Bool = false)
+    N₁ = numout((f₁, f₂))
+    @assert 0 < i ≤ numind((f₁, f₂))
+    if i ≤ N₁
+        a = f₁.uncoupled[i]
+        χₐ = frobenius_schur_phase(a)
+        θₐ = twist(a)
+        if !inv
+            factor = f₁.isdual[i] ? χₐ * θₐ : one(θₐ)
+        else
+            factor = f₁.isdual[i] ? one(θₐ) : conj(χₐ * θₐ)
+        end
+        isdual′ = TupleTools.setindex(f₁.isdual, !f₁.isdual[i], i)
+        f₁′ = typeof(f₁)(f₁.uncoupled, f₁.coupled, isdual′, f₁.innerlines, f₁.vertices)
+        return SingletonDict((f₁′, f₂) => factor)
+    else
+        i -= N₁
+        a = f₂.uncoupled[i]
+        χₐ = frobenius_schur_phase(a)
+        θₐ = twist(a)
+        if !inv
+            factor = f₂.isdual[i] ? conj(χₐ) * one(θₐ) : θₐ
+        else
+            factor = f₂.isdual[i] ? conj(θₐ) : χₐ * one(θₐ)
+        end
+        isdual′ = TupleTools.setindex(f₂.isdual, !f₂.isdual[i], i)
+        f₂′ = typeof(f₂)(f₂.uncoupled, f₂.coupled, isdual′, f₂.innerlines, f₂.vertices)
+        return SingletonDict((f₁, f₂′) => factor)
+    end
+end
+
+"""
+    flip((f₁, f₂)::FusionTreePair, ind; inv::Bool = false)
+    -> SingletonDict{FusionTreePair, <:Number}
+
+Flip the duality flags of all legs listed in `ind` sequentially, accumulating the scalar coefficients.
+See the single-index method for the meaning of the coefficient per leg.
+"""
+function flip((f₁, f₂)::FusionTreePair, ind; inv::Bool = false)
+    f₁′, f₂′ = f₁, f₂
+    factor = one(sectorscalartype(sectortype(f₁)))
+    for i in ind
+        (f₁′, f₂′), s = only(flip((f₁′, f₂′), i; inv))
+        factor *= s
+    end
+    return SingletonDict((f₁′, f₂′) => factor)
 end

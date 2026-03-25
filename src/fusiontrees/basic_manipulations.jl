@@ -95,20 +95,14 @@ FusionTree{Irrep[ℤ₂]}((1, 1, 0), 0, (false, false, false), (0,))
 end
 
 """
-    VertexGetter(k::Int)
+    vertex_info(f::FusionTree, k::Int)
 
-A helper struct to get both sectors left and right of the k-th uncoupled sectors,
+Get both sectors left and right of the k-th uncoupled sector of `f`,
 as well as the corresponding vertex index.
 """
-struct VertexGetter
-    k::Int
-    function VertexGetter(k::Int)
-        k >= 2 || throw(ArgumentError("k must be at least 2"))
-        return new(k)
-    end
-end
-@inline function (vg::VertexGetter)(f::FusionTree)
-    k = vg.k
+vertex_info(k::Int) = Base.Fix2(vertex_info, k)
+@inline function vertex_info(f::FusionTree, k::Int)
+    k >= 2 || throw(ArgumentError("k must be at least 2"))
     k <= length(f) ||
         throw(ArgumentError(lazy"k = $k exceeds number of uncoupled legs $(length(f))"))
     N = length(f)
@@ -155,8 +149,8 @@ function multi_associator(long::FusionTree{I, N}, short) where {I, N}
     a = uncoupled[1]
     for k in 2:(N - 1)
         c = uncoupled[k + 1]
-        e, d, ν = VertexGetter(k + 1)(long)
-        b, e′, κ = VertexGetter(k)(short)
+        e, d, ν = vertex_info(long, k + 1)
+        b, e′, κ = vertex_info(short, k)
         F = Fsymbol(a, b, c, d, e, e′)
         if FusionStyle(I) isa MultiplicityFreeFusion
             coeff *= F
@@ -219,9 +213,7 @@ function multi_Fmove(f::FusionTree{I, N}) where {I, N}
     end
 
     u = rightunit(f.coupled)
-    T = typeof(Fsymbol(u, u, u, u, u, u)[1, 1, 1, 1])
-    # sectorscalartype(I) may be different if there is also braiding
-    # TODO: consider using _Fscalartype?
+    T = fusionscalartype(I)
 
     if N == 1
         f′ = FusionTree{I}((), u, (), (), ())
@@ -248,15 +240,15 @@ function multi_Fmove(f::FusionTree{I, N}) where {I, N}
         treesprev = similar(trees, 0)
         for k in 2:(N - 1)
             treesprev, trees = trees, empty!(treesprev)
-            treesprev = sort!(treesprev, by = VertexGetter(k))
-            _, d, = VertexGetter(k + 1)(f)
+            treesprev = sort!(treesprev, by = vertex_info(k))
+            _, d, = vertex_info(f, k + 1)
             ād = dual(a) ⊗ d
             c = f.uncoupled[k + 1]
-            b, = VertexGetter(k)(first(treesprev))
+            b, = vertex_info(first(treesprev), k)
             b_current = b
             bc = b ⊗ c
             for tree in treesprev
-                b, = VertexGetter(k)(tree)
+                b, = vertex_info(tree, k)
                 if b != b_current
                     bc = b ⊗ c
                     b_current = b
@@ -284,15 +276,15 @@ function multi_Fmove(f::FusionTree{I, N}) where {I, N}
         a = f.uncoupled[1]
         b = f.uncoupled[2]
         c = f.uncoupled[3]
-        _, e, μ = VertexGetter(2)(f)
-        _, d, ν = VertexGetter(3)(f)
-        p = sortperm(trees, by = VertexGetter(2)) # first return value of VertexGetter(2) is 'a' which is constant
+        _, e, μ = vertex_info(f, 2)
+        _, d, ν = vertex_info(f, 3)
+        p = sortperm(trees, by = vertex_info(2)) # first return value of vertex_info(f, 2) is 'a' which is constant
         tree = trees[p[1]]
-        _, e′, = VertexGetter(2)(tree)
+        _, e′, = vertex_info(tree, 2)
         e′_current = e′
         F_current = Fsymbol(a, b, c, d, e, e′)
         for i in p
-            _, e′, κ = VertexGetter(2)(trees[i])
+            _, e′, κ = vertex_info(trees[i], 2)
             if e′ != e′_current
                 F_current = Fsymbol(a, b, c, d, e, e′)
                 e′_current = e′
@@ -307,15 +299,15 @@ function multi_Fmove(f::FusionTree{I, N}) where {I, N}
         for k in 3:(N - 1)
             c = f.uncoupled[k + 1]
             e = d
-            _, d, ν = VertexGetter(k + 1)(f)
-            p = sortperm!(p, trees, by = VertexGetter(k))
+            _, d, ν = vertex_info(f, k + 1)
+            p = sortperm!(p, trees, by = vertex_info(k))
             tree = trees[p[1]]
-            b, e′, = VertexGetter(k)(tree)
+            b, e′, = vertex_info(tree, k)
             b_current = b
             e′_current = e′
             F_current = Fsymbol(a, b, c, d, e, e′)
             for i in p
-                b, e′, κ = VertexGetter(k)(trees[i])
+                b, e′, κ = vertex_info(trees[i], k)
                 if b != b_current || e′ != e′_current
                     F_current = Fsymbol(a, b, c, d, e, e′)
                     b_current = b
@@ -364,10 +356,9 @@ function multi_Fmove_inv(a, c, f::FusionTree{I, N}, isduala = false) where {I, N
         throw(SectorMismatch("cannot fuse sectors $a and $b to $c"))
 
     u = rightunit(c)
-    T = typeof(Fsymbol(u, u, u, u, u, u)[1, 1, 1, 1])
+    T = fusionscalartype(I)
     F = fusiontreetype(I, N + 1)
-    # sectorscalartype(I) may be different if there is also braiding
-    # TODO: consider using _Fscalartype?
+
     if N == 0
         f′ = FusionTree{I}((a,), c, (isduala,), (), ())
         return F[f′], FusionStyle(I) isa MultiplicityFreeFusion ? [one(T)] : [ones(T, 1)]
@@ -395,15 +386,15 @@ function multi_Fmove_inv(a, c, f::FusionTree{I, N}, isduala = false) where {I, N
         treesprev = similar(trees, 0)
         for k in N:-1:2
             c = f.uncoupled[k]
-            b, e′, = VertexGetter(k)(f)
+            b, e′, = vertex_info(f, k)
             ab = a ⊗ b
             treesprev, trees = trees, empty!(treesprev)
-            treesprev = sort!(treesprev, by = VertexGetter(k + 1))
-            _, d, = VertexGetter(k + 1)(first(treesprev))
+            treesprev = sort!(treesprev, by = vertex_info(k + 1))
+            _, d, = vertex_info(first(treesprev), k + 1)
             d_current = d
             dc̄ = d ⊗ dual(c)
             for tree in treesprev
-                _, d, = VertexGetter(k + 1)(tree)
+                _, d, = vertex_info(tree, k + 1)
                 if d != d_current
                     dc̄ = d ⊗ dual(c)
                     d_current = d
@@ -426,16 +417,16 @@ function multi_Fmove_inv(a, c, f::FusionTree{I, N}, isduala = false) where {I, N
             Vector{T}(undef, length(trees)) : Vector{Vector{T}}(undef, length(trees))
         b = f.uncoupled[1]
         c = f.uncoupled[2]
-        _, e′, κ = VertexGetter(2)(f)
-        p = sortperm(trees, by = VertexGetter(3))
+        _, e′, κ = vertex_info(f, 2)
+        p = sortperm(trees, by = vertex_info(3))
         tree = trees[p[1]]
-        e, d, = VertexGetter(3)(tree)
+        e, d, = vertex_info(tree, 3)
         e_current = e
         d_current = d
         F_current = Fsymbol(a, b, c, d, e, e′)
         for i in p
             μ = trees[i].vertices[1]
-            e, d, ν = VertexGetter(3)(trees[i])
+            e, d, ν = vertex_info(trees[i], 3)
             if e != e_current || d != d_current
                 F_current = Fsymbol(a, b, c, d, e, e′)
                 e_current = e
@@ -450,15 +441,15 @@ function multi_Fmove_inv(a, c, f::FusionTree{I, N}, isduala = false) where {I, N
         end
         for k in 3:N
             c = f.uncoupled[k]
-            b, e′, κ = VertexGetter(k)(f)
-            p = sortperm!(p, trees, by = VertexGetter(k + 1))
+            b, e′, κ = vertex_info(f, k)
+            p = sortperm!(p, trees, by = vertex_info(k + 1))
             tree = trees[p[1]]
-            e, d, = VertexGetter(k + 1)(tree)
+            e, d, = vertex_info(tree, k + 1)
             e_current = e
             d_current = d
             F_current = Fsymbol(a, b, c, d, e, e′)
             for i in p
-                e, d, ν = VertexGetter(k + 1)(trees[i])
+                e, d, ν = vertex_info(trees[i], k + 1)
                 if e != e_current || d != d_current
                     F_current = Fsymbol(a, b, c, d, e, e′)
                     e_current = e
@@ -492,15 +483,13 @@ function insertat(f₁::FusionTree{I, N₁}, i, f₂::FusionTree{I, N₂}) where
 
     F = fusiontreetype(I, N₁ + N₂ - 1)
     u = rightunit(f₁.coupled)
-    T = typeof(Fsymbol(u, u, u, u, u, u)[1, 1, 1, 1])
-    # sectorscalartype(I) may be different if there is also braiding
-    # TODO: consider using _Fscalartype?
+    T = fusionscalartype(I)
 
     i == 1 && return fusiontreedict(I){F, T}(join(f₂, f₁) => one(T))
 
     fleft, = split(f₁, i - 1)
     _, fright = split(f₁, i)
-    a, c, λ = VertexGetter(i)(f₁)
+    a, c, λ = vertex_info(f₁, i)
     middletrees, middlecoeffs = multi_Fmove_inv(a, c, f₂)
     if FusionStyle(I) isa UniqueFusion
         fmiddle = only(middletrees)
@@ -531,18 +520,15 @@ also a degeneracy label `μ` for the fusion of the coupled sectors of `f₁` and
 `c` needs to be specified.
 """
 function merge(f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}, c::I) where {I, N₁, N₂}
-    if FusionStyle(I) isa GenericFusion
-        throw(ArgumentError("vertex label for merging required"))
-    end
+    FusionStyle(I) isa GenericFusion && throw(ArgumentError("vertex label for merging required"))
     return merge(f₁, f₂, c, 1)
 end
 function merge(f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂}, c::I, μ) where {I, N₁, N₂}
-    if !(c in f₁.coupled ⊗ f₂.coupled)
+    (c in f₁.coupled ⊗ f₂.coupled) ||
         throw(SectorMismatch("cannot fuse sectors $(f₁.coupled) and $(f₂.coupled) to $c"))
-    end
-    if μ > Nsymbol(f₁.coupled, f₂.coupled, c)
+    μ > Nsymbol(f₁.coupled, f₂.coupled, c) &&
         throw(ArgumentError("invalid fusion vertex label $μ"))
-    end
+
     f₀ = FusionTree{I}((f₁.coupled, f₂.coupled), c, (false, false), (), (μ,))
     f = join(f₁, f₀)
     return insertat(f, N₁ + 1, f₂)
@@ -552,47 +538,6 @@ function merge(f₁::FusionTree{I, 0}, f₂::FusionTree{I, 0}, c::I, μ) where {
         throw(SectorMismatch("cannot fuse sectors $(f₁.coupled) and $(f₂.coupled) to $c"))
 
     u = rightunit(f₁.coupled)
-    T = typeof(Fsymbol(u, u, u, u, u, u)[1, 1, 1, 1])
+    T = fusionscalartype(I)
     return fusiontreedict(I)(f₁ => one(T))
-end
-
-# flip a duality flag of a fusion tree
-# TODO: move to duality or braiding manipulations (requires duality and twist)
-function flip((f₁, f₂)::FusionTreePair{I, N₁, N₂}, i::Int; inv::Bool = false) where {I, N₁, N₂}
-    @assert 0 < i ≤ N₁ + N₂
-    if i ≤ N₁
-        a = f₁.uncoupled[i]
-        χₐ = frobenius_schur_phase(a)
-        θₐ = twist(a)
-        if !inv
-            factor = f₁.isdual[i] ? χₐ * θₐ : one(θₐ)
-        else
-            factor = f₁.isdual[i] ? one(θₐ) : conj(χₐ * θₐ)
-        end
-        isdual′ = TupleTools.setindex(f₁.isdual, !f₁.isdual[i], i)
-        f₁′ = FusionTree{I}(f₁.uncoupled, f₁.coupled, isdual′, f₁.innerlines, f₁.vertices)
-        return SingletonDict((f₁′, f₂) => factor)
-    else
-        i -= N₁
-        a = f₂.uncoupled[i]
-        χₐ = frobenius_schur_phase(a)
-        θₐ = twist(a)
-        if !inv
-            factor = f₂.isdual[i] ? conj(χₐ) * one(θₐ) : θₐ
-        else
-            factor = f₂.isdual[i] ? conj(θₐ) : χₐ * one(θₐ)
-        end
-        isdual′ = TupleTools.setindex(f₂.isdual, !f₂.isdual[i], i)
-        f₂′ = FusionTree{I}(f₂.uncoupled, f₂.coupled, isdual′, f₂.innerlines, f₂.vertices)
-        return SingletonDict((f₁, f₂′) => factor)
-    end
-end
-function flip((f₁, f₂)::FusionTreePair{I, N₁, N₂}, ind; inv::Bool = false) where {I, N₁, N₂}
-    f₁′, f₂′ = f₁, f₂
-    factor = one(sectorscalartype(I))
-    for i in ind
-        (f₁′, f₂′), s = only(flip((f₁′, f₂′), i; inv))
-        factor *= s
-    end
-    return SingletonDict((f₁′, f₂′) => factor)
 end
