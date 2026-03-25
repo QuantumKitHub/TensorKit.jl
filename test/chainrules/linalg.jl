@@ -61,7 +61,7 @@ spacelist = (
     (
         Vect[FermionParity](0 => 1, 1 => 1),
         Vect[FermionParity](0 => 1, 1 => 2)',
-        Vect[FermionParity](0 => 2, 1 => 1)'  ,
+        Vect[FermionParity](0 => 2, 1 => 1)',
         Vect[FermionParity](0 => 2, 1 => 3),
         Vect[FermionParity](0 => 2, 1 => 2),
     ),
