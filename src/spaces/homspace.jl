@@ -147,7 +147,7 @@ grouped by their uncoupled charges.
 function fusionblocks(W::HomSpace)
     I = sectortype(W)
     N₁, N₂ = numout(W), numin(W)
-    isdual_src = (map(isdual, codomain(W).spaces), map(isdual, domain(W).spaces))
+    isdual_src = (map(isdual, codomain(W)), map(isdual, domain(W)))
     fblocks = Vector{FusionTreeBlock{I, N₁, N₂, fusiontreetype(I, N₁, N₂)}}()
     for dom_uncoupled_src in sectors(domain(W)), cod_uncoupled_src in sectors(codomain(W))
         fs_src = FusionTreeBlock{I}((cod_uncoupled_src, dom_uncoupled_src), isdual_src)

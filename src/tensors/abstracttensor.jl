@@ -402,12 +402,9 @@ end
 
 # auxiliary function
 @inline function trivial_fusiontree(t::AbstractTensorMap)
-    sectortype(t) === Trivial ||
-        throw(SectorMismatch("Only valid for tensors with trivial symmetry"))
-    spaces1 = codomain(t).spaces
-    spaces2 = domain(t).spaces
-    f₁ = FusionTree{Trivial}(map(x -> Trivial(), spaces1), Trivial(), map(isdual, spaces1))
-    f₂ = FusionTree{Trivial}(map(x -> Trivial(), spaces2), Trivial(), map(isdual, spaces2))
+    sectortype(t) === Trivial || throw(SectorMismatch("Only valid for tensors with trivial symmetry"))
+    f₁ = FusionTree{Trivial}(map(Returns(Trivial()), codomain(t)), Trivial(), map(isdual, codomain(t)))
+    f₂ = FusionTree{Trivial}(map(Returns(Trivial()), domain(t)), Trivial(), map(isdual, domain(t)))
     return (f₁, f₂)
 end
 
