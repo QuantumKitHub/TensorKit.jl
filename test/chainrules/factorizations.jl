@@ -11,12 +11,6 @@ using Zygote
 using MatrixAlgebraKit
 using MatrixAlgebraKit: LAPACK_HouseholderQR, LAPACK_HouseholderLQ, diagview
 
-const _repartition = @static if isdefined(Base, :get_extension)
-    Base.get_extension(TensorKit, :TensorKitChainRulesCoreExt)._repartition
-else
-    TensorKit.TensorKitChainRulesCoreExt._repartition
-end
-
 # Test utility
 # -------------
 function ChainRulesTestUtils.rand_tangent(rng::AbstractRNG, x::AbstractTensorMap)
@@ -39,12 +33,6 @@ end
 # Float32 and finite differences don't mix well
 precision(::Type{<:Union{Float32, Complex{Float32}}}) = 1.0e-2
 precision(::Type{<:Union{Float64, Complex{Float64}}}) = 1.0e-5
-
-function randindextuple(N::Int, k::Int = rand(0:N))
-    @assert 0 ≤ k ≤ N
-    _p = randperm(N)
-    return (tuple(_p[1:k]...), tuple(_p[(k + 1):end]...))
-end
 
 function test_ad_rrule(f, args...; check_inferred = false, kwargs...)
     test_rrule(
@@ -133,8 +121,6 @@ end
 # Tests
 # -----
 
-ChainRulesTestUtils.test_method_tables()
-
 spacelist = (
     (ℂ^2, (ℂ^3)', ℂ^3, ℂ^2, (ℂ^2)'),
     (
@@ -178,250 +164,14 @@ for V in spacelist
     I = sectortype(eltype(V))
     Istr = type_repr(I)
     eltypes = isreal(sectortype(eltype(V))) ? (Float64, ComplexF64) : (ComplexF64,)
-    symmetricbraiding = BraidingStyle(sectortype(eltype(V))) isa SymmetricBraiding
     println("---------------------------------------")
     println("Auto-diff with symmetry: $Istr")
     println("---------------------------------------")
     @timedtestset "AD with symmetry $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
         W = V1 ⊗ V2
-        @timedtestset "Basic utility" begin
-            T1 = randn(Float64, V[1] ⊗ V[2] ← V[3] ⊗ V[4])
-            T2 = randn(ComplexF64, V[1] ⊗ V[2] ← V[3] ⊗ V[4])
-
-            P1 = ProjectTo(T1)
-            @test P1(T1) == T1
-            @test P1(T2) == real(T2)
-
-            test_rrule(copy, T1)
-            test_rrule(copy, T2)
-            test_rrule(TensorKit.copy_oftype, T1, ComplexF64)
-            if symmetricbraiding
-                test_rrule(convert, Array, T1)
-                test_rrule(
-                    TensorMap, convert(Array, T1), codomain(T1), domain(T1);
-                    fkwargs = (; tol = Inf)
-                )
-            end
-
-            test_rrule(Base.getproperty, T1, :data)
-            test_rrule(TensorMap{scalartype(T1)}, T1.data, T1.space)
-            test_rrule(Base.getproperty, T2, :data)
-            test_rrule(TensorMap{scalartype(T2)}, T2.data, T2.space)
-        end
-
-        @timedtestset "Basic utility (DiagonalTensor)" begin
-            for v in V
-                rdim = reduceddim(v)
-                D1 = DiagonalTensorMap(randn(rdim), v)
-                D2 = DiagonalTensorMap(randn(rdim), v)
-                D = D1 + im * D2
-                T1 = TensorMap(D1)
-                T2 = TensorMap(D2)
-                T = T1 + im * T2
-
-                # real -> real
-                P1 = ProjectTo(D1)
-                @test P1(D1) == D1
-                @test P1(T1) == D1
-
-                # complex -> complex
-                P2 = ProjectTo(D)
-                @test P2(D) == D
-                @test P2(T) == D
-
-                # real -> complex
-                @test P2(D1) == D1 + 0 * im * D1
-                @test P2(T1) == D1 + 0 * im * D1
-
-                # complex -> real
-                @test P1(D) == D1
-                @test P1(T) == D1
-
-                test_rrule(DiagonalTensorMap, D1.data, D1.domain)
-                test_rrule(DiagonalTensorMap, D.data, D.domain)
-                test_rrule(Base.getproperty, D, :data)
-                test_rrule(Base.getproperty, D1, :data)
-
-                test_rrule(DiagonalTensorMap, rand!(T1))
-                test_rrule(DiagonalTensorMap, randn!(T))
-            end
-        end
-
-        @timedtestset "Basic Linear Algebra with scalartype $T" for T in eltypes
-            A = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
-            B = randn(T, space(A))
-
-            test_rrule(real, A)
-            test_rrule(imag, A)
-
-            test_rrule(+, A, B)
-            test_rrule(-, A)
-            test_rrule(-, A, B)
-
-            α = randn(T)
-            test_rrule(*, α, A)
-            test_rrule(*, A, α)
-
-            C = randn(T, domain(A), codomain(A))
-            test_rrule(*, A, C)
-
-            test_rrule(transpose, A, ((2, 5, 4), (1, 3)))
-            symmetricbraiding && test_rrule(permute, A, ((1, 3, 2), (5, 4)))
-            test_rrule(twist, A, 1)
-            test_rrule(twist, A, [1, 3])
-
-            test_rrule(flip, A, 1)
-            test_rrule(flip, A, [1, 3, 4])
-
-            D = randn(T, V[1] ⊗ V[2] ← V[3])
-            E = randn(T, V[4] ← V[5])
-            symmetricbraiding && test_rrule(⊗, D, E)
-        end
-
-        @timedtestset "Linear Algebra part II with scalartype $T" for T in eltypes
-            atol = precision(T)
-            rtol = precision(T)
-            for i in 1:3
-                E = randn(T, ⊗(V[1:i]...) ← ⊗(V[1:i]...))
-                test_rrule(LinearAlgebra.tr, E; atol, rtol)
-                test_rrule(exp, E; check_inferred = false, atol, rtol)
-                test_rrule(inv, E; atol, rtol)
-            end
-
-            A = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
-            test_rrule(LinearAlgebra.adjoint, A; atol, rtol)
-            test_rrule(LinearAlgebra.norm, A, 2; atol, rtol)
-
-            B = randn(T, space(A))
-            test_rrule(LinearAlgebra.dot, A, B; atol, rtol)
-        end
-
-        @timedtestset "Matrix functions ($T)" for T in eltypes
-            atol = precision(T)
-            rtol = precision(T)
-            for f in (sqrt, exp)
-                check_inferred = false # !(T <: Real) # not type-stable for real functions
-                t1 = randn(T, V[1] ← V[1])
-                t2 = randn(T, V[2] ← V[2])
-                d = DiagonalTensorMap{T}(undef, V[1])
-                d2 = DiagonalTensorMap{T}(undef, V[1])
-                d3 = DiagonalTensorMap{T}(undef, V[1])
-                if (T <: Real && f === sqrt)
-                    # ensuring no square root of negative numbers
-                    randexp!(d.data)
-                    d.data .+= 5
-                    randexp!(d2.data)
-                    d2.data .+= 5
-                    randexp!(d3.data)
-                    d3.data .+= 5
-                else
-                    randn!(d.data)
-                    randn!(d2.data)
-                    randn!(d3.data)
-                end
-
-                test_rrule(f, t1; rrule_f = Zygote.rrule_via_ad, check_inferred, atol, rtol)
-                test_rrule(f, t2; rrule_f = Zygote.rrule_via_ad, check_inferred, atol, rtol)
-                test_rrule(f, d ⊢ d2; check_inferred, output_tangent = d3, atol, rtol)
-            end
-        end
-
-        symmetricbraiding &&
-            @timedtestset "TensorOperations with scalartype $T" for T in eltypes
-            atol = precision(T)
-            rtol = precision(T)
-
-            @timedtestset "tensortrace!" begin
-                for _ in 1:5
-                    k1 = rand(0:2)
-                    k2 = rand(1:2)
-                    V1 = map(v -> rand(Bool) ? v' : v, rand(V, k1))
-                    V2 = map(v -> rand(Bool) ? v' : v, rand(V, k2))
-
-                    (_p, _q) = randindextuple(k1 + 2 * k2, k1)
-                    p = _repartition(_p, rand(0:k1))
-                    q = _repartition(_q, k2)
-                    ip = _repartition(invperm(linearize((_p, _q))), rand(0:(k1 + 2 * k2)))
-                    A = randn(T, permute(prod(V1) ⊗ prod(V2) ← prod(V2), ip))
-
-                    α = randn(T)
-                    β = randn(T)
-                    for conjA in (false, true)
-                        C = randn!(TensorOperations.tensoralloc_add(T, A, p, conjA, Val(false)))
-                        test_rrule(tensortrace!, C, A, p, q, conjA, α, β; atol, rtol)
-                    end
-                end
-            end
-
-            @timedtestset "tensoradd!" begin
-                A = randn(T, V[1] ⊗ V[2] ← V[4] ⊗ V[5])
-                α = randn(T)
-                β = randn(T)
-
-                # repeat a couple times to get some distribution of arrows
-                for _ in 1:5
-                    p = randindextuple(numind(A))
-
-                    C1 = randn!(TensorOperations.tensoralloc_add(T, A, p, false, Val(false)))
-                    test_rrule(tensoradd!, C1, A, p, false, α, β; atol, rtol)
-
-                    C2 = randn!(TensorOperations.tensoralloc_add(T, A, p, true, Val(false)))
-                    test_rrule(tensoradd!, C2, A, p, true, α, β; atol, rtol)
-
-                    A = rand(Bool) ? C1 : C2
-                end
-            end
-
-            @timedtestset "tensorcontract!" begin
-                for _ in 1:5
-                    d = 0
-                    local V1, V2, V3
-                    # retry a couple times to make sure there are at least some nonzero elements
-                    for _ in 1:10
-                        k1 = rand(0:3)
-                        k2 = rand(0:2)
-                        k3 = rand(0:2)
-                        V1 = prod(v -> rand(Bool) ? v' : v, rand(V, k1); init = one(V[1]))
-                        V2 = prod(v -> rand(Bool) ? v' : v, rand(V, k2); init = one(V[1]))
-                        V3 = prod(v -> rand(Bool) ? v' : v, rand(V, k3); init = one(V[1]))
-                        d = min(dim(V1 ← V2), dim(V1' ← V2), dim(V2 ← V3), dim(V2' ← V3))
-                        d > 0 && break
-                    end
-                    ipA = randindextuple(length(V1) + length(V2))
-                    pA = _repartition(invperm(linearize(ipA)), length(V1))
-                    ipB = randindextuple(length(V2) + length(V3))
-                    pB = _repartition(invperm(linearize(ipB)), length(V2))
-                    pAB = randindextuple(length(V1) + length(V3))
-
-                    α = randn(T)
-                    β = randn(T)
-                    V2_conj = prod(conj, V2; init = one(V[1]))
-
-                    for conjA in (false, true), conjB in (false, true)
-                        A = randn(T, permute(V1 ← (conjA ? V2_conj : V2), ipA))
-                        B = randn(T, permute((conjB ? V2_conj : V2) ← V3, ipB))
-                        C = randn!(
-                            TensorOperations.tensoralloc_contract(
-                                T, A, pA, conjA, B, pB, conjB, pAB, Val(false)
-                            )
-                        )
-                        test_rrule(
-                            tensorcontract!, C, A, pA, conjA, B, pB, conjB, pAB, α, β;
-                            atol, rtol
-                        )
-                    end
-                end
-            end
-
-            @timedtestset "tensorscalar" begin
-                A = randn(T, ProductSpace{typeof(V[1]), 0}())
-                test_rrule(tensorscalar, A)
-            end
-        end
 
         @timedtestset "Factorizations" begin
-            W = V[1] ⊗ V[2]
             @testset "QR" begin
                 for T in eltypes,
                         t in (
@@ -456,16 +206,6 @@ for V in spacelist
                         fkwargs, atol, rtol, output_tangent = ΔQ
                     )
                     test_ad_rrule(last ∘ qr_full, t; fkwargs, atol, rtol, output_tangent = ΔR)
-
-                    # TODO: figure out the following:
-                    # N = qr_null(t)
-                    # ΔN = Q * rand(T, domain(Q) ← domain(N))
-                    # test_ad_rrule(qr_null, t; fkwargs, atol, rtol, output_tangent=ΔN)
-
-                    # if fuse(domain(t)) ≺ fuse(codomain(t))
-                    #     _, null_pb = Zygote.pullback(qr_null, t)
-                    #     @test_logs (:warn, r"^`qr") match_mode = :any null_pb(rand_tangent(N))
-                    # end
                 end
             end
 
@@ -504,17 +244,6 @@ for V in spacelist
                         fkwargs, atol, rtol, output_tangent = ΔL
                     )
                     test_ad_rrule(last ∘ lq_full, t; fkwargs, atol, rtol, output_tangent = ΔQ)
-
-                    # TODO: figure out the following
-                    # Nᴴ = lq_null(t)
-                    # ΔN = rand(T, codomain(Nᴴ) ← codomain(Q)) * Q
-                    # test_ad_rrule(lq_null, t; fkwargs, atol, rtol, output_tangent=Nᴴ)
-
-                    # if fuse(codomain(t)) ≺ fuse(domain(t))
-                    #     _, null_pb = Zygote.pullback(lq_null, t)
-                    #     # broken due to typo in MAK
-                    #     # @test_logs (:warn, r"^`lq") match_mode = :any null_pb(rand_tangent(Nᴴ))
-                    # end
                 end
             end
 
@@ -614,17 +343,6 @@ for V in spacelist
                     @test g1 ≈ g2
                 end
             end
-
-            # let D = LinearAlgebra.eigvals(C)
-            #     ΔD = diag(randn(complex(scalartype(C)), space(C)))
-            #     test_rrule(LinearAlgebra.eigvals, C; atol, output_tangent=ΔD,
-            #                fkwargs=(; sortby=nothing))
-            # end
-
-            # let S = LinearAlgebra.svdvals(C)
-            #     ΔS = diag(randn(real(scalartype(C)), space(C)))
-            #     test_rrule(LinearAlgebra.svdvals, C; atol, output_tangent=ΔS)
-            # end
         end
     end
 end
@@ -656,17 +374,4 @@ end
     grad3, = Zygote.gradient(g, B₀)
     grad4, = Zygote.gradient(g, convert(Array, B₀))
     @test convert(Array, grad3) ≈ grad4
-end
-
-# https://github.com/quantumkithub/TensorKit.jl/issues/209
-@testset "Issue #209" begin
-    function f(T, D)
-        @tensor T[1, 4, 1, 3] * D[3, 4]
-    end
-    V = Z2Space(2, 2)
-    D = DiagonalTensorMap(randn(4), V)
-    T = randn(V ⊗ V ← V ⊗ V)
-    g1, = Zygote.gradient(f, T, D)
-    g2, = Zygote.gradient(f, T, TensorMap(D))
-    @test g1 ≈ g2
 end
