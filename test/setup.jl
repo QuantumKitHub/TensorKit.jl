@@ -179,14 +179,14 @@ fast_sectorlist = (Z2Irrep, SU2Irrep, FermionParity ⊠ U1Irrep ⊠ SU2Irrep, Fi
 # spaces
 Vtr = (ℂ^2, (ℂ^3)', ℂ^4, ℂ^3, (ℂ^2)')
 Vℤ₂ = (
-    Vect[Z2Irrep](0 => 1, 1 => 1),
+    Vect[Z2Irrep](0 => 2, 1 => 1),
     Vect[Z2Irrep](0 => 1, 1 => 2)',
     Vect[Z2Irrep](0 => 3, 1 => 2)',
     Vect[Z2Irrep](0 => 2, 1 => 3),
     Vect[Z2Irrep](0 => 2, 1 => 5),
 )
 Vfℤ₂ = (
-    Vect[FermionParity](0 => 1, 1 => 1),
+    Vect[FermionParity](0 => 2, 1 => 1),
     Vect[FermionParity](0 => 1, 1 => 2)',
     Vect[FermionParity](0 => 2, 1 => 1)',
     Vect[FermionParity](0 => 2, 1 => 3),

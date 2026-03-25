@@ -5,7 +5,7 @@ using MatrixAlgebraKit: diagview
 
 
 spacelist = if fast_tests
-    (Vtr, Vℤ₂, VSU₂)
+    (Vtr, Vℤ₃, VSU₂)
 elseif get(ENV, "CI", "false") == "true"
     println("Detected running on CI")
     if Sys.iswindows()
