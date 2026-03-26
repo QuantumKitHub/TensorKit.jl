@@ -310,6 +310,15 @@ for V in spacelist
                 @test norm(t - U5 * S5 * Vᴴ5) ≈ ϵ5 atol = eps(real(T))^(4 / 5)
                 @test minimum(diagview(S5)) >= λ
                 test_dim_isapprox(domain(S5), nvals)
+
+                trunc = truncrank(nvals) | trunctol(; atol = λ - 10eps(λ))
+                U5, S5, Vᴴ5, ϵ5 = @constinferred svd_trunc(t; trunc)
+                @test t * Vᴴ5' ≈ U5 * S5
+                @test isisometric(U5)
+                @test isisometric(Vᴴ5; side = :right)
+                @test norm(t - U5 * S5 * Vᴴ5) ≈ ϵ5 atol = eps(real(T))^(4 / 5)
+                @test minimum(diagview(S5)) >= λ
+                test_dim_isapprox(domain(S5), nvals)
             end
         end
 
