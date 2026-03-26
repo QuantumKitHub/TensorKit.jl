@@ -59,20 +59,8 @@ for transform in (:permute, :transpose)
                 TK.$add_transform!(A.dval, C.dval, pΔA, conj(α.val), One(), bavs...)
             end
         end
-        Δαr = if !isnothing(Ap) && !isa(C, Const)
-            project_scalar(α.val, inner(Ap, C.dval))
-        elseif !isnothing(Ap)
-            zero(α.val)
-        else
-            nothing
-        end
-        Δβr = if !isa(C, Const) && !isa(β, Const)
-            pullback_dβ(C.dval, Cval, β)
-        elseif !isa(β, Const)
-            zero(β.val)
-        else
-            nothing
-        end
+        Δα = pullback_dα(α, C, Ap) 
+        Δβ = pullback_dβ(β, C, Cval) 
         !isa(C, Const) && pullback_dC!(C.dval, β.val)
         return nothing, nothing, nothing, Δαr, Δβr, map(Returns(nothing), ba)...
     end
@@ -140,20 +128,8 @@ function EnzymeRules.reverse(
             TK.add_braid!(A.dval, C.dval, pΔA, ilevels, conj(α.val), One(), bavs...)
         end
     end
-    Δαr = if !isnothing(Ap) && !isa(C, Const)
-        project_scalar(α.val, inner(Ap, C.dval))
-    elseif !isnothing(Ap)
-        zero(α.val)
-    else
-        nothing
-    end
-    Δβr = if !isa(C, Const) && !isa(β, Const)
-        pullback_dβ(C.dval, Cval, β)
-    elseif !isa(β, Const)
-        zero(β.val)
-    else
-        nothing
-    end
+    Δαr = pullback_dα(α, C, Ap) 
+    Δβr = pullback_dβ(β, C, Cval) 
     !isa(C, Const) && pullback_dC!(C.dval, β.val)
     return nothing, nothing, nothing, nothing, Δαr, Δβr, map(Returns(nothing), ba)...
 end

@@ -1,5 +1,17 @@
 # Projection
 # ----------
+pullback_dα(α::Const, C::Const, A) = nothing
+pullback_dα(α::Const, C::Annotation, A) = nothing
+pullback_dα(α::Annotation, C::Const, A) = zero(α.val)
+pullback_dα(α::Annotation, C::Annotation, A) = project_scalar(α.val, inner(A, C.dval))
+
+pullback_dβ(β::Const, C::Const, Ccache) = nothing
+pullback_dβ(β::Const, C::Annotation, Ccache) = nothing
+pullback_dβ(β::Annotation, C::Const, Ccache) = zero(β.val)
+pullback_dβ(β::Annotation, C::Annotation, Ccache) = project_scalar(β.val, inner(Ccache, C.dval))
+
+pullback_dC!(ΔC, β::Number) = scale!(ΔC, conj(β))
+
 """
     project_scalar(x::Number, dx::Number)
 

@@ -1,8 +1,5 @@
 # Shared
 # ------
-pullback_dC!(ΔC, β) = scale!(ΔC, conj(β))
-pullback_dβ(ΔC, C, β) = !isa(β, Const) ? project_scalar(β.val, inner(C, ΔC)) : nothing
-
 # Can Enzyme do this itself? Apparently not...
 function EnzymeRules.augmented_primal(
         config::EnzymeRules.RevConfigWidth{1},
@@ -54,20 +51,8 @@ function EnzymeRules.reverse(
 
     !isa(A, Const) && !isa(C, Const) && project_mul!(A.dval, C.dval, Bval', conj(α.val))
     !isa(B, Const) && !isa(C, Const) && project_mul!(B.dval, Aval', C.dval, conj(α.val))
-    Δαr = if !isnothing(AB) && !isa(C, Const)
-        project_scalar(α.val, inner(AB, C.dval))
-    elseif !isnothing(AB)
-        zero(α.val)
-    else
-        nothing
-    end
-    Δβr = if !isa(β, Const) && !isa(C, Const)
-        pullback_dβ(C.dval, Cval, β)
-    elseif !isa(β, Const)
-        zero(β.val)
-    else
-        nothing
-    end
+    Δαr = pullback_dα(α, C, AB) 
+    Δβr = pullback_dβ(β, C, Cval) 
     !isa(C, Const) && pullback_dC!(C.dval, β.val)
 
     return (nothing, nothing, nothing, Δαr, Δβr)

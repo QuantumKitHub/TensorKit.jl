@@ -62,8 +62,8 @@ function EnzymeRules.reverse(
     Aval = something(cacheA, A.val)
     Bval = something(cacheB, B.val)
 
-    Δα = isnothing(AB) ? nothing : project_scalar(α.val, inner(AB, C.dval))
-    Δβ = isa(β, Const) ? nothing : pullback_dβ(C.dval, Cval, β)
+    Δα = pullback_dα(α, C, AB) 
+    Δβ = pullback_dβ(β, C, Cval) 
 
     if !isa(A, Const)
         blas_contract_pullback_ΔA!(
@@ -75,7 +75,7 @@ function EnzymeRules.reverse(
             B.dval, C.dval, Aval, pA.val, Bval, pB.val, pAB.val, α.val, backend.val, allocator.val
         ) # this typically returns nothing
     end
-    pullback_dC!(C.dval, β.val) # this typically returns nothing
+    !isa(C, Const) && pullback_dC!(C.dval, β.val) # this typically returns nothing
     return nothing, nothing, nothing, nothing, nothing, nothing, Δα, Δβ, nothing, nothing
 end
 
@@ -179,20 +179,8 @@ function EnzymeRules.reverse(
     Aval = something(A_cache, A.val)
     Cval = something(C_cache, C.val)
     !isa(A, Const) && !isa(C, Const) && trace_permute_pullback_ΔA!(A.dval, C.dval, Aval, p.val, q.val, α.val, backend.val)
-    Δαr = if !isa(C, Const) && !isnothing(At)
-        project_scalar(α.val, inner(At, C.dval))
-    elseif !isnothing(At)
-        zero(α.val)
-    else
-        nothing
-    end
-    Δβr = if !isa(β, Const) && !isa(C, Const)
-        pullback_dβ(C.dval, Cval, β)
-    elseif !isa(β, Const)
-        zero(β.val)
-    else
-        nothing
-    end
+    Δαr = pullback_dα(α, C, At) 
+    Δβr = pullback_dβ(β, C, Cval) 
     !isa(C, Const) && pullback_dC!(C.dval, β.val)
     return nothing, nothing, nothing, nothing, Δαr, Δβr, nothing
 end

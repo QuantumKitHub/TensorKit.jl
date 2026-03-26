@@ -21,13 +21,7 @@ function EnzymeRules.reverse(
         α::Annotation{<:Number},
     ) where {RT}
     Cval = something(cache, C.val)
-    Δα = if !isa(α, Const) && !isa(C, Const)
-        project_scalar(α.val, inner(Cval, C.dval))
-    elseif !isa(α, Const)
-        zero(α.val)
-    else
-        nothing
-    end
+    Δα = pullback_dα(α, C, Cval) 
     !isa(C, Const) && scale!(C.dval, conj(α.val))
     return (nothing, Δα)
 end
@@ -58,13 +52,7 @@ function EnzymeRules.reverse(
         α::Annotation{<:Number},
     ) where {RT}
     Aval = something(cache, A.val)
-    Δα = if !isa(α, Const) && !isa(C, Const)
-        project_scalar(α.val, inner(Aval, C.dval))
-    elseif !isa(α, Const)
-        zero(α.val)
-    else
-        nothing
-    end
+    Δα = pullback_dα(α, C, Aval) 
     !isa(A, Const) && !isa(C, Const) && add!(A.dval, C.dval, conj(α.val))
     !isa(C, Const) && zerovector!(C.dval)
     return (nothing, nothing, Δα)
@@ -101,20 +89,8 @@ function EnzymeRules.reverse(
     A_cache, C_cache = cache
     Aval = something(A_cache, A.val)
     Cval = something(C_cache, C.val)
-    Δα = if !isa(α, Const) && !isa(C, Const)
-        project_scalar(α.val, inner(Aval, C.dval))
-    elseif !isa(α, Const)
-        zero(α.val)
-    else
-        nothing
-    end
-    Δβ = if !isa(β, Const) && !isa(C, Const)
-        project_scalar(β.val, inner(Cval, C.dval))
-    elseif !isa(β, Const)
-        zero(β.val)
-    else
-        nothing
-    end
+    Δα = pullback_dα(α, C, Aval) 
+    Δβ = pullback_dβ(β, C, Cval) 
     !isa(A, Const) && !isa(C, Const) && add!(A.dval, C.dval, conj(α.val))
     !isa(C, Const) && scale!(C.dval, conj(β.val))
     return (nothing, nothing, Δα, Δβ)
