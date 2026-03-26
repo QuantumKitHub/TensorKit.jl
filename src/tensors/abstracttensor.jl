@@ -313,8 +313,6 @@ end
 #------------------------------------------------------------
 InnerProductStyle(t::AbstractTensorMap) = InnerProductStyle(typeof(t))
 
-blocktype(t::AbstractTensorMap) = blocktype(typeof(t))
-
 numout(t::AbstractTensorMap) = numout(typeof(t))
 numin(t::AbstractTensorMap) = numin(typeof(t))
 numind(t::AbstractTensorMap) = numind(typeof(t))
@@ -441,6 +439,7 @@ See also [`blocks`](@ref), [`blocksectors`](@ref), [`blockdim`](@ref) and [`hasb
 
 Return the type of the matrix blocks of a tensor.
 """ blocktype
+blocktype(t::AbstractTensorMap) = blocktype(typeof(t))
 function blocktype(::Type{T}) where {T <: AbstractTensorMap}
     return Core.Compiler.return_type(block, Tuple{T, sectortype(T)})
 end

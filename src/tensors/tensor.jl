@@ -455,9 +455,7 @@ block(t::TensorMap, c::Sector) = blocks(t)[c]
 
 blocks(t::TensorMap) = BlockIterator(t, fusionblockstructure(t).blockstructure)
 
-function blocktype(::Type{TT}) where {TT <: TensorMap}
-    A = storagetype(TT)
-    T = eltype(A)
+function blocktype(::Type{TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A <: Vector{T}}
     return Base.ReshapedArray{T, 2, SubArray{T, 1, A, Tuple{UnitRange{Int}}, true}, Tuple{}}
 end
 
