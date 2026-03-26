@@ -10,40 +10,6 @@ using LinearAlgebra
 using Zygote
 using MatrixAlgebraKit
 
-# Test utility
-# -------------
-function ChainRulesTestUtils.rand_tangent(rng::AbstractRNG, x::AbstractTensorMap)
-    return randn!(similar(x))
-end
-function ChainRulesTestUtils.rand_tangent(rng::AbstractRNG, x::DiagonalTensorMap)
-    V = x.domain
-    return DiagonalTensorMap(randn(eltype(x), reduceddim(V)), V)
-end
-ChainRulesTestUtils.rand_tangent(::AbstractRNG, ::VectorSpace) = NoTangent()
-function ChainRulesTestUtils.test_approx(
-        actual::AbstractTensorMap, expected::AbstractTensorMap, msg = ""; kwargs...
-    )
-    for (c, b) in blocks(actual)
-        ChainRulesTestUtils.@test_msg msg isapprox(b, block(expected, c); kwargs...)
-    end
-    return nothing
-end
-
-# Float32 and finite differences don't mix well
-precision(::Type{<:Union{Float32, Complex{Float32}}}) = 1.0e-2
-precision(::Type{<:Union{Float64, Complex{Float64}}}) = 1.0e-5
-
-function test_ad_rrule(f, args...; check_inferred = false, kwargs...)
-    test_rrule(
-        Zygote.ZygoteRuleConfig(), f, args...;
-        rrule_f = rrule_via_ad, check_inferred, kwargs...
-    )
-    return nothing
-end
-
-# project_hermitian is non-differentiable for now
-_project_hermitian(x) = (x + x') / 2
-
 # Tests
 # -----
 
@@ -194,8 +160,8 @@ for V in spacelist
         end
 
         @timedtestset "Linear Algebra part II with scalartype $T" for T in eltypes
-            atol = precision(T)
-            rtol = precision(T)
+            atol = default_tol(T)
+            rtol = default_tol(T)
             for i in 1:3
                 E = randn(T, ⊗(V[1:i]...) ← ⊗(V[1:i]...))
                 test_rrule(LinearAlgebra.tr, E; atol, rtol)
@@ -212,8 +178,8 @@ for V in spacelist
         end
 
         @timedtestset "Matrix functions ($T)" for T in eltypes
-            atol = precision(T)
-            rtol = precision(T)
+            atol = default_tol(T)
+            rtol = default_tol(T)
             for f in (sqrt, exp)
                 check_inferred = false # !(T <: Real) # not type-stable for real functions
                 t1 = randn(T, V[1] ← V[1])

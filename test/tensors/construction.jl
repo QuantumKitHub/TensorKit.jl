@@ -3,20 +3,7 @@ using TensorKit
 using TensorKit: type_repr
 
 
-spacelist = if fast_tests
-    (Vtr, Vℤ₃, VSU₂)
-elseif get(ENV, "CI", "false") == "true"
-    println("Detected running on CI")
-    if Sys.iswindows()
-        (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VIB_diag)
-    elseif Sys.isapple()
-        (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VfU₁, VfSU₂, VSU₂U₁, VIB_M) #, VSU₃)
-    else
-        (Vtr, Vℤ₂, Vfℤ₂, VU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M) #, VSU₃)
-    end
-else
-    (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M) #, VSU₃)
-end
+spacelist = default_spacelist(fast_tests)
 
 for V in spacelist
     I = sectortype(first(V))

@@ -11,113 +11,6 @@ using Zygote
 using MatrixAlgebraKit
 using MatrixAlgebraKit: LAPACK_HouseholderQR, LAPACK_HouseholderLQ, diagview
 
-# Test utility
-# -------------
-function ChainRulesTestUtils.rand_tangent(rng::AbstractRNG, x::AbstractTensorMap)
-    return randn!(similar(x))
-end
-function ChainRulesTestUtils.rand_tangent(rng::AbstractRNG, x::DiagonalTensorMap)
-    V = x.domain
-    return DiagonalTensorMap(randn(eltype(x), reduceddim(V)), V)
-end
-ChainRulesTestUtils.rand_tangent(::AbstractRNG, ::VectorSpace) = NoTangent()
-function ChainRulesTestUtils.test_approx(
-        actual::AbstractTensorMap, expected::AbstractTensorMap, msg = ""; kwargs...
-    )
-    for (c, b) in blocks(actual)
-        ChainRulesTestUtils.@test_msg msg isapprox(b, block(expected, c); kwargs...)
-    end
-    return nothing
-end
-
-# Float32 and finite differences don't mix well
-precision(::Type{<:Union{Float32, Complex{Float32}}}) = 1.0e-2
-precision(::Type{<:Union{Float64, Complex{Float64}}}) = 1.0e-5
-
-function test_ad_rrule(f, args...; check_inferred = false, kwargs...)
-    test_rrule(
-        Zygote.ZygoteRuleConfig(), f, args...;
-        rrule_f = rrule_via_ad, check_inferred, kwargs...
-    )
-    return nothing
-end
-
-# project_hermitian is non-differentiable for now
-_project_hermitian(x) = (x + x') / 2
-
-# Gauge fixing tangents
-# ---------------------
-function remove_qrgauge_dependence!(ΔQ, t, Q)
-    for (c, b) in blocks(ΔQ)
-        m, n = size(block(t, c))
-        minmn = min(m, n)
-        Qc = block(Q, c)
-        Q1 = view(Qc, 1:m, 1:minmn)
-        ΔQ2 = view(b, :, (minmn + 1):m)
-        mul!(ΔQ2, Q1, Q1' * ΔQ2)
-    end
-    return ΔQ
-end
-function remove_lqgauge_dependence!(ΔQ, t, Q)
-    for (c, b) in blocks(ΔQ)
-        m, n = size(block(t, c))
-        minmn = min(m, n)
-        Qc = block(Q, c)
-        Q1 = view(Qc, 1:minmn, 1:n)
-        ΔQ2 = view(b, (minmn + 1):n, :)
-        mul!(ΔQ2, ΔQ2 * Q1', Q1)
-    end
-    return ΔQ
-end
-function remove_eiggauge_dependence!(
-        ΔV, D, V; degeneracy_atol = MatrixAlgebraKit.default_pullback_degeneracy_atol(D)
-    )
-    gaugepart = V' * ΔV
-    for (c, b) in blocks(gaugepart)
-        Dc = diagview(block(D, c))
-        # for some reason this fails only on tests, and I cannot reproduce it in an
-        # interactive session.
-        # b[abs.(transpose(diagview(Dc)) .- diagview(Dc)) .>= degeneracy_atol] .= 0
-        for j in axes(b, 2), i in axes(b, 1)
-            abs(Dc[i] - Dc[j]) >= degeneracy_atol && (b[i, j] = 0)
-        end
-    end
-    mul!(ΔV, V / (V' * V), gaugepart, -1, 1)
-    return ΔV
-end
-function remove_eighgauge_dependence!(
-        ΔV, D, V; degeneracy_atol = MatrixAlgebraKit.default_pullback_degeneracy_atol(D)
-    )
-    gaugepart = project_antihermitian!(V' * ΔV)
-    for (c, b) in blocks(gaugepart)
-        Dc = diagview(block(D, c))
-        # for some reason this fails only on tests, and I cannot reproduce it in an
-        # interactive session.
-        # b[abs.(transpose(diagview(Dc)) .- diagview(Dc)) .>= degeneracy_atol] .= 0
-        for j in axes(b, 2), i in axes(b, 1)
-            abs(Dc[i] - Dc[j]) >= degeneracy_atol && (b[i, j] = 0)
-        end
-    end
-    mul!(ΔV, V, gaugepart, -1, 1)
-    return ΔV
-end
-function remove_svdgauge_dependence!(
-        ΔU, ΔVᴴ, U, S, Vᴴ; degeneracy_atol = MatrixAlgebraKit.default_pullback_degeneracy_atol(S)
-    )
-    gaugepart = project_antihermitian!(U' * ΔU + Vᴴ * ΔVᴴ')
-    for (c, b) in blocks(gaugepart)
-        Sd = diagview(block(S, c))
-        # for some reason this fails only on tests, and I cannot reproduce it in an
-        # interactive session.
-        # b[abs.(transpose(diagview(Sc)) .- diagview(Sc)) .>= degeneracy_atol] .= 0
-        for j in axes(b, 2), i in axes(b, 1)
-            abs(Sd[i] - Sd[j]) >= degeneracy_atol && (b[i, j] = 0)
-        end
-    end
-    mul!(ΔU, U, gaugepart, -1, 1)
-    return ΔU, ΔVᴴ
-end
-
 # Tests
 # -----
 
@@ -181,7 +74,7 @@ for V in spacelist
                             DiagonalTensorMap(randn(T, reduceddim(V[1])), V[1]),
                         )
 
-                    atol = rtol = precision(T) * dim(space(t))
+                    atol = rtol = default_tol(T) * dim(space(t))
                     fkwargs = (; positive = true) # make FiniteDifferences happy
 
                     test_ad_rrule(qr_compact, t; fkwargs, atol, rtol)
@@ -218,7 +111,7 @@ for V in spacelist
                             DiagonalTensorMap(randn(T, reduceddim(V[1])), V[1]),
                         )
 
-                    atol = rtol = precision(T) * dim(space(t))
+                    atol = rtol = default_tol(T) * dim(space(t))
                     fkwargs = (; positive = true) # make FiniteDifferences happy
 
                     test_ad_rrule(lq_compact, t; fkwargs, atol, rtol)
@@ -254,7 +147,7 @@ for V in spacelist
                             # DiagonalTensorMap(rand(T, reduceddim(V[1])), V[1]), # broken in MatrixAlgebraKit
                         )
 
-                    atol = rtol = precision(T) * dim(space(t))
+                    atol = rtol = default_tol(T) * dim(space(t))
 
                     d, v = eig_full(t)
                     Δv = rand_tangent(v)
@@ -290,7 +183,7 @@ for V in spacelist
                     # TODO: fix diagonaltensormap case
                     #   DiagonalTensorMap(rand(T, reduceddim(V1)), V1))
 
-                    atol = rtol = degeneracy_atol = precision(T) * dim(space(t))
+                    atol = rtol = degeneracy_atol = default_tol(T) * dim(space(t))
                     USVᴴ = svd_compact(t)
                     ΔU, ΔS, ΔVᴴ = rand_tangent.(USVᴴ)
                     ΔS2 = randn!(similar(ΔS, space(ΔS)))
