@@ -5,8 +5,6 @@ using VectorInterface: One, Zero
 using Mooncake
 using Random
 
-@isdefined(TestSetup) || include("../setup.jl")
-using .TestSetup
 
 mode = Mooncake.ReverseMode
 rng = Random.default_rng()

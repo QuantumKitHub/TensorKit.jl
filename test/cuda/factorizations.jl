@@ -11,8 +11,6 @@ const curandn = getglobal(CUDAExt, :curandn)
 const curand! = getglobal(CUDAExt, :curand!)
 using CUDA: rand as curand, rand! as curand!, randn as curandn, randn! as curandn!
 
-@isdefined(TestSetup) || include("../setup.jl")
-using .TestSetup
 
 spacelist = if get(ENV, "CI", "false") == "true"
     println("Detected running on CI")

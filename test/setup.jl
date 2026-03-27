@@ -4,9 +4,14 @@ export randindextuple, randcircshift, _repartition, trivtuple
 export default_tol
 export smallset, randsector, hasfusiontensor, force_planar
 export random_fusion
-export sectorlist
+export sectorlist, fast_sectorlist
 export test_dim_isapprox
 export Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, Vfib, VIB_diag, VIB_M
+export default_spacelist, factorization_spacelist
+export remove_qrgauge_dependence!, remove_lqgauge_dependence!
+export remove_eiggauge_dependence!, remove_eighgauge_dependence!, remove_svdgauge_dependence!
+export test_ad_rrule, _project_hermitian
+export _isunitary, _isone
 
 using Random
 using Test: @test
@@ -16,6 +21,10 @@ using TensorKitSectors
 using TensorOperations: IndexTuple, Index2Tuple
 using Base.Iterators: take, product
 using TupleTools
+using MatrixAlgebraKit: MatrixAlgebraKit, diagview
+using ChainRulesCore: NoTangent
+using ChainRulesTestUtils: ChainRulesTestUtils, test_rrule
+using Zygote: Zygote, rrule_via_ad
 
 Random.seed!(123456)
 
@@ -146,6 +155,11 @@ function test_dim_isapprox(V::ProductSpace, d::Int)
     return @test max(0, d - dim_c_max) ≤ dim(V) ≤ d + dim_c_max
 end
 
+_isunitary(x::Number; kwargs...) = isapprox(x * x', one(x); kwargs...)
+_isunitary(x; kwargs...) = isunitary(x; kwargs...)
+_isone(x; kwargs...) = isapprox(x, one(x); kwargs...)
+
+
 uniquefusionsectorlist = (
     Z2Irrep, Z3Irrep, Z4Irrep, Z3Irrep ⊠ Z4Irrep,
     U1Irrep, FermionParity, FermionParity ⊠ FermionParity, FermionNumber,
@@ -169,18 +183,19 @@ sectorlist = (
     genericfusionsectorlist...,
     multifusionsectorlist...,
 )
+fast_sectorlist = (Z2Irrep, SU2Irrep, FermionParity ⊠ U1Irrep ⊠ SU2Irrep, FibonacciAnyon)
 
 # spaces
 Vtr = (ℂ^2, (ℂ^3)', ℂ^4, ℂ^3, (ℂ^2)')
 Vℤ₂ = (
-    Vect[Z2Irrep](0 => 1, 1 => 1),
+    Vect[Z2Irrep](0 => 2, 1 => 1),
     Vect[Z2Irrep](0 => 1, 1 => 2)',
     Vect[Z2Irrep](0 => 3, 1 => 2)',
     Vect[Z2Irrep](0 => 2, 1 => 3),
     Vect[Z2Irrep](0 => 2, 1 => 5),
 )
 Vfℤ₂ = (
-    Vect[FermionParity](0 => 1, 1 => 1),
+    Vect[FermionParity](0 => 2, 1 => 1),
     Vect[FermionParity](0 => 1, 1 => 2)',
     Vect[FermionParity](0 => 2, 1 => 1)',
     Vect[FermionParity](0 => 2, 1 => 3),
@@ -266,5 +281,132 @@ VIB_M = (
     Vect[IsingBimodule](M => 4),
     Vect[IsingBimodule](D0 => 3, D1 => 4),
 )
+
+# Spacelist selection
+# -------------------
+function default_spacelist(fast_tests::Bool)
+    fast_tests && return (Vtr, Vℤ₃, VSU₂)
+    if get(ENV, "CI", "false") == "true"
+        println("Detected running on CI")
+        Sys.iswindows() && return (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VIB_diag)
+        Sys.isapple()   && return (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VfU₁, VfSU₂, VSU₂U₁, VIB_M)
+        return (Vtr, Vℤ₂, Vfℤ₂, VU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M)
+    end
+    return (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M)
+end
+
+function factorization_spacelist(fast_tests::Bool)
+    fast_tests && return (Vtr, Vℤ₃, VSU₂)
+    if get(ENV, "CI", "false") == "true"
+        println("Detected running on CI")
+        Sys.iswindows() && return (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VIB_diag)
+        Sys.isapple()   && return (Vtr, Vℤ₃, VfU₁, VfSU₂, VIB_M)
+        return (Vtr, VU₁, VCU₁, VSU₂, VfSU₂, VIB_diag, VIB_M)
+    end
+    return (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VIB_diag, VIB_M)
+end
+
+# Gauge-fixing tangents for AD factorization tests
+# -------------------------------------------------
+function remove_qrgauge_dependence!(ΔQ, t, Q)
+    for (c, b) in blocks(ΔQ)
+        m, n = size(block(t, c))
+        minmn = min(m, n)
+        Qc = block(Q, c)
+        Q1 = view(Qc, 1:m, 1:minmn)
+        ΔQ2 = view(b, :, (minmn + 1):m)
+        mul!(ΔQ2, Q1, Q1' * ΔQ2)
+    end
+    return ΔQ
+end
+function remove_lqgauge_dependence!(ΔQ, t, Q)
+    for (c, b) in blocks(ΔQ)
+        m, n = size(block(t, c))
+        minmn = min(m, n)
+        Qc = block(Q, c)
+        Q1 = view(Qc, 1:minmn, 1:n)
+        ΔQ2 = view(b, (minmn + 1):n, :)
+        mul!(ΔQ2, ΔQ2 * Q1', Q1)
+    end
+    return ΔQ
+end
+function remove_eiggauge_dependence!(
+        ΔV, D, V; degeneracy_atol = MatrixAlgebraKit.default_pullback_degeneracy_atol(D)
+    )
+    gaugepart = V' * ΔV
+    for (c, b) in blocks(gaugepart)
+        Dc = diagview(block(D, c))
+        # for some reason this fails only on tests, and I cannot reproduce it in an
+        # interactive session.
+        # b[abs.(transpose(diagview(Dc)) .- diagview(Dc)) .>= degeneracy_atol] .= 0
+        for j in axes(b, 2), i in axes(b, 1)
+            abs(Dc[i] - Dc[j]) >= degeneracy_atol && (b[i, j] = 0)
+        end
+    end
+    mul!(ΔV, V / (V' * V), gaugepart, -1, 1)
+    return ΔV
+end
+function remove_eighgauge_dependence!(
+        ΔV, D, V; degeneracy_atol = MatrixAlgebraKit.default_pullback_degeneracy_atol(D)
+    )
+    gaugepart = project_antihermitian!(V' * ΔV)
+    for (c, b) in blocks(gaugepart)
+        Dc = diagview(block(D, c))
+        # for some reason this fails only on tests, and I cannot reproduce it in an
+        # interactive session.
+        # b[abs.(transpose(diagview(Dc)) .- diagview(Dc)) .>= degeneracy_atol] .= 0
+        for j in axes(b, 2), i in axes(b, 1)
+            abs(Dc[i] - Dc[j]) >= degeneracy_atol && (b[i, j] = 0)
+        end
+    end
+    mul!(ΔV, V, gaugepart, -1, 1)
+    return ΔV
+end
+function remove_svdgauge_dependence!(
+        ΔU, ΔVᴴ, U, S, Vᴴ; degeneracy_atol = MatrixAlgebraKit.default_pullback_degeneracy_atol(S)
+    )
+    gaugepart = project_antihermitian!(U' * ΔU + Vᴴ * ΔVᴴ')
+    for (c, b) in blocks(gaugepart)
+        Sd = diagview(block(S, c))
+        # for some reason this fails only on tests, and I cannot reproduce it in an
+        # interactive session.
+        # b[abs.(transpose(diagview(Sc)) .- diagview(Sc)) .>= degeneracy_atol] .= 0
+        for j in axes(b, 2), i in axes(b, 1)
+            abs(Sd[i] - Sd[j]) >= degeneracy_atol && (b[i, j] = 0)
+        end
+    end
+    mul!(ΔU, U, gaugepart, -1, 1)
+    return ΔU, ΔVᴴ
+end
+
+# ChainRules test utilities
+# -------------------------
+function ChainRulesTestUtils.rand_tangent(rng::AbstractRNG, x::AbstractTensorMap)
+    return randn!(similar(x))
+end
+function ChainRulesTestUtils.rand_tangent(rng::AbstractRNG, x::DiagonalTensorMap)
+    V = x.domain
+    return DiagonalTensorMap(randn(eltype(x), reduceddim(V)), V)
+end
+ChainRulesTestUtils.rand_tangent(::AbstractRNG, ::VectorSpace) = NoTangent()
+function ChainRulesTestUtils.test_approx(
+        actual::AbstractTensorMap, expected::AbstractTensorMap, msg = ""; kwargs...
+    )
+    for (c, b) in blocks(actual)
+        ChainRulesTestUtils.@test_msg msg isapprox(b, block(expected, c); kwargs...)
+    end
+    return nothing
+end
+
+function test_ad_rrule(f, args...; check_inferred = false, kwargs...)
+    test_rrule(
+        Zygote.ZygoteRuleConfig(), f, args...;
+        rrule_f = rrule_via_ad, check_inferred, kwargs...
+    )
+    return nothing
+end
+
+# project_hermitian is non-differentiable for now
+_project_hermitian(x) = (x + x') / 2
 
 end
