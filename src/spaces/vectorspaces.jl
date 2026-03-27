@@ -363,6 +363,18 @@ Return an iterator over the different sectors of `V`.
 """
 function sectors end
 
+function sectorequal(V₁::ElementarySpace, V₂::ElementarySpace)
+    isdual(V₁) == isdual(V₂) || return false
+    return issetequal(sectors(V₁), sectors(V₂))
+end
+function sectorhash(V::ElementarySpace, h::UInt)
+    h = hash(isdual(V), h)
+    for s in sectors(V)
+        h = hash(s, h)
+    end
+    return h
+end
+
 # Composite vector spaces
 #-------------------------
 """

@@ -6,24 +6,11 @@ const StridedStructure{N} = Tuple{NTuple{N, Int}, NTuple{N, Int}, Int}
 
 function sectorequal(W₁::HomSpace, W₂::HomSpace)
     check_spacetype(W₁, W₂)
-    (numout(W₁) == numout(W₂) && numin(W₁) == numin(W₂)) || return false
-    for (w₁, w₂) in zip(codomain(W₁), codomain(W₂))
-        isdual(w₁) == isdual(w₂) || return false
-        isequal(sectors(w₁), sectors(w₂)) || return false
-    end
-    for (w₁, w₂) in zip(domain(W₁), domain(W₂))
-        isdual(w₁) == isdual(w₂) || return false
-        isequal(sectors(w₁), sectors(w₂)) || return false
-    end
-    return true
+    return sectorequal(codomain(W₁), codomain(W₂)) && sectorequal(domain(W₁), domain(W₂))
 end
 function sectorhash(W::HomSpace, h::UInt)
-    for w in codomain(W)
-        h = hash(sectors(w), hash(isdual(w), h))
-    end
-    for w in domain(W)
-        h = hash(sectors(w), hash(isdual(w), h))
-    end
+    h = sectorhash(codomain(W), h)
+    h = sectorhash(domain(W), h)
     return h
 end
 
