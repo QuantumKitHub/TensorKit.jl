@@ -201,6 +201,23 @@ include("fusiontrees/fusiontrees.jl")
 #-------------------------------------------
 include("spaces/vectorspaces.jl")
 
+# ElementarySpace types
+include("spaces/cartesianspace.jl")
+include("spaces/complexspace.jl")
+include("spaces/generalspace.jl")
+include("spaces/gradedspace.jl")
+include("spaces/planarspace.jl")
+
+# CompositeSpace types
+include("spaces/productspace.jl")
+include("spaces/deligne.jl")
+
+# HomSpace
+include("spaces/homspace.jl")
+
+# Derived information
+include("spaces/structure.jl")
+
 # Multithreading settings
 #-------------------------
 const TRANSFORMER_THREADS = Ref(1)
@@ -232,7 +249,6 @@ end
 # Definitions and methods for tensors
 #-------------------------------------
 # general definitions
-include("tensors/tensorstructure.jl")
 include("tensors/abstracttensor.jl")
 include("tensors/backends.jl")
 include("tensors/blockiterator.jl")

@@ -1,19 +1,8 @@
-# Block and fusion tree ranges: structure information for building tensors
-#--------------------------------------------------------------------------
-
 # sizes, strides, offset
 const StridedStructure{N} = Tuple{NTuple{N, Int}, NTuple{N, Int}, Int}
 
-function sectorequal(W₁::HomSpace, W₂::HomSpace)
-    check_spacetype(W₁, W₂)
-    return sectorequal(codomain(W₁), codomain(W₂)) && sectorequal(domain(W₁), domain(W₂))
-end
-function sectorhash(W::HomSpace, h::UInt)
-    h = sectorhash(codomain(W), h)
-    h = sectorhash(domain(W), h)
-    return h
-end
-
+# SectorStructure: sector-dependent characterization of HomSpaces
+# ---------------------------------------------------------------
 """
     SectorStructure{I, F₁, F₂}
 
@@ -37,34 +26,6 @@ Base.@assume_effects :foldable function sectorstructuretype(key::Hashed{S}) wher
     F₁ = fusiontreetype(I, numout(S))
     F₂ = fusiontreetype(I, numin(S))
     return SectorStructure{I, F₁, F₂}
-end
-
-"""
-    DegeneracyStructure{N}
-
-Degeneracy-dependent structure of a `HomSpace`: the block sizes, ranges, and sub-block
-strides that depend on the degeneracy (multiplicity) dimensions. Specific to a given
-`HomSpace` instance.
-
-## Fields
-- `totaldim`: total number of elements in the flat data vector.
-- `blockstructure`: `Vector` of `((d₁, d₂), range)` values, one per coupled sector, in the
-  same order as [`sectorstructure`](@ref)`.blocksectors`.
-- `subblockstructure`: `Vector` of [`StridedStructure`](@ref) `(sizes, strides, offset)`
-  values, one per fusion tree pair, in the same order as
-  [`sectorstructure`](@ref)`.fusiontrees`.
-
-See also [`degeneracystructure`](@ref), [`SectorStructure`](@ref).
-"""
-struct DegeneracyStructure{N}
-    totaldim::Int
-    blockstructure::Vector{Tuple{Tuple{Int, Int}, UnitRange{Int}}}
-    subblockstructure::Vector{StridedStructure{N}}
-end
-
-function degeneracystructuretype(W::HomSpace)
-    N = length(codomain(W)) + length(domain(W))
-    return DegeneracyStructure{N}
 end
 
 @doc """
@@ -114,6 +75,36 @@ sectorstructure(W::HomSpace) = sectorstructure(Hashed(W, sectorhash, sectorequal
 end
 
 CacheStyle(::typeof(sectorstructure), ::Hashed{S}) where {S <: HomSpace} = GlobalLRUCache()
+
+# DegeneracyStructure: degeneracy-dependent characterization of HomSpaces
+# -----------------------------------------------------------------------
+"""
+    DegeneracyStructure{N}
+
+Degeneracy-dependent structure of a `HomSpace`: the block sizes, ranges, and sub-block
+strides that depend on the degeneracy (multiplicity) dimensions. Specific to a given
+`HomSpace` instance.
+
+## Fields
+- `totaldim`: total number of elements in the flat data vector.
+- `blockstructure`: `Vector` of `((d₁, d₂), range)` values, one per coupled sector, in the
+  same order as [`sectorstructure`](@ref)`.blocksectors`.
+- `subblockstructure`: `Vector` of [`StridedStructure`](@ref) `(sizes, strides, offset)`
+  values, one per fusion tree pair, in the same order as
+  [`sectorstructure`](@ref)`.fusiontrees`.
+
+See also [`degeneracystructure`](@ref), [`SectorStructure`](@ref).
+"""
+struct DegeneracyStructure{N}
+    totaldim::Int
+    blockstructure::Vector{Tuple{Tuple{Int, Int}, UnitRange{Int}}}
+    subblockstructure::Vector{StridedStructure{N}}
+end
+
+function degeneracystructuretype(W::HomSpace)
+    N = length(codomain(W)) + length(domain(W))
+    return DegeneracyStructure{N}
+end
 
 @doc """
     degeneracystructure(W::HomSpace) -> DegeneracyStructure
@@ -209,64 +200,3 @@ function _subblock_strides(subsz, sz, str)
 end
 
 CacheStyle(::typeof(degeneracystructure), ::HomSpace) = GlobalLRUCache()
-
-# Public API: combining the two caches
-#--------------------------------------
-
-"""
-    fusiontrees(W::HomSpace) -> Indices{Tuple{F₁,F₂}}
-
-Return an `Indices` of all valid fusion tree pairs `(f₁, f₂)` for `W`, providing a
-bijection to sequential integer positions via `gettoken`/`gettokenvalue`. The result is
-cached based on the sector structure of `W` (ignoring degeneracy dimensions), so
-`HomSpace`s that share the same sectors, dualities, and index count will reuse the same
-object.
-
-See also [`sectorstructure`](@ref), [`subblockstructure`](@ref).
-"""
-fusiontrees(W::HomSpace) = sectorstructure(W).fusiontrees
-
-blocksectors(W::HomSpace) = sectorstructure(W).blocksectors
-
-dim(W::HomSpace) = degeneracystructure(W).totaldim
-
-"""
-    blockstructure(W::HomSpace) -> Dictionary
-
-Return a `Dictionary` mapping each coupled sector `c::I` to a tuple `((d₁, d₂), r)`,
-where `d₁` and `d₂` are the block dimensions for the codomain and domain respectively,
-and `r` is the corresponding index range in the flat data vector.
-
-See also [`degeneracystructure`](@ref), [`subblockstructure`](@ref).
-"""
-function blockstructure(W::HomSpace)
-    return Dictionary(sectorstructure(W).blocksectors, degeneracystructure(W).blockstructure)
-end
-
-"""
-    subblockstructure(W::HomSpace) -> Dictionary
-
-Return a `Dictionary` mapping each fusion tree pair `(f₁, f₂)` to its
-[`StridedStructure`](@ref) `(sizes, strides, offset)`.
-
-See also [`degeneracystructure`](@ref), [`blockstructure`](@ref).
-"""
-function subblockstructure(W::HomSpace)
-    return Dictionary(sectorstructure(W).fusiontrees, degeneracystructure(W).subblockstructure)
-end
-
-# Diagonal ranges
-#----------------
-function diagonalblockstructure(W::HomSpace)
-    ((numin(W) == numout(W) == 1) && domain(W) == codomain(W)) ||
-        throw(SpaceMismatch("Diagonal only support on V←V with a single space V"))
-    structure = SectorDict{sectortype(W), UnitRange{Int}}() # range
-    offset = 0
-    dom = domain(W)[1]
-    for c in blocksectors(W)
-        d = dim(dom, c)
-        structure[c] = offset .+ (1:d)
-        offset += d
-    end
-    return structure
-end

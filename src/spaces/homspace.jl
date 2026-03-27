@@ -37,6 +37,16 @@ function Base.:(==)(W₁::HomSpace, W₂::HomSpace)
     return (W₁.codomain == W₂.codomain) && (W₁.domain == W₂.domain)
 end
 
+function sectorequal(W₁::HomSpace, W₂::HomSpace)
+    check_spacetype(W₁, W₂)
+    return sectorequal(codomain(W₁), codomain(W₂)) && sectorequal(domain(W₁), domain(W₂))
+end
+function sectorhash(W::HomSpace, h::UInt)
+    h = sectorhash(codomain(W), h)
+    h = sectorhash(domain(W), h)
+    return h
+end
+
 spacetype(::Type{<:HomSpace{S}}) where {S} = S
 
 const TensorSpace{S <: ElementarySpace} = Union{S, ProductSpace{S}}
@@ -76,7 +86,8 @@ Return an `Indices` of all coupled sectors for `W`. The result is cached based o
 sector structure of `W` (ignoring degeneracy dimensions).
 
 See also [`hasblock`](@ref), [`blockstructure`](@ref).
-""" blocksectors(::HomSpace)
+"""
+blocksectors(W::HomSpace) = sectorstructure(W).blocksectors
 
 function _blocksectors(W::HomSpace)
     sectortype(W) === Trivial &&
@@ -114,10 +125,46 @@ hasblock(W::HomSpace, c::Sector) = hasblock(codomain(W), c) && hasblock(domain(W
 
 Return the total dimension of a `HomSpace`, i.e. the number of linearly independent
 morphisms that can be constructed within this space.
-""" dim(::HomSpace)
+"""
+dim(W::HomSpace) = degeneracystructure(W).totaldim
 
 dims(W::HomSpace) = (dims(codomain(W))..., dims(domain(W))...)
 
+"""
+    blockstructure(W::HomSpace) -> Dictionary
+
+Return a `Dictionary` mapping each coupled sector `c::I` to a tuple `((d₁, d₂), r)`,
+where `d₁` and `d₂` are the block dimensions for the codomain and domain respectively,
+and `r` is the corresponding index range in the flat data vector.
+
+See also [`degeneracystructure`](@ref), [`subblockstructure`](@ref).
+"""
+blockstructure(W::HomSpace) =
+    Dictionary(sectorstructure(W).blocksectors, degeneracystructure(W).blockstructure)
+
+"""
+    fusiontrees(W::HomSpace) -> Indices{Tuple{F₁,F₂}}
+
+Return an `Indices` of all valid fusion tree pairs `(f₁, f₂)` for `W`, providing a
+bijection to sequential integer positions via `gettoken`/`gettokenvalue`. The result is
+cached based on the sector structure of `W` (ignoring degeneracy dimensions), so
+`HomSpace`s that share the same sectors, dualities, and index count will reuse the same
+object.
+
+See also [`sectorstructure`](@ref), [`subblockstructure`](@ref).
+"""
+fusiontrees(W::HomSpace) = sectorstructure(W).fusiontrees
+
+"""
+    subblockstructure(W::HomSpace) -> Dictionary
+
+Return a `Dictionary` mapping each fusion tree pair `(f₁, f₂)` to its
+[`StridedStructure`](@ref) `(sizes, strides, offset)`.
+
+See also [`degeneracystructure`](@ref), [`blockstructure`](@ref).
+"""
+subblockstructure(W::HomSpace) =
+    Dictionary(sectorstructure(W).fusiontrees, degeneracystructure(W).subblockstructure)
 
 """
     fusionblocks(W::HomSpace)
@@ -135,6 +182,20 @@ function fusionblocks(W::HomSpace)
         isempty(fs_src) || push!(fblocks, fs_src)
     end
     return fblocks
+end
+
+function diagonalblockstructure(W::HomSpace)
+    ((numin(W) == numout(W) == 1) && domain(W) == codomain(W)) ||
+        throw(SpaceMismatch("Diagonal only support on V←V with a single space V"))
+    structure = SectorDict{sectortype(W), UnitRange{Int}}() # range
+    offset = 0
+    dom = domain(W)[1]
+    for c in blocksectors(W)
+        d = dim(dom, c)
+        structure[c] = offset .+ (1:d)
+        offset += d
+    end
+    return structure
 end
 
 # Operations on HomSpaces

@@ -417,33 +417,6 @@ end
 blocksectors(V::ElementarySpace) = collect(sectors(V))
 blockdim(V::ElementarySpace, c::Sector) = dim(V, c)
 
-# Specific realizations of ElementarySpace types
-#------------------------------------------------
-# spaces without internal structure
-include("cartesianspace.jl")
-include("complexspace.jl")
-include("generalspace.jl")
-
-# space with internal structure corresponding to the irreducible representations of
-# a group, or more generally, the simple objects of a fusion category.
-include("gradedspace.jl")
-include("planarspace.jl")
-
-# Specific realizations of CompositeSpace types
-#-----------------------------------------------
-# a tensor product of N elementary spaces of the same type S
-include("productspace.jl")
-# deligne tensor product
-include("deligne.jl")
-
-# Other examples might include:
-# symmetric and antisymmetric subspace of a tensor product of identical vector spaces
-# ...
-
-# HomSpace: space of morphisms
-#------------------------------
-include("homspace.jl")
-
 # Partial order for vector spaces
 #---------------------------------
 """
