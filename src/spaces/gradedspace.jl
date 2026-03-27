@@ -191,6 +191,21 @@ function Base.:(==)(V₁::GradedSpace, V₂::GradedSpace)
     return sectortype(V₁) == sectortype(V₂) && (V₁.dims == V₂.dims) && V₁.dual == V₂.dual
 end
 
+function sectorhash(V::GradedSpace{I, NTuple{N, Int}}, h::UInt) where {I, N}
+    return hash(iszero.(V.dims), hash(isdual(V), h))
+end
+function sectorequal(V₁::GradedSpace{I, D}, V₂::GradedSpace{I, D}) where {I, N, D <: NTuple{N, Int}}
+    return isdual(V₁) == isdual(V₂) && all(zip(V₁.dims, V₂.dims)) do (d₁, d₂)
+        return iszero(d₁) == iszero(d₂)
+    end
+end
+function sectorhash(V::GradedSpace{I, <:SectorDict}, h::UInt) where {I}
+    return hash(keys(V.dims), hash(isdual(V), h))
+end
+function sectorequal(V₁::GradedSpace{I, D}, V₂::GradedSpace{I, D}) where {I, D <: SectorDict}
+    return isdual(V₁) == isdual(V₂) && keys(V₁.dims) == keys(V₂.dims)
+end
+
 Base.summary(io::IO, V::GradedSpace) = print(io, type_repr(typeof(V)))
 
 function Base.show(io::IO, V::GradedSpace)
