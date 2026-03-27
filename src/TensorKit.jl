@@ -118,6 +118,7 @@ const TO = TensorOperations
 
 using MatrixAlgebraKit
 
+using Dictionaries: Dictionaries, Dictionary, Indices, gettoken, gettokenvalue
 using LRUCache
 using OhMyThreads
 using ScopedValues
@@ -199,6 +200,23 @@ include("fusiontrees/fusiontrees.jl")
 # Definitions and methods for vector spaces
 #-------------------------------------------
 include("spaces/vectorspaces.jl")
+
+# ElementarySpace types
+include("spaces/cartesianspace.jl")
+include("spaces/complexspace.jl")
+include("spaces/generalspace.jl")
+include("spaces/gradedspace.jl")
+include("spaces/planarspace.jl")
+
+# CompositeSpace types
+include("spaces/productspace.jl")
+include("spaces/deligne.jl")
+
+# HomSpace
+include("spaces/homspace.jl")
+
+# Derived information
+include("spaces/structure.jl")
 
 # Multithreading settings
 #-------------------------

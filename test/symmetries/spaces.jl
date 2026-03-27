@@ -1,6 +1,6 @@
 using Test, TestExtras
 using TensorKit
-using TensorKit: hassector, type_repr, HomSpace
+using TensorKit: hassector, type_repr, HomSpace, sectorequal, sectorhash
 
 # TODO: remove this once type_repr works for all included types
 using TensorKitSectors
@@ -474,6 +474,77 @@ end
     @test string(V') == "$(type_repr(typeof(V)))(1 => 1, 2 => 1, 3 => 1)'"
     @test sprint((x, y) -> show(x, MIME"text/plain"(), y), V) == "$(type_repr(typeof(V)))(…) of dim 3:\n 1 => 1\n 2 => 1\n 3 => 1"
     @test sprint((x, y) -> show(x, MIME"text/plain"(), y), V') == "$(type_repr(typeof(V)))(…)' of dim 3:\n 1 => 1\n 2 => 1\n 3 => 1"
+end
+
+@timedtestset "sectorequal and sectorhash" begin
+    @timedtestset "CartesianSpace" begin
+        # Both spaces have only Trivial sector, dims don't matter
+        @test sectorequal(ℝ^3, ℝ^5)
+        @test !sectorequal(ℝ^3, ℝ^0)   # zero space has no sectors
+        @test sectorhash(ℝ^3, UInt(0)) == sectorhash(ℝ^5, UInt(0))
+        # CartesianSpace has no dual, so all spaces compare equal sectorwise
+        @test sectorhash(ℝ^3, UInt(0)) == sectorhash((ℝ^3)', UInt(0))
+    end
+
+    @timedtestset "ComplexSpace" begin
+        # Both have Trivial sector; only dual flag distinguishes them
+        @test sectorequal(ℂ^3, ℂ^5)
+        @test !sectorequal(ℂ^3, (ℂ^3)')   # dual differs
+        @test sectorhash(ℂ^3, UInt(0)) == sectorhash(ℂ^5, UInt(0))
+        @test sectorhash(ℂ^3, UInt(0)) != sectorhash((ℂ^3)', UInt(0))
+    end
+
+    @timedtestset "GradedSpace (NTuple storage)" begin
+        # Z2Irrep has a finite sector set → NTuple{2,Int} storage
+        V1 = ℤ₂Space(0 => 1, 1 => 2)
+        V2 = ℤ₂Space(0 => 2, 1 => 1)   # same sectors, different dims
+        V3 = ℤ₂Space(0 => 1)            # sector 1 absent (dim=0)
+        @test sectorequal(V1, V2)
+        @test !sectorequal(V1, V3)
+        @test !sectorequal(V1, V1')      # dual differs
+        @test sectorhash(V1, UInt(0)) == sectorhash(V2, UInt(0))
+        @test sectorhash(V1, UInt(0)) != sectorhash(V3, UInt(0))
+        @test sectorhash(V1, UInt(0)) != sectorhash(V1', UInt(0))
+    end
+
+    @timedtestset "GradedSpace (SectorDict storage)" begin
+        # U1Irrep has infinite sectors → SectorDict storage
+        Va = U1Space(0 => 1, 1 => 2, -1 => 2)
+        Vb = U1Space(0 => 3, 1 => 1, -1 => 1)   # same sectors, different dims
+        Vc = U1Space(0 => 1, 1 => 2)             # -1 absent
+        @test sectorequal(Va, Vb)
+        @test !sectorequal(Va, Vc)
+        @test !sectorequal(Va, Va')
+        @test sectorhash(Va, UInt(0)) == sectorhash(Vb, UInt(0))
+        @test sectorhash(Va, UInt(0)) != sectorhash(Vc, UInt(0))
+        @test sectorhash(Va, UInt(0)) != sectorhash(Va', UInt(0))
+    end
+
+    @timedtestset "ProductSpace" begin
+        V1 = ℤ₂Space(0 => 1, 1 => 2)
+        V2 = ℤ₂Space(0 => 2, 1 => 1)
+        V3 = ℤ₂Space(0 => 1)
+        P1 = V1 ⊗ V2
+        P2 = V2 ⊗ V1   # same sectors per slot but different order
+        P3 = V1 ⊗ V3
+        @test sectorequal(P1, V1 ⊗ ℤ₂Space(0 => 3, 1 => 5))
+        @test sectorequal(P1, P2)
+        @test !sectorequal(P1, P3)
+        @test sectorhash(P1, UInt(0)) == sectorhash(V1 ⊗ ℤ₂Space(0 => 3, 1 => 5), UInt(0))
+        @test sectorhash(P1, UInt(0)) != sectorhash(P3, UInt(0))
+    end
+
+    @timedtestset "HomSpace" begin
+        V1 = ℤ₂Space(0 => 1, 1 => 2)
+        V2 = ℤ₂Space(0 => 2, 1 => 1)
+        W1 = V1 ⊗ V2 ← V1
+        W2 = ℤ₂Space(0 => 5, 1 => 3) ⊗ ℤ₂Space(0 => 1, 1 => 7) ← ℤ₂Space(0 => 2, 1 => 1)
+        W3 = V1 ← V1
+        @test sectorequal(W1, W2)
+        @test sectorhash(W1, UInt(0)) == sectorhash(W2, UInt(0))
+        @test !sectorequal(W1, W3)
+        @test sectorhash(W1, UInt(0)) != sectorhash(W3, UInt(0))
+    end
 end
 
 TensorKit.empty_globalcaches!()

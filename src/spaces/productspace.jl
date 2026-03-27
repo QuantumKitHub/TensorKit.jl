@@ -218,6 +218,18 @@ Base.:(==)(P1::ProductSpace, P2::ProductSpace) = false
 # hashing S is necessary to have different hashes for empty productspace with different S
 Base.hash(P::ProductSpace{S}, h::UInt) where {S} = hash(P.spaces, hash(S, h))
 
+function sectorequal(P₁::V, P₂::V) where {V <: ProductSpace}
+    return all(sectorequal(w₁, w₂) for (w₁, w₂) in zip(P₁, P₂))
+end
+sectorequal(::ProductSpace, ::ProductSpace) = false
+
+function sectorhash(P::ProductSpace, h::UInt)
+    for w in P
+        h = sectorhash(w, h)
+    end
+    return h
+end
+
 # Default construction from product of spaces
 #---------------------------------------------
 ⊗(V::ElementarySpace, Vrest::ElementarySpace...) = ProductSpace(V, Vrest...)
