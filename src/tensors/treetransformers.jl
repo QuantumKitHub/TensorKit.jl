@@ -23,10 +23,9 @@ function AbelianTreeTransformer(transform, p, Vdst, Vsrc)
     N = numind(Vsrc)
     data = Vector{Tuple{T, StridedStructure{N}, StridedStructure{N}}}(undef, L)
 
-    for (i, ((f₁, f₂), stridestructure_src)) in enumerate(pairs(fts_src))
-        (f₃, f₄), coeff = only(transform(f₁, f₂))
-        _, token = gettoken(fts_dst, (f₃, f₄))
-        stridestructure_dst = gettokenvalue(fts_dst, token)
+    for (i, (f_src, stridestructure_src)) in enumerate(pairs(fts_src))
+        f_dst, coeff = transform(f_src)
+        stridestructure_dst = fts_dst[f_dst]
         data[i] = (coeff, stridestructure_dst, stridestructure_src)
     end
 
@@ -77,22 +76,9 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
                     local_counter > nblocks && break
                     fs_src = fblocks[local_counter]
                     fs_dst, U = transform(fs_src)
-
-                    trees_src = fusiontrees(fs_src)
-                    inds_src = map(Base.Fix1(getindex, structure_src.fusiontreeindices), trees_src)
-                    trees_dst = fusiontrees(fs_dst)
-                    inds_dst = map(Base.Fix1(getindex, structure_dst.fusiontreeindices), trees_dst)
-
-                    # size is shared between blocks, so repack:
-                    # from [(sz, strides, offset), ...] to (sz, [(strides, offset), ...])
-                    sz_src, newstructs_src = repack_transformer_structure(
-                        fusionstructure_src, inds_src
-                    )
-                    sz_dst, newstructs_dst = repack_transformer_structure(
-                        fusionstructure_dst, inds_dst
-                    )
-
-                    data[local_counter] = (U, (sz_dst, newstructs_dst), (sz_src, newstructs_src))
+                    sz_src, newstructs_src = repack_transformer_structure(fusionstructure_src, fusiontrees(fs_src))
+                    sz_dst, newstructs_dst = repack_transformer_structure(fusionstructure_dst, fusiontrees(fs_dst))
+                    data[local_counter] = U, (sz_dst, newstructs_dst), (sz_src, newstructs_src)
 
                     @debug(
                         "Created recoupling block for uncoupled: $(fs_src.uncoupled)",
@@ -105,21 +91,8 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
     else
         for (i, fs_src) in enumerate(fblocks)
             fs_dst, U = transform(fs_src)
-
-            trees_src = fusiontrees(fs_src)
-            inds_src = map(Base.Fix1(getindex, structure_src.fusiontreeindices), trees_src)
-            trees_dst = fusiontrees(fs_dst)
-            inds_dst = map(Base.Fix1(getindex, structure_dst.fusiontreeindices), trees_dst)
-
-            # size is shared between blocks, so repack:
-            # from [(sz, strides, offset), ...] to (sz, [(strides, offset), ...])
-            sz_src, newstructs_src = repack_transformer_structure(
-                fusionstructure_src, inds_src
-            )
-            sz_dst, newstructs_dst = repack_transformer_structure(
-                fusionstructure_dst, inds_dst
-            )
-
+            sz_src, newstructs_src = repack_transformer_structure(fusionstructure_src, fusiontrees(fs_src))
+            sz_dst, newstructs_dst = repack_transformer_structure(fusionstructure_dst, fusiontrees(fs_dst))
             data[i] = U, (sz_dst, newstructs_dst), (sz_src, newstructs_src)
 
             @debug(
@@ -146,11 +119,11 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
     return transformer
 end
 
-function repack_transformer_structure(structures::Dictionary, ids)
-    sz = gettokenvalue(structures, first(ids))[1]
-    strides_offsets = map(ids) do i
-        s = gettokenvalue(structures, i)
-        return (s[2], s[3])
+function repack_transformer_structure(structures::Dictionary, trees)
+    sz = structures[first(trees)][1]
+    strides_offsets = map(trees) do f
+        _, stride, offset = structures[f]
+        return stride, offset
     end
     return sz, strides_offsets
 end
