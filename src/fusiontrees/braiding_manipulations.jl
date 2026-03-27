@@ -299,44 +299,44 @@ Base.@assume_effects :foldable function _fsdicttype(::Type{T}) where {I, N₁, N
     return Pair{FusionTreeBlock{I, N₁, N₂, Tuple{F₁, F₂}}, Matrix{E}}
 end
 
-@cached function fsbraid(key::K)::_fsdicttype(K) where {I, N₁, N₂, K <: FSPBraidKey{I, N₁, N₂}}
-    ((f₁, f₂), (p1, p2), (l1, l2)) = key
-    p = linearizepermutation(p1, p2, length(f₁), length(f₂))
-    levels = (l1..., reverse(l2)...)
-    (f, f0), coeff1 = repartition((f₁, f₂), N₁ + N₂)
-    f′, coeff2 = braid(f, p, levels)
-    (f₁′, f₂′), coeff3 = repartition((f′, f0), N₁)
-    return (f₁′, f₂′) => coeff1 * coeff2 * coeff3
-end
-@cached function fsbraid(key::K)::_fsdicttype(K) where {I, N₁, N₂, K <: FSBBraidKey{I, N₁, N₂}}
-    src, (p1, p2), (l1, l2) = key
+@cached function fsbraid(key::K)::_fsdicttype(K) where {I, N₁, N₂, K <: Union{FSPBraidKey{I, N₁, N₂}, FSBBraidKey{I, N₁, N₂}}}
+    if K isa FSPBraidKey
+        ((f₁, f₂), (p1, p2), (l1, l2)) = key
+        p = linearizepermutation(p1, p2, length(f₁), length(f₂))
+        levels = (l1..., reverse(l2)...)
+        (f, f0), coeff1 = repartition((f₁, f₂), N₁ + N₂)
+        f′, coeff2 = braid(f, p, levels)
+        (f₁′, f₂′), coeff3 = repartition((f′, f0), N₁)
+        return (f₁′, f₂′) => coeff1 * coeff2 * coeff3
 
-    p = linearizepermutation(p1, p2, numout(src), numin(src))
-    levels = (l1..., reverse(l2)...)
-
-    dst, U = repartition(src, numind(src))
-
-    for s in permutation2swaps(p)
-        inv = levels[s] > levels[s + 1]
-        dst, U_tmp = artin_braid(dst, s; inv)
-        U = U_tmp * U
-        l = levels[s]
-        levels = TupleTools.setindex(levels, levels[s + 1], s)
-        levels = TupleTools.setindex(levels, l, s + 1)
-    end
-
-    if N₂ == 0
-        return dst => U
     else
-        dst, U_tmp = repartition(dst, N₁)
-        U = U_tmp * U
-        return dst => U
+        src, (p1, p2), (l1, l2) = key
+
+        p = linearizepermutation(p1, p2, numout(src), numin(src))
+        levels = (l1..., reverse(l2)...)
+
+        dst, U = repartition(src, numind(src))
+
+        for s in permutation2swaps(p)
+            inv = levels[s] > levels[s + 1]
+            dst, U_tmp = artin_braid(dst, s; inv)
+            U = U_tmp * U
+            l = levels[s]
+            levels = TupleTools.setindex(levels, levels[s + 1], s)
+            levels = TupleTools.setindex(levels, l, s + 1)
+        end
+
+        if N₂ == 0
+            return dst => U
+        else
+            dst, U_tmp = repartition(dst, N₁)
+            U = U_tmp * U
+            return dst => U
+        end
     end
 end
 
-CacheStyle(::typeof(fsbraid), k::FSPBraidKey{I}) where {I} =
-    FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalLRUCache()
-CacheStyle(::typeof(fsbraid), k::FSBBraidKey{I}) where {I} =
+CacheStyle(::typeof(fsbraid), k::Union{FSPBraidKey{I}, FSBBraidKey{I}}) where {I} =
     FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalLRUCache()
 
 """
