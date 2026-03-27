@@ -4,7 +4,7 @@ const StridedStructure{N} = Tuple{NTuple{N, Int}, NTuple{N, Int}, Int}
 # SectorStructure: sector-dependent characterization of HomSpaces
 # ---------------------------------------------------------------
 """
-    SectorStructure{I, F₁, F₂}
+    SectorStructure{I <: Sector, F <: FusionTreePair}
 
 Sector-only structure of a `HomSpace`: the coupled sectors and all valid fusion tree pairs,
 depending only on which sectors appear (not their degeneracy dimensions). Shared across
@@ -16,19 +16,18 @@ depending only on which sectors appear (not their degeneracy dimensions). Shared
 
 See also [`sectorstructure`](@ref), [`DegeneracyStructure`](@ref).
 """
-struct SectorStructure{I, F₁, F₂}
+struct SectorStructure{I <: Sector, F <: FusionTreePair{I}}
     blocksectors::Indices{I}
-    fusiontrees::Indices{Tuple{F₁, F₂}}
+    fusiontrees::Indices{F}
 end
 
 Base.@assume_effects :foldable function sectorstructuretype(key::Hashed{S}) where {S <: HomSpace}
     I = sectortype(S)
-    F₁ = fusiontreetype(I, numout(S))
-    F₂ = fusiontreetype(I, numin(S))
-    return SectorStructure{I, F₁, F₂}
+    F = fusiontreetype(I, numout(S), numin(S))
+    return SectorStructure{I, F}
 end
 
-@doc """
+"""
     sectorstructure(W::HomSpace) -> SectorStructure
 
 Return the [`SectorStructure`](@ref) for `W`, containing the coupled sectors and fusion tree
@@ -42,13 +41,11 @@ sectorstructure(W::HomSpace) = sectorstructure(Hashed(W, sectorhash, sectorequal
 @cached function sectorstructure(key::Hashed{S})::sectorstructuretype(key) where {S <: HomSpace}
     W = parent(key)
     codom, dom = codomain(W), domain(W)
-    I = sectortype(S)
-    N₁, N₂ = numout(S), numin(S)
-    F₁ = fusiontreetype(I, N₁)
-    F₂ = fusiontreetype(I, N₂)
 
+    I = sectortype(S)
+    F = fusiontreetype(I, numout(S), numin(S))
     bs = Vector{I}()
-    trees = Vector{Tuple{F₁, F₂}}()
+    trees = Vector{F}()
 
     for c in _blocksectors(W)
         push!(bs, c)
@@ -71,10 +68,10 @@ sectorstructure(W::HomSpace) = sectorstructure(Hashed(W, sectorhash, sectorequal
         end
     end
 
-    return SectorStructure{I, F₁, F₂}(Indices(bs), Indices(trees))
+    return SectorStructure{I, F}(Indices(bs), Indices(trees))
 end
 
-CacheStyle(::typeof(sectorstructure), ::Hashed{S}) where {S <: HomSpace} = GlobalLRUCache()
+CacheStyle(::typeof(sectorstructure), ::Hashed{<:HomSpace}) = GlobalLRUCache()
 
 # DegeneracyStructure: degeneracy-dependent characterization of HomSpaces
 # -----------------------------------------------------------------------
@@ -90,8 +87,7 @@ strides that depend on the degeneracy (multiplicity) dimensions. Specific to a g
 - `blockstructure`: `Vector` of `((d₁, d₂), range)` values, one per coupled sector, in the
   same order as [`sectorstructure`](@ref)`.blocksectors`.
 - `subblockstructure`: `Vector` of [`StridedStructure`](@ref) `(sizes, strides, offset)`
-  values, one per fusion tree pair, in the same order as
-  [`sectorstructure`](@ref)`.fusiontrees`.
+  values, one per fusion tree pair, in the same order as [`sectorstructure`](@ref)`.fusiontrees`.
 
 See also [`degeneracystructure`](@ref), [`SectorStructure`](@ref).
 """
@@ -106,7 +102,7 @@ function degeneracystructuretype(W::HomSpace)
     return DegeneracyStructure{N}
 end
 
-@doc """
+"""
     degeneracystructure(W::HomSpace) -> DegeneracyStructure
 
 Compute the [`DegeneracyStructure`](@ref) for `W`, describing block sizes, data ranges, and

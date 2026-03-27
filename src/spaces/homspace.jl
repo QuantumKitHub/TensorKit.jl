@@ -79,7 +79,7 @@ function Base.show(io::IO, W::HomSpace)
     )
 end
 
-@doc """
+"""
     blocksectors(W::HomSpace) -> Indices{I}
 
 Return an `Indices` of all coupled sectors for `W`. The result is cached based on the
@@ -118,9 +118,9 @@ Query whether a coupled sector `c` appears in both the codomain and domain of `W
 
 See also [`blocksectors`](@ref).
 """
-hasblock(W::HomSpace, c::Sector) = hasblock(codomain(W), c) && hasblock(domain(W), c)
+hasblock(W::HomSpace, c::Sector) = c in blocksectors(W)
 
-@doc """
+"""
     dim(W::HomSpace) -> Int
 
 Return the total dimension of a `HomSpace`, i.e. the number of linearly independent
@@ -139,8 +139,7 @@ and `r` is the corresponding index range in the flat data vector.
 
 See also [`degeneracystructure`](@ref), [`subblockstructure`](@ref).
 """
-blockstructure(W::HomSpace) =
-    Dictionary(sectorstructure(W).blocksectors, degeneracystructure(W).blockstructure)
+blockstructure(W::HomSpace) = Dictionary(blocksectors(W), degeneracystructure(W).blockstructure)
 
 """
     fusiontrees(W::HomSpace) -> Indices{Tuple{F₁,F₂}}
@@ -163,8 +162,7 @@ Return a `Dictionary` mapping each fusion tree pair `(f₁, f₂)` to its
 
 See also [`degeneracystructure`](@ref), [`blockstructure`](@ref).
 """
-subblockstructure(W::HomSpace) =
-    Dictionary(sectorstructure(W).fusiontrees, degeneracystructure(W).subblockstructure)
+subblockstructure(W::HomSpace) = Dictionary(fusiontrees(W), degeneracystructure(W).subblockstructure)
 
 """
     fusionblocks(W::HomSpace)
