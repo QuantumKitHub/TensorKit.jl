@@ -271,16 +271,17 @@ Wrapper struct to alter the `hash` and `isequal` implementations of a given valu
 This is useful in the contexts of dictionaries, where you either want to customize the hashfunction,
 or consider various values as equal with a different notion of equality.
 """
-struct Hashed{T, Hash, Eq}
+struct Hashed{T, H <: Function, E <: Function}
     val::T
+    hashf::H
+    eqf::E
 end
 
-Hashed(val, hash = Base.hash, eq = Base.isequal) = Hashed{typeof(val), hash, eq}(val)
+Hashed(val, hashf = Base.hash, eqf = Base.isequal) =
+    Hashed{typeof(val), typeof(hashf), typeof(eqf)}(val, hashf, eqf)
 
 Base.parent(h::Hashed) = h.val
-
-# hash overload
-Base.hash(h::Hashed{T, Hash}, seed::UInt) where {T, Hash} = Hash(parent(h), seed)
-
-# isequal overload
-Base.isequal(h1::H, h2::H) where {Eq, H <: Hashed{<:Any, <:Any, Eq}} = Eq(parent(h1), parent(h2))
+Base.hash(h::Hashed, seed::UInt) = h.hashf(parent(h), seed)
+# Note: requires the equality functions to be equal to avoid asymmetric results
+Base.isequal(h1::Hashed{<:Any, <:Any, E}, h2::Hashed{<:Any, <:Any, E}) where {E} =
+    h1.eqf(parent(h1), parent(h2))
