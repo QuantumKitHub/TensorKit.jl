@@ -2,9 +2,23 @@ using Test, TestExtras
 using TensorKit
 using Mooncake
 using Random
-using JET, AllocCheck
 
-using .TestSetup: _repartition
+# Since we aren't actively depending on JET and AllocCheck, but only implicitly through the package extensions
+# of Mooncake, we don't want to break nightly tests etc. If this fails, tests still run but without the JET tests.
+const JET_AVAILABLE = let
+    try
+        import Pkg
+        current = Base.active_project()
+        Pkg.activate(; temp = true, io = devnull)
+        Pkg.add(["JET", "AllocCheck"]; io = devnull)
+        @eval using JET, AllocCheck
+        Pkg.activate(current; io = devnull)
+        true
+    catch
+        @warn "Cannot load JET and/or AllocCheck"
+        false
+    end
+end
 
 mode = Mooncake.ReverseMode
 rng = Random.default_rng()
