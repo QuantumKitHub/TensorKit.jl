@@ -104,7 +104,7 @@ sectorstructure(W::HomSpace) = sectorstructure(Hashed(W, sectorhash, sectorequal
 
     for c in _blocksectors(W)
         push!(bs, c)
-        codom_start = length(trees) + 1
+        offset = length(trees)
         n₁ = 0
         for f₂ in fusiontrees(dom, c)
             if n₁ == 0
@@ -112,11 +112,11 @@ sectorstructure(W::HomSpace) = sectorstructure(Hashed(W, sectorhash, sectorequal
                 for f₁ in fusiontrees(codom, c)
                     push!(trees, (f₁, f₂))
                 end
-                n₁ = length(trees) - codom_start + 1
+                n₁ = length(trees) - offset
             else
                 # Subsequent f₂s: the codomain trees are already in the list at
-                # codom_start:codom_start+n₁-1, so read them back instead of recomputing.
-                for j in codom_start:(codom_start + n₁ - 1)
+                # offset .+ (1:n₁), so read them back instead of recomputing.
+                for j in offset .+ (1:n₁)
                     push!(trees, (trees[j][1], f₂))
                 end
             end
