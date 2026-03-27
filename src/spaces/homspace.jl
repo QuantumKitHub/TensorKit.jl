@@ -38,7 +38,6 @@ function Base.:(==)(W₁::HomSpace, W₂::HomSpace)
 end
 
 function sectorequal(W₁::HomSpace, W₂::HomSpace)
-    check_spacetype(W₁, W₂)
     return sectorequal(codomain(W₁), codomain(W₂)) && sectorequal(domain(W₁), domain(W₂))
 end
 function sectorhash(W::HomSpace, h::UInt)

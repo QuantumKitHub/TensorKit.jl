@@ -300,7 +300,7 @@ Base.@assume_effects :foldable function _fsdicttype(::Type{T}) where {I, N₁, N
 end
 
 @cached function fsbraid(key::K)::_fsdicttype(K) where {I, N₁, N₂, K <: Union{FSPBraidKey{I, N₁, N₂}, FSBBraidKey{I, N₁, N₂}}}
-    if K isa FSPBraidKey
+    if K <: FSPBraidKey
         ((f₁, f₂), (p1, p2), (l1, l2)) = key
         p = linearizepermutation(p1, p2, length(f₁), length(f₂))
         levels = (l1..., reverse(l2)...)
