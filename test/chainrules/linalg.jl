@@ -15,44 +15,7 @@ using MatrixAlgebraKit
 
 ChainRulesTestUtils.test_method_tables()
 
-spacelist = (
-    (ℂ^2, (ℂ^3)', ℂ^3, ℂ^2, (ℂ^2)'),
-    (
-        Vect[Z2Irrep](0 => 1, 1 => 1),
-        Vect[Z2Irrep](0 => 1, 1 => 2)',
-        Vect[Z2Irrep](0 => 2, 1 => 2)',
-        Vect[Z2Irrep](0 => 2, 1 => 3),
-        Vect[Z2Irrep](0 => 2, 1 => 2),
-    ),
-    (
-        Vect[FermionParity](0 => 1, 1 => 1),
-        Vect[FermionParity](0 => 1, 1 => 2)',
-        Vect[FermionParity](0 => 2, 1 => 1)',
-        Vect[FermionParity](0 => 2, 1 => 3),
-        Vect[FermionParity](0 => 2, 1 => 2),
-    ),
-    (
-        Vect[U1Irrep](0 => 2, 1 => 1, -1 => 1),
-        Vect[U1Irrep](0 => 2, 1 => 1, -1 => 1),
-        Vect[U1Irrep](0 => 2, 1 => 2, -1 => 1)',
-        Vect[U1Irrep](0 => 1, 1 => 1, -1 => 2),
-        Vect[U1Irrep](0 => 1, 1 => 2, -1 => 1)',
-    ),
-    (
-        Vect[SU2Irrep](0 => 2, 1 // 2 => 1),
-        Vect[SU2Irrep](0 => 1, 1 => 1),
-        Vect[SU2Irrep](1 // 2 => 1, 1 => 1)',
-        Vect[SU2Irrep](1 // 2 => 2),
-        Vect[SU2Irrep](0 => 1, 1 // 2 => 1, 3 // 2 => 1)',
-    ),
-    (
-        Vect[FibonacciAnyon](:I => 2, :τ => 1),
-        Vect[FibonacciAnyon](:I => 1, :τ => 2)',
-        Vect[FibonacciAnyon](:I => 2, :τ => 2)',
-        Vect[FibonacciAnyon](:I => 2, :τ => 3),
-        Vect[FibonacciAnyon](:I => 2, :τ => 2),
-    ),
-)
+spacelist = (Vtr, Vℤ₂, Vfℤ₂, VSU₂, Vfib)
 
 for V in spacelist
     I = sectortype(eltype(V))
