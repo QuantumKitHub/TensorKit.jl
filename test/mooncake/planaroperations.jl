@@ -5,8 +5,6 @@ using VectorInterface: Zero, One
 using Mooncake
 using Random
 
-using .TestSetup: _repartition
-
 mode = Mooncake.ReverseMode
 rng = Random.default_rng()
 

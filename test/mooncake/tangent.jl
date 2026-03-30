@@ -4,8 +4,6 @@ using Mooncake
 using Random
 using JET, AllocCheck
 
-using .TestSetup: _repartition
-
 mode = Mooncake.ReverseMode
 rng = Random.default_rng()
 
