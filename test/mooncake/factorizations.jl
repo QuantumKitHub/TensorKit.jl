@@ -10,7 +10,7 @@ using Random
 mode = Mooncake.ReverseMode
 rng = Random.default_rng()
 
-spacelist = (Vtr, Vfℤ₂, VSU₂, Vfib)
+spacelist = ad_spacelist(fast_tests)
 eltypes = (Float64, ComplexF64)
 
 

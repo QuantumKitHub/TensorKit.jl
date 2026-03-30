@@ -15,7 +15,7 @@ using MatrixAlgebraKit
 
 ChainRulesTestUtils.test_method_tables()
 
-spacelist = (Vtr, Vℤ₂, Vfℤ₂, VSU₂, Vfib)
+spacelist = ad_spacelist(fast_tests)
 
 for V in spacelist
     I = sectortype(eltype(V))

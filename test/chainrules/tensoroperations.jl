@@ -4,7 +4,6 @@ using TensorKit: type_repr, SectorDict
 using TensorOperations
 using ChainRulesCore
 using ChainRulesTestUtils
-using FiniteDifferences: FiniteDifferences, central_fdm, forward_fdm
 using Random
 using LinearAlgebra
 using Zygote
@@ -13,24 +12,22 @@ using MatrixAlgebraKit
 
 # Tests
 # -----
-
-spacelist = (Vtr, Vℤ₂, Vfℤ₂, VSU₂)
+spacelist = ad_spacelist(fast_tests)
 
 for V in spacelist
     I = sectortype(eltype(V))
-    Istr = type_repr(I)
     eltypes = isreal(sectortype(eltype(V))) ? (Float64, ComplexF64) : (ComplexF64,)
     symmetricbraiding = BraidingStyle(sectortype(eltype(V))) isa SymmetricBraiding
+    symmetricbraiding || continue
+    Istr = type_repr(I)
     println("---------------------------------------")
     println("Auto-diff with symmetry: $Istr")
     println("---------------------------------------")
-    @timedtestset "AD with symmetry $Istr" verbose = true begin
+    @timedtestset "ChainRules TensorOperations with symmetry $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
 
-        symmetricbraiding &&
-            @timedtestset "TensorOperations with scalartype $T" for T in eltypes
-            atol = default_tol(T)
-            rtol = default_tol(T)
+        @timedtestset "scalartype $T" for T in eltypes
+            atol = rtol = default_tol(T)
 
             @timedtestset "tensortrace!" begin
                 for _ in 1:5

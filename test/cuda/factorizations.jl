@@ -4,27 +4,10 @@ using TensorKit
 using LinearAlgebra: LinearAlgebra
 using MatrixAlgebraKit: diagview
 const CUDAExt = Base.get_extension(TensorKit, :TensorKitCUDAExt)
-@assert !isnothing(CUDAExt)
+@assert !isnothing(CUDAExt) "Failed to load TensorKit - CUDA extension"
 const CuTensorMap = getglobal(CUDAExt, :CuTensorMap)
-const curand = getglobal(CUDAExt, :curand)
-const curandn = getglobal(CUDAExt, :curandn)
-const curand! = getglobal(CUDAExt, :curand!)
-using CUDA: rand as curand, rand! as curand!, randn as curandn, randn! as curandn!
 
-
-spacelist = if get(ENV, "CI", "false") == "true"
-    println("Detected running on CI")
-    if Sys.iswindows()
-        (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VIB_diag)
-    elseif Sys.isapple()
-        (Vtr, Vℤ₃, VfU₁, VfSU₂, VIB_M)
-    else
-        (Vtr, VU₁, VCU₁, VSU₂, VfSU₂, VIB_diag, VIB_M)
-    end
-else
-    (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VIB_diag, VIB_M)
-end
-
+spacelist = factorization_spacelist(fast_tests)
 eltypes = (Float32, ComplexF64)
 
 for V in spacelist

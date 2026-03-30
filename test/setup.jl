@@ -7,7 +7,7 @@ export random_fusion
 export sectorlist, fast_sectorlist
 export test_dim_isapprox
 export Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, Vfib, VIB_diag, VIB_M
-export default_spacelist, factorization_spacelist
+export default_spacelist, factorization_spacelist, ad_spacelist
 export remove_qrgauge_dependence!, remove_lqgauge_dependence!
 export remove_eiggauge_dependence!, remove_eighgauge_dependence!, remove_svdgauge_dependence!
 export test_ad_rrule, _project_hermitian
@@ -304,6 +304,10 @@ function factorization_spacelist(fast_tests::Bool)
         return (Vtr, VU₁, VCU₁, VSU₂, VfSU₂, VIB_diag, VIB_M)
     end
     return (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VIB_diag, VIB_M)
+end
+
+function ad_spacelist(fast_tests::Bool)
+    return fast_tests ? (Vtr, Vfℤ₂, Vfib) : (Vtr, Vℤ₂, Vfℤ₂, VSU₂, Vfib)
 end
 
 # Gauge-fixing tangents for AD factorization tests

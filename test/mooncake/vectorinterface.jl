@@ -8,7 +8,7 @@ using Random
 mode = Mooncake.ReverseMode
 rng = Random.default_rng()
 
-spacelist = (Vtr, Vfℤ₂, VSU₂, Vfib)
+spacelist = ad_spacelist(fast_tests)
 eltypes = (Float64, ComplexF64)
 
 @timedtestset "Mooncake - VectorInterface: $(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes

@@ -5,34 +5,8 @@ ad = adapt(Array)
 const CUDAExt = Base.get_extension(TensorKit, :TensorKitCUDAExt)
 @assert !isnothing(CUDAExt)
 const CuTensorMap = getglobal(CUDAExt, :CuTensorMap)
-const curand = getglobal(CUDAExt, :curand)
-const curandn = getglobal(CUDAExt, :curandn)
-const curand! = getglobal(CUDAExt, :curand!)
-using CUDA: rand as curand, rand! as curand!, randn as curandn, randn! as curandn!
 
-
-for V in (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂) #, VSU₃)
-    V1, V2, V3, V4, V5 = V
-    @assert V3 * V4 * V2 ≿ V1' * V5' # necessary for leftorth tests
-    @assert V3 * V4 ≾ V1' * V2' * V5' # necessary for rightorth tests
-end
-
-spacelist = try
-    if ENV["CI"] == "true"
-        println("Detected running on CI")
-        if Sys.iswindows()
-            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂)
-        elseif Sys.isapple()
-            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VfU₁, VfSU₂) #, VSU₃)
-        else
-            (Vtr, Vℤ₂, Vfℤ₂, VU₁, VCU₁, VSU₂, VfSU₂) #, VSU₃)
-        end
-    else
-        (Vtr, VU₁, VSU₂, Vfℤ₂)
-    end
-catch
-    (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂) #, VSU₃)
-end
+spacelist = default_spacelist(fast_tests)
 
 for V in spacelist
     I = sectortype(first(V))
@@ -45,7 +19,7 @@ for V in spacelist
         @timedtestset "Basic tensor properties" begin
             W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
             # test default pass-throughs
-            for f in (CUDA.zeros, CUDA.ones, curand, curandn)
+            for f in (CUDA.zeros, CUDA.ones, CUDA.rand, CUDA.randn)
                 t = @constinferred f(W)
                 @test scalartype(t) == Float64
                 @test codomain(t) == W
@@ -69,7 +43,7 @@ for V in spacelist
                 @test domain(t) == one(W)
                 @test typeof(t) == TensorMap{Float64, spacetype(t), 5, 0, CuVector{Float64, CUDA.DeviceMemory}}
             end
-            for f! in (curand!, curandn!)
+            for f! in (CUDA.rand!, CUDA.randn!)
                 t = @constinferred CUDA.zeros(W)
                 f!(t)
                 @test scalartype(t) == Float64

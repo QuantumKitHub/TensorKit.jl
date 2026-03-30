@@ -7,7 +7,7 @@ using JET, AllocCheck
 mode = Mooncake.ReverseMode
 rng = Random.default_rng()
 
-spacelist = (Vtr, VU₁, Vfℤ₂, VSU₂, Vfib)
+spacelist = ad_spacelist(fast_tests)
 eltypes = (Float64, ComplexF64)
 
 # only run on Linux since allocation tests are broken on other versions

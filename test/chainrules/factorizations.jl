@@ -4,17 +4,16 @@ using TensorKit: type_repr, SectorDict
 using TensorOperations
 using ChainRulesCore
 using ChainRulesTestUtils
-using FiniteDifferences: FiniteDifferences, central_fdm, forward_fdm
 using Random
 using LinearAlgebra
 using Zygote
 using MatrixAlgebraKit
-using MatrixAlgebraKit: LAPACK_HouseholderQR, LAPACK_HouseholderLQ, diagview
+using MatrixAlgebraKit: diagview
+
 
 # Tests
 # -----
-
-spacelist = (Vtr, Vℤ₂, VSU₂, Vfib)
+spacelist = ad_spacelist(fast_tests)
 
 for V in spacelist
     I = sectortype(eltype(V))
