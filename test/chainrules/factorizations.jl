@@ -130,7 +130,7 @@ for V in spacelist
                     remove_eighgauge_dependence!(Δv, d, v)
 
                     # necessary for FiniteDifferences to not complain
-                    eigh_full′ = eigh_full ∘ _project_hermitian
+                    eigh_full′ = eigh_full ∘ project_hermitian
 
                     test_ad_rrule(eigh_full′, t; output_tangent = (Δd, Δv), atol, rtol)
                     test_ad_rrule(first ∘ eigh_full′, t; output_tangent = Δd, atol, rtol)

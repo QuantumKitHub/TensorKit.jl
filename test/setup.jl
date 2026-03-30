@@ -10,7 +10,7 @@ export Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, 
 export default_spacelist, factorization_spacelist, ad_spacelist
 export remove_qrgauge_dependence!, remove_lqgauge_dependence!
 export remove_eiggauge_dependence!, remove_eighgauge_dependence!, remove_svdgauge_dependence!
-export test_ad_rrule, _project_hermitian
+export test_ad_rrule
 export _isunitary, _isone
 
 using Random
@@ -409,8 +409,5 @@ function test_ad_rrule(f, args...; check_inferred = false, kwargs...)
     )
     return nothing
 end
-
-# project_hermitian is non-differentiable for now
-_project_hermitian(x) = (x + x') / 2
 
 end
