@@ -40,6 +40,16 @@ using .TestSetup
         for (f1, f2) in fusiontrees(t1)
             @test t1[f1, f2] ≈ t3[f1, f2]
         end
+
+        t5 = @inferred TensorMap(t2')
+        t6 = braid(id(storagetype(t2), domain(t2')), ((2, 1), (3, 4)), (4, 3, 2, 1))
+        @test t5 ≈ t6
+        for (c, b) in blocks(t1')
+            @test block(t1', c) ≈ b ≈ block(t5, c)
+        end
+        for (f1, f2) in fusiontrees(t1')
+            @test t1'[f1, f2] ≈ t5[f1, f2]
+        end
     end
 end
 
