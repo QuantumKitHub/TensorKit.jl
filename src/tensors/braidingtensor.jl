@@ -169,7 +169,7 @@ function block(b::BraidingTensor, s::Sector)
 
     for ((f₁, f₂), (sz, str, off)) in pairs(subblockstructure(space(b)))
         (f₁.coupled == f₂.coupled == s) || continue
-        r = _braiding_factor(f₁, f₂)
+        r = _braiding_factor(f₁, f₂, b.adjoint)
         isnothing(r) && continue
         # change offset to account for single block
         subblock = StridedView(data, sz, str, off - base_offset)
