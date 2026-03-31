@@ -99,18 +99,6 @@ function TensorKit.scalar(t::ROCTensorMap{T, S, 0, 0}) where {T, S}
     return isempty(inds) ? zero(scalartype(t)) : @allowscalar @inbounds t.data[only(inds)]
 end
 
-function Base.convert(
-        TT::Type{ROCTensorMap{T, S, N₁, N₂}},
-        t::AbstractTensorMap{<:Any, S, N₁, N₂}
-    ) where {T, S, N₁, N₂}
-    if typeof(t) === TT
-        return t
-    else
-        tnew = TT(undef, space(t))
-        return copy!(tnew, t)
-    end
-end
-
 function LinearAlgebra.isposdef(t::ROCTensorMap)
     domain(t) == codomain(t) ||
         throw(SpaceMismatch("`isposdef` requires domain and codomain to be the same"))
