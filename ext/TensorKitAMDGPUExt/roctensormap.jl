@@ -124,17 +124,6 @@ function LinearAlgebra.isposdef(t::ROCTensorMap)
     return true
 end
 
-function Base.promote_rule(
-        ::Type{<:TT₁},
-        ::Type{<:TT₂}
-    ) where {
-        S, N₁, N₂, TTT₁, TTT₂,
-        TT₁ <: ROCTensorMap{TTT₁, S, N₁, N₂},
-        TT₂ <: ROCTensorMap{TTT₂, S, N₁, N₂},
-    }
-    T = TensorKit.VectorInterface.promote_add(TTT₁, TTT₂)
-    return ROCTensorMap{T, S, N₁, N₂}
-end
 
 # ROCTensorMap exponentation:
 function TensorKit.exp!(t::ROCTensorMap)
