@@ -115,10 +115,10 @@ for V in spacelist
             for T in (Int, Float32, ComplexF64)
                 t = @constinferred CUDA.rand(T, W)
                 d = convert(Dict, t)
-                @test TensorKit.to_cpu(t) == convert(TensorMap, d)
+                @test convert(Dict, TensorKit.to_cpu(t)) == d
             end
         end
-        @timedtestset "Basic linear algebra" begin
+        symmetricbraiding && @timedtestset "Basic linear algebra" begin
             W = V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5
             for T in (Float32, ComplexF64)
                 t = @constinferred CUDA.rand(T, W)

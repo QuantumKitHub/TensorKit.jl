@@ -3,7 +3,6 @@ using TensorKit
 using TensorKit: type_repr
 using LinearAlgebra: LinearAlgebra
 
-
 spacelist = default_spacelist(fast_tests)
 
 for V in spacelist
