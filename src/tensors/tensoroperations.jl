@@ -376,9 +376,10 @@ function blas_contract!(
         twistB = false
     end
 
+    TTC = storagetype(C)
     # Bring A in the correct form for BLAS contraction
     if copyA
-        Anew = TO.tensoralloc_add(TC, A, pA, false, Val(true), allocator)
+        Anew = TO.tensoralloc_add(TTC, A, pA, false, Val(true), allocator)
         Anew = TO.tensoradd!(Anew, A, pA, false, One(), Zero(), backend, allocator)
         twistA && twist!(Anew, filter(!isdual ∘ Base.Fix1(space, Anew), domainind(Anew)))
     else
@@ -388,7 +389,7 @@ function blas_contract!(
 
     # Bring B in the correct form for BLAS contraction
     if copyB
-        Bnew = TO.tensoralloc_add(TC, B, pB, false, Val(true), allocator)
+        Bnew = TO.tensoralloc_add(TTC, B, pB, false, Val(true), allocator)
         Bnew = TO.tensoradd!(Bnew, B, pB, false, One(), Zero(), backend, allocator)
         twistB && twist!(Bnew, filter(isdual ∘ Base.Fix1(space, Bnew), codomainind(Bnew)))
     else
@@ -401,7 +402,7 @@ function blas_contract!(
     copyC = !TO.isblasdestination(C, ipAB)
 
     if copyC
-        Cnew = TO.tensoralloc_add(TC, C, ipAB, false, Val(true), allocator)
+        Cnew = TO.tensoralloc_add(TTC, C, ipAB, false, Val(true), allocator)
         mul!(Cnew, Anew, Bnew)
         TO.tensoradd!(C, Cnew, pAB, false, α, β, backend, allocator)
         TO.tensorfree!(Cnew, allocator)
