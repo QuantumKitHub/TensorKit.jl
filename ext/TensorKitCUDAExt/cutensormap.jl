@@ -6,6 +6,9 @@ const AdjointCuTensorMap{T, S, N₁, N₂} = AdjointTensorMap{T, S, N₁, N₂, 
 function CuTensorMap(t::TensorMap{T, S, N₁, N₂, A}) where {T, S, N₁, N₂, A}
     return CuTensorMap{T, S, N₁, N₂}(CuArray{T}(t.data), space(t))
 end
+function TensorMap{T, S, N₁, N₂, DA}(t::TensorMap{T, S, N₁, N₂, HA}) where {T, S, N₁, N₂, DA <: CuArray{T}, HA <: Array{T}}
+    return CuTensorMap{T, S, N₁, N₂}(CuArray{T}(t.data), space(t))
+end
 
 # project_symmetric! doesn't yet work for GPU types, so do this on the host, then copy
 function TensorKit.project_symmetric_and_check(::Type{T}, ::Type{A}, data::AbstractArray, V::TensorMapSpace; tol = sqrt(eps(real(float(eltype(data)))))) where {T, A <: CuVector{T}}
@@ -186,3 +189,18 @@ function TensorKit.allocate_buffers(
     # otherwise memory re-use can fill them with garbage data
     return CUDA.zeros(eltype(tdst.data), sz), CUDA.zeros(eltype(tsrc.data), sz)
 end
+
+function LinearAlgebra.mul!(
+        tC::CuTensorMap, tA::TensorKit.BraidingTensor, tB::CuTensorMap, α = true, β = false
+    )
+    mul!(tC, CUDA.adapt(CuArray, TensorMap(tA)), tB, α, β)
+end
+
+function LinearAlgebra.mul!(
+        tC::CuTensorMap, tA::CuTensorMap, tB::TensorKit.BraidingTensor, α = true, β = false
+    )
+    mul!(tC, tA, CUDA.adapt(CuArray, TensorMap(tB)), α, β)
+end
+
+@inline TensorKit.promote_storagetype(::Type{T}, A::CuTensorMap, B::TensorKit.BraidingTensor) where {T <: Number} = similarstoragetype(A, T)
+@inline TensorKit.promote_storagetype(::Type{T}, A::TensorKit.BraidingTensor, B::CuTensorMap) where {T <: Number} = similarstoragetype(B, T)

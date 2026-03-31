@@ -277,11 +277,15 @@ function planarcontract!(
         backend, allocator
     )
     # special case only defined for contracting 2 indices
-    length(oindB) == length(cindB) == 2 ||
+    if !(length(oindB) == length(cindB) == 2)
+        # horrible!!!!!
+        tB′ = TensorMap(B)
+        tB = TensorMapWithStorage{eltype(B), similarstoragetype(A, eltype(B)), spacetype(tB′), numout(tB′), numin(tB′)}(tB′)
         return planarcontract!(
-        C, A, (oindA, cindA), TensorMap(B), (cindB, oindB), (p1, p2),
+        C, A, (oindA, cindA), tB, (cindB, oindB), (p1, p2),
         α, β, backend, allocator
-    )
+        )
+    end
 
     codA, domA = codomainind(A), domainind(A)
     codB, domB = codomainind(B), domainind(B)
