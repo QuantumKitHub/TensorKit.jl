@@ -48,7 +48,7 @@ jobs:
           fi
 
   test:
-    name: "Tests"
+    name: "Tests (${{ matrix.group }}, ${{ matrix.os }}, Julia ${{ matrix.version }})"
     needs: setup-matrix
     strategy:
       fail-fast: false
@@ -80,7 +80,7 @@ jobs:
           fail_ci_if_error: false
 
   test-nightly:
-    name: "Tests (nightly)"
+    name: "Tests (${{ matrix.group }}, ${{ matrix.os }}, Julia nightly)"
     needs: [setup-matrix, test]
     if: github.event.pull_request.draft != true
     strategy:
@@ -105,10 +105,27 @@ jobs:
       - uses: julia-actions/julia-runtest@v1
         with:
           test_args: '${{ matrix.group }}'
+
+  CI:
+    name: "CI Summary"
+    needs: [test, compatcheck]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check test jobs
+        run: |
+          if [[ "${{ needs.test.result }}" != "success" ]]; then
+            echo "Tests failed: ${{ needs.test.result }}"
+            exit 1
+          fi
+          echo "Tests passed."
+      - name: Report compat check
+        run: |
+          echo "Compat check result: ${{ needs.compatcheck.result }}"
         continue-on-error: true
 
   compatcheck:
-    name: "Compat check - ${{ matrix.julia-version }}"
+    name: "Compat (${{ matrix.group }}, Julia ${{ matrix.julia-version }})"
     needs: [setup-matrix, test]
     if: github.event.pull_request.draft != true
     runs-on: ubuntu-latest
@@ -117,7 +134,7 @@ jobs:
       matrix:
         downgrade_mode: ['deps']
         group: ${{ fromJSON(needs.setup-matrix.outputs.groups) }}
-        julia-version: ['1']
+        julia-version: ['1', '1.10']
     steps:
       - uses: actions/checkout@v6
       - uses: julia-actions/setup-julia@v2
