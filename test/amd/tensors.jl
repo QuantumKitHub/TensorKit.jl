@@ -5,9 +5,6 @@ ad = adapt(Array)
 const AMDGPUExt = Base.get_extension(TensorKit, :TensorKitAMDGPUExt)
 @assert !isnothing(AMDGPUExt)
 const ROCTensorMap = getglobal(AMDGPUExt, :ROCTensorMap)
-const rocrand = getglobal(AMDGPUExt, :rocrand)
-const rocrandn = getglobal(AMDGPUExt, :rocrandn)
-const rocrand! = getglobal(AMDGPUExt, :rocrand!)
 using AMDGPU: rand as rocrand, rand! as rocrand!, randn as rocrandn, randn! as rocrandn!
 
 @isdefined(TestSetup) || include("../setup.jl")
