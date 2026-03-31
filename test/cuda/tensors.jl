@@ -14,6 +14,7 @@ for V in spacelist
     println("---------------------------------------")
     println("CUDA Tensors with symmetry: $Istr")
     println("---------------------------------------")
+    symmetricbraiding = BraidingStyle(I) isa SymmetricBraiding
     @timedtestset "Tensors with symmetry: $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
         @timedtestset "Basic tensor properties" begin
@@ -259,7 +260,7 @@ for V in spacelist
             @test LinearAlgebra.isdiag(D)
             @test LinearAlgebra.diag(D) == d
         end=#
-        @timedtestset "Permutations: test via inner product invariance" begin
+        symmetricbraiding && @timedtestset "Permutations: test via inner product invariance" begin
             W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
             t = CUDA.rand(ComplexF64, W)
             t′ = CUDA.randn!(similar(t))
@@ -286,26 +287,24 @@ for V in spacelist
                 end
             end
         end
-        if BraidingStyle(I) isa SymmetricBraiding
-            @timedtestset "Permutations: test via CPU" begin
-                W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
-                t = CUDA.rand(ComplexF64, W)
-                for k in 0:5
-                    for p in permutations(1:5)
-                        p1 = ntuple(n -> p[n], k)
-                        p2 = ntuple(n -> p[k + n], 5 - k)
-                        dt2 = CUDA.@allowscalar permute(t, (p1, p2))
-                        ht2 = permute(TensorKit.to_cpu(t), (p1, p2))
-                        @test ht2 == TensorKit.to_cpu(dt2)
-                    end
-
-                    dt3 = CUDA.@allowscalar repartition(t, k)
-                    ht3 = repartition(TensorKit.to_cpu(t), k)
-                    @test ht3 == TensorKit.to_cpu(dt3)
+        symmetricbraiding && @timedtestset "Permutations: test via CPU" begin
+            W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
+            t = CUDA.rand(ComplexF64, W)
+            for k in 0:5
+                for p in permutations(1:5)
+                    p1 = ntuple(n -> p[n], k)
+                    p2 = ntuple(n -> p[k + n], 5 - k)
+                    dt2 = CUDA.@allowscalar permute(t, (p1, p2))
+                    ht2 = permute(TensorKit.to_cpu(t), (p1, p2))
+                    @test ht2 == TensorKit.to_cpu(dt2)
                 end
+
+                dt3 = CUDA.@allowscalar repartition(t, k)
+                ht3 = repartition(TensorKit.to_cpu(t), k)
+                @test ht3 == TensorKit.to_cpu(dt3)
             end
         end
-        @timedtestset "Full trace: test self-consistency" begin
+        symmetricbraiding && @timedtestset "Full trace: test self-consistency" begin
             t = CUDA.rand(ComplexF64, V1 ⊗ V2' ⊗ V2 ⊗ V1')
             CUDA.@allowscalar begin
                 t2 = permute(t, ((1, 2), (4, 3)))
@@ -325,24 +324,22 @@ for V in spacelist
             @test ss ≈ s2
             @test ss ≈ s3
         end
-        @timedtestset "Partial trace: test self-consistency" begin
+        symmetricbraiding && @timedtestset "Partial trace: test self-consistency" begin
             t = CUDA.rand(ComplexF64, V1 ⊗ V2' ⊗ V3 ⊗ V2 ⊗ V1' ⊗ V3')
             @tensor t2[a, b] := t[c, d, b, d, c, a]
             @tensor t4[a, b, c, d] := t[d, e, b, e, c, a]
             @tensor t5[a, b] := t4[a, b, c, c]
             @test t2 ≈ t5
         end
-        if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
-            @timedtestset "Trace: test via conversion" begin
-                t = CUDA.rand(ComplexF64, V1 ⊗ V2' ⊗ V3 ⊗ V2 ⊗ V1' ⊗ V3')
-                CUDA.@allowscalar begin
-                    @tensor t2[a, b] := t[c, d, b, d, c, a]
-                    @tensor t3[a, b] := ad(t)[c, d, b, d, c, a]
-                end
-                @test t3 ≈ ad(t2)
+        symmetricbraiding && @timedtestset "Trace: test via conversion" begin
+            t = CUDA.rand(ComplexF64, V1 ⊗ V2' ⊗ V3 ⊗ V2 ⊗ V1' ⊗ V3')
+            CUDA.@allowscalar begin
+                @tensor t2[a, b] := t[c, d, b, d, c, a]
+                @tensor t3[a, b] := ad(t)[c, d, b, d, c, a]
             end
+            @test t3 ≈ ad(t2)
         end
-        @timedtestset "Trace and contraction" begin
+        symmetricbraiding && @timedtestset "Trace and contraction" begin
             t1 = CUDA.rand(ComplexF64, V1 ⊗ V2 ⊗ V3)
             t2 = CUDA.rand(ComplexF64, V2' ⊗ V4 ⊗ V1')
             CUDA.@allowscalar begin
@@ -368,7 +365,7 @@ for V in spacelist
                 @test TensorKit.to_cpu(dHrA12) ≈ hHrA12
             end
         end=# # doesn't yet work because of AdjointTensor
-        @timedtestset "Index flipping: test flipping inverse" begin
+        BraidingStyle(I) isa HasBraiding && @timedtestset "Index flipping: test flipping inverse" begin
             t = CUDA.rand(ComplexF64, V1 ⊗ V1' ← V1' ⊗ V1)
             for i in 1:4
                 CUDA.@allowscalar begin
@@ -469,23 +466,22 @@ for V in spacelist
                 @test TensorKit.to_cpu(t1' / t') ≈ ht1' / ht'
             end
         end
-        if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
-            @timedtestset "Tensor functions" begin
-                W = V1 ⊗ V2
-                for T in (Float64, ComplexF64)
-                    t = project_hermitian!(CUDA.randn(T, W, W))
-                    s = dim(W)
-                    #@test (@constinferred sqrt(t))^2 ≈ t
-                    #@test TensorKit.to_cpu(sqrt(t)) ≈ sqrt(TensorKit.to_cpu(t))
+        symmetricbraiding && @timedtestset "Tensor functions" begin
+            W = V1 ⊗ V2
+            for T in (Float64, ComplexF64)
+                t = project_hermitian!(CUDA.randn(T, W, W))
+                s = dim(W)
+                #@test (@constinferred sqrt(t))^2 ≈ t
+                #@test TensorKit.to_cpu(sqrt(t)) ≈ sqrt(TensorKit.to_cpu(t))
 
-                    expt = @constinferred exp(t)
-                    @test TensorKit.to_cpu(expt) ≈ exp(TensorKit.to_cpu(t))
+                expt = @constinferred exp(t)
+                @test TensorKit.to_cpu(expt) ≈ exp(TensorKit.to_cpu(t))
 
-                    # log doesn't work on CUDA yet (scalar indexing)
-                    #@test exp(@constinferred log(project_hermitian!(expt))) ≈ expt
-                    #@test TensorKit.to_cpu(log(project_hermitian!(expt))) ≈ log(TensorKit.to_cpu(expt))
+                # log doesn't work on CUDA yet (scalar indexing)
+                #@test exp(@constinferred log(project_hermitian!(expt))) ≈ expt
+                #@test TensorKit.to_cpu(log(project_hermitian!(expt))) ≈ log(TensorKit.to_cpu(expt))
 
-                    #=@test (@constinferred cos(t))^2 + (@constinferred sin(t))^2 ≈
+                #=@test (@constinferred cos(t))^2 + (@constinferred sin(t))^2 ≈
                           id(storagetype(t), W)
                     @test (@constinferred tan(t)) ≈ sin(t) / cos(t)
                     @test (@constinferred cot(t)) ≈ cos(t) / sin(t)
@@ -494,7 +490,7 @@ for V in spacelist
                     @test (@constinferred tanh(t)) ≈ sinh(t) / cosh(t)
                     @test (@constinferred coth(t)) ≈ cosh(t) / sinh(t)=# # TODO in CUDA
 
-                    #=t1 = sin(t)
+                #=t1 = sin(t)
                     @test sin(@constinferred asin(t1)) ≈ t1
                     t2 = cos(t)
                     @test cos(@constinferred acos(t2)) ≈ t2
@@ -510,8 +506,7 @@ for V in spacelist
                     @test tanh(@constinferred atanh(t7)) ≈ t7
                     t8 = coth(t)
                     @test coth(@constinferred acoth(t8)) ≈ t8=#
-                    # TODO in CUDA
-                end
+                # TODO in CUDA
             end
         end
         # Sylvester not defined for CUDA
@@ -537,32 +532,35 @@ for V in spacelist
         # TODO
         @timedtestset "Tensor product: test via norm preservation" begin
             for T in (Float32, ComplexF64)
-                t1 = CUDA.rand(T, V2 ⊗ V3 ⊗ V1, V1 ⊗ V2)
-                t2 = CUDA.rand(T, V2 ⊗ V1 ⊗ V3, V1 ⊗ V1)
+                if UnitStyle(I) isa SimpleUnit || !isempty(blocksectors(V2 ⊗ V1))
+                    t1 = CUDA.rand(T, V2 ⊗ V3 ⊗ V1, V1 ⊗ V2)
+                    t2 = CUDA.rand(T, V2 ⊗ V1 ⊗ V3, V1 ⊗ V1)
+                else
+                    t1 = CUDA.rand(T, V3 ⊗ V4 ⊗ V5, V1 ⊗ V2)
+                    t2 = CUDA.rand(T, V5' ⊗ V4' ⊗ V3', V2' ⊗ V1')
+                end
                 CUDA.@allowscalar begin
                     t = @constinferred (t1 ⊗ t2)
                 end
                 @test norm(t) ≈ norm(t1) * norm(t2)
             end
         end
-        if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
-            @timedtestset "Tensor product: test via conversion" begin
-                for T in (Float32, ComplexF64)
-                    t1 = CUDA.rand(T, V2 ⊗ V3 ⊗ V1, V1)
-                    t2 = CUDA.rand(T, V2 ⊗ V1 ⊗ V3, V2)
-                    d1 = dim(codomain(t1))
-                    d2 = dim(codomain(t2))
-                    d3 = dim(domain(t1))
-                    d4 = dim(domain(t2))
-                    CUDA.@allowscalar begin
-                        t = @constinferred (t1 ⊗ t2)
-                        At = ad(t)
-                        @test ad(t) ≈ ad(t1) ⊗ ad(t2)
-                    end
+        symmetricbraiding && @timedtestset "Tensor product: test via conversion" begin
+            for T in (Float32, ComplexF64)
+                t1 = CUDA.rand(T, V2 ⊗ V3 ⊗ V1, V1)
+                t2 = CUDA.rand(T, V2 ⊗ V1 ⊗ V3, V2)
+                d1 = dim(codomain(t1))
+                d2 = dim(codomain(t2))
+                d3 = dim(domain(t1))
+                d4 = dim(domain(t2))
+                CUDA.@allowscalar begin
+                    t = @constinferred (t1 ⊗ t2)
+                    At = ad(t)
+                    @test ad(t) ≈ ad(t1) ⊗ ad(t2)
                 end
             end
         end
-        @timedtestset "Tensor product: test via tensor contraction" begin
+        symmetricbraiding && @timedtestset "Tensor product: test via tensor contraction" begin
             for T in (Float32, ComplexF64)
                 t1 = CUDA.rand(T, V2 ⊗ V3 ⊗ V1)
                 t2 = CUDA.rand(T, V2 ⊗ V1 ⊗ V3)
