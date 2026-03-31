@@ -127,11 +127,9 @@ function block(b::BraidingTensor, s::Sector)
     # TODO: probably always square?
     m = blockdim(codomain(b), s)
     n = blockdim(domain(b), s)
-    data = Matrix{eltype(b)}(undef, (m, n))
+    data = zeros(eltype(b), (m, n))
 
     length(data) == 0 && return data # s ∉ blocksectors(b)
-
-    data = fill!(data, zero(eltype(b)))
 
     V1, V2 = codomain(b)
     if sectortype(b) === Trivial
