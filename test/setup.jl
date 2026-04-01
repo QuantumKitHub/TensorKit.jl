@@ -81,7 +81,7 @@ end
 function hasfusiontensor(I::Type{<:Sector})
     try
         u = first(allunits(I))
-        TensorKit.fusiontensor(u, u, u)
+        fusiontensor(u, u, u)
         return true
     catch e
         if e isa MethodError
