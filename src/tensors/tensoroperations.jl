@@ -9,8 +9,7 @@ function TO.tensoralloc(
         ::Type{TT}, structure::TensorMapSpace, istemp::Val, allocator = TO.DefaultAllocator()
     ) where {TT <: AbstractTensorMap}
     A = storagetype(TT)
-    dim = fusionblockstructure(structure).totaldim
-    data = TO.tensoralloc(A, dim, istemp, allocator)
+    data = TO.tensoralloc(A, dim(structure), istemp, allocator)
     TT′ = tensormaptype(spacetype(structure), numout(structure), numin(structure), typeof(data))
     return TT′(data, structure)
 end
@@ -190,23 +189,20 @@ TO.tensorcost(t::AbstractTensorMap, i::Int) = dim(space(t, i))
 """
     trace_permute!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap,
                    (p₁, p₂)::Index2Tuple, (q₁, q₂)::Index2Tuple,
-                   α::Number, β::Number, backend=TO.DefaultBackend())
+                   α::Number, β::Number, backend = TO.DefaultBackend())
 
 Return the updated `tdst`, which is the result of adding `α * tsrc` to `tdst` after permuting
 the indices of `tsrc` according to `(p₁, p₂)` and furthermore tracing the indices in `q₁` and `q₂`.
 """
 function trace_permute!(
         tdst::AbstractTensorMap,
-        tsrc::AbstractTensorMap,
-        (p₁, p₂)::Index2Tuple,
-        (q₁, q₂)::Index2Tuple,
-        α::Number,
-        β::Number,
-        backend = TO.DefaultBackend()
+        tsrc::AbstractTensorMap, (p₁, p₂)::Index2Tuple, (q₁, q₂)::Index2Tuple,
+        α::Number, β::Number, backend = TO.DefaultBackend()
     )
     # some input checks
     S = check_spacetype(tdst, tsrc)
-    if !(BraidingStyle(sectortype(S)) isa SymmetricBraiding)
+    I = sectortype(S)
+    if !(BraidingStyle(I) isa SymmetricBraiding)
         throw(SectorMismatch("only tensors with symmetric braiding rules can be contracted; try `@planar` instead"))
     end
     (N₃ = length(q₁)) == length(q₂) ||
@@ -223,23 +219,51 @@ function trace_permute!(
                     q₁ = $(q₁), q₂ = $(q₂)"))
     end
 
-    I = sectortype(S)
-    # TODO: is it worth treating UniqueFusion separately? Is it worth to add multithreading support?
     if I === Trivial
-        cod = codomain(tsrc)
-        dom = domain(tsrc)
-        n = length(cod)
         TO.tensortrace!(tdst[], tsrc[], (p₁, p₂), (q₁, q₂), false, α, β, backend)
-        # elseif FusionStyle(I) isa UniqueFusion
     else
-        cod = codomain(tsrc)
-        dom = domain(tsrc)
-        n = length(cod)
-        scale!(tdst, β)
-        r₁ = (p₁..., q₁...)
-        r₂ = (p₂..., q₂...)
-        for (f₁, f₂) in fusiontrees(tsrc)
-            for ((f₁′, f₂′), coeff) in permute(f₁, f₂, r₁, r₂)
+        _trace_permute!(FusionStyle(I), tdst, tsrc, (p₁, p₂), (q₁, q₂), α, β, backend)
+    end
+
+    return tdst
+end
+
+function _trace_permute!(::UniqueFusion, tdst, tsrc, (p₁, p₂), (q₁, q₂), α, β, backend)
+    scale!(tdst, β)
+    r₁, r₂ = (p₁..., q₁...), (p₂..., q₂...)
+    N₁, N₂ = length(p₁), length(p₂)
+
+    for (f₁, f₂) in fusiontrees(tsrc)
+        (f₁′, f₂′), coeff = permute((f₁, f₂), (r₁, r₂))
+        f₁′′, g₁ = split(f₁′, N₁)
+        f₂′′, g₂ = split(f₂′, N₂)
+        g₁ == g₂ || continue
+        coeff *= dim(g₁.coupled) / dim(g₁.uncoupled[1])
+        for i in 2:length(g₁.uncoupled)
+            if !(g₁.isdual[i])
+                coeff *= twist(g₁.uncoupled[i])
+            end
+        end
+        C = tdst[f₁′′, f₂′′]
+        A = tsrc[f₁, f₂]
+        α′ = α * coeff
+        TO.tensortrace!(C, A, (p₁, p₂), (q₁, q₂), false, α′, One(), backend)
+    end
+
+    return tdst
+end
+
+function _trace_permute!(::FusionStyle, tdst, tsrc, (p₁, p₂), (q₁, q₂), α, β, backend)
+    scale!(tdst, β)
+    r₁, r₂ = (p₁..., q₁...), (p₂..., q₂...)
+    N₁, N₂ = length(p₁), length(p₂)
+
+    for src in fusionblocks(tsrc)
+        dst, U = permute(src, (r₁, r₂))
+        for (i, (f₁, f₂)) in enumerate(fusiontrees(src))
+            for (j, (f₁′, f₂′)) in enumerate(fusiontrees(dst))
+                coeff = U[j, i]
+                iszero(coeff) && continue
                 f₁′′, g₁ = split(f₁′, N₁)
                 f₂′′, g₂ = split(f₂′, N₂)
                 g₁ == g₂ || continue
@@ -256,6 +280,7 @@ function trace_permute!(
             end
         end
     end
+
     return tdst
 end
 

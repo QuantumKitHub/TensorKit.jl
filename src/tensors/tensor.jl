@@ -15,8 +15,7 @@ struct TensorMap{T, S <: IndexSpace, N₁, N₂, A <: DenseVector{T}} <: Abstrac
     function TensorMap{T, S, N₁, N₂, A}(
             ::UndefInitializer, space::TensorMapSpace{S, N₁, N₂}
         ) where {T, S <: IndexSpace, N₁, N₂, A <: DenseVector{T}}
-        d = fusionblockstructure(space).totaldim
-        data = A(undef, d)
+        data = A(undef, dim(space))
         if !isbitstype(T)
             zerovector!(data)
         end
@@ -31,8 +30,7 @@ struct TensorMap{T, S <: IndexSpace, N₁, N₂, A <: DenseVector{T}} <: Abstrac
         I = sectortype(S)
         T <: Real && !(sectorscalartype(I) <: Real) &&
             @warn("Tensors with real data might be incompatible with sector type $I", maxlog = 1)
-        d = fusionblockstructure(space).totaldim
-        length(data) == d || throw(DimensionMismatch("invalid length of data"))
+        length(data) == dim(space) || throw(DimensionMismatch("invalid length of data"))
         return new{T, S, N₁, N₂, A}(data, space)
     end
 end
@@ -453,16 +451,14 @@ end
 #-------------------------------------------------
 block(t::TensorMap, c::Sector) = blocks(t)[c]
 
-blocks(t::TensorMap) = BlockIterator(t, fusionblockstructure(t).blockstructure)
+blocks(t::TensorMap) = BlockIterator(t, blockstructure(space(t)))
 
-function blocktype(::Type{TT}) where {TT <: TensorMap}
-    A = storagetype(TT)
-    T = eltype(A)
+function blocktype(::Type{TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A <: Vector{T}}
     return Base.ReshapedArray{T, 2, SubArray{T, 1, A, Tuple{UnitRange{Int}}, true}, Tuple{}}
 end
 
 function Base.iterate(iter::BlockIterator{<:TensorMap}, state...)
-    next = iterate(iter.structure, state...)
+    next = iterate(pairs(iter.structure), state...)
     isnothing(next) && return next
     (c, (sz, r)), newstate = next
     return c => reshape(view(iter.t.data, r), sz), newstate
@@ -470,16 +466,18 @@ end
 
 function Base.getindex(iter::BlockIterator{<:TensorMap}, c::Sector)
     sectortype(iter.t) === typeof(c) || throw(SectorMismatch())
-    (d₁, d₂), r = get(iter.structure, c) do
-        # is s is not a key, at least one of the two dimensions will be zero:
+    found, token = gettoken(iter.structure, c)
+    if found
+        (d₁, d₂), r = gettokenvalue(iter.structure, token)
+        return reshape(view(iter.t.data, r), (d₁, d₂))
+    else
+        # if c is not a key, at least one of the two dimensions will be zero:
         # it then does not matter where exactly we construct a view in `t.data`,
         # as it will have length zero anyway
-        d₁′ = blockdim(codomain(iter.t), c)
-        d₂′ = blockdim(domain(iter.t), c)
-        l = d₁′ * d₂′
-        return (d₁′, d₂′), 1:l
+        d₁ = blockdim(codomain(iter.t), c)
+        d₂ = blockdim(domain(iter.t), c)
+        return reshape(view(iter.t.data, 1:(d₁ * d₂)), (d₁, d₂))
     end
-    return reshape(view(iter.t.data, r), (d₁, d₂))
 end
 
 # Getting and setting the data at the subblock level
@@ -487,13 +485,11 @@ end
 function subblock(
         t::TensorMap{T, S, N₁, N₂}, (f₁, f₂)::Tuple{FusionTree{I, N₁}, FusionTree{I, N₂}}
     ) where {T, S, N₁, N₂, I <: Sector}
-    structure = fusionblockstructure(t)
-    @boundscheck begin
-        haskey(structure.fusiontreeindices, (f₁, f₂)) || throw(SectorMismatch())
-    end
+    fts = subblockstructure(space(t))
+    found, token = gettoken(fts, (f₁, f₂))
+    @boundscheck found || throw(SectorMismatch(lazy"fusion tree pair ($(f₁, f₂)) is not present"))
     @inbounds begin
-        i = structure.fusiontreeindices[(f₁, f₂)]
-        sz, str, offset = structure.fusiontreestructure[i]
+        sz, str, offset = gettokenvalue(fts, token)
         return StridedView(t.data, sz, str, offset)
     end
 end

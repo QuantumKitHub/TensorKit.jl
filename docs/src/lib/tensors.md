@@ -97,7 +97,6 @@ In `TensorMap` instances, all data is gathered in a single `AbstractVector`, whi
 
 To obtain information about the structure of the data, you can use:
 ```@docs
-fusionblockstructure(::AbstractTensorMap)
 dim(::AbstractTensorMap)
 blocksectors(::AbstractTensorMap)
 hasblock(::AbstractTensorMap, ::Sector)

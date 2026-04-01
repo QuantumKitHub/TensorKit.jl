@@ -19,8 +19,8 @@ using TensorOperations: Index2Tuple
 using MatrixAlgebraKit
 import MatrixAlgebraKit as MAK
 using MatrixAlgebraKit: AbstractAlgorithm, TruncatedAlgorithm, DiagonalAlgorithm
-using MatrixAlgebraKit: TruncationStrategy, NoTruncation, TruncationByValue,
-    TruncationByError, TruncationIntersection, TruncationByFilter, TruncationByOrder
+using MatrixAlgebraKit: TruncationStrategy, NoTruncation, TruncationByValue, TruncationByError,
+    TruncationIntersection, TruncationUnion, TruncationByFilter, TruncationByOrder
 using MatrixAlgebraKit: diagview
 
 include("utility.jl")

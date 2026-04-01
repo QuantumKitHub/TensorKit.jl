@@ -265,21 +265,45 @@ function MAK.findtruncated_svd(values::SectorVector, strategy::TruncationSpace)
     return SectorDict(c => MAK.findtruncated_svd(d, blockstrategy(c)) for (c, d) in pairs(values))
 end
 
+# The implementations below assume that the `SectorDict` always contains an entry for every block sector
+# for example, if a block gets fully truncated, inds[c] = Int[].
+# This is always the case in the implementations above.
+
 function MAK.findtruncated(values::SectorVector, strategy::TruncationIntersection)
     inds = map(Base.Fix1(MAK.findtruncated, values), strategy.components)
-    return SectorDict(
-        c => mapreduce(
-                Base.Fix2(getindex, c), MatrixAlgebraKit._ind_intersect, inds
-            ) for c in intersect(map(keys, inds)...)
-    )
+    @assert TensorKit._allequal(keys, inds) "missing blocks are not supported right now"
+    sectors = keys(first(inds))
+    vals = map(keys(first(inds))) do c
+        mapreduce(Base.Fix2(getindex, c), MatrixAlgebraKit._ind_intersect, inds)
+    end
+    return SectorDict{eltype(sectors), eltype(vals)}(sectors, vals)
 end
 function MAK.findtruncated_svd(values::SectorVector, strategy::TruncationIntersection)
     inds = map(Base.Fix1(MAK.findtruncated_svd, values), strategy.components)
-    return SectorDict(
-        c => mapreduce(
-                Base.Fix2(getindex, c), MatrixAlgebraKit._ind_intersect, inds
-            ) for c in intersect(map(keys, inds)...)
-    )
+    @assert TensorKit._allequal(keys, inds) "missing blocks are not supported right now"
+    sectors = keys(first(inds))
+    vals = map(keys(first(inds))) do c
+        mapreduce(Base.Fix2(getindex, c), MatrixAlgebraKit._ind_intersect, inds)
+    end
+    return SectorDict{eltype(sectors), eltype(vals)}(sectors, vals)
+end
+function MAK.findtruncated(values::SectorVector, strategy::TruncationUnion)
+    inds = map(Base.Fix1(MAK.findtruncated, values), strategy.components)
+    @assert TensorKit._allequal(keys, inds) "missing blocks are not supported right now"
+    sectors = keys(first(inds))
+    vals = map(keys(first(inds))) do c
+        mapreduce(Base.Fix2(getindex, c), MatrixAlgebraKit._ind_union, inds)
+    end
+    return SectorDict{eltype(sectors), eltype(vals)}(sectors, vals)
+end
+function MAK.findtruncated_svd(values::SectorVector, strategy::TruncationUnion)
+    inds = map(Base.Fix1(MAK.findtruncated_svd, values), strategy.components)
+    @assert TensorKit._allequal(keys, inds) "missing blocks are not supported right now"
+    sectors = keys(first(inds))
+    vals = map(keys(first(inds))) do c
+        mapreduce(Base.Fix2(getindex, c), MatrixAlgebraKit._ind_union, inds)
+    end
+    return SectorDict{eltype(sectors), eltype(vals)}(sectors, vals)
 end
 
 # Truncation error

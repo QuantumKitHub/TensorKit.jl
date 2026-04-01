@@ -62,7 +62,8 @@ end
 Mooncake.tangent_type(::Type{<:VectorSpace}) = Mooncake.NoTangent
 Mooncake.tangent_type(::Type{<:HomSpace}) = Mooncake.NoTangent
 
-@zero_derivative DefaultCtx Tuple{typeof(TensorKit.fusionblockstructure), Any}
+@zero_derivative DefaultCtx Tuple{typeof(TensorKit.sectorstructure), Any}
+@zero_derivative DefaultCtx Tuple{typeof(TensorKit.degeneracystructure), Any}
 
 @zero_derivative DefaultCtx Tuple{typeof(TensorKit.select), HomSpace, Index2Tuple}
 @zero_derivative DefaultCtx Tuple{typeof(TensorKit.flip), HomSpace, Any}

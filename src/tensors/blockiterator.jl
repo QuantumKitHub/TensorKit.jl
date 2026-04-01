@@ -85,7 +85,7 @@ end
 
 function show_blocks(io, iter)
     print(io, "(")
-    join(io, iter, ", ")
+    Base.join(io, iter, ", ")
     print(io, ")")
     return nothing
 end

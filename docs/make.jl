@@ -1,6 +1,16 @@
+# if examples is not the current active environment, switch to it
+if Base.active_project() != joinpath(@__DIR__, "Project.toml")
+    using Pkg
+    Pkg.activate(@__DIR__)
+    Pkg.develop(PackageSpec(; path = joinpath(@__DIR__, "..")))
+    Pkg.resolve()
+    Pkg.instantiate()
+end
+
 using Documenter
 using Random
 using TensorKit
+using TensorKit: FusionTreePair, Index2Tuple
 using TensorKit.TensorKitSectors
 using TensorKit.MatrixAlgebraKit
 using DocumenterInterLinks
@@ -39,6 +49,9 @@ mathengine = MathJax3(
         )
     )
 )
+
+# docstrings don't need `using TensorKit`
+DocMeta.setdocmeta!(TensorKit, :DocTestSetup, :(using TensorKit); recursive = true)
 
 makedocs(;
     modules = [TensorKit, TensorKitSectors],

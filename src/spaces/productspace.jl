@@ -56,17 +56,17 @@ end
 Return the dimensions of the spaces in the tensor product space(s) as a tuple of integers.
 """ dims
 
-dims(P::ProductSpace) = map(dim, P.spaces)
-dim(P::ProductSpace, n::Int) = dim(P.spaces[n])
+dims(P::ProductSpace) = map(dim, P)
+dim(P::ProductSpace, n::Int) = dim(P[n])
 dim(P::ProductSpace) = prod(dims(P))
 
-Base.axes(P::ProductSpace) = map(axes, P.spaces)
-Base.axes(P::ProductSpace, n::Int) = axes(P.spaces[n])
+Base.axes(P::ProductSpace) = map(axes, P)
+Base.axes(P::ProductSpace, n::Int) = axes(P[n])
 
 dual(P::ProductSpace{<:ElementarySpace, 0}) = P
-dual(P::ProductSpace) = ProductSpace(map(dual, reverse(P.spaces)))
+dual(P::ProductSpace) = ProductSpace(map(dual, reverse(P)))
 Base.conj(P::ProductSpace{<:ElementarySpace, 0}) = P
-Base.conj(P::ProductSpace) = ProductSpace(map(conj, P.spaces))
+Base.conj(P::ProductSpace) = ProductSpace(map(conj, P))
 
 function Base.show(io::IO, P::ProductSpace{S}) where {S <: ElementarySpace}
     spaces = P.spaces
@@ -97,7 +97,7 @@ function _sectors(P::ProductSpace{<:ElementarySpace, N}, ::Type{Trivial}) where 
     return OneOrNoneIterator(dim(P) != 0, ntuple(n -> Trivial(), N))
 end
 function _sectors(P::ProductSpace{<:ElementarySpace, N}, ::Type{<:Sector}) where {N}
-    return product(map(sectors, P.spaces)...)
+    return product(map(sectors, P)...)
 end
 
 """
@@ -177,8 +177,8 @@ in the different spaces that make up the `ProductSpace` instance into the couple
 """
 function fusiontrees(P::ProductSpace{S, N}, blocksector::I) where {S, N, I}
     I == sectortype(S) || throw(SectorMismatch())
-    uncoupled = map(sectors, P.spaces)
-    isdualflags = map(isdual, P.spaces)
+    uncoupled = map(sectors, P)
+    isdualflags = map(isdual, P)
     return FusionTreeIterator(uncoupled, blocksector, isdualflags)
 end
 
@@ -217,6 +217,18 @@ Base.:(==)(P1::ProductSpace, P2::ProductSpace) = false
 
 # hashing S is necessary to have different hashes for empty productspace with different S
 Base.hash(P::ProductSpace{S}, h::UInt) where {S} = hash(P.spaces, hash(S, h))
+
+function sectorequal(P₁::V, P₂::V) where {V <: ProductSpace}
+    return all(sectorequal(w₁, w₂) for (w₁, w₂) in zip(P₁, P₂))
+end
+sectorequal(::ProductSpace, ::ProductSpace) = false
+
+function sectorhash(P::ProductSpace, h::UInt)
+    for w in P
+        h = sectorhash(w, h)
+    end
+    return h
+end
 
 # Default construction from product of spaces
 #---------------------------------------------
@@ -343,6 +355,8 @@ Base.IteratorEltype(::Type{<:ProductSpace}) = Base.HasEltype()
 Base.IteratorSize(::Type{<:ProductSpace}) = Base.HasLength()
 
 Base.reverse(P::ProductSpace) = ProductSpace(reverse(P.spaces))
+
+Base.map(f, P::ProductSpace) = map(f, P.spaces)
 
 # Promotion and conversion
 # ------------------------
