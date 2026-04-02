@@ -8,11 +8,12 @@ module TensorKit
 # Exports
 #---------
 # Reexport common sector types:
-export Sector, AbstractIrrep, Irrep
+export Sector, AbstractIrrep, Irrep, GroupElement, TimeReversed
 export FusionStyle, UniqueFusion, MultipleFusion, MultiplicityFreeFusion, SimpleFusion, GenericFusion
 export UnitStyle, SimpleUnit, GenericUnit
 export BraidingStyle, SymmetricBraiding, Bosonic, Fermionic, Anyonic, NoBraiding, HasBraiding
-export Trivial, Z2Irrep, Z3Irrep, Z4Irrep, ZNIrrep, U1Irrep, SU2Irrep, CU1Irrep
+export Trivial, Z2Irrep, Z3Irrep, Z4Irrep, ZNIrrep, LargeZNIrrep
+export ZNElement, Z2Element, Z3Element, Z4Element, DNIrrep, A4Irrep, U1Irrep, SU2Irrep, CU1Irrep
 export ProductSector, TimeReversed
 export FermionParity, FermionNumber, FermionSpin
 export FibonacciAnyon, IsingAnyon, IsingBimodule
@@ -42,7 +43,8 @@ export infimum, supremum, isisomorphic, ismonomorphic, isepimorphic
 # Reexport methods for sectors and properties thereof
 export sectortype, sectors, hassector
 export unit, rightunit, leftunit, allunits, isunit, otimes
-export Nsymbol, Fsymbol, Rsymbol, Bsymbol, frobenius_schur_phase, frobenius_schur_indicator, twist, sectorscalartype, deligneproduct
+export Nsymbol, Fsymbol, Rsymbol, Bsymbol, frobenius_schur_phase, frobenius_schur_indicator, twist, fusiontensor
+export sectorscalartype, deligneproduct
 
 # Export methods for fusion trees
 export fusiontrees, braid, permute, transpose
@@ -52,7 +54,7 @@ export fusiontrees, braid, permute, transpose
 
 # some unicode
 export ⊕, ⊗, ⊖, ×, ⊠, ℂ, ℝ, ℤ, ←, →, ≾, ≿, ≅, ≺, ≻
-export ℤ₂, ℤ₃, ℤ₄, U₁, SU, SU₂, CU₁
+export ℤ₂, ℤ₃, ℤ₄, D₃, D₄, A₄, U₁, SU, SU₂, CU₁
 export fℤ₂, fU₁, fSU₂
 export ℤ₂Space, ℤ₃Space, ℤ₄Space, U₁Space, CU₁Space, SU₂Space
 

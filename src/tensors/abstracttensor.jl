@@ -212,7 +212,6 @@ See also [`domain`](@ref) and [`space`](@ref).
 
 codomain(t::AbstractTensorMap) = codomain(space(t))
 codomain(t::AbstractTensorMap, i) = codomain(t)[i]
-target(t::AbstractTensorMap) = codomain(t) # categorical terminology
 
 @doc """
     domain(t::AbstractTensorMap{T,S,N₁,N₂}) -> ProductSpace{S,N₂}
@@ -226,7 +225,6 @@ See also [`codomain`](@ref) and [`space`](@ref).
 
 domain(t::AbstractTensorMap) = domain(space(t))
 domain(t::AbstractTensorMap, i) = domain(t)[i]
-source(t::AbstractTensorMap) = domain(t) # categorical terminology
 
 @doc """
     numout(x) -> Int

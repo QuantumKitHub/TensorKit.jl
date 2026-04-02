@@ -17,14 +17,14 @@ using .TestSetup
 spacelist = if get(ENV, "CI", "false") == "true"
     println("Detected running on CI")
     if Sys.iswindows()
-        (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VIB_diag)
+        (Vtr, Vℤ₃, VA₄, Vfib, VU₁, VfU₁, VCU₁, VSU₂, VIB_diag)
     elseif Sys.isapple()
-        (Vtr, Vℤ₃, VfU₁, VfSU₂, VIB_M)
+        (Vtr, Vℤ₃, VA₄, Vfib, VfU₁, VfSU₂, VIB_M)
     else
-        (Vtr, VU₁, VCU₁, VSU₂, VfSU₂, VIB_diag, VIB_M)
+        (Vtr, VA₄, VU₁, VCU₁, VSU₂, VfSU₂, VIB_diag, VIB_M)
     end
 else
-    (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VIB_diag, VIB_M)
+    (Vtr, Vℤ₃, VA₄, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VIB_diag, VIB_M)
 end
 
 eltypes = (Float32, ComplexF64)
