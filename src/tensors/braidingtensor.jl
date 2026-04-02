@@ -282,8 +282,8 @@ function planarcontract!(
         tB′ = TensorMap(B)
         tB = TensorMapWithStorage{eltype(B), similarstoragetype(A, eltype(B)), spacetype(tB′), numout(tB′), numin(tB′)}(tB′)
         return planarcontract!(
-        C, A, (oindA, cindA), tB, (cindB, oindB), (p1, p2),
-        α, β, backend, allocator
+            C, A, (oindA, cindA), tB, (cindB, oindB), (p1, p2),
+            α, β, backend, allocator
         )
     end
 

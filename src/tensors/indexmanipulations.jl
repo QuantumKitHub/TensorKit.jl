@@ -345,13 +345,12 @@ See also [`insertrightunit`](@ref insertrightunit(::AbstractTensorMap, ::Val{i})
 function insertleftunit(
         t::AbstractTensorMap, ::Val{i} = Val(numind(t) + 1);
         copy::Bool = false, conj::Bool = false, dual::Bool = false,
-        storage_type::Type = storagetype(t)
     ) where {i}
     W = insertleftunit(space(t), Val(i); conj, dual)
     if t isa TensorMap
         return TensorMapWithStorage{scalartype(t), storagetype(t)}(copy ? Base.copy(t.data) : t.data, W)
     else
-        tdst = TensorMapWithStorage{scalartype(t), storage_type}(undef, W)
+        tdst = similar(t, W)
         for (c, b) in blocks(t)
             copy!(block(tdst, c), b)
         end
@@ -375,13 +374,12 @@ See also [`insertleftunit`](@ref insertleftunit(::AbstractTensorMap, ::Val{i}) w
 function insertrightunit(
         t::AbstractTensorMap, ::Val{i} = Val(numind(t));
         copy::Bool = false, conj::Bool = false, dual::Bool = false,
-        storage_type::Type = storagetype(t),
     ) where {i}
     W = insertrightunit(space(t), Val(i); conj, dual)
     if t isa TensorMap
         return TensorMapWithStorage{scalartype(t), storagetype(t)}(copy ? Base.copy(t.data) : t.data, W)
     else
-        tdst = TensorMapWithStorage{scalartype(t), storage_type}(undef, W)
+        tdst = similar(t, W)
         for (c, b) in blocks(t)
             copy!(block(tdst, c), b)
         end
@@ -401,12 +399,12 @@ If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwis
 This operation undoes the work of [`insertleftunit`](@ref insertleftunit(::AbstractTensorMap, ::Val{i}) where {i}) 
 and [`insertrightunit`](@ref insertrightunit(::AbstractTensorMap, ::Val{i}) where {i}).
 """
-function removeunit(t::AbstractTensorMap, ::Val{i}; copy::Bool = false, storage_type::Type = storagetype(t)) where {i}
+function removeunit(t::AbstractTensorMap, ::Val{i}; copy::Bool = false) where {i}
     W = removeunit(space(t), Val(i))
     if t isa TensorMap
-        return TensorMapWithStorage{scalartype(t), storage_type}(copy ? Base.copy(t.data) : t.data, W)
+        return TensorMapWithStorage{scalartype(t), storagetype(t)}(copy ? Base.copy(t.data) : t.data, W)
     else
-        tdst = TensorMapWithStorage{scalartype(t), storage_type}(undef, W)
+        tdst = similar(t, W)
         for (c, b) in blocks(t)
             copy!(block(tdst, c), b)
         end

@@ -193,13 +193,13 @@ end
 function LinearAlgebra.mul!(
         tC::CuTensorMap, tA::TensorKit.BraidingTensor, tB::CuTensorMap, α = true, β = false
     )
-    mul!(tC, CUDA.adapt(CuArray, TensorMap(tA)), tB, α, β)
+    return mul!(tC, CUDA.adapt(CuArray, TensorMap(tA)), tB, α, β)
 end
 
 function LinearAlgebra.mul!(
         tC::CuTensorMap, tA::CuTensorMap, tB::TensorKit.BraidingTensor, α = true, β = false
     )
-    mul!(tC, tA, CUDA.adapt(CuArray, TensorMap(tB)), α, β)
+    return mul!(tC, tA, CUDA.adapt(CuArray, TensorMap(tB)), α, β)
 end
 
 @inline TensorKit.promote_storagetype(::Type{T}, A::CuTensorMap, B::TensorKit.BraidingTensor) where {T <: Number} = similarstoragetype(A, T)
