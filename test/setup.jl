@@ -7,6 +7,7 @@ export random_fusion
 export sectorlist
 export test_dim_isapprox
 export Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, Vfib, VIB_diag, VIB_M
+export VA₄, VZ2ω
 
 using Random
 using Test: @test
