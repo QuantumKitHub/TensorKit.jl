@@ -66,14 +66,16 @@ for V in spacelist
                 @test typeof(t) == TensorMap{T, spacetype(t), 5, 0, CuVector{T, CUDA.DeviceMemory}}
                 # blocks
                 bs = @constinferred blocks(t)
-                (c, b1), state = @constinferred Nothing iterate(bs)
-                @test c == first(blocksectors(W))
-                next = @constinferred Nothing iterate(bs, state)
-                b2 = @constinferred block(t, first(blocksectors(t)))
-                @test b1 == b2
-                @test eltype(bs) === Pair{typeof(c), typeof(b1)}
-                @test typeof(b1) === TensorKit.blocktype(t)
-                @test typeof(c) === sectortype(t)
+                if !isempty(blocksectors(t)) # multifusion space ending on module gives empty data
+                    (c, b1), state = @constinferred Nothing iterate(bs)
+                    @test c == first(blocksectors(W))
+                    next = @constinferred Nothing iterate(bs, state)
+                    b2 = @constinferred block(t, first(blocksectors(t)))
+                    @test b1 == b2
+                    @test eltype(bs) === Pair{typeof(c), typeof(b1)}
+                    @test typeof(b1) === TensorKit.blocktype(t)
+                    @test typeof(c) === sectortype(t)
+                end
             end
         end
         @timedtestset "Conversion to/from host" begin
@@ -130,14 +132,16 @@ for V in spacelist
                 @test domain(t) == domain(W)
                 # blocks for adjoint
                 bs = @constinferred blocks(t')
-                (c, b1), state = @constinferred Nothing iterate(bs)
-                @test c == first(blocksectors(W'))
-                next = @constinferred Nothing iterate(bs, state)
-                b2 = @constinferred block(t', first(blocksectors(t')))
-                @test b1 == b2
-                @test eltype(bs) === Pair{typeof(c), typeof(b1)}
-                @test typeof(b1) === TensorKit.blocktype(t')
-                @test typeof(c) === sectortype(t)
+                if !isempty(blocksectors(t')) # multifusion space ending on module gives empty data
+                    (c, b1), state = @constinferred Nothing iterate(bs)
+                    @test c == first(blocksectors(W'))
+                    next = @constinferred Nothing iterate(bs, state)
+                    b2 = @constinferred block(t', first(blocksectors(t')))
+                    @test b1 == b2
+                    @test eltype(bs) === Pair{typeof(c), typeof(b1)}
+                    @test typeof(b1) === TensorKit.blocktype(t')
+                    @test typeof(c) === sectortype(t)
+                end
                 # linear algebra
                 @test isa(@constinferred(norm(t)), real(T))
                 @test norm(t)^2 ≈ dot(t, t)
