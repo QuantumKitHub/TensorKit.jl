@@ -51,7 +51,7 @@ istestfile(fn) = endswith(fn, ".jl") && !contains(fn, "setup")
         CUDA.functional() || continue
         @time include("cuda/tensors.jl")
         @time include("cuda/factorizations.jl")
-        @time include("cuda/braidingtensor.jl")
+        @time include("cuda/planar.jl")
     elseif is_buildkite
         continue
     end
