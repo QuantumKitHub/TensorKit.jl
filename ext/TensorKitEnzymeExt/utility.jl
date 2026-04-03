@@ -70,7 +70,8 @@ end
 @inline EnzymeRules.inactive_type(::Type{<:TensorKit.GenericTreeTransformer}) = true
 @inline EnzymeRules.inactive_type(::Type{<:TensorKit.VectorSpace}) = true
 
-@inline EnzymeRules.inactive(::typeof(TensorKit.fusionblockstructure), arg::Any) = nothing
+@inline EnzymeRules.inactive(::typeof(TensorKit.sectorstructure), ::Any) = nothing
+@inline EnzymeRules.inactive(::typeof(TensorKit.degeneracystructure), ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.select), s::HomSpace, i::Index2Tuple) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.flip), s::HomSpace, i::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.permute), s::HomSpace, i::Index2Tuple) = nothing
