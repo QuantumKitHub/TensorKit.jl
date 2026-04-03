@@ -51,8 +51,8 @@ function EnzymeRules.reverse(
 
     !isa(A, Const) && !isa(C, Const) && project_mul!(A.dval, C.dval, Bval', conj(α.val))
     !isa(B, Const) && !isa(C, Const) && project_mul!(B.dval, Aval', C.dval, conj(α.val))
-    Δαr = pullback_dα(α, C, AB) 
-    Δβr = pullback_dβ(β, C, Cval) 
+    Δαr = pullback_dα(α, C, AB)
+    Δβr = pullback_dβ(β, C, Cval)
     !isa(C, Const) && pullback_dC!(C.dval, β.val)
 
     return (nothing, nothing, nothing, Δαr, Δβr)

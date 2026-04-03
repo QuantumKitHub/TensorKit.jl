@@ -62,8 +62,8 @@ function EnzymeRules.reverse(
     Aval = something(cacheA, A.val)
     Bval = something(cacheB, B.val)
 
-    Δα = pullback_dα(α, C, AB) 
-    Δβ = pullback_dβ(β, C, Cval) 
+    Δα = pullback_dα(α, C, AB)
+    Δβ = pullback_dβ(β, C, Cval)
 
     if !isa(A, Const)
         blas_contract_pullback_ΔA!(
@@ -179,8 +179,8 @@ function EnzymeRules.reverse(
     Aval = something(A_cache, A.val)
     Cval = something(C_cache, C.val)
     !isa(A, Const) && !isa(C, Const) && trace_permute_pullback_ΔA!(A.dval, C.dval, Aval, p.val, q.val, α.val, backend.val)
-    Δαr = pullback_dα(α, C, At) 
-    Δβr = pullback_dβ(β, C, Cval) 
+    Δαr = pullback_dα(α, C, At)
+    Δβr = pullback_dβ(β, C, Cval)
     !isa(C, Const) && pullback_dC!(C.dval, β.val)
     return nothing, nothing, nothing, nothing, Δαr, Δβr, nothing
 end
