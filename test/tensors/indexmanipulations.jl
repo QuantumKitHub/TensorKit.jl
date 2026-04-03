@@ -16,7 +16,7 @@ for V in spacelist
     @timedtestset "Tensors with symmetry: $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
         @timedtestset "Trivial space insertion and removal" begin
-            W = V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5
+            W = V1 ⊗ V2 ← (V3 ⊗ V4 ⊗ V5)'
             for T in (Float32, ComplexF64)
                 t = @constinferred rand(T, W)
                 t2 = @constinferred insertleftunit(t)
@@ -97,8 +97,8 @@ for V in spacelist
             end
         end
         (BraidingStyle(I) isa HasBraiding) && @timedtestset "Index flipping: test flipping inverse" begin
-            t = rand(ComplexF64, V1 ⊗ V1' ← V1' ⊗ V1)
-            for i in 1:4
+            t = rand(ComplexF64, V1 ⊗ V2 ⊗ V3 ← (V4 ⊗ V5)')
+            for i in 1:5
                 @test t ≈ flip(flip(t, i), i; inv = true)
                 @test t ≈ flip(flip(t, i; inv = true), i)
             end

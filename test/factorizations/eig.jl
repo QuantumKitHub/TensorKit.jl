@@ -17,8 +17,6 @@ for V in spacelist
     @timedtestset "Factorizations with symmetry: $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
         W = V1 ⊗ V2
-        @assert !isempty(blocksectors(W))
-        @assert !isempty(intersect(blocksectors(V4), blocksectors(W)))
 
         @testset "Eigenvalue decomposition" begin
             for T in eltypes,

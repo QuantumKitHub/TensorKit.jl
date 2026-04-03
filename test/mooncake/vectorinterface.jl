@@ -15,8 +15,8 @@ eltypes = (Float64, ComplexF64)
     atol = default_tol(T)
     rtol = default_tol(T)
 
-    C = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
-    A = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
+    C = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
+    A = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
     α = randn(T)
     β = randn(T)
 

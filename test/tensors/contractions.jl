@@ -97,8 +97,8 @@ for V in spacelist
                     t1 = rand(T, V2 ⊗ V3 ⊗ V1, V1 ⊗ V2)
                     t2 = rand(T, V2 ⊗ V1 ⊗ V3, V1 ⊗ V1)
                 else
-                    t1 = rand(T, V3 ⊗ V4 ⊗ V5, V1 ⊗ V2)
-                    t2 = rand(T, V5' ⊗ V4' ⊗ V3', V2' ⊗ V1')
+                    t1 = rand(T, V3 ⊗ V4 ⊗ V5, (V1 ⊗ V2)')
+                    t2 = rand(T, (V3 ⊗ V4 ⊗ V5)', V1 ⊗ V2)
                 end
                 t = @constinferred (t1 ⊗ t2)
                 @test norm(t) ≈ norm(t1) * norm(t2)
@@ -132,13 +132,8 @@ for V in spacelist
         end
         @timedtestset "Tensor absorption" begin
             # absorbing small into large
-            if UnitStyle(I) isa SimpleUnit || !isempty(blocksectors(V2 ⊗ V3))
-                t1 = zeros(V1 ⊕ V1, V2 ⊗ V3)
-                t2 = rand(V1, V2 ⊗ V3)
-            else
-                t1 = zeros(V1 ⊕ V2, V3 ⊗ V4 ⊗ V5)
-                t2 = rand(V1, V3 ⊗ V4 ⊗ V5)
-            end
+            t1 = zeros((V1 ⊕ V1) ⊗ (V2 ⊕ V2), (V3 ⊗ (V4 ⊕ V4) ⊗ V5)')
+            t2 = rand(V1 ⊗ V2, (V3 ⊗ V4 ⊗ V5)')
             t3 = @constinferred absorb(t1, t2)
             @test norm(t3) ≈ norm(t2)
             @test norm(t1) == 0
@@ -147,13 +142,8 @@ for V in spacelist
             @test t3 ≈ t4
 
             # absorbing large into small
-            if UnitStyle(I) isa SimpleUnit || !isempty(blocksectors(V2 ⊗ V3))
-                t1 = rand(V1 ⊕ V1, V2 ⊗ V3)
-                t2 = zeros(V1, V2 ⊗ V3)
-            else
-                t1 = rand(V1 ⊕ V2, V3 ⊗ V4 ⊗ V5)
-                t2 = zeros(V1, V3 ⊗ V4 ⊗ V5)
-            end
+            t1 = rand((V1 ⊕ V1) ⊗ (V2 ⊕ V2), (V3 ⊗ (V4 ⊕ V4) ⊗ V5)')
+            t2 = zeros(V1 ⊗ V2, (V3 ⊗ V4 ⊗ V5)')
             t3 = @constinferred absorb(t2, t1)
             @test norm(t3) < norm(t1)
             @test norm(t2) == 0

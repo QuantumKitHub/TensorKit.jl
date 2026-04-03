@@ -161,20 +161,26 @@ _isone(x; kwargs...) = isapprox(x, one(x); kwargs...)
 
 
 uniquefusionsectorlist = (
-    Z2Irrep, Z3Irrep, Z4Irrep, Z3Irrep ⊠ Z4Irrep,
-    U1Irrep, FermionParity, FermionParity ⊠ FermionParity, FermionNumber,
-    Z3Element{1}, ZNElement{5, 2},
+    Z2Irrep, Z3Irrep, Z4Irrep, Z3Irrep ⊠ Z4Irrep, U1Irrep,
+    FermionParity, FermionParity ⊠ FermionParity, FermionNumber, # fermionic
+    Z4Element{2}, ZNElement{6, 3}, # complex F symbols and anyonic braiding
+    Z3Element{1}, ZNElement{5, 2}, # complex F symbols, no braiding
 )
 simplefusionsectorlist = (
     CU1Irrep, SU2Irrep, FibonacciAnyon, IsingAnyon,
     FermionParity ⊠ U1Irrep ⊠ SU2Irrep, FermionParity ⊠ SU2Irrep ⊠ SU2Irrep,
-    Z3Element{1} ⊠ FibonacciAnyon ⊠ FibonacciAnyon,
+    ZNElement{6, 3} ⊠ SU2Irrep, # complex F symbols, anyonic braiding
+    Z3Element{1} ⊠ FibonacciAnyon ⊠ FibonacciAnyon, # complex F symbols, no braiding
 )
 genericfusionsectorlist = (
-    A4Irrep, A4Irrep ⊠ FermionParity, A4Irrep ⊠ SU2Irrep, A4Irrep ⊠ Z3Element{2}, A4Irrep ⊠ A4Irrep,
+    A4Irrep, A4Irrep ⊠ FermionParity, A4Irrep ⊠ SU2Irrep, A4Irrep ⊠ A4Irrep,
+    A4Irrep ⊠ Z4Element{2}, # complex F symbols, anyonic braiding
+    A4Irrep ⊠ Z3Element{1}, # complex F symbols, no braiding
 )
 multifusionsectorlist = (
-    IsingBimodule, IsingBimodule ⊠ SU2Irrep, IsingBimodule ⊠ IsingBimodule, IsingBimodule ⊠ Z3Element{1}, IsingBimodule ⊠ FibonacciAnyon ⊠ A4Irrep,
+    IsingBimodule, IsingBimodule ⊠ SU2Irrep, IsingBimodule ⊠ IsingBimodule,
+    IsingBimodule ⊠ FibonacciAnyon ⊠ A4Irrep, # generic fusion
+    IsingBimodule ⊠ A4Irrep ⊠ Z3Element{1}, # generic fusion and complex F symbols
 )
 
 sectorlist = (
@@ -186,6 +192,24 @@ sectorlist = (
 fast_sectorlist = (Z2Irrep, SU2Irrep, FermionParity ⊠ U1Irrep ⊠ SU2Irrep, FibonacciAnyon)
 
 # spaces
+# space design considerations:
+# 1.    V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5 should exist (in multifusion case) in such a way that
+#       V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5 ← () is non-empty, i.e. leftunitspace(V1) == rightunitspace(V5)
+#       and blockdim(V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5, leftunit(first(sectors(V1)))) > 0:
+#       this means that we can also make consistent maps in the homspaces that correspond to
+#       repartitions and transpositions thereof,
+#       i.e. V1 ⊗ V2 ← (V3 ⊗ V4 ⊗ V5)', V1 ⊗ V2 ⊗ V3 ← (V4 ⊗ V5)', V2 ⊗ V3 ⊗ V4 ← V1' ⊗ V5', etc,
+#       as well as any endomorphism spaces V1 ⊗ V2 ← V1 ⊗ V2, V1 ⊗ V2 ⊗ V3 ← V1 ⊗ V2 ⊗ V3, etc.
+#
+# 2.    In order to construct isometries (QR etc), it is nice to have that
+#       V1 ⊗ V2 ⊗ V3 ← (V4 ⊗ V5)' has tall blocks (few columns than rows), i.e. V1 ⊗ V2 ⊗ V3 ≿ (V4 ⊗ V5)'
+#       and that V1 ⊗ V2 ← (V3 ⊗ V4 ⊗ V5)' has wide blocks (few rows than columns), i.e. V1 ⊗ V2 ≾ (V3 ⊗ V4 ⊗ V5)'.
+#
+# 3.    Tensor manipulations can depend on FusionStyle(I), BraidingStyle(I), UnitStyle(I) and sectorscalartype(I),
+#       so it is good to have a variety of sectors in the spacelist to test different code paths. We also definitely
+#       want to cover the most common cases: trivial symmetry, fermionic parity, U(1) charge, SU(2), Hubbard-like
+
+
 Vtr = (ℂ^2, (ℂ^3)', ℂ^4, ℂ^3, (ℂ^2)')
 Vℤ₂ = (
     Vect[Z2Irrep](0 => 2, 1 => 1),
@@ -276,10 +300,10 @@ VIB_diag = (
 # while V1 ⊗ V2 ← V4 isn't empty (factorizations)
 VIB_M = (
     Vect[IsingBimodule](C0 => 1, C1 => 2),
-    Vect[IsingBimodule](M => 3),
+    Vect[IsingBimodule](Mop => 2)',
+    Vect[IsingBimodule](D0 => 3, D1 => 4)',
+    Vect[IsingBimodule](M => 2)',
     Vect[IsingBimodule](C0 => 2, C1 => 3),
-    Vect[IsingBimodule](M => 4),
-    Vect[IsingBimodule](D0 => 3, D1 => 4),
 )
 
 # Spacelist selection
@@ -288,26 +312,26 @@ function default_spacelist(fast_tests::Bool)
     fast_tests && return (Vtr, Vℤ₃, VSU₂)
     if get(ENV, "CI", "false") == "true"
         println("Detected running on CI")
-        Sys.iswindows() && return (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VIB_diag)
-        Sys.isapple()   && return (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VfU₁, VfSU₂, VSU₂U₁, VIB_M)
-        return (Vtr, Vℤ₂, Vfℤ₂, VU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M)
+        Sys.iswindows() && return (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VIB_M) #VIB_diag)
+        Sys.isapple()   && return (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VfU₁, VfSU₂, VSU₂U₁, VIB_M) #VIB_M)
+        return (Vtr, Vℤ₂, Vfℤ₂, VU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_M) #VIB_M)
     end
-    return (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_diag, VIB_M)
+    return (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_M) #VIB_diag, VIB_M)
 end
 
 function factorization_spacelist(fast_tests::Bool)
     fast_tests && return (Vtr, Vℤ₃, VSU₂)
     if get(ENV, "CI", "false") == "true"
         println("Detected running on CI")
-        Sys.iswindows() && return (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VIB_diag)
-        Sys.isapple()   && return (Vtr, Vℤ₃, VfU₁, VfSU₂, VIB_M)
-        return (Vtr, VU₁, VCU₁, VSU₂, VfSU₂, VIB_diag, VIB_M)
+        Sys.iswindows() && return (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VIB_M) #VIB_diag)
+        Sys.isapple()   && return (Vtr, Vℤ₃, VfU₁, VfSU₂, VIB_M) #VIB_M)
+        return (Vtr, VU₁, VCU₁, VSU₂, VfSU₂, VIB_M) #VIB_M)
     end
-    return (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VIB_diag, VIB_M)
+    return (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VIB_M) #VIB_diag, VIB_M)
 end
 
 function ad_spacelist(fast_tests::Bool)
-    return fast_tests ? (Vtr, Vfℤ₂, Vfib) : (Vtr, Vℤ₂, Vfℤ₂, VSU₂, Vfib)
+    return fast_tests ? (Vtr, Vfℤ₂, Vfib) : (Vtr, VU₁, Vfℤ₂, VSU₂, Vfib)
 end
 
 # Gauge-fixing tangents for AD factorization tests

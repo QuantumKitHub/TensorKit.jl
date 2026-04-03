@@ -48,7 +48,7 @@ for V in spacelist
             end
         end
         @timedtestset "Tensor Dict conversion" begin
-            W = V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5
+            W = V1 ⊗ V2 ← (V3 ⊗ V4 ⊗ V5)'
             for T in (Int, Float32, ComplexF64)
                 t = @constinferred rand(T, W)
                 d = convert(Dict, t)

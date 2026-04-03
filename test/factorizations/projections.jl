@@ -17,46 +17,6 @@ for V in spacelist
     @timedtestset "Factorizations with symmetry: $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
         W = V1 ⊗ V2
-        @assert !isempty(blocksectors(W))
-        @assert !isempty(intersect(blocksectors(V4), blocksectors(W)))
-
-        @testset "Condition number and rank" begin
-            for T in eltypes,
-                    t in (
-                        rand(T, W, W), rand(T, W, W)',
-                        rand(T, W, V4), rand(T, V4, W),
-                        rand(T, W, V4)', rand(T, V4, W)',
-                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
-                    )
-
-                d1, d2 = dim(codomain(t)), dim(domain(t))
-                r = rank(t)
-                @test r == min(d1, d2)
-                @test typeof(r) == typeof(d1)
-                M = left_null(t)
-                @test @constinferred(rank(M)) + r ≈ d1
-                Mᴴ = right_null(t)
-                @test rank(Mᴴ) + r ≈ d2
-            end
-            for T in eltypes
-                u = unitary(T, V1 ⊗ V2, V1 ⊗ V2)
-                @test @constinferred(cond(u)) ≈ one(real(T))
-                @test @constinferred(rank(u)) == dim(V1 ⊗ V2)
-
-                t = rand(T, zerospace(V1), W)
-                @test rank(t) == 0
-                t2 = rand(T, zerospace(V1) * zerospace(V2), zerospace(V1) * zerospace(V2))
-                @test rank(t2) == 0
-                @test cond(t2) == 0.0
-            end
-            for T in eltypes, t in (rand(T, W, W), rand(T, W, W)')
-                project_hermitian!(t)
-                vals = @constinferred LinearAlgebra.eigvals(t)
-                λmax = maximum(s -> maximum(abs, s), values(vals))
-                λmin = minimum(s -> minimum(abs, s), values(vals))
-                @test cond(t) ≈ λmax / λmin
-            end
-        end
 
         @testset "Hermitian projections" begin
             for T in eltypes,
@@ -92,8 +52,7 @@ for V in spacelist
         @testset "Isometric projections" begin
             for T in eltypes,
                     t in (
-                        randn(T, W, W), randn(T, W, W)',
-                        randn(T, W, V4), randn(T, V4, W)',
+                        rand(T, W, W), rand(T, W, W)', rand(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)'), rand(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5))',
                     )
                 t2 = project_isometric(t)
                 @test isisometric(t2)

@@ -15,7 +15,7 @@ for V in spacelist
     @timedtestset "Tensors with symmetry: $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
         @timedtestset "Basic linear algebra" begin
-            W = V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5
+            W = V1 ⊗ V2 ← (V3 ⊗ V4 ⊗ V5)'
             for T in (Float32, ComplexF64)
                 t = @constinferred rand(T, W)
                 @test scalartype(t) == T
@@ -68,7 +68,7 @@ for V in spacelist
         end
         if hasfusiontensor(I)
             @timedtestset "Basic linear algebra: test via conversion" begin
-                W = V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5
+                W = V1 ⊗ V2 ⊗ V3 ← (V4 ⊗ V5)'
                 for T in (Float32, ComplexF64)
                     t = rand(T, W)
                     t2 = @constinferred rand!(similar(t))
@@ -94,7 +94,7 @@ for V in spacelist
         end
         @timedtestset "Multiplication and inverse: test compatibility" begin
             W1 = V1 ⊗ V2 ⊗ V3
-            W2 = V4 ⊗ V5
+            W2 = (V4 ⊗ V5)'
             for T in (Float64, ComplexF64)
                 t1 = rand(T, W1, W1)
                 t2 = rand(T, W2 ← W2)
@@ -113,7 +113,7 @@ for V in spacelist
         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
             @timedtestset "Multiplication and inverse: test via conversion" begin
                 W1 = V1 ⊗ V2 ⊗ V3
-                W2 = V4 ⊗ V5
+                W2 = (V4 ⊗ V5)'
                 for T in (Float32, Float64, ComplexF32, ComplexF64)
                     t1 = rand(T, W1 ← W1)
                     t2 = rand(T, W2, W2)
@@ -148,7 +148,7 @@ for V in spacelist
             end
         end
         @timedtestset "diag/diagm" begin
-            W = V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5
+            W = V1 ⊗ V2 ← (V3 ⊗ V4 ⊗ V5)'
             t = randn(ComplexF64, W)
             d = LinearAlgebra.diag(t)
             D = LinearAlgebra.diagm(codomain(t), domain(t), d)
@@ -209,14 +209,14 @@ for V in spacelist
         end
         @timedtestset "Sylvester equation" begin
             for T in (Float32, ComplexF64)
-                tA = rand(T, V1 ⊗ V3, V1 ⊗ V3)
-                tB = rand(T, V2 ⊗ V4, V2 ⊗ V4)
+                tA = rand(T, V1 ⊗ V2, V1 ⊗ V2)
+                tB = rand(T, (V3 ⊗ V4)', (V3 ⊗ V4)')
                 tA = 3 // 2 * left_polar(tA)[1]
                 tB = 1 // 5 * left_polar(tB)[1]
-                tC = rand(T, V1 ⊗ V3, V2 ⊗ V4)
+                tC = rand(T, V1 ⊗ V2, (V3 ⊗ V4)')
                 t = @constinferred sylvester(tA, tB, tC)
-                @test codomain(t) == V1 ⊗ V3
-                @test domain(t) == V2 ⊗ V4
+                @test codomain(t) == V1 ⊗ V2
+                @test domain(t) == (V3 ⊗ V4)'
                 @test norm(tA * t + t * tB + tC) <
                     (norm(tA) + norm(tB) + norm(tC)) * eps(real(T))^(2 / 3)
                 if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)

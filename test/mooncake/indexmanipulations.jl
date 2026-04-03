@@ -18,7 +18,7 @@ eltypes = (Float64, ComplexF64)
     symmetricbraiding = BraidingStyle(sectortype(eltype(V))) isa SymmetricBraiding
 
     symmetricbraiding && @timedtestset "add_permute!" begin
-        A = randn(T, V[1] ⊗ V[2] ← V[4] ⊗ V[5])
+        A = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
         α = randn(T)
         β = randn(T)
 
@@ -32,7 +32,7 @@ eltypes = (Float64, ComplexF64)
     end
 
     @timedtestset "add_transpose!" begin
-        A = randn(T, V[1] ⊗ V[2] ← V[4] ⊗ V[5])
+        A = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
         α = randn(T)
         β = randn(T)
 
@@ -52,7 +52,7 @@ eltypes = (Float64, ComplexF64)
     end
 
     @timedtestset "add_braid!" begin
-        A = randn(T, V[1] ⊗ V[2] ← V[4] ⊗ V[5])
+        A = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
         α = randn(T)
         β = randn(T)
 
@@ -72,7 +72,7 @@ eltypes = (Float64, ComplexF64)
     end
 
     @timedtestset "flip_n_twist!" begin
-        A = randn(T, V[1] ⊗ V[2] ← V[4] ⊗ V[5])
+        A = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
 
         if !(T <: Real && !(sectorscalartype(sectortype(A)) <: Real))
             Mooncake.TestUtils.test_rule(rng, Core.kwcall, (; inv = false), twist!, A, 1; atol, rtol, mode)
@@ -88,7 +88,7 @@ eltypes = (Float64, ComplexF64)
     end
 
     @timedtestset "insert and remove units" begin
-        A = randn(T, V[1] ⊗ V[2] ← V[4] ⊗ V[5])
+        A = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
 
         for insertunit in (insertleftunit, insertrightunit)
             Mooncake.TestUtils.test_rule(rng, insertunit, A, Val(1); atol, rtol, mode)

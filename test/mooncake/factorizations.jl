@@ -13,7 +13,6 @@ rng = Random.default_rng()
 spacelist = ad_spacelist(fast_tests)
 eltypes = (Float64, ComplexF64)
 
-
 @timedtestset "Mooncake - Factorizations: $(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes
     atol = default_tol(T)
     rtol = default_tol(T)
@@ -31,7 +30,7 @@ eltypes = (Float64, ComplexF64)
         # TODO:
         # Mooncake.TestUtils.test_rule(rng, qr_null, A; atol, rtol, mode, is_primitive = false)
 
-        A = randn(T, V[1] ⊗ V[2] ← V[1])
+        A = randn(T, V[1] ⊗ V[2] ⊗ V[3] ← (V[4] ⊗ V[5])')
 
         Mooncake.TestUtils.test_rule(rng, qr_compact, A; atol, rtol, mode, is_primitive = false)
 
@@ -57,7 +56,7 @@ eltypes = (Float64, ComplexF64)
         # TODO:
         # Mooncake.TestUtils.test_rule(rng, lq_null, A; atol, rtol, mode, is_primitive = false)
 
-        A = randn(T, V[1] ⊗ V[2] ← V[1])
+        A = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
 
         Mooncake.TestUtils.test_rule(rng, lq_compact, A; atol, rtol, mode, is_primitive = false)
 
@@ -86,7 +85,7 @@ eltypes = (Float64, ComplexF64)
     end
 
     @timedtestset "Singular value decomposition" begin
-        for t in (randn(T, V[1] ← V[1]), randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4]))
+        for t in (randn(T, V[1] ← V[1]), randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])'))
             USVᴴ = svd_compact(t)
             ΔUSVᴴ = Mooncake.randn_tangent(rng, USVᴴ)
             remove_svdgauge_dependence!(ΔUSVᴴ[1], ΔUSVᴴ[3], USVᴴ...)

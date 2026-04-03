@@ -172,5 +172,91 @@ using TensorKitSectors
             end
         end
     end
+
+    BraidingStyle(I) isa HasBraiding && @testset "Double fusion tree: permutation and braiding" begin
+        for n in 0:(2N)
+            p = (randperm(2 * N)...,)
+            p1, p2 = p[1:n], p[(n + 1):(2N)]
+            ip = invperm(p)
+            ip1, ip2 = ip[1:N], ip[(N + 1):(2N)]
+            levels = ntuple(identity, 2N)
+            l1, l2 = levels[1:N], levels[(N + 1):(2N)]
+            ilevels = TupleTools.getindices(levels, p)
+            il1, il2 = ilevels[1:n], ilevels[(n + 1):(2N)]
+
+            if BraidingStyle(I) isa SymmetricBraiding
+                dst, U = @constinferred TensorKit.permute(src, (p1, p2))
+            else
+                dst, U = @constinferred TensorKit.braid(src, (p1, p2), (l1, l2))
+            end
+
+            # check norm-preserving
+            if FusionStyle(I) isa UniqueFusion
+                @test abs(U) ≈ 1
+            else
+                dim1 = map(fusiontrees(src)) do (f1, f2)
+                    return dim(f1.coupled)
+                end
+                dim2 = map(fusiontrees(dst)) do (f1, f2)
+                    return dim(f1.coupled)
+                end
+                @test vec(sum(abs2.(U) .* dim2; dims = 1)) ≈ dim1
+            end
+
+            # check reversible
+            if BraidingStyle(I) isa SymmetricBraiding
+                dst′, U′ = @constinferred TensorKit.permute(dst, (ip1, ip2))
+            else
+                dst′, U′ = @constinferred TensorKit.braid(dst, (ip1, ip2), (il1, il2))
+            end
+            @test _isone(U * U′)
+
+            # check fusiontensor compatibility
+            if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
+                if FusionStyle(I) isa UniqueFusion
+                    @test permutedims(A, (p1..., p2...)) ≈ U * fusiontensor(dst)
+                else
+                    A′ = map(Base.Fix2(permutedims, (p1..., p2...)), A)
+                    A″ = map(fusiontensor, fusiontrees(dst))
+                    for (i, Ai) in enumerate(A′)
+                        Aj = sum(A″ .* U[:, i])
+                        @test Ai ≈ Aj
+                    end
+                end
+            end
+        end
+    end
+
+    @testset "Double fusion tree: planar trace" begin
+        if FusionStyle(I) isa UniqueFusion
+            f1, f1 = src
+            dst, U = transpose((f1, f1), ((N + 1, 1:N..., ((2N):-1:(N + 3))...), (N + 2,)))
+            d1 = zip((dst,), (U,))
+        else
+            f1, f1 = first(fusiontrees(src))
+            src′ = FusionTreeBlock{I}((f1.uncoupled, f1.uncoupled), (f1.isdual, f1.isdual))
+            dst, U = transpose(src′, ((N + 1, 1:N..., ((2N):-1:(N + 3))...), (N + 2,)))
+            d1 = zip(fusiontrees(dst), U[:, 1])
+        end
+
+        f1front, = TK.split(f1, N - 1)
+        T = sectorscalartype(I)
+        d2 = Dict{typeof((f1front, f1front)), T}()
+        for ((f1′, f2′), coeff′) in d1
+            for ((f1′′, f2′′), coeff′′) in TK.planar_trace(
+                    (f1′, f2′), ((2:N...,), (1, ((2N):-1:(N + 3))...)), ((N + 1,), (N + 2,))
+                )
+                coeff = coeff′ * coeff′′
+                d2[(f1′′, f2′′)] = get(d2, (f1′′, f2′′), zero(coeff)) + coeff
+            end
+        end
+        for ((f1_, f2_), coeff) in d2
+            if (f1_, f2_) == (f1front, f1front)
+                @test coeff ≈ dim(f1.coupled) / dim(f1front.coupled)
+            else
+                @test abs(coeff) < 1.0e-12
+            end
+        end
+    end
     TK.empty_globalcaches!()
 end
