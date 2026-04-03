@@ -10,7 +10,7 @@ using TensorKit.Factorizations
 using TensorKit.Strided
 using TensorKit.Factorizations: AbstractAlgorithm
 using TensorKit: SectorDict, tensormaptype, scalar, similarstoragetype, AdjointTensorMap, scalartype, project_symmetric_and_check
-import TensorKit: randisometry, rand, randn
+import TensorKit: randisometry, rand, randn, similarmatrixtype
 
 using TensorKit: MatrixAlgebraKit
 
@@ -18,5 +18,7 @@ using Random
 
 include("cutensormap.jl")
 include("truncation.jl")
+
+TensorKit.similarmatrixtype(::Type{A}) where {T <: Number, A <: CuVector{T}} = CuMatrix{T}
 
 end

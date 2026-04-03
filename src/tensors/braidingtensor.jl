@@ -2,59 +2,80 @@
 # special (2,2) tensor that implements a standard braiding operation
 #====================================================================#
 """
-    struct BraidingTensor{T,S<:IndexSpace} <: AbstractTensorMap{T, S, 2, 2}
-    BraidingTensor(V1::S, V2::S, adjoint::Bool=false) where {S<:IndexSpace}
+    struct BraidingTensor{T,S<:IndexSpace,A<:DenseVector{T}} <: AbstractTensorMap{T, S, 2, 2}
+    BraidingTensor(V1::S, V2::S, ::Type{A}, adjoint::Bool=false) where {S<:IndexSpace, A <: DenseVector{<:Number}}
 
 Specific subtype of [`AbstractTensorMap`](@ref) for representing the braiding tensor that
 braids the first input over the second input; its inverse can be obtained as the adjoint.
 
 It holds that `domain(BraidingTensor(V1, V2)) == V1 ⊗ V2` and
-`codomain(BraidingTensor(V1, V2)) == V2 ⊗ V1`.
+`codomain(BraidingTensor(V1, V2)) == V2 ⊗ V1`. The storage type `TA`
+controls the array type of the braiding tensor used when indexing
+and multiplying with other tensors.
 """
-struct BraidingTensor{T, S} <: AbstractTensorMap{T, S, 2, 2}
+struct BraidingTensor{T, S, A} <: AbstractTensorMap{T, S, 2, 2}
     V1::S
     V2::S
     adjoint::Bool
-    function BraidingTensor{T, S}(V1::S, V2::S, adjoint::Bool = false) where {T, S <: IndexSpace}
-        for a in sectors(V1)
-            for b in sectors(V2)
-                for c in (a ⊗ b)
-                    Nsymbol(a, b, c) == Nsymbol(b, a, c) ||
-                        throw(ArgumentError("Cannot define a braiding between $a and $b"))
-                end
-            end
+    function BraidingTensor{T, S}(V1::S, V2::S, ::Type{A}, adjoint::Bool = false) where {T, S <: IndexSpace, A <: DenseVector{T}}
+        for a in sectors(V1), b in sectors(V2), c in (a ⊗ b)
+            Nsymbol(a, b, c) == Nsymbol(b, a, c) ||
+                throw(ArgumentError("Cannot define a braiding between $a and $b"))
         end
-        return new{T, S}(V1, V2, adjoint)
+        return new{T, S, A}(V1, V2, adjoint)
         # partial construction: only construct rowr and colr when needed
     end
 end
+function BraidingTensor{T}(V1::S, V2::S, A, adjoint::Bool = false) where {T, S <: IndexSpace}
+    return BraidingTensor{T, S}(V1, V2, A, adjoint)
+end
 function BraidingTensor{T}(V1::S, V2::S, adjoint::Bool = false) where {T, S <: IndexSpace}
-    return BraidingTensor{T, S}(V1, V2, adjoint)
+    return BraidingTensor{T, S}(V1, V2, Vector{T}, adjoint)
+end
+function BraidingTensor{T}(V1::IndexSpace, V2::IndexSpace, A, adjoint::Bool = false) where {T}
+    return BraidingTensor{T}(promote(V1, V2)..., A, adjoint)
 end
 function BraidingTensor{T}(V1::IndexSpace, V2::IndexSpace, adjoint::Bool = false) where {T}
-    return BraidingTensor{T}(promote(V1, V2)..., adjoint)
+    return BraidingTensor{T}(V1, V2, Vector{T}, adjoint)
+end
+function BraidingTensor(V1::IndexSpace, V2::IndexSpace, ::Type{A}, adjoint::Bool = false) where {T, A <: DenseVector{T}}
+    return BraidingTensor{T}(promote(V1, V2)..., A, adjoint)
+end
+function BraidingTensor(V1::IndexSpace, V2::IndexSpace, ::Type{T}, adjoint::Bool = false) where {T}
+    return BraidingTensor{T}(promote(V1, V2)..., Vector{T}, adjoint)
 end
 function BraidingTensor(V1::IndexSpace, V2::IndexSpace, adjoint::Bool = false)
     return BraidingTensor(promote(V1, V2)..., adjoint)
 end
 function BraidingTensor(V1::S, V2::S, adjoint::Bool = false) where {S <: IndexSpace}
     T = BraidingStyle(sectortype(S)) isa SymmetricBraiding ? Float64 : ComplexF64
-    return BraidingTensor{T, S}(V1, V2, adjoint)
+    return BraidingTensor{T, S}(V1, V2, Vector{T}, adjoint)
+end
+function BraidingTensor(V1::S, V2::S, ::Type{A}, adjoint::Bool = false) where {S <: IndexSpace, A <: AbstractArray}
+    T = BraidingStyle(sectortype(S)) isa SymmetricBraiding ? Float64 : ComplexF64
+    A′ = similarstoragetype(A, T)
+    return BraidingTensor{T, S}(V1, V2, A′, adjoint)
 end
 function BraidingTensor(V::HomSpace, adjoint::Bool = false)
     domain(V) == reverse(codomain(V)) ||
         throw(SpaceMismatch("Cannot define a braiding on $V"))
     return BraidingTensor(V[2], V[1], adjoint)
 end
+function BraidingTensor(V::HomSpace, ::Type{A}, adjoint::Bool = false) where {A}
+    domain(V) == reverse(codomain(V)) ||
+        throw(SpaceMismatch("Cannot define a braiding on $V"))
+    return BraidingTensor(V[2], V[1], A, adjoint)
+end
 function BraidingTensor{T}(V::HomSpace, adjoint::Bool = false) where {T}
     domain(V) == reverse(codomain(V)) ||
         throw(SpaceMismatch("Cannot define a braiding on $V"))
     return BraidingTensor{T}(V[2], V[1], adjoint)
 end
-function Base.adjoint(b::BraidingTensor{T, S}) where {T, S}
-    return BraidingTensor{T, S}(b.V1, b.V2, !b.adjoint)
+function Base.adjoint(b::BraidingTensor{T, S, A}) where {T, S, A}
+    return BraidingTensor{T, S, A}(b.V1, b.V2, !b.adjoint)
 end
 
+storagetype(b::BraidingTensor{T, S, A}) where {T, S, A} = A
 space(b::BraidingTensor) = b.adjoint ? b.V1 ⊗ b.V2 ← b.V2 ⊗ b.V1 : b.V2 ⊗ b.V1 ← b.V1 ⊗ b.V2
 
 # specializations to ignore the storagetype of BraidingTensor
@@ -115,7 +136,8 @@ end
     d = (dims(codomain(b), f₁.uncoupled)..., dims(domain(b), f₂.uncoupled)...)
     n1 = d[1] * d[2]
     n2 = d[3] * d[4]
-    data = sreshape(StridedView(Matrix{eltype(b)}(undef, n1, n2)), d)
+    data_t = similarmatrixtype(storagetype(b))(undef, (n1, n2))
+    data = sreshape(StridedView(data_t), d)
     fill!(data, zero(eltype(b)))
 
     r = _braiding_factor(f₁, f₂, b.adjoint)
@@ -134,8 +156,10 @@ TensorMap(b::BraidingTensor) = copy!(similar(b), b)
 Base.convert(::Type{TensorMap}, b::BraidingTensor) = TensorMap(b)
 
 Base.complex(b::BraidingTensor{<:Complex}) = b
-function Base.complex(b::BraidingTensor)
-    return BraidingTensor{complex(scalartype(b))}(space(b), b.adjoint)
+function Base.complex(b::BraidingTensor{T, S, A}) where {T, S, A}
+    Tc = complex(T)
+    Ac = similarstoragetype(Tc, A)
+    return BraidingTensor{Tc, S, Ac}(space(b), b.adjoint)
 end
 
 function block(b::BraidingTensor, s::Sector)
@@ -145,7 +169,7 @@ function block(b::BraidingTensor, s::Sector)
     # TODO: probably always square?
     m = blockdim(codomain(b), s)
     n = blockdim(domain(b), s)
-    data = Matrix{eltype(b)}(undef, (m, n))
+    data = similarmatrixtype(storagetype(b))(undef, (m, n))
 
     length(data) == 0 && return data # s ∉ blocksectors(b)
 

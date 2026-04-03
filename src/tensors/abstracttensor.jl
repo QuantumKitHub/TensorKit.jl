@@ -123,6 +123,19 @@ similarstoragetype(::Type{D}, ::Type{T}) where {D <: AbstractDict{<:Sector, <:Ab
 similarstoragetype(::Type{T}) where {T <: Number} = Vector{T}
 
 @doc """
+    similarmatrixtype(T::Type{<:Number}) -> Matrix{T}
+    similarmatrixtype(A::Type{T, <:DenseVector{T}}) -> Matrix{T}
+
+For a given dense vector type `A` or number type `T`, compute an appropriate
+**matrix** storage type for tensors. This function is used internally for
+[`BraidingTensor`](@ref) to determine the output storage format for indexing
+and other operations with other tensor types.
+""" similarmatrixtype
+
+similarmatrixtype(::Type{T}) where {T <: Number} = Matrix{T}
+similarmatrixtype(::Type{A}) where {T <: Number, A <: DenseVector{T}} = Matrix{T}
+
+@doc """
     promote_storagetype([T], A, B, C...)
     promote_storagetype([T], TA, TB, TC...)
 
