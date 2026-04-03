@@ -168,3 +168,23 @@ for f in (:sqrt, :log, :asin, :acos, :acosh, :atanh, :acoth)
         return tf
     end
 end
+
+
+function TensorKit.add_kernel_nonthreaded!(
+        ::TensorKit.FusionStyle,
+        tdst::CuTensorMap, tsrc::CuTensorMap, p, transformer::TensorKit.GenericTreeTransformer, α, β, backend...
+    )
+    # preallocate buffers
+    buffers = TensorKit.allocate_buffers(tdst, tsrc, transformer)
+
+    for subtransformer in transformer.data
+        # Special case without intermediate buffers whenever there is only a single block
+        if length(subtransformer[1]) == 1
+            TensorKit._add_transform_single!(tdst, tsrc, p, subtransformer, α, β, backend...)
+        else
+            cu_subtransformer = tuple(CUDA.adapt(CuArray, subtransformer[1]), subtransformer[2:end]...)
+            TensorKit._add_transform_multi!(tdst, tsrc, p, cu_subtransformer, buffers, α, β, backend...)
+        end
+    end
+    return nothing
+end
