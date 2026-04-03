@@ -19,6 +19,6 @@ using Random
 include("cutensormap.jl")
 include("truncation.jl")
 
-TensorKit.similarmatrixtype(::Type{A}) where {T <: Number, A <: CuVector{T}} = CuMatrix{T}
+TensorKit.similarmatrixtype(::Type{A}) where {T <: Number, M, A <: CuVector{T, M}} = CuMatrix{T, M}
 
 end
