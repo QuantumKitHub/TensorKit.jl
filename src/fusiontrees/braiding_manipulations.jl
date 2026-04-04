@@ -64,7 +64,7 @@ function artin_braid(f::FusionTree{I, N}, i; inv::Bool = false) where {I, N}
     a = inner_extended[i - 1]
     c = inner_extended[i]
     e = inner_extended[i + 1]
-    c′ = first(a ⊗ d)
+    c′ = only(a ⊗ d)
     coeff = oftype(
         oneT,
         if inv
@@ -122,6 +122,8 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
     BraidingStyle(I) isa NoBraiding &&
         throw(SectorMismatch(lazy"Cannot braid sectors $a and $b"))
 
+    T = typeof(oneT)
+    localbraidcache = Dict{NTuple{6, I}, FusionStyle(I) isa MultiplicityFreeFusion ? T : Array{T, 4}}()
     for (col, (f, f₂)) in enumerate(fusiontrees(src))
         inner = f.innerlines
         inner_extended = (uncoupled[1], inner..., coupled′)
@@ -156,10 +158,8 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
         e = inner_extended[i + 1]
         if FusionStyle(I) isa MultiplicityFreeFusion
             for c′ in intersect(a ⊗ d, e ⊗ conj(b))
-                coeff = if inv
-                    conj(Rsymbol(d, c, e) * Fsymbol(d, a, b, e, c′, c)) * Rsymbol(d, a, c′)
-                else
-                    Rsymbol(c, d, e) * conj(Fsymbol(d, a, b, e, c′, c) * Rsymbol(a, d, c′))
+                coeff = let k = (a, b, c, d, e, c′)
+                    get!(() -> _artin_braid_local(k, inv), localbraidcache, k)
                 end
                 iszero(coeff) && continue
                 inner′ = TupleTools.setindex(inner, c′, i - 1)
@@ -172,15 +172,14 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
                 Rmat1 = inv ? Rsymbol(d, c, e)' : Rsymbol(c, d, e)
                 Rmat2 = inv ? Rsymbol(d, a, c′)' : Rsymbol(a, d, c′)
                 Fmat = Fsymbol(d, a, b, e, c′, c)
+                coeff_tensor = let k = (a, b, c, d, e, c′)
+                    get!(() -> _artin_braid_local(k, inv), localbraidcache, k)
+                end
                 μ = vertices[i - 1]
                 ν = vertices[i]
-                for σ in 1:Nsymbol(a, d, c′)
-                    for λ in 1:Nsymbol(c′, b, e)
-                        coeff = zero(oneT)
-                        for ρ in 1:Nsymbol(d, c, e), κ in 1:Nsymbol(d, a, c′)
-                            coeff += Rmat1[ν, ρ] * conj(Fmat[κ, λ, μ, ρ]) *
-                                conj(Rmat2[σ, κ])
-                        end
+                for λ in 1:size(coeff_tensor, 2)
+                    for σ in 1:size(coeff_tensor, 1)
+                        coeff = coeff_tensor[σ, λ, μ, ν]
                         iszero(coeff) && continue
                         vertices′ = TupleTools.setindex(vertices, σ, i - 1)
                         vertices′ = TupleTools.setindex(vertices′, λ, i)
@@ -193,8 +192,24 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
             end
         end
     end
-
     return dst => U
+end
+
+function _artin_braid_local((a, b, c, d, e, c′)::NTuple{6, I}, inv::Bool) where {I}
+    if FusionStyle(I) isa MultiplicityFreeFusion
+        coeff = if inv
+            conj(Rsymbol(d, c, e) * Fsymbol(d, a, b, e, c′, c)) * Rsymbol(d, a, c′)
+        else
+            Rsymbol(c, d, e) * conj(Fsymbol(d, a, b, e, c′, c) * Rsymbol(a, d, c′))
+        end
+        return coeff
+    else
+        Rmat1 = inv ? Rsymbol(d, c, e)' : Rsymbol(c, d, e)
+        Rmat2 = inv ? Rsymbol(d, a, c′)' : Rsymbol(a, d, c′)
+        Fmat = Fsymbol(d, a, b, e, c′, c)
+        @tensor coeff[σ, λ, μ, ν] := Rmat1[ν, ρ] * conj(Fmat[κ, λ, μ, ρ]) * conj(Rmat2[σ, κ])
+        return coeff
+    end
 end
 
 # braid fusion tree
@@ -223,7 +238,7 @@ function braid(f::FusionTree{I, N}, (p, _)::Index2Tuple{N, 0}, (levels, _)::Inde
             for j in 1:(i - 1)
                 if p[j] > p[i]
                     a, b = f.uncoupled[p[j]], f.uncoupled[p[i]]
-                    coeff *= Rsymbol(a, b, first(a ⊗ b))
+                    coeff *= Rsymbol(a, b, only(a ⊗ b))
                 end
             end
         end
@@ -308,19 +323,22 @@ end
         f′, coeff2 = braid(f, p, levels)
         (f₁′, f₂′), coeff3 = repartition((f′, f0), N₁)
         return (f₁′, f₂′) => coeff1 * coeff2 * coeff3
-
     else
         src, (p1, p2), (l1, l2) = key
 
         p = linearizepermutation(p1, p2, numout(src), numin(src))
         levels = (l1..., reverse(l2)...)
 
-        dst, U = repartition(src, numind(src))
+        dst, U′ = repartition(src, numind(src))
+        T = sectorscalartype(I)
+        U = eltype(U′) == T ? U′ : T.(U′) # U′ has fusionscalartype(I) elements
+        Uold = similar(U)
 
         for s in permutation2swaps(p)
+            U, Uold = Uold, U
             inv = levels[s] > levels[s + 1]
             dst, U_tmp = artin_braid(dst, s; inv)
-            U = U_tmp * U
+            U = mul!(U, U_tmp, Uold)
             l = levels[s]
             levels = TupleTools.setindex(levels, levels[s + 1], s)
             levels = TupleTools.setindex(levels, l, s + 1)
@@ -329,8 +347,9 @@ end
         if N₂ == 0
             return dst => U
         else
+            U, Uold = Uold, U
             dst, U_tmp = repartition(dst, N₁)
-            U = U_tmp * U
+            U = mul!(U, U_tmp, Uold)
             return dst => U
         end
     end

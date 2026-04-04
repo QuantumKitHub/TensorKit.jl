@@ -5,37 +5,10 @@ using VectorInterface: Zero, One
 using Mooncake
 using Random
 
-@isdefined(TestSetup) || include("../setup.jl")
-using .TestSetup
-using .TestSetup: _repartition
-
 mode = Mooncake.ReverseMode
 rng = Random.default_rng()
 
-spacelist = (
-    (ℂ^2, (ℂ^3)', ℂ^3, ℂ^2, (ℂ^2)'),
-    (
-        Vect[FermionParity](0 => 1, 1 => 1),
-        Vect[FermionParity](0 => 1, 1 => 2)',
-        Vect[FermionParity](0 => 2, 1 => 1)',
-        Vect[FermionParity](0 => 2, 1 => 3),
-        Vect[FermionParity](0 => 2, 1 => 2),
-    ),
-    (
-        Vect[SU2Irrep](0 => 2, 1 // 2 => 1),
-        Vect[SU2Irrep](0 => 1, 1 => 1),
-        Vect[SU2Irrep](1 // 2 => 1, 1 => 1)',
-        Vect[SU2Irrep](1 // 2 => 2),
-        Vect[SU2Irrep](0 => 1, 1 // 2 => 1, 3 // 2 => 1)',
-    ),
-    (
-        Vect[FibonacciAnyon](:I => 2, :τ => 1),
-        Vect[FibonacciAnyon](:I => 1, :τ => 2)',
-        Vect[FibonacciAnyon](:I => 2, :τ => 2)',
-        Vect[FibonacciAnyon](:I => 2, :τ => 3),
-        Vect[FibonacciAnyon](:I => 2, :τ => 2),
-    ),
-)
+spacelist = ad_spacelist(fast_tests)
 eltypes = (Float64, ComplexF64)
 
 @timedtestset "Mooncake - PlanarOperations: $(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes
@@ -43,20 +16,11 @@ eltypes = (Float64, ComplexF64)
     rtol = default_tol(T)
 
     @timedtestset "planarcontract!" begin
+        V1, V2, V3, V4, V5 = V
         for _ in 1:5
-            d = 0
-            local V1, V2, V3, k1, k2, k3
-            # retry a couple times to make sure there are at least some nonzero elements
-            for _ in 1:10
-                k1 = rand(0:3)
-                k2 = rand(0:2)
-                k3 = rand(0:2)
-                V1 = prod(v -> rand(Bool) ? v' : v, rand(V, k1); init = one(V[1]))
-                V2 = prod(v -> rand(Bool) ? v' : v, rand(V, k2); init = one(V[1]))
-                V3 = prod(v -> rand(Bool) ? v' : v, rand(V, k3); init = one(V[1]))
-                d = min(dim(V1 ← V2), dim(V1' ← V2), dim(V2 ← V3), dim(V2' ← V3))
-                d > 1 && break
-            end
+            k1 = 3
+            k2 = 2
+            k3 = 3
             k′ = rand(0:(k1 + k2))
             pA = randcircshift(k′, k1 + k2 - k′, k1)
             ipA = _repartition(invperm(linearize(pA)), k′)
@@ -70,8 +34,8 @@ eltypes = (Float64, ComplexF64)
             α = randn(T)
             β = randn(T)
 
-            A = randn(T, permute(V1 ← V2, ipA))
-            B = randn(T, permute(V2 ← V3, ipB))
+            A = randn(T, permute(V1 ⊗ V2 ⊗ V3 ← (V4 ⊗ V5)', ipA))
+            B = randn(T, permute((V4 ⊗ V5)' ← V1 ⊗ V2 ⊗ V3, ipB))
             C = randn!(
                 TensorOperations.tensoralloc_contract(
                     T, A, pA, false, B, pB, false, pAB, Val(false)
