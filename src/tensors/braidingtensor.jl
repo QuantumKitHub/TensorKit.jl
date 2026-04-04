@@ -85,6 +85,8 @@ promote_storagetype(::Type{B}, ::Type{T}) where {B <: BraidingTensor, T <: Abstr
     promote_storagetype(storagetype(B), storagetype(T))
 promote_storagetype(::Type{T}, ::Type{B}) where {B <: BraidingTensor, T <: AbstractTensorMap} =
     promote_storagetype(storagetype(B), storagetype(T))
+promote_storagetype(::Type{BA}, ::Type{BB}) where {BA <: BraidingTensor, BB <: BraidingTensor} =
+    promote_storagetype(storagetype(BA), storagetype(BB))
 
 function Base.getindex(b::BraidingTensor)
     sectortype(b) === Trivial || throw(SectorMismatch())
