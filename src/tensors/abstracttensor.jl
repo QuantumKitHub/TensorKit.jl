@@ -620,10 +620,10 @@ Base.similar(t::AbstractTensorMap, ::Type{T}, codomain::TensorSpace) where {T} =
 # 2 arguments
 Base.similar(t::AbstractTensorMap, codomain::TensorSpace) =
     similar(t, codomain ← one(codomain))
-Base.similar(t::AbstractTensorMap, V::TensorMapSpace) = similar(t, scalartype(t), V)
+Base.similar(t::AbstractTensorMap, V::TensorMapSpace) = similar(t, storagetype(t), V)
 Base.similar(t::AbstractTensorMap, ::Type{T}) where {T} = similar(t, T, space(t))
 # 1 argument
-Base.similar(t::AbstractTensorMap) = similar(t, scalartype(t), space(t))
+Base.similar(t::AbstractTensorMap) = similar(t, storagetype(t), space(t))
 
 # generic implementation for AbstractTensorMap -> returns `TensorMap`
 function Base.similar(t::AbstractTensorMap, ::Type{TorA}, V::TensorMapSpace) where {TorA}

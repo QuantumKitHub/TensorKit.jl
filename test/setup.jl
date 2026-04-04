@@ -103,7 +103,7 @@ function force_planar(V::GradedSpace)
 end
 force_planar(V::ProductSpace) = mapreduce(force_planar, ⊗, V)
 function force_planar(tsrc::TensorMap{<:Any, ComplexSpace})
-    tdst = TensorMap{scalartype(tsrc)}(
+    tdst = TensorKit.TensorMapWithStorage{scalartype(tsrc), storagetype(tsrc)}(
         undef,
         force_planar(codomain(tsrc)) ←
             force_planar(domain(tsrc))
@@ -112,7 +112,7 @@ function force_planar(tsrc::TensorMap{<:Any, ComplexSpace})
     return tdst
 end
 function force_planar(tsrc::TensorMap{<:Any, <:GradedSpace})
-    tdst = TensorMap{scalartype(tsrc)}(
+    tdst = TensorKit.TensorMapWithStorage{scalartype(tsrc), storagetype(tsrc)}(
         undef,
         force_planar(codomain(tsrc)) ←
             force_planar(domain(tsrc))

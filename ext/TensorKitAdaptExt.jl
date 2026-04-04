@@ -15,8 +15,11 @@ function Adapt.adapt_structure(to, x::DiagonalTensorMap)
     data′ = adapt(to, x.data)
     return DiagonalTensorMap(data′, x.domain)
 end
-function Adapt.adapt_structure(::Type{TorA}, x::BraidingTensor) where {TorA <: Union{Number, DenseArray{<:Number}}}
-    return BraidingTensor{scalartype(TorA)}(space(x), x.adjoint)
+function Adapt.adapt_structure(::Type{T}, x::BraidingTensor{T′, S, A}) where {T <: Number, T′, S, A}
+    return BraidingTensor(space(x), TensorKit.similarstoragetype(A, T), x.adjoint)
+end
+function Adapt.adapt_structure(::Type{TA}, x::BraidingTensor{T, S, A}) where {TA <: DenseArray{<:Number}, T, S, A}
+    return BraidingTensor(space(x), TA, x.adjoint)
 end
 
 end
