@@ -21,16 +21,17 @@ for V in spacelist
     I = sectortype(eltype(V))
     Istr = type_repr(I)
     eltypes = isreal(sectortype(eltype(V))) ? (Float64, ComplexF64) : (ComplexF64,)
+    hasbraiding = BraidingStyle(sectortype(eltype(V))) isa HasBraiding
     symmetricbraiding = BraidingStyle(sectortype(eltype(V))) isa SymmetricBraiding
     println("---------------------------------------")
     println("Auto-diff with symmetry: $Istr")
     println("---------------------------------------")
-    @timedtestset "AD with symmetry $Istr" verbose = true begin
+    @timedtestset "Chainrules for linear algebra operations with symmetry $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
         W = V1 ⊗ V2
         @timedtestset "Basic utility" begin
-            T1 = randn(Float64, V[1] ⊗ V[2] ← V[3] ⊗ V[4])
-            T2 = randn(ComplexF64, V[1] ⊗ V[2] ← V[3] ⊗ V[4])
+            T1 = randn(Float64, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
+            T2 = randn(ComplexF64, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
 
             P1 = ProjectTo(T1)
             @test P1(T1) == T1
@@ -92,7 +93,7 @@ for V in spacelist
         end
 
         @timedtestset "Basic Linear Algebra with scalartype $T" for T in eltypes
-            A = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
+            A = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
             B = randn(T, space(A))
 
             test_rrule(real, A)
@@ -111,14 +112,14 @@ for V in spacelist
 
             test_rrule(transpose, A, ((2, 5, 4), (1, 3)))
             symmetricbraiding && test_rrule(permute, A, ((1, 3, 2), (5, 4)))
-            test_rrule(twist, A, 1)
-            test_rrule(twist, A, [1, 3])
+            hasbraiding && test_rrule(twist, A, 1)
+            hasbraiding && test_rrule(twist, A, [1, 3])
 
-            test_rrule(flip, A, 1)
-            test_rrule(flip, A, [1, 3, 4])
+            hasbraiding && test_rrule(flip, A, 1)
+            hasbraiding && test_rrule(flip, A, [1, 3, 4])
 
-            D = randn(T, V[1] ⊗ V[2] ← V[3])
-            E = randn(T, V[4] ← V[5])
+            D = randn(T, V[1] ⊗ V[2] ← V[1] ⊗ V[2])
+            E = randn(T, V[3] ← V[3])
             symmetricbraiding && test_rrule(⊗, D, E)
         end
 

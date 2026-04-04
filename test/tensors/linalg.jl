@@ -81,8 +81,8 @@ for V in spacelist
             end
         end
         @timedtestset "Multiplication of isometries: test properties" begin
-            W2 = V4 ⊗ V5
-            W1 = W2 ⊗ (unitspace(V1) ⊕ unitspace(V1))
+            W1 = V1 ⊗ V2 ⊗ V3
+            W2 = (V4 ⊗ V5)'
             for T in (Float64, ComplexF64)
                 t1 = randisometry(T, W1, W2)
                 t2 = randisometry(T, W2 ← W2)
@@ -210,13 +210,13 @@ for V in spacelist
         @timedtestset "Sylvester equation" begin
             for T in (Float32, ComplexF64)
                 tA = rand(T, V1 ⊗ V2, V1 ⊗ V2)
-                tB = rand(T, (V3 ⊗ V4)', (V3 ⊗ V4)')
+                tB = rand(T, (V3 ⊗ V4 ⊗ V5)', (V3 ⊗ V4 ⊗ V5)')
                 tA = 3 // 2 * left_polar(tA)[1]
                 tB = 1 // 5 * left_polar(tB)[1]
-                tC = rand(T, V1 ⊗ V2, (V3 ⊗ V4)')
+                tC = rand(T, V1 ⊗ V2, (V3 ⊗ V4 ⊗ V5)')
                 t = @constinferred sylvester(tA, tB, tC)
                 @test codomain(t) == V1 ⊗ V2
-                @test domain(t) == (V3 ⊗ V4)'
+                @test domain(t) == (V3 ⊗ V4 ⊗ V5)'
                 @test norm(tA * t + t * tB + tC) <
                     (norm(tA) + norm(tB) + norm(tC)) * eps(real(T))^(2 / 3)
                 if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)

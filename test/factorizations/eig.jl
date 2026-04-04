@@ -42,7 +42,7 @@ for V in spacelist
                 nvals = round(Int, dim(domain(t)) / 2)
                 d, v = @constinferred eig_trunc(t; trunc = truncrank(nvals))
                 @test t * v ≈ v * d
-                test_dim_isapprox(domain(d), nvals)
+                @test abs(dim(domain(d)) - nvals) ≤ maximum(c -> blockdim(domain(t), c), blocksectors(t); init = 1)
 
                 t2 = @constinferred project_hermitian(t)
                 D, V = eigen(t2)
@@ -72,7 +72,7 @@ for V in spacelist
 
                 d, v = @constinferred eigh_trunc(t2; trunc = truncrank(nvals))
                 @test t2 * v ≈ v * d
-                test_dim_isapprox(domain(d), nvals)
+                @test abs(dim(domain(d)) - nvals) ≤ maximum(c -> blockdim(domain(t), c), blocksectors(t); init = 1)
             end
         end
     end

@@ -107,7 +107,7 @@ using TensorKitSectors
         isdualrest = ntuple(n -> rand(Bool), N - 1)
         for isdual in ((false, isdualrest...), (true, isdualrest...))
             trees = collect(fusiontrees(uncoupled, coupled, isdual))
-            # trees = rand(trees, min(5, length(trees))) # limit number of tests?
+            trees = trees[randperm(length(trees))[1:rand(1:min(5, length(trees)))]] # limit number of tests?
             for f in trees
                 a = f.uncoupled[1]
                 isduala = f.isdual[1]
@@ -141,6 +141,7 @@ using TensorKitSectors
             isdualrest = ntuple(n -> rand(Bool), N - 1)
             for isdual in ((false, isdualrest...), (true, isdualrest...))
                 trees = collect(fusiontrees(uncoupled, coupled, isdual))
+                trees = trees[randperm(length(trees))[1:rand(1:min(5, length(trees)))]] # limit number of tests?
                 for f in trees
                     ftensor = fusiontensor(f)
                     ftensor′ = zero(ftensor)

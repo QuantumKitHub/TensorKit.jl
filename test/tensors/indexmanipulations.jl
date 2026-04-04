@@ -9,6 +9,7 @@ spacelist = default_spacelist(fast_tests)
 for V in spacelist
     I = sectortype(first(V))
     Istr = type_repr(I)
+    hasbraiding = BraidingStyle(I) isa HasBraiding
     symmetricbraiding = BraidingStyle(I) isa SymmetricBraiding
     println("---------------------------------------")
     println("Tensors with symmetry: $Istr")
@@ -96,7 +97,7 @@ for V in spacelist
                 end
             end
         end
-        (BraidingStyle(I) isa HasBraiding) && @timedtestset "Index flipping: test flipping inverse" begin
+        hasbraiding && @timedtestset "Index flipping: test flipping inverse" begin
             t = rand(ComplexF64, V1 ⊗ V2 ⊗ V3 ← (V4 ⊗ V5)')
             for i in 1:5
                 @test t ≈ flip(flip(t, i), i; inv = true)

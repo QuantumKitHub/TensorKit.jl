@@ -23,10 +23,10 @@ end
 # --fast: skip AD tests and inject fast_tests=true into each worker sandbox
 fast = "--fast" in ARGS
 filtered_args = filter(!=("--fast"), ARGS)
-if fast
-    filter!(!startswith("chainrules") ∘ first, testsuite)
-    filter!(!startswith("mooncake") ∘ first, testsuite)
-end
+# if fast
+#     filter!(!startswith("chainrules") ∘ first, testsuite)
+#     filter!(!startswith("mooncake") ∘ first, testsuite)
+# end
 setup_path = joinpath(@__DIR__, "setup.jl")
 init_code = quote
     const fast_tests = $fast

@@ -5,8 +5,7 @@ export default_tol
 export smallset, randsector, hasfusiontensor, force_planar
 export random_fusion
 export sectorlist, fast_sectorlist
-export test_dim_isapprox
-export Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, Vfib, VIB_diag, VIB_M
+export dim_isapprox
 export default_spacelist, factorization_spacelist, ad_spacelist
 export remove_qrgauge_dependence!, remove_lqgauge_dependence!
 export remove_eiggauge_dependence!, remove_eighgauge_dependence!, remove_svdgauge_dependence!
@@ -146,13 +145,13 @@ end
 
 # helper function to check that d - dim(c) < dim(V) <= d where c is the largest sector
 # to allow for truncations to have some margin with larger sectors
-function test_dim_isapprox(V::ElementarySpace, d::Int)
+function dim_isapprox(V::ElementarySpace, d::Int)
     dim_c_max = maximum(dim, sectors(V); init = 1)
-    return @test max(0, d - dim_c_max) ≤ dim(V) ≤ d + dim_c_max
+    return max(0, d - dim_c_max) ≤ dim(V) ≤ d + dim_c_max
 end
-function test_dim_isapprox(V::ProductSpace, d::Int)
+function dim_isapprox(V::ProductSpace, d::Int)
     dim_c_max = maximum(dim, blocksectors(V); init = 1)
-    return @test max(0, d - dim_c_max) ≤ dim(V) ≤ d + dim_c_max
+    return max(0, d - dim_c_max) ≤ dim(V) ≤ d + dim_c_max
 end
 
 _isunitary(x::Number; kwargs...) = isapprox(x * x', one(x); kwargs...)
@@ -208,97 +207,158 @@ fast_sectorlist = (Z2Irrep, SU2Irrep, FermionParity ⊠ U1Irrep ⊠ SU2Irrep, Fi
 # 3.    Tensor manipulations can depend on FusionStyle(I), BraidingStyle(I), UnitStyle(I) and sectorscalartype(I),
 #       so it is good to have a variety of sectors in the spacelist to test different code paths. We also definitely
 #       want to cover the most common cases: trivial symmetry, fermionic parity, U(1) charge, SU(2), Hubbard-like
+#       symmetries, and some anyonic examples with nontrivial F symbols and braiding.
+#
+# 4.    V1 should not only have one-dimensional blocks as this causes some tests to fail, like `!ishermitian(thapprox)`.
 
 
+# Trivial
 Vtr = (ℂ^2, (ℂ^3)', ℂ^4, ℂ^3, (ℂ^2)')
-Vℤ₂ = (
+
+# UniqueFusion, Bosonic
+VRepℤ₂ = (
     Vect[Z2Irrep](0 => 2, 1 => 1),
     Vect[Z2Irrep](0 => 1, 1 => 2)',
     Vect[Z2Irrep](0 => 3, 1 => 2)',
     Vect[Z2Irrep](0 => 2, 1 => 3),
     Vect[Z2Irrep](0 => 2, 1 => 5),
 )
-Vfℤ₂ = (
-    Vect[FermionParity](0 => 2, 1 => 1),
-    Vect[FermionParity](0 => 1, 1 => 2)',
-    Vect[FermionParity](0 => 2, 1 => 1)',
-    Vect[FermionParity](0 => 2, 1 => 3),
-    Vect[FermionParity](0 => 2, 1 => 5),
-)
-Vℤ₃ = (
+VRepℤ₃ = (
     Vect[Z3Irrep](0 => 1, 1 => 2, 2 => 1),
     Vect[Z3Irrep](0 => 2, 1 => 1, 2 => 1),
     Vect[Z3Irrep](0 => 1, 1 => 2, 2 => 1)',
     Vect[Z3Irrep](0 => 1, 1 => 2, 2 => 3),
     Vect[Z3Irrep](0 => 1, 1 => 3, 2 => 3)',
 )
-VU₁ = (
-    Vect[U1Irrep](0 => 1, 1 => 2, -1 => 2),
+VRepU₁ = (
     Vect[U1Irrep](0 => 3, 1 => 1, -1 => 1),
-    Vect[U1Irrep](0 => 2, 1 => 2, -1 => 1)',
-    Vect[U1Irrep](0 => 1, 1 => 2, -1 => 3),
-    Vect[U1Irrep](0 => 1, 1 => 3, -1 => 3)',
+    Vect[U1Irrep](0 => 2, 1 => 1, -1 => 1),
+    Vect[U1Irrep](0 => 2, 1 => 2, -1 => 2)',
+    Vect[U1Irrep](0 => 0, 1 => 2, -1 => 2),
+    Vect[U1Irrep](0 => 2, 1 => 0, -1 => 2)',
 )
-VfU₁ = (
-    Vect[FermionNumber](0 => 1, 1 => 2, -1 => 2),
-    Vect[FermionNumber](0 => 3, 1 => 1, -1 => 1),
-    Vect[FermionNumber](0 => 2, 1 => 2, -1 => 1)',
-    Vect[FermionNumber](0 => 1, 1 => 2, -1 => 3),
-    Vect[FermionNumber](0 => 1, 1 => 3, -1 => 3)',
+
+# UniqueFusion, Fermionic
+VfRepℤ₂ = (
+    Vect[FermionParity](0 => 2, 1 => 1),
+    Vect[FermionParity](0 => 1, 1 => 2)',
+    Vect[FermionParity](0 => 3, 1 => 2)',
+    Vect[FermionParity](0 => 2, 1 => 3),
+    Vect[FermionParity](0 => 2, 1 => 5),
 )
-VCU₁ = (
+
+# UniqueFusion, anyonic braiding
+VTwistedVecℤ₄ = (
+    Vect[Z4Element{2}](0 => 1, 1 => 2, 2 => 1, 3 => 0),
+    Vect[Z4Element{2}](0 => 2, 1 => 1, 2 => 0, 3 => 1),
+    Vect[Z4Element{2}](0 => 1, 1 => 2, 2 => 1, 3 => 2)',
+    Vect[Z4Element{2}](0 => 1, 1 => 2, 2 => 3, 3 => 1),
+    Vect[Z4Element{2}](0 => 1, 1 => 0, 2 => 3, 3 => 0)',
+)
+
+# UniqueFusion, no braiding
+VTwistedVecℤ₃ = (
+    Vect[Z3Element{1}](0 => 1, 1 => 2, 2 => 1),
+    Vect[Z3Element{1}](0 => 2, 1 => 1, 2 => 1),
+    Vect[Z3Element{1}](0 => 1, 1 => 2, 2 => 1)',
+    Vect[Z3Element{1}](0 => 1, 1 => 2, 2 => 3),
+    Vect[Z3Element{1}](0 => 1, 1 => 3, 2 => 3)',
+)
+
+# SimpleFusion, bosonic
+VRepCU₁ = (
     Vect[CU1Irrep]((0, 0) => 1, (0, 1) => 2, 1 => 1),
     Vect[CU1Irrep]((0, 0) => 3, (0, 1) => 0, 1 => 1),
     Vect[CU1Irrep]((0, 0) => 1, (0, 1) => 0, 1 => 2)',
     Vect[CU1Irrep]((0, 0) => 2, (0, 1) => 2, 1 => 1),
     Vect[CU1Irrep]((0, 0) => 2, (0, 1) => 1, 1 => 2)',
 )
-VSU₂ = (
+VRepSU₂ = (
     Vect[SU2Irrep](0 => 3, 1 // 2 => 1),
     Vect[SU2Irrep](0 => 2, 1 => 1),
     Vect[SU2Irrep](1 // 2 => 1, 1 => 1)',
     Vect[SU2Irrep](0 => 2, 1 // 2 => 2),
     Vect[SU2Irrep](0 => 1, 1 // 2 => 1, 3 // 2 => 1)',
 )
-VfSU₂ = (
+
+# SimpleFusion, fermionic
+VfRepCU₁ = (
+    Vect[FermionParity ⊠ CU1Irrep]((0, (0, 0)) => 1, (0, (0, 1)) => 2, (1, 1) => 1),
+    Vect[FermionParity ⊠ CU1Irrep]((0, (0, 0)) => 3, (0, (0, 1)) => 0, (1, 1) => 1),
+    Vect[FermionParity ⊠ CU1Irrep]((0, (0, 0)) => 1, (0, (0, 1)) => 0, (1, 1) => 2)',
+    Vect[FermionParity ⊠ CU1Irrep]((0, (0, 0)) => 2, (0, (0, 1)) => 2, (1, 1) => 1),
+    Vect[FermionParity ⊠ CU1Irrep]((0, (0, 0)) => 2, (0, (0, 1)) => 1, (1, 1) => 2)',
+)
+
+VfRepSU₂ = (
     Vect[FermionSpin](0 => 3, 1 // 2 => 1),
     Vect[FermionSpin](0 => 2, 1 => 1),
     Vect[FermionSpin](1 // 2 => 1, 1 => 1)',
     Vect[FermionSpin](0 => 2, 1 // 2 => 2),
     Vect[FermionSpin](0 => 1, 1 // 2 => 1, 3 // 2 => 1)',
 )
-VSU₂U₁ = (
-    Vect[SU2Irrep ⊠ U1Irrep]((0, 0) => 1, (1 // 2, -1) => 1),
-    Vect[SU2Irrep ⊠ U1Irrep](
-        (0, 0) => 2, (0, 2) => 1, (1, 0) => 1, (1, -2) => 1,
-        (1 // 2, -1) => 1
-    ),
-    Vect[SU2Irrep ⊠ U1Irrep]((1 // 2, 1) => 1, (1, -2) => 1)',
-    Vect[SU2Irrep ⊠ U1Irrep]((0, 0) => 2, (0, 2) => 1, (1 // 2, 1) => 1),
-    Vect[SU2Irrep ⊠ U1Irrep]((0, 0) => 1, (1 // 2, 1) => 1)',
+
+I_Hubbard = FermionParity ⊠ SU2Irrep ⊠ U1Irrep
+VfHubbard = (
+    Vect[I_Hubbard]((0, 0, 0) => 3, (1, 1 // 2, -1) => 1),
+    Vect[I_Hubbard]((0, 0, 0) => 1, (0, 0, +2) => 1, (0, 1, 0) => 1),
+    Vect[I_Hubbard]((1, 1 // 2, +1) => 1, (1, 1 // 2, -1) => 1, (0, 1, -2) => 1, (0, 1, +2) => 1)',
+    Vect[I_Hubbard]((0, 0, 0) => 2, (1, 1 // 2, +1) => 1, (1, 1 // 2, -1) => 1),
+    Vect[I_Hubbard]((0, 0, 0) => 1, (1, 1 // 2, -1) => 1, (1, 3 // 2, +1) => 1)',
 )
+
+# SimpleFusion, anyonic braiding
 Vfib = (
-    Vect[FibonacciAnyon](:I => 1, :τ => 1),
-    Vect[FibonacciAnyon](:I => 1, :τ => 2)',
+    Vect[FibonacciAnyon](:I => 1, :τ => 2),
+    Vect[FibonacciAnyon](:I => 1, :τ => 1)',
     Vect[FibonacciAnyon](:I => 3, :τ => 2)',
     Vect[FibonacciAnyon](:I => 2, :τ => 3),
     Vect[FibonacciAnyon](:I => 2, :τ => 2),
 )
 
+# Generic fusion, bosonic
+VRepA4 = (
+    Vect[A4Irrep](0 => 2, 1 => 1, 2 => 0, 3 => 1)',
+    Vect[A4Irrep](0 => 1, 1 => 1, 2 => 1, 3 => 1),
+    Vect[A4Irrep](0 => 1, 1 => 2, 2 => 1, 3 => 2)',
+    Vect[A4Irrep](0 => 1, 1 => 0, 2 => 2, 3 => 1),
+    Vect[A4Irrep](0 => 1, 1 => 1, 2 => 0, 3 => 1)',
+)
+
+# Generic fusion, bosonic
+VRepA4 = (
+    Vect[A4Irrep](0 => 2, 1 => 1, 2 => 0, 3 => 1)',
+    Vect[A4Irrep](0 => 1, 1 => 1, 2 => 1, 3 => 1),
+    Vect[A4Irrep](0 => 1, 1 => 2, 2 => 1, 3 => 2)',
+    Vect[A4Irrep](0 => 1, 1 => 0, 2 => 2, 3 => 1),
+    Vect[A4Irrep](0 => 1, 1 => 1, 2 => 0, 3 => 1)',
+)
+
+# Generic fusion, fermionic
+VfRepA4 = (
+    Vect[FermionParity ⊠ A4Irrep]((0, 0) => 2, (1, 1) => 1, (0, 2) => 0, (1, 3) => 1)',
+    Vect[FermionParity ⊠ A4Irrep]((1, 0) => 1, (0, 1) => 1, (0, 2) => 1, (1, 3) => 1),
+    Vect[FermionParity ⊠ A4Irrep]((0, 0) => 1, (0, 1) => 1, (1, 1) => 1, (1, 2) => 1, (0, 3) => 2)',
+    Vect[FermionParity ⊠ A4Irrep]((0, 0) => 2, (1, 1) => 0, (1, 2) => 2, (0, 3) => 1),
+    Vect[FermionParity ⊠ A4Irrep]((1, 0) => 1, (0, 1) => 1, (1, 2) => 0, (0, 3) => 1)',
+)
+
+# Generic fusion, anyonic braiding
+I_A4Z4 = A4Irrep ⊠ Z4Element{2}
+VRepA4Twistedℤ₄ = (
+    Vect[I_A4Z4]((0, 0) => 2, (1, 1) => 1, (2, 3) => 2, (3, 2) => 1)',
+    Vect[I_A4Z4]((0, 0) => 1, (1, 1) => 1, (2, 3) => 0, (3, 2) => 1),
+    Vect[I_A4Z4]((0, 0) => 2, (1, 1) => 2, (2, 3) => 1, (3, 2) => 1)',
+    Vect[I_A4Z4]((0, 0) => 2, (1, 1) => 0, (2, 3) => 2, (3, 2) => 1),
+    Vect[I_A4Z4]((0, 0) => 1, (1, 1) => 1, (2, 3) => 1, (3, 2) => 1)',
+)
+
+# Multifusion categories: GenericUnit, SimpleFusion
+
 C0, C1 = IsingBimodule(1, 1, 0), IsingBimodule(1, 1, 1)
 D0, D1 = IsingBimodule(2, 2, 0), IsingBimodule(2, 2, 1)
 M, Mop = IsingBimodule(1, 2, 0), IsingBimodule(2, 1, 0)
-VIB_diag = (
-    Vect[IsingBimodule](C0 => 1, C1 => 2),
-    Vect[IsingBimodule](C0 => 2, C1 => 1),
-    Vect[IsingBimodule](C0 => 3, C1 => 1),
-    Vect[IsingBimodule](C0 => 2, C1 => 3),
-    Vect[IsingBimodule](C0 => 3, C1 => 2),
-)
-
-# not a random ordering! designed to make V1 ⊗ V2 ← V3 ⊗ V4 ⊗ V5 work (tensors)
-# while V1 ⊗ V2 ← V4 isn't empty (factorizations)
-VIB_M = (
+VIBM = (
     Vect[IsingBimodule](C0 => 1, C1 => 2),
     Vect[IsingBimodule](Mop => 2)',
     Vect[IsingBimodule](D0 => 3, D1 => 4)',
@@ -306,32 +366,51 @@ VIB_M = (
     Vect[IsingBimodule](C0 => 2, C1 => 3),
 )
 
+VIBMRepA4 = (
+    Vect[IsingBimodule ⊠ A4Irrep]((C0, 0) => 2, (C1, 3) => 1),
+    Vect[IsingBimodule ⊠ A4Irrep]((Mop, 3) => 2)',
+    Vect[IsingBimodule ⊠ A4Irrep]((D0, 1) => 3, (D1, 2) => 4)',
+    Vect[IsingBimodule ⊠ A4Irrep]((M, 3) => 2)',
+    Vect[IsingBimodule ⊠ A4Irrep]((C0, 2) => 2, (C1, 3) => 2),
+)
+
+for V in (Vtr, VRepℤ₂, VRepℤ₃, VRepU₁, VfRepℤ₂, VTwistedVecℤ₄, VTwistedVecℤ₃, VRepCU₁, VRepSU₂, VfRepCU₁, VfRepSU₂, VfHubbard, Vfib, VRepA4, VfRepA4, VRepA4Twistedℤ₄, VIBM, VIBMRepA4)
+    V1, V2, V3, V4, V5 = V
+    for Vi in (V1, V2, V3, V4, V5)
+        @test allequal(leftunit, sectors(Vi))
+        @test allequal(rightunit, sectors(Vi))
+    end
+    @test dim(V1 ⊗ V2 ⊗ V3 ← (V4 ⊗ V5)') > 0
+    @test V1 ⊗ V2 ≾ (V3 ⊗ V4 ⊗ V5)' # wide blocks for QR
+    @test V1 ⊗ V2 ⊗ V3 ≿ (V4 ⊗ V5)' # tall blocks for isometries
+end
+
 # Spacelist selection
 # -------------------
 function default_spacelist(fast_tests::Bool)
-    fast_tests && return (Vtr, Vℤ₃, VSU₂)
+    fast_tests && return (Vtr, VRepSU₂, VfHubbard, VRepA4Twistedℤ₄)
     if get(ENV, "CI", "false") == "true"
         println("Detected running on CI")
-        Sys.iswindows() && return (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VIB_M) #VIB_diag)
-        Sys.isapple()   && return (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VfU₁, VfSU₂, VSU₂U₁, VIB_M) #VIB_M)
-        return (Vtr, Vℤ₂, Vfℤ₂, VU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_M) #VIB_M)
+        Sys.iswindows() && return (Vtr, VRepU₁, VfRepℤ₂, VTwistedVecℤ₃, VfRepSU₂, Vfib, VIBM) # length 7
+        Sys.isapple()   && return (Vtr, VRepℤ₂, VRepCU₁, VfHubbard, VRepA4Twistedℤ₄, VIBMRepA4) # length 6
+        return (Vtr, VRepℤ₃, VTwistedVecℤ₄, VRepSU₂, VfRepCU₁, VRepA4, VfRepA4) # length 7
     end
-    return (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VSU₂U₁, VIB_M) #VIB_diag, VIB_M)
+    return (Vtr, VRepℤ₂, VRepℤ₃, VRepU₁, VfRepℤ₂, VTwistedVecℤ₄, VTwistedVecℤ₃, VRepCU₁, VRepSU₂, VfRepCU₁, VfRepSU₂, VfHubbard, Vfib, VRepA4, VfRepA4, VRepA4Twistedℤ₄, VIBM, VIBMRepA4)
 end
 
 function factorization_spacelist(fast_tests::Bool)
-    fast_tests && return (Vtr, Vℤ₃, VSU₂)
+    fast_tests && return (Vtr, VRepU₁, VfHubbard, VRepA4Twistedℤ₄)
     if get(ENV, "CI", "false") == "true"
         println("Detected running on CI")
-        Sys.iswindows() && return (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VIB_M) #VIB_diag)
-        Sys.isapple()   && return (Vtr, Vℤ₃, VfU₁, VfSU₂, VIB_M) #VIB_M)
-        return (Vtr, VU₁, VCU₁, VSU₂, VfSU₂, VIB_M) #VIB_M)
+        Sys.iswindows() && return (Vtr, VRepU₁, VfRepℤ₂, VTwistedVecℤ₃, VfRepSU₂, Vfib, VIBM) # length 7
+        Sys.isapple()   && return (Vtr, VRepℤ₂, VRepCU₁, VfHubbard, VRepA4Twistedℤ₄, VIBMRepA4) # length 6
+        return (Vtr, VRepℤ₃, VTwistedVecℤ₄, VRepSU₂, VfRepCU₁, VRepA4, VfRepA4) # length 7
     end
-    return (Vtr, Vℤ₃, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VIB_M) #VIB_diag, VIB_M)
+    return (Vtr, VRepℤ₂, VRepℤ₃, VRepU₁, VfRepℤ₂, VTwistedVecℤ₄, VTwistedVecℤ₃, VRepCU₁, VRepSU₂, VfRepCU₁, VfRepSU₂, VfHubbard, Vfib, VRepA4, VfRepA4, VRepA4Twistedℤ₄, VIBM, VIBMRepA4)
 end
 
 function ad_spacelist(fast_tests::Bool)
-    return fast_tests ? (Vtr, Vfℤ₂, Vfib) : (Vtr, VU₁, Vfℤ₂, VSU₂, Vfib)
+    return fast_tests ? (Vtr, VRepU₁, VfHubbard, VRepA4Twistedℤ₄) : (Vtr, VRepℤ₂, VRepCU₁, VfHubbard, VRepA4Twistedℤ₄, VIBMRepA4)
 end
 
 # Gauge-fixing tangents for AD factorization tests

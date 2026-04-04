@@ -23,7 +23,7 @@ for V in spacelist
     println("---------------------------------------")
     println("Auto-diff with symmetry: $Istr")
     println("---------------------------------------")
-    @timedtestset "ChainRules TensorOperations with symmetry $Istr" verbose = true begin
+    @timedtestset "ChainRules for tensor operations with symmetry $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
 
         @timedtestset "scalartype $T" for T in eltypes

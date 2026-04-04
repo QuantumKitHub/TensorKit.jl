@@ -21,7 +21,9 @@ for V in spacelist
         @testset "QR decomposition" begin
             for T in eltypes,
                     t in (
-                        rand(T, W, W), rand(T, W, W)', rand(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)'), rand(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5))',
+                        rand(T, W, W), rand(T, W, W)',
+                        rand(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)'), rand(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)')',
+                        rand(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5)), rand(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5))',
                         DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
                     )
 
@@ -74,7 +76,9 @@ for V in spacelist
         @testset "LQ decomposition" begin
             for T in eltypes,
                     t in (
-                        rand(T, W, W), rand(T, W, W)', rand(T, (V1 ⊗ V2), (V3 ⊗ V4 ⊗ V5)'), rand(T, (V1 ⊗ V2 ⊗ V3)', (V4 ⊗ V5))',
+                        rand(T, W, W), rand(T, W, W)',
+                        rand(T, (V1 ⊗ V2), (V3 ⊗ V4 ⊗ V5)'), rand(T, (V1 ⊗ V2), (V3 ⊗ V4 ⊗ V5)')',
+                        rand(T, (V1 ⊗ V2 ⊗ V3)', (V4 ⊗ V5)), rand(T, (V1 ⊗ V2 ⊗ V3)', (V4 ⊗ V5))',
                         DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
                     )
 

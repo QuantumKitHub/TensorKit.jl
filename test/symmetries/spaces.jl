@@ -427,7 +427,7 @@ end
 end
 
 @timedtestset "HomSpace" begin
-    for (V1, V2, V3, V4, V5) in (Vtr, Vℤ₃, VSU₂, VIB_M)
+    for (V1, V2, V3, V4, V5) in ad_spacelist(fast_tests)
         W = HomSpace(V1 ⊗ V2, (V3 ⊗ V4 ⊗ V5)')
         @test W == ((V3 ⊗ V4 ⊗ V5)' → V1 ⊗ V2)
         @test W == (V1 ⊗ V2 ← (V3 ⊗ V4 ⊗ V5)')

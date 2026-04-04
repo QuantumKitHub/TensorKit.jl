@@ -15,6 +15,7 @@ eltypes = (Float64, ComplexF64)
 @timedtestset "Mooncake - Index Manipulations: $(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes
     atol = default_tol(T)
     rtol = default_tol(T)
+    hasbraiding = BraidingStyle(sectortype(eltype(V))) isa HasBraiding
     symmetricbraiding = BraidingStyle(sectortype(eltype(V))) isa SymmetricBraiding
 
     symmetricbraiding && @timedtestset "add_permute!" begin
@@ -51,7 +52,7 @@ eltypes = (Float64, ComplexF64)
         end
     end
 
-    @timedtestset "add_braid!" begin
+    hasbraiding && @timedtestset "add_braid!" begin
         A = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
         α = randn(T)
         β = randn(T)
@@ -71,7 +72,7 @@ eltypes = (Float64, ComplexF64)
         end
     end
 
-    @timedtestset "flip_n_twist!" begin
+    hasbraiding && @timedtestset "flip_n_twist!" begin
         A = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
 
         if !(T <: Real && !(sectorscalartype(sectortype(A)) <: Real))

@@ -156,7 +156,8 @@ for V in spacelist
 end
 
 @timedtestset "Deligne tensor product: test via conversion" begin
-    @testset for Vlist1 in (Vtr, VSU₂), Vlist2 in (Vtr, Vℤ₂)
+    using .TestSetup: Vtr, VRepℤ₂, VRepSU₂, VRepA4
+    @testset for Vlist1 in (Vtr, VRepSU₂), Vlist2 in (VRepℤ₂, VRepA4)
         V1, V2, V3, V4, V5 = Vlist1
         W1, W2, W3, W4, W5 = Vlist2
         for T in (Float32, ComplexF64)

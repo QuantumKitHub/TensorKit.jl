@@ -308,7 +308,7 @@ function insertrightunit(
         u = unitspace(spacetype(P))
     else
         N > 0 || throw(ArgumentError("cannot insert a sensible unit space in the empty product space"))
-        u = (i == 0 ) ? leftunitspace(P[1]) : rightunitspace(P[i])
+        u = (i == 0) ? leftunitspace(P[1]) : rightunitspace(P[i])
     end
     if dual
         u = TensorKit.dual(u)
