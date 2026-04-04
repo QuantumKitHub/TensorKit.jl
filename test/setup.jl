@@ -5,7 +5,7 @@ export default_tol
 export smallset, randsector, hasfusiontensor, force_planar
 export random_fusion
 export sectorlist, fast_sectorlist
-export dim_isapprox
+# export dim_isapprox
 export default_spacelist, factorization_spacelist, ad_spacelist
 export remove_qrgauge_dependence!, remove_lqgauge_dependence!
 export remove_eiggauge_dependence!, remove_eighgauge_dependence!, remove_svdgauge_dependence!
@@ -143,16 +143,16 @@ function random_fusion(I::Type{<:Sector}, ::Val{N}) where {N} # for fusion tree 
     return (s, tail...)
 end
 
-# helper function to check that d - dim(c) < dim(V) <= d where c is the largest sector
-# to allow for truncations to have some margin with larger sectors
-function dim_isapprox(V::ElementarySpace, d::Int)
-    dim_c_max = maximum(dim, sectors(V); init = 1)
-    return max(0, d - dim_c_max) ≤ dim(V) ≤ d + dim_c_max
-end
-function dim_isapprox(V::ProductSpace, d::Int)
-    dim_c_max = maximum(dim, blocksectors(V); init = 1)
-    return max(0, d - dim_c_max) ≤ dim(V) ≤ d + dim_c_max
-end
+# # helper function to check that d - dim(c) < dim(V) <= d where c is the largest sector
+# # to allow for truncations to have some margin with larger sectors
+# function dim_isapprox(V::ElementarySpace, d::Int)
+#     dim_c_max = maximum(dim, sectors(V); init = 1)
+#     return max(0, d - dim_c_max) ≤ dim(V) ≤ d + dim_c_max
+# end
+# function dim_isapprox(V::ProductSpace, d::Int)
+#     dim_c_max = maximum(dim, blocksectors(V); init = 1)
+#     return max(0, d - dim_c_max) ≤ dim(V) ≤ d + dim_c_max
+# end
 
 _isunitary(x::Number; kwargs...) = isapprox(x * x', one(x); kwargs...)
 _isunitary(x; kwargs...) = isunitary(x; kwargs...)

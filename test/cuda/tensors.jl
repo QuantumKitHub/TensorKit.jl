@@ -66,16 +66,14 @@ for V in spacelist
                 @test typeof(t) == TensorMap{T, spacetype(t), 5, 0, CuVector{T, CUDA.DeviceMemory}}
                 # blocks
                 bs = @constinferred blocks(t)
-                if !isempty(blocksectors(t)) # multifusion space ending on module gives empty data
-                    (c, b1), state = @constinferred Nothing iterate(bs)
-                    @test c == first(blocksectors(W))
-                    next = @constinferred Nothing iterate(bs, state)
-                    b2 = @constinferred block(t, first(blocksectors(t)))
-                    @test b1 == b2
-                    @test eltype(bs) === Pair{typeof(c), typeof(b1)}
-                    @test typeof(b1) === TensorKit.blocktype(t)
-                    @test typeof(c) === sectortype(t)
-                end
+                (c, b1), state = @constinferred Nothing iterate(bs)
+                @test c == first(blocksectors(W))
+                next = @constinferred Nothing iterate(bs, state)
+                b2 = @constinferred block(t, first(blocksectors(t)))
+                @test b1 == b2
+                @test eltype(bs) === Pair{typeof(c), typeof(b1)}
+                @test typeof(b1) === TensorKit.blocktype(t)
+                @test typeof(c) === sectortype(t)
             end
         end
         @timedtestset "Conversion to/from host" begin
@@ -99,7 +97,7 @@ for V in spacelist
             end
         end
         @timedtestset "Adapt" begin
-            W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
+            W = V1 ⊗ V2 ⊗ V3 ← (V4 ⊗ V5)'
             for T in (Int, Float32, ComplexF64)
                 t = rand(T, W)
                 t_gpu = @constinferred adapt(CuArray, t)
@@ -113,7 +111,7 @@ for V in spacelist
             end
         end
         @timedtestset "Tensor Dict conversion" begin
-            W = V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5
+            W = V1 ⊗ V2 ← (V3 ⊗ V4 ⊗ V5)'
             for T in (Int, Float32, ComplexF64)
                 t = @constinferred CUDA.rand(T, W)
                 d = convert(Dict, t)
@@ -121,7 +119,7 @@ for V in spacelist
             end
         end
         symmetricbraiding && @timedtestset "Basic linear algebra" begin
-            W = V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5
+            W = V1 ⊗ V2 ← (V3 ⊗ V4 ⊗ V5)'
             for T in (Float32, ComplexF64)
                 t = @constinferred CUDA.rand(T, W)
                 @test scalartype(t) == T
@@ -132,16 +130,14 @@ for V in spacelist
                 @test domain(t) == domain(W)
                 # blocks for adjoint
                 bs = @constinferred blocks(t')
-                if !isempty(blocksectors(t')) # multifusion space ending on module gives empty data
-                    (c, b1), state = @constinferred Nothing iterate(bs)
-                    @test c == first(blocksectors(W'))
-                    next = @constinferred Nothing iterate(bs, state)
-                    b2 = @constinferred block(t', first(blocksectors(t')))
-                    @test b1 == b2
-                    @test eltype(bs) === Pair{typeof(c), typeof(b1)}
-                    @test typeof(b1) === TensorKit.blocktype(t')
-                    @test typeof(c) === sectortype(t)
-                end
+                (c, b1), state = @constinferred Nothing iterate(bs)
+                @test c == first(blocksectors(W'))
+                next = @constinferred Nothing iterate(bs, state)
+                b2 = @constinferred block(t', first(blocksectors(t')))
+                @test b1 == b2
+                @test eltype(bs) === Pair{typeof(c), typeof(b1)}
+                @test typeof(b1) === TensorKit.blocktype(t')
+                @test typeof(c) === sectortype(t)
                 # linear algebra
                 @test isa(@constinferred(norm(t)), real(T))
                 @test norm(t)^2 ≈ dot(t, t)
@@ -173,7 +169,7 @@ for V in spacelist
             end
         end
         @timedtestset "Trivial space insertion and removal" begin
-            W = V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5
+            W = V1 ⊗ V2 ← (V3 ⊗ V4 ⊗ V5)'
             for T in (Float32, ComplexF64)
                 t = @constinferred CUDA.rand(T, W)
                 t2 = @constinferred insertleftunit(t)
@@ -206,7 +202,7 @@ for V in spacelist
         end
         if hasfusiontensor(I)
             @timedtestset "Basic linear algebra: test via CPU" begin
-                W = V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5
+                W = V1 ⊗ V2 ⊗ V3 ← (V4 ⊗ V5)'
                 for T in (Float32, ComplexF64)
                     t = CUDA.rand(T, W)
                     t2 = @constinferred CUDA.rand!(similar(t))
@@ -370,8 +366,8 @@ for V in spacelist
             end
         end=# # doesn't yet work because of AdjointTensor
         BraidingStyle(I) isa HasBraiding && @timedtestset "Index flipping: test flipping inverse" begin
-            t = CUDA.rand(ComplexF64, V1 ⊗ V1' ← V1' ⊗ V1)
-            for i in 1:4
+            t = CUDA.rand(ComplexF64, V1 ⊗ V2 ⊗ V3 ← (V4 ⊗ V5)')
+            for i in 1:5
                 CUDA.@allowscalar begin
                     @test t ≈ flip(flip(t, i), i; inv = true)
                     @test t ≈ flip(flip(t, i; inv = true), i)
@@ -408,8 +404,8 @@ for V in spacelist
             end
         end=# # TODO
         @timedtestset "Multiplication of isometries: test properties" begin
-            W2 = V4 ⊗ V5
-            W1 = W2 ⊗ (oneunit(V1) ⊕ oneunit(V1))
+            W1 = V1 ⊗ V2 ⊗ V3
+            W2 = (V4 ⊗ V5)'
             for T in (Float64, ComplexF64)
                 t1 = randisometry(CuMatrix{T}, W1, W2)
                 t2 = randisometry(CuMatrix{T}, W2 ← W2)
@@ -421,7 +417,7 @@ for V in spacelist
         end
         @timedtestset "Multiplication and inverse: test compatibility" begin
             W1 = V1 ⊗ V2 ⊗ V3
-            W2 = V4 ⊗ V5
+            W2 = (V4 ⊗ V5)'
             for T in (Float64, ComplexF64)
                 t1 = CUDA.rand(T, W1, W1)
                 t2 = CUDA.rand(T, W2, W2)
@@ -439,7 +435,7 @@ for V in spacelist
         end
         @timedtestset "Multiplication and inverse: test via CPU" begin
             W1 = V1 ⊗ V2 ⊗ V3
-            W2 = V4 ⊗ V5
+            W2 = (V4 ⊗ V5)'
             for T in (Float32, Float64, ComplexF32, ComplexF64)
                 t1 = CUDA.rand(T, W1, W1)
                 t2 = CUDA.rand(T, W2, W2)
@@ -540,8 +536,8 @@ for V in spacelist
                     t1 = CUDA.rand(T, V2 ⊗ V3 ⊗ V1, V1 ⊗ V2)
                     t2 = CUDA.rand(T, V2 ⊗ V1 ⊗ V3, V1 ⊗ V1)
                 else
-                    t1 = CUDA.rand(T, V3 ⊗ V4 ⊗ V5, V1 ⊗ V2)
-                    t2 = CUDA.rand(T, V5' ⊗ V4' ⊗ V3', V2' ⊗ V1')
+                    t1 = CUDA.rand(T, V3 ⊗ V4 ⊗ V5, (V1 ⊗ V2)')
+                    t2 = CUDA.rand(T, (V3 ⊗ V4 ⊗ V5)', V1 ⊗ V2)
                 end
                 CUDA.@allowscalar begin
                     t = @constinferred (t1 ⊗ t2)
@@ -580,24 +576,22 @@ for V in spacelist
 end
 
 @timedtestset "Deligne tensor product: test via conversion" begin
-    Vlists1 = (Vtr,) # VSU₂)
-    Vlists2 = (Vtr,) # Vℤ₂)
-    @testset for Vlist1 in Vlists1, Vlist2 in Vlists2
+    using .TestSetup: Vtr, VRepℤ₂, VRepSU₂, VRepA4
+    @testset for Vlist1 in (Vtr, VRepSU₂), Vlist2 in (VRepℤ₂, VRepA4)
         V1, V2, V3, V4, V5 = Vlist1
         W1, W2, W3, W4, W5 = Vlist2
         for T in (Float32, ComplexF64)
-            t1 = CUDA.rand(T, V1 ⊗ V2, V3' ⊗ V4)
-            t2 = CUDA.rand(T, W2, W1 ⊗ W1')
-            CUDA.@allowscalar begin
-                t = @constinferred (t1 ⊠ t2)
-            end
+            t1 = rand(T, V1 ⊗ V2, V3' ⊗ V4)
+            t2 = rand(T, W2, W1 ⊗ W1')
+            t = @constinferred (t1 ⊠ t2)
             d1 = dim(codomain(t1))
             d2 = dim(codomain(t2))
             d3 = dim(domain(t1))
             d4 = dim(domain(t2))
-            CUDA.@allowscalar begin
-                @test ad(t1) ⊠ ad(t2) ≈ ad(t1 ⊠ t2)
-            end
+            At = convert(Array, t)
+            @test reshape(At, (d1, d2, d3, d4)) ≈
+                reshape(convert(Array, t1), (d1, 1, d3, 1)) .*
+                reshape(convert(Array, t2), (1, d2, 1, d4))
         end
     end
 end
