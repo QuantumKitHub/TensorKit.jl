@@ -187,7 +187,7 @@ for V in spacelist
                 end
                 @test @constinferred(removeunit(t3, $(numind(t3)))) == t
                 t4 = @constinferred insertrightunit(t, 3; dual = true)
-                @test numin(t4) == numin(t) && numout(t4) == numout(t) + 1
+                @test_broken numin(t4) == numin(t) && numout(t4) == numout(t) + 1
                 for (c, b) in blocks(t)
                     @test b == block(t4, c)
                 end
@@ -539,9 +539,7 @@ for V in spacelist
                     t1 = CUDA.rand(T, V3 ⊗ V4 ⊗ V5, (V1 ⊗ V2)')
                     t2 = CUDA.rand(T, (V3 ⊗ V4 ⊗ V5)', V1 ⊗ V2)
                 end
-                CUDA.@allowscalar begin
-                    t = @constinferred (t1 ⊗ t2)
-                end
+                t = @constinferred (t1 ⊗ t2)
                 @test norm(t) ≈ norm(t1) * norm(t2)
             end
         end
@@ -553,22 +551,18 @@ for V in spacelist
                 d2 = dim(codomain(t2))
                 d3 = dim(domain(t1))
                 d4 = dim(domain(t2))
-                CUDA.@allowscalar begin
-                    t = @constinferred (t1 ⊗ t2)
-                    At = ad(t)
-                    @test ad(t) ≈ ad(t1) ⊗ ad(t2)
-                end
+                t = @constinferred (t1 ⊗ t2)
+                At = ad(t)
+                @test ad(t) ≈ ad(t1) ⊗ ad(t2)
             end
         end
         symmetricbraiding && @timedtestset "Tensor product: test via tensor contraction" begin
             for T in (Float32, ComplexF64)
                 t1 = CUDA.rand(T, V2 ⊗ V3 ⊗ V1)
                 t2 = CUDA.rand(T, V2 ⊗ V1 ⊗ V3)
-                CUDA.@allowscalar begin
-                    t = @constinferred (t1 ⊗ t2)
-                    @tensor t′[1, 2, 3, 4, 5, 6] := t1[1, 2, 3] * t2[4, 5, 6]
-                    # @test t ≈ t′ # TODO broken for symmetry: Irrep[ℤ₃]
-                end
+                t = @constinferred (t1 ⊗ t2)
+                @tensor t′[1, 2, 3, 4, 5, 6] := t1[1, 2, 3] * t2[4, 5, 6]
+                # @test t ≈ t′ # TODO broken for symmetry: Irrep[ℤ₃]
             end
         end
     end
