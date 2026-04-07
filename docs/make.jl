@@ -1,6 +1,7 @@
+using Pkg
+
 # if examples is not the current active environment, switch to it
 if Base.active_project() != joinpath(@__DIR__, "Project.toml")
-    using Pkg
     Pkg.activate(@__DIR__)
     Pkg.develop(PackageSpec(; path = joinpath(@__DIR__, "..")))
     Pkg.resolve()
@@ -8,6 +9,7 @@ if Base.active_project() != joinpath(@__DIR__, "Project.toml")
 end
 
 using Documenter
+using DocumenterTypst
 using Random
 using TensorKit
 using TensorKit: FusionTreePair, Index2Tuple
@@ -61,6 +63,7 @@ makedocs(;
     format = Documenter.HTML(;
         prettyurls = true, mathengine, assets = ["assets/custom.css"]
     ),
+    # format = DocumenterTypst.Typst(),
     pages = pages,
     pagesonly = true,
     plugins = [links]

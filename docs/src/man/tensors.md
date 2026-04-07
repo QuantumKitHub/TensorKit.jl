@@ -84,9 +84,7 @@ However, in this case the basis transform to the block diagonal representation i
 Indeed, let us denote the fusion trees `f₁ ∈ fusiontrees((a1, …, aN₁), c)` as ``X^{a_1, …, a_{N₁}}_{c,α}`` where ``α = (e_1, …, e_{N_1-2}; μ₁, …, μ_{N_1-1})`` is a collective label for the internal sectors `e` and the vertex degeneracy labels `μ` of a generic fusion tree, as discussed in the [corresponding section](@ref ss_fusiontrees).
 The tensor is then represented as
 
-```@raw html
-<img src="../img/tensor-storage.svg" alt="tensor storage" class="color-invertible"/>
-```
+![tensor storage](img/tensor-storage.svg)
 
 In this diagram, we have indicated how the tensor map can be rewritten in terms of a block diagonal matrix with a unitary matrix on its left and another unitary matrix (if domain and codomain are different) on its right.
 So the left and right matrices should actually have been drawn as squares.
@@ -102,9 +100,7 @@ Similarly, the dashed vertical lines define the border between regions of differ
 To understand this better, we need to understand the basis transformation, e.g. on the left (codomain) side.
 In more detail, it is given by
 
-```@raw html
-<img src="../img/tensor-unitary.svg" alt="tensor unitary" class="color-invertible"/>
-```
+![tensor unitary](img/tensor-unitary.svg)
 
 Indeed, remembering that ``V_i = ⨁_{a_i} R_{a_i} ⊗ ℂ^{n_{a_i}}`` with ``R_{a_i}`` the representation space on which irrep ``a_i`` acts (with dimension ``\mathrm{dim}(a_i)``), we find
 
