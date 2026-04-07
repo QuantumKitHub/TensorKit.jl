@@ -442,8 +442,8 @@ for V in spacelist
             for T in eltypes,
                     t in (
                         CUDA.randn(T, W, W),
-                        CUDA.randn(T, W, W)', 
-                        CUDA.randn(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)'), 
+                        CUDA.randn(T, W, W)',
+                        CUDA.randn(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)'),
                         CUDA.randn(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5))',
                     )
                 t2 = project_isometric(t)

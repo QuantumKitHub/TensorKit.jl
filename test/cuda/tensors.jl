@@ -531,7 +531,7 @@ for V in spacelist
         #
         # TODO
         @timedtestset "Tensor product: test via norm preservation" begin
-            for T in (ComplexF64, ) # Float32 case broken because of cuTENSOR
+            for T in (ComplexF64,) # Float32 case broken because of cuTENSOR
                 @time "Construction" begin
                     if UnitStyle(I) isa SimpleUnit || !isempty(blocksectors(V2 ⊗ V1))
                         t1 = CUDA.rand(T, V2 ⊗ V3 ⊗ V1, V1)
