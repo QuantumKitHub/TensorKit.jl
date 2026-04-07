@@ -533,13 +533,8 @@ for V in spacelist
         @timedtestset "Tensor product: test via norm preservation" begin
             for T in (ComplexF64,) # Float32 case broken because of cuTENSOR
                 @time "Construction" begin
-                    if UnitStyle(I) isa SimpleUnit || !isempty(blocksectors(V2 ⊗ V1))
-                        t1 = CUDA.rand(T, V2 ⊗ V3 ⊗ V1, V1)
-                        t2 = CUDA.rand(T, V2 ⊗ V1 ⊗ V3, V1)
-                    else
-                        t1 = CUDA.rand(T, V3 ⊗ V4 ⊗ V5, V1')
-                        t2 = CUDA.rand(T, (V3 ⊗ V4 ⊗ V5)', V1)
-                    end
+                    t1 = CUDA.rand(T, V1, V5')
+                    t2 = CUDA.rand(T, V2 ⊗ V3, V4')
                 end
                 @time "Product" begin
                     t = @constinferred (t1 ⊗ t2)
@@ -551,8 +546,8 @@ for V in spacelist
         end
         symmetricbraiding && @timedtestset "Tensor product: test via conversion" begin
             for T in (Float32, ComplexF64)
-                t1 = CUDA.rand(T, V2 ⊗ V3 ⊗ V1, V1)
-                t2 = CUDA.rand(T, V2 ⊗ V1 ⊗ V3, V2)
+                t1 = CUDA.rand(T, V1, V5')
+                t2 = CUDA.rand(T, V2 ⊗ V3, V4')
                 d1 = dim(codomain(t1))
                 d2 = dim(codomain(t2))
                 d3 = dim(domain(t1))
@@ -564,11 +559,11 @@ for V in spacelist
         end
         symmetricbraiding && @timedtestset "Tensor product: test via tensor contraction" begin
             for T in (Float32, ComplexF64)
-                t1 = CUDA.rand(T, V2 ⊗ V3 ⊗ V1)
-                t2 = CUDA.rand(T, V2 ⊗ V1 ⊗ V3)
+                t1 = CUDA.rand(T, V1, V5')
+                t2 = CUDA.rand(T, V2 ⊗ V3, V4')
                 t = @constinferred (t1 ⊗ t2)
-                @tensor t′[1, 2, 3, 4, 5, 6] := t1[1, 2, 3] * t2[4, 5, 6]
-                # @test t ≈ t′ # TODO broken for symmetry: Irrep[ℤ₃]
+                @tensor t′[1 2 3; 4 5] := t1[1; 4] * t2[2 3; 5]
+                @test t ≈ t′ # This should really not be broken
             end
         end
     end
@@ -581,8 +576,8 @@ end
         V1, V2, V3, V4, V5 = Vlist1
         W1, W2, W3, W4, W5 = Vlist2
         for T in (Float32, ComplexF64)
-            t1 = rand(T, V1 ⊗ V2, V3' ⊗ V4)
-            t2 = rand(T, W2, W1 ⊗ W1')
+            t1 = rand(T, V2 ⊗ V3, (V4 ⊗ V5)')
+            t2 = rand(T, W2, (W3 ⊗ W4)')
             t = @constinferred (t1 ⊠ t2)
             d1 = dim(codomain(t1))
             d2 = dim(codomain(t2))

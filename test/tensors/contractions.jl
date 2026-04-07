@@ -93,13 +93,8 @@ for V in spacelist
         end
         @timedtestset "Tensor product: test via norm preservation" begin
             for T in (Float32, ComplexF64)
-                if UnitStyle(I) isa SimpleUnit || !isempty(blocksectors(V2 ⊗ V1))
-                    t1 = rand(T, V2 ⊗ V3 ⊗ V1, V1 ⊗ V2)
-                    t2 = rand(T, V2 ⊗ V1 ⊗ V3, V1 ⊗ V1)
-                else
-                    t1 = rand(T, V3 ⊗ V4 ⊗ V5, (V1 ⊗ V2)')
-                    t2 = rand(T, (V3 ⊗ V4 ⊗ V5)', V1 ⊗ V2)
-                end
+                t1 = rand(T, V1, V5')
+                t2 = rand(T, V2 ⊗ V3, V4')
                 t = @constinferred (t1 ⊗ t2)
                 @test norm(t) ≈ norm(t1) * norm(t2)
             end
@@ -107,8 +102,8 @@ for V in spacelist
         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
             @timedtestset "Tensor product: test via conversion" begin
                 for T in (Float32, ComplexF64)
-                    t1 = rand(T, V2 ⊗ V3 ⊗ V1, V1)
-                    t2 = rand(T, V2 ⊗ V1 ⊗ V3, V2)
+                    t1 = rand(T, V1, V5')
+                    t2 = rand(T, V2 ⊗ V3, V4')
                     t = @constinferred (t1 ⊗ t2)
                     d1 = dim(codomain(t1))
                     d2 = dim(codomain(t2))
@@ -123,10 +118,10 @@ for V in spacelist
         end
         symmetricbraiding && @timedtestset "Tensor product: test via tensor contraction" begin
             for T in (Float32, ComplexF64)
-                t1 = rand(T, V2 ⊗ V3 ⊗ V1)
-                t2 = rand(T, V2 ⊗ V1 ⊗ V3)
+                t1 = rand(T, V1, V5')
+                t2 = rand(T, V2 ⊗ V3, V4')
                 t = @constinferred (t1 ⊗ t2)
-                @tensor t′[1, 2, 3, 4, 5, 6] := t1[1, 2, 3] * t2[4, 5, 6]
+                @tensor t′[1 2 3; 4 5] := t1[1; 4] * t2[2 3; 5]
                 @test t ≈ t′
             end
         end
@@ -161,8 +156,8 @@ end
         V1, V2, V3, V4, V5 = Vlist1
         W1, W2, W3, W4, W5 = Vlist2
         for T in (Float32, ComplexF64)
-            t1 = rand(T, V1 ⊗ V2, V3' ⊗ V4)
-            t2 = rand(T, W2, W1 ⊗ W1')
+            t1 = rand(T, V2 ⊗ V3, (V4 ⊗ V5)')
+            t2 = rand(T, W2, (W3 ⊗ W4)')
             t = @constinferred (t1 ⊠ t2)
             d1 = dim(codomain(t1))
             d2 = dim(codomain(t2))
