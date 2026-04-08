@@ -532,16 +532,10 @@ for V in spacelist
         # TODO
         @timedtestset "Tensor product: test via norm preservation" begin
             for T in (ComplexF64,) # Float32 case broken because of cuTENSOR
-                @time "Construction" begin
-                    t1 = CUDA.rand(T, V1, V5')
-                    t2 = CUDA.rand(T, V2 ⊗ V3, V4')
-                end
-                @time "Product" begin
-                    t = @constinferred (t1 ⊗ t2)
-                end
-                @time "Norm" begin
-                    @test norm(t) ≈ norm(t1) * norm(t2)
-                end
+                t1 = CUDA.rand(T, V1, V5')
+                t2 = CUDA.rand(T, V2 ⊗ V3, V4')
+                t = @constinferred (t1 ⊗ t2)
+                @test norm(t) ≈ norm(t1) * norm(t2)
             end
         end
         symmetricbraiding && @timedtestset "Tensor product: test via conversion" begin
@@ -562,7 +556,9 @@ for V in spacelist
                 t1 = CUDA.rand(T, V1, V5')
                 t2 = CUDA.rand(T, V2 ⊗ V3, V4')
                 t = @constinferred (t1 ⊗ t2)
-                @tensor t′[1 2 3; 4 5] := t1[1; 4] * t2[2 3; 5]
+                CUDA.@allowscalar begin
+                    @tensor t′[1 2 3; 4 5] := t1[1; 4] * t2[2 3; 5]
+                end
                 @test t ≈ t′ # This should really not be broken
             end
         end
