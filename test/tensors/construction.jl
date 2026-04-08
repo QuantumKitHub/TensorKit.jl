@@ -9,9 +9,9 @@ for V in spacelist
     I = sectortype(first(V))
     Istr = type_repr(I)
     println("---------------------------------------")
-    println("Tensors with symmetry: $Istr")
+    println("Tensor constructions with symmetry: $Istr")
     println("---------------------------------------")
-    @timedtestset "Tensors with symmetry: $Istr" verbose = true begin
+    @timedtestset "Tensor constructions with symmetry: $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
         @timedtestset "Basic tensor properties" begin
             W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5

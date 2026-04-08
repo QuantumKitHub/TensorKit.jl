@@ -12,9 +12,9 @@ for V in spacelist
     I = sectortype(first(V))
     Istr = TensorKit.type_repr(I)
     println("---------------------------------------")
-    println("Factorizations with symmetry: $Istr")
+    println("QR and LQ decompositions with symmetry: $Istr")
     println("---------------------------------------")
-    @timedtestset "Factorizations with symmetry: $Istr" verbose = true begin
+    @timedtestset "QR and LQ decompositions with symmetry: $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
         W = V1 ⊗ V2
 

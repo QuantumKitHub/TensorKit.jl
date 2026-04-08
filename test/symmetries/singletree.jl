@@ -11,7 +11,7 @@ using TupleTools
 # TODO: remove this once type_repr works for all included types
 using TensorKitSectors
 
-@timedtestset "Fusion trees for $(TensorKit.type_repr(I))" verbose = true for I in (fast_tests ? fast_sectorlist : sectorlist)
+@timedtestset "Single fusion trees for $(TensorKit.type_repr(I))" verbose = true for I in (fast_tests ? fast_sectorlist : sectorlist)
     Istr = TensorKit.type_repr(I)
     N = 5
     out = random_fusion(I, Val(N))

@@ -12,9 +12,9 @@ for V in spacelist
     hasbraiding = BraidingStyle(I) isa HasBraiding
     symmetricbraiding = BraidingStyle(I) isa SymmetricBraiding
     println("---------------------------------------")
-    println("Tensors with symmetry: $Istr")
+    println("Tensor index manipulations with symmetry: $Istr")
     println("---------------------------------------")
-    @timedtestset "Tensors with symmetry: $Istr" verbose = true begin
+    @timedtestset "Tensor index manipulations with symmetry: $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
         @timedtestset "Trivial space insertion and removal" begin
             W = V1 ⊗ V2 ← (V3 ⊗ V4 ⊗ V5)'

@@ -10,7 +10,7 @@ using TupleTools
 using TensorKitSectors
 
 
-@timedtestset "Fusion trees for $(TensorKit.type_repr(I))" verbose = true for I in (fast_tests ? fast_sectorlist : sectorlist)
+@timedtestset "Double fusion trees for $(TensorKit.type_repr(I))" verbose = true for I in (fast_tests ? fast_sectorlist : sectorlist)
     Istr = TensorKit.type_repr(I)
     N = I <: ProductSector ? 3 : 4
 

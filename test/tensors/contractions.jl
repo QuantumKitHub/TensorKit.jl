@@ -10,9 +10,9 @@ for V in spacelist
     Istr = type_repr(I)
     symmetricbraiding = BraidingStyle(I) isa SymmetricBraiding
     println("---------------------------------------")
-    println("Tensors with symmetry: $Istr")
+    println("Tensor contractions with symmetry: $Istr")
     println("---------------------------------------")
-    @timedtestset "Tensors with symmetry: $Istr" verbose = true begin
+    @timedtestset "Tensor contractions with symmetry: $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
         @timedtestset "Full trace: test self-consistency" begin
             if symmetricbraiding
