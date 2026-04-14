@@ -1,8 +1,7 @@
 using Test, TestExtras
 using TensorKit
 using LinearAlgebra: LinearAlgebra
-using MatrixAlgebraKit: diagview
-
+using MatrixAlgebraKit: defaulttol, diagview
 
 spacelist = factorization_spacelist(fast_tests)
 
@@ -16,7 +15,8 @@ for V in spacelist
     println("---------------------------------------------------------------")
     @timedtestset "Singular value and polar decompositions with symmetry: $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
-        W = V1 ⊗ V2
+        W = V1 ⊗ V2 ⊗ V3
+        Vd = fuse(V1 ⊗ V2)
 
         @testset "Condition number and rank" begin
             for T in eltypes,
@@ -24,7 +24,7 @@ for V in spacelist
                         rand(T, W, W), rand(T, W, W)',
                         rand(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)'), rand(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5))',
                         rand(T, (V1 ⊗ V2), (V3 ⊗ V4 ⊗ V5)'), rand(T, (V1 ⊗ V2 ⊗ V3)', (V4 ⊗ V5))',
-                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                        DiagonalTensorMap(rand(T, reduceddim(Vd)), Vd),
                     )
 
                 d1, d2 = dim(codomain(t)), dim(domain(t))
@@ -62,7 +62,7 @@ for V in spacelist
                         rand(T, W, W),
                         rand(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)'),
                         rand(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5))',
-                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                        DiagonalTensorMap(rand(T, reduceddim(Vd)), Vd),
                     )
 
                 @assert domain(t) ≾ codomain(t)
@@ -81,7 +81,7 @@ for V in spacelist
                         rand(T, W, W),
                         rand(T, (V1 ⊗ V2), (V3 ⊗ V4 ⊗ V5)'),
                         rand(T, (V1 ⊗ V2 ⊗ V3)', (V4 ⊗ V5))',
-                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                        DiagonalTensorMap(rand(T, reduceddim(Vd)), Vd),
                     )
 
                 @assert codomain(t) ≾ domain(t)
@@ -102,7 +102,7 @@ for V in spacelist
                         rand(T, W, W), rand(T, W, W)',
                         rand(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)'), rand(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5))',
                         rand(T, (V1 ⊗ V2), (V3 ⊗ V4 ⊗ V5)'), rand(T, (V1 ⊗ V2 ⊗ V3)', (V4 ⊗ V5))',
-                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                        DiagonalTensorMap(rand(T, reduceddim(Vd)), Vd),
                     )
 
                 u, s, vᴴ = @constinferred svd_full(t)
@@ -131,21 +131,23 @@ for V in spacelist
                 @test c * vᴴ ≈ t
                 @test isisometric(vᴴ; side = :right)
 
+                atol = norm(t) * defaulttol(T) # tol used by `:svd` left_null/right_null
+
                 N = @constinferred left_null(t; alg = :svd)
                 @test isisometric(N)
-                @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
+                @test norm(N' * t) ≈ 0 atol = atol
 
-                N = @constinferred left_null(t; trunc = (; atol = 100 * eps(norm(t))))
+                N = @constinferred left_null(t; trunc = (; atol = 6 * atol))
                 @test isisometric(N)
-                @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
+                @test norm(N' * t) ≈ 0 atol = 10 * atol
 
                 Nᴴ = @constinferred right_null(t; alg = :svd)
                 @test isisometric(Nᴴ; side = :right)
-                @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
+                @test norm(t * Nᴴ') ≈ 0 atol = atol
 
-                Nᴴ = @constinferred right_null(t; trunc = (; atol = 100 * eps(norm(t))))
+                Nᴴ = @constinferred right_null(t; trunc = (; atol = 6 * atol))
                 @test isisometric(Nᴴ; side = :right)
-                @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
+                @test norm(t * Nᴴ') ≈ 0 atol = 10 * atol
             end
 
             # empty tensor
@@ -167,7 +169,7 @@ for V in spacelist
                         rand(T, W, W), rand(T, W, W)',
                         rand(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)'), rand(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5))',
                         rand(T, (V1 ⊗ V2), (V3 ⊗ V4 ⊗ V5)'), rand(T, (V1 ⊗ V2 ⊗ V3)', (V4 ⊗ V5))',
-                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                        DiagonalTensorMap(rand(T, reduceddim(Vd)), Vd),
                     )
 
                 @constinferred normalize!(t)

@@ -16,7 +16,8 @@ for V in spacelist
     println("---------------------------------------")
     @timedtestset "QR and LQ decompositions with symmetry: $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
-        W = V1 ⊗ V2
+        W = V1 ⊗ V2 ⊗ V3
+        Vd = fuse(V1 ⊗ V2)
 
         @testset "QR decomposition" begin
             for T in eltypes,
@@ -24,7 +25,7 @@ for V in spacelist
                         rand(T, W, W), rand(T, W, W)',
                         rand(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)'), rand(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)')',
                         rand(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5)), rand(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5))',
-                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                        DiagonalTensorMap(rand(T, reduceddim(Vd)), Vd),
                     )
 
                 Q, R = @constinferred qr_full(t)
@@ -79,7 +80,7 @@ for V in spacelist
                         rand(T, W, W), rand(T, W, W)',
                         rand(T, (V1 ⊗ V2), (V3 ⊗ V4 ⊗ V5)'), rand(T, (V1 ⊗ V2), (V3 ⊗ V4 ⊗ V5)')',
                         rand(T, (V1 ⊗ V2 ⊗ V3)', (V4 ⊗ V5)), rand(T, (V1 ⊗ V2 ⊗ V3)', (V4 ⊗ V5))',
-                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                        DiagonalTensorMap(rand(T, reduceddim(Vd)), Vd),
                     )
 
                 L, Q = @constinferred lq_full(t)

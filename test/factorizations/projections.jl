@@ -16,13 +16,14 @@ for V in spacelist
     println("---------------------------------------")
     @timedtestset "Projections with symmetry: $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
-        W = V1 ⊗ V2
-
+        W = V1 ⊗ V2 ⊗ V3
+        Vd = fuse(V1 ⊗ V2)
+        
         @testset "Hermitian projections" begin
             for T in eltypes,
                     t in (
                         rand(T, V1, V1), rand(T, W, W), rand(T, W, W)',
-                        DiagonalTensorMap(rand(T, reduceddim(V1)), V1),
+                        DiagonalTensorMap(rand(T, reduceddim(Vd)), Vd),
                     )
                 normalize!(t)
                 noisefactor = eps(real(T))^(3 / 4)
