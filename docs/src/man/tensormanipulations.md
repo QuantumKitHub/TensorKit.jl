@@ -117,9 +117,7 @@ Another operation that belongs under index manipulations is taking the `transpos
 Note that `transpose(t)` is not simply equal to reshuffling domain and codomain with `braid(t, (1:(N₁+N₂)...), reverse(domainind(tsrc)), reverse(codomainind(tsrc))))`.
 Indeed, the graphical representation (where we draw the codomain and domain as a single object), makes clear that this introduces an additional (inverse) twist, which is then compensated in the `transpose` implementation.
 
-```@raw html
-<img src="../img/tensor-transpose.svg" alt="transpose" class="color-invertible"/>
-```
+![transpose](img/tensor-transpose.svg)
 
 In categorical language, the reason for this extra twist is that we use the left coevaluation ``η``, but the right evaluation ``\tilde{ϵ}``, when repartitioning the indices between domain and codomain.
 
@@ -247,9 +245,7 @@ As a consequence, the diagram, or the morphism it represents, is completely spec
 If we also compose the resulting morphisms with coevaluations so that it has a trivial domain, we just have one type of unconnected lines, henceforth called open indices.
 We sketch such a rearrangement in the following picture
 
-```@raw html
-<img src="../img/tensor-bosoniccontraction.svg" alt="tensor unitary" class="color-invertible"/>
-```
+![tensor unitary](img/tensor-bosoniccontraction.svg)
 
 Hence, we can now specify such a tensor diagram, henceforth called a tensor contraction or also tensor network, using a one-dimensional syntax that mimicks [abstract index notation](https://en.wikipedia.org/wiki/Abstract_index_notation) and specifies which indices are connected by the evaluation map using Einstein's summation conventation.
 Indeed, for `BraidingStyle(I) == Bosonic()`, such a tensor contraction can take the same format as if all tensors were just multi-dimensional arrays.
@@ -299,9 +295,7 @@ Firstly, the order of the tensors appearing on the right hand side is irrelevant
 As the latter is trivial, it can be omitted, and we just use the same rules to evaluate the newly ordered tensor network.
 For the particular case of matrix-matrix multiplication, which also captures more general settings by appropriotely combining spaces into a single line, we indeed find
 
-```@raw html
-<img src="../img/tensor-contractionreorder.svg" alt="tensor contraction reorder" class="color-invertible"/>
-```
+![tensor contraction reorder](img/tensor-contractionreorder.svg)
 
 or thus, the following two lines of code yield the same result
 ```julia

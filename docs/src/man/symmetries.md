@@ -95,9 +95,7 @@ Note that there are no multiplicity labels in that particular F-symbol as ``N^{a
 
 There is a graphical representation associated with the fusion tensors and their manipulations, which we summarize here:
 
-```@raw html
-<img src="../img/tree-summary.svg" alt="summary" class="color-invertible"/>
-```
+![summary](img/tree-summary.svg)
 
 We refer to the appendix on [category theory](@ref s_categories), and in particular the section on [topological data of a unitary fusion category](@ref ss_topologicalfusion) for further details.
 
