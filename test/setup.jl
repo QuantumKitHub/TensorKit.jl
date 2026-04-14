@@ -269,7 +269,7 @@ VTwistedVecℤ₃ = (
 
 # SimpleFusion, bosonic
 VRepCU₁ = (
-    Vect[CU1Irrep]((0, 0) => 1, (0, 1) => 1, 1 => 1),
+    Vect[CU1Irrep]((0, 0) => 2, (0, 1) => 1, 1 => 0),
     Vect[CU1Irrep]((0, 0) => 2, (0, 1) => 0, 1 => 1)',
     Vect[CU1Irrep]((0, 0) => 2, (0, 1) => 1, 1 => 1),
     Vect[CU1Irrep]((0, 0) => 2, (0, 1) => 1, 1 => 1)',
@@ -285,7 +285,7 @@ VRepSU₂ = (
 
 # SimpleFusion, fermionic
 VfRepCU₁ = (
-    Vect[FermionParity ⊠ CU1Irrep]((0, (0, 0)) => 1, (0, (0, 1)) => 1, (1, 1) => 1),
+    Vect[FermionParity ⊠ CU1Irrep]((0, (0, 0)) => 2, (0, (0, 1)) => 1, (1, 1) => 0),
     Vect[FermionParity ⊠ CU1Irrep]((0, (0, 0)) => 2, (0, (0, 1)) => 0, (1, 1) => 1)',
     Vect[FermionParity ⊠ CU1Irrep]((0, (0, 0)) => 2, (0, (0, 1)) => 1, (1, 1) => 1),
     Vect[FermionParity ⊠ CU1Irrep]((0, (0, 0)) => 2, (0, (0, 1)) => 1, (1, 1) => 1)',
