@@ -122,8 +122,6 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
     BraidingStyle(I) isa NoBraiding &&
         throw(SectorMismatch(lazy"Cannot braid sectors $a and $b"))
 
-    T = typeof(oneT)
-    localbraidcache = Dict{NTuple{6, I}, FusionStyle(I) isa MultiplicityFreeFusion ? T : Array{T, 4}}()
     for (col, (f, f₂)) in enumerate(fusiontrees(src))
         inner = f.innerlines
         inner_extended = (uncoupled[1], inner..., coupled′)
@@ -158,8 +156,10 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
         e = inner_extended[i + 1]
         if FusionStyle(I) isa MultiplicityFreeFusion
             for c′ in intersect(a ⊗ d, e ⊗ conj(b))
-                coeff = let k = (a, b, c, d, e, c′)
-                    get!(() -> _artin_braid_local(k, inv), localbraidcache, k)
+                coeff = if inv
+                    conj(Rsymbol(d, c, e) * Fsymbol(d, a, b, e, c′, c)) * Rsymbol(d, a, c′)
+                else
+                    Rsymbol(c, d, e) * conj(Fsymbol(d, a, b, e, c′, c) * Rsymbol(a, d, c′))
                 end
                 iszero(coeff) && continue
                 inner′ = TupleTools.setindex(inner, c′, i - 1)
@@ -172,14 +172,15 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
                 Rmat1 = inv ? Rsymbol(d, c, e)' : Rsymbol(c, d, e)
                 Rmat2 = inv ? Rsymbol(d, a, c′)' : Rsymbol(a, d, c′)
                 Fmat = Fsymbol(d, a, b, e, c′, c)
-                coeff_tensor = let k = (a, b, c, d, e, c′)
-                    get!(() -> _artin_braid_local(k, inv), localbraidcache, k)
-                end
                 μ = vertices[i - 1]
                 ν = vertices[i]
-                for λ in 1:size(coeff_tensor, 2)
-                    for σ in 1:size(coeff_tensor, 1)
-                        coeff = coeff_tensor[σ, λ, μ, ν]
+                for σ in 1:Nsymbol(a, d, c′)
+                    for λ in 1:Nsymbol(c′, b, e)
+                        coeff = zero(oneT)
+                        for ρ in 1:Nsymbol(d, c, e), κ in 1:Nsymbol(d, a, c′)
+                            coeff += Rmat1[ν, ρ] * conj(Fmat[κ, λ, μ, ρ]) *
+                                conj(Rmat2[σ, κ])
+                        end
                         iszero(coeff) && continue
                         vertices′ = TupleTools.setindex(vertices, σ, i - 1)
                         vertices′ = TupleTools.setindex(vertices′, λ, i)
@@ -192,24 +193,8 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
             end
         end
     end
-    return dst => U
-end
 
-function _artin_braid_local((a, b, c, d, e, c′)::NTuple{6, I}, inv::Bool) where {I}
-    if FusionStyle(I) isa MultiplicityFreeFusion
-        coeff = if inv
-            conj(Rsymbol(d, c, e) * Fsymbol(d, a, b, e, c′, c)) * Rsymbol(d, a, c′)
-        else
-            Rsymbol(c, d, e) * conj(Fsymbol(d, a, b, e, c′, c) * Rsymbol(a, d, c′))
-        end
-        return coeff
-    else
-        Rmat1 = inv ? Rsymbol(d, c, e)' : Rsymbol(c, d, e)
-        Rmat2 = inv ? Rsymbol(d, a, c′)' : Rsymbol(a, d, c′)
-        Fmat = Fsymbol(d, a, b, e, c′, c)
-        @tensor coeff[σ, λ, μ, ν] := Rmat1[ν, ρ] * conj(Fmat[κ, λ, μ, ρ]) * conj(Rmat2[σ, κ])
-        return coeff
-    end
+    return dst => U
 end
 
 # braid fusion tree
@@ -329,16 +314,12 @@ end
         p = linearizepermutation(p1, p2, numout(src), numin(src))
         levels = (l1..., reverse(l2)...)
 
-        dst, U′ = repartition(src, numind(src))
-        T = sectorscalartype(I)
-        U = eltype(U′) == T ? U′ : T.(U′) # U′ has fusionscalartype(I) elements
-        Uold = similar(U)
+        dst, U = repartition(src, numind(src))
 
         for s in permutation2swaps(p)
-            U, Uold = Uold, U
             inv = levels[s] > levels[s + 1]
             dst, U_tmp = artin_braid(dst, s; inv)
-            U = mul!(U, U_tmp, Uold)
+            U = U_tmp * U
             l = levels[s]
             levels = TupleTools.setindex(levels, levels[s + 1], s)
             levels = TupleTools.setindex(levels, l, s + 1)
@@ -347,9 +328,8 @@ end
         if N₂ == 0
             return dst => U
         else
-            U, Uold = Uold, U
             dst, U_tmp = repartition(dst, N₁)
-            U = mul!(U, U_tmp, Uold)
+            U = U_tmp * U
             return dst => U
         end
     end
