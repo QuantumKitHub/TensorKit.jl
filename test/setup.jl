@@ -210,6 +210,8 @@ fast_sectorlist = (Z2Irrep, SU2Irrep, FermionParity ⊠ U1Irrep ⊠ SU2Irrep, Fi
 #       symmetries, and some anyonic examples with nontrivial F symbols and braiding.
 #
 # 4.    V1 should not only have one-dimensional blocks as this causes some tests to fail, like `!ishermitian(thapprox)`.
+#
+# 5.    V2 and V4 are consistently made a dual space
 
 
 # Trivial
@@ -217,140 +219,131 @@ Vtr = (ℂ^2, (ℂ^3)', ℂ^4, ℂ^3, (ℂ^2)')
 
 # UniqueFusion, Bosonic
 VRepℤ₂ = (
-    Vect[Z2Irrep](0 => 2, 1 => 1),
+    Vect[Z2Irrep](0 => 2, 1 => 2),
+    Vect[Z2Irrep](0 => 1, 1 => 1)',
+    Vect[Z2Irrep](0 => 3, 1 => 1),
     Vect[Z2Irrep](0 => 1, 1 => 2)',
-    Vect[Z2Irrep](0 => 3, 1 => 2)',
-    Vect[Z2Irrep](0 => 2, 1 => 3),
-    Vect[Z2Irrep](0 => 2, 1 => 5),
+    Vect[Z2Irrep](0 => 3, 1 => 1),
 )
 VRepℤ₃ = (
-    Vect[Z3Irrep](0 => 1, 1 => 2, 2 => 1),
     Vect[Z3Irrep](0 => 2, 1 => 1, 2 => 1),
-    Vect[Z3Irrep](0 => 1, 1 => 2, 2 => 1)',
-    Vect[Z3Irrep](0 => 1, 1 => 2, 2 => 3),
-    Vect[Z3Irrep](0 => 1, 1 => 3, 2 => 3)',
+    Vect[Z3Irrep](0 => 1, 1 => 1, 2 => 1)',
+    Vect[Z3Irrep](0 => 3, 1 => 1, 2 => 1),
+    Vect[Z3Irrep](0 => 0, 1 => 2, 2 => 1)',
+    Vect[Z3Irrep](0 => 1, 1 => 0, 2 => 2),
 )
 VRepU₁ = (
+    Vect[U1Irrep](0 => 2, 1 => 2, -1 => 2),
+    Vect[U1Irrep](0 => 1, 1 => 1, -1 => 1)',
     Vect[U1Irrep](0 => 3, 1 => 1, -1 => 1),
-    Vect[U1Irrep](0 => 2, 1 => 1, -1 => 1),
-    Vect[U1Irrep](0 => 2, 1 => 2, -1 => 2)',
-    Vect[U1Irrep](0 => 0, 1 => 2, -1 => 2),
-    Vect[U1Irrep](0 => 2, 1 => 0, -1 => 2)',
+    Vect[U1Irrep](0 => 1, 1 => 2, -1 => 1)',
+    Vect[U1Irrep](0 => 1, 1 => 1, -1 => 2),
 )
 
 # UniqueFusion, Fermionic
 VfRepℤ₂ = (
-    Vect[FermionParity](0 => 2, 1 => 1),
+    Vect[FermionParity](0 => 2, 1 => 2),
+    Vect[FermionParity](0 => 1, 1 => 1)',
+    Vect[FermionParity](0 => 3, 1 => 1),
     Vect[FermionParity](0 => 1, 1 => 2)',
-    Vect[FermionParity](0 => 3, 1 => 2)',
-    Vect[FermionParity](0 => 2, 1 => 3),
-    Vect[FermionParity](0 => 2, 1 => 5),
+    Vect[FermionParity](0 => 2, 1 => 2),
 )
 
 # UniqueFusion, anyonic braiding
 VTwistedVecℤ₄ = (
-    Vect[Z4Element{2}](0 => 1, 1 => 2, 2 => 1, 3 => 0),
-    Vect[Z4Element{2}](0 => 2, 1 => 1, 2 => 0, 3 => 1),
-    Vect[Z4Element{2}](0 => 1, 1 => 2, 2 => 1, 3 => 2)',
-    Vect[Z4Element{2}](0 => 1, 1 => 2, 2 => 3, 3 => 1),
-    Vect[Z4Element{2}](0 => 1, 1 => 0, 2 => 3, 3 => 0)',
+    Vect[Z4Element{2}](0 => 2, 1 => 2, 2 => 0, 3 => 0),
+    Vect[Z4Element{2}](0 => 2, 1 => 0, 2 => 0, 3 => 1)',
+    Vect[Z4Element{2}](0 => 2, 1 => 1, 2 => 1, 3 => 1),
+    Vect[Z4Element{2}](0 => 1, 1 => 2, 2 => 0, 3 => 1)',
+    Vect[Z4Element{2}](0 => 1, 1 => 0, 2 => 2, 3 => 0),
 )
 
 # UniqueFusion, no braiding
 VTwistedVecℤ₃ = (
-    Vect[Z3Element{1}](0 => 1, 1 => 2, 2 => 1),
+    Vect[Z3Element{1}](0 => 2, 1 => 2, 2 => 0),
+    Vect[Z3Element{1}](0 => 2, 1 => 0, 2 => 1)',
     Vect[Z3Element{1}](0 => 2, 1 => 1, 2 => 1),
-    Vect[Z3Element{1}](0 => 1, 1 => 2, 2 => 1)',
-    Vect[Z3Element{1}](0 => 1, 1 => 2, 2 => 3),
-    Vect[Z3Element{1}](0 => 1, 1 => 3, 2 => 3)',
+    Vect[Z3Element{1}](0 => 1, 1 => 0, 2 => 2)',
+    Vect[Z3Element{1}](0 => 1, 1 => 2, 2 => 0),
 )
 
 # SimpleFusion, bosonic
 VRepCU₁ = (
-    Vect[CU1Irrep]((0, 0) => 1, (0, 1) => 2, 1 => 1),
-    Vect[CU1Irrep]((0, 0) => 3, (0, 1) => 0, 1 => 1),
-    Vect[CU1Irrep]((0, 0) => 1, (0, 1) => 0, 1 => 2)',
-    Vect[CU1Irrep]((0, 0) => 2, (0, 1) => 2, 1 => 1),
-    Vect[CU1Irrep]((0, 0) => 2, (0, 1) => 1, 1 => 2)',
+    Vect[CU1Irrep]((0, 0) => 1, (0, 1) => 1, 1 => 1),
+    Vect[CU1Irrep]((0, 0) => 2, (0, 1) => 0, 1 => 1)',
+    Vect[CU1Irrep]((0, 0) => 2, (0, 1) => 1, 1 => 1),
+    Vect[CU1Irrep]((0, 0) => 2, (0, 1) => 1, 1 => 1)',
+    Vect[CU1Irrep]((0, 0) => 1, (0, 1) => 1, 1 => 0),
 )
 VRepSU₂ = (
     Vect[SU2Irrep](0 => 3, 1 // 2 => 1),
-    Vect[SU2Irrep](0 => 2, 1 => 1),
-    Vect[SU2Irrep](1 // 2 => 1, 1 => 1)',
-    Vect[SU2Irrep](0 => 2, 1 // 2 => 2),
-    Vect[SU2Irrep](0 => 1, 1 // 2 => 1, 3 // 2 => 1)',
+    Vect[SU2Irrep](0 => 2, 1 => 1)',
+    Vect[SU2Irrep](1 // 2 => 1, 1 => 1),
+    Vect[SU2Irrep](0 => 2, 1 // 2 => 2)',
+    Vect[SU2Irrep](0 => 1, 1 // 2 => 1, 3 // 2 => 1),
 )
 
 # SimpleFusion, fermionic
 VfRepCU₁ = (
-    Vect[FermionParity ⊠ CU1Irrep]((0, (0, 0)) => 1, (0, (0, 1)) => 2, (1, 1) => 1),
-    Vect[FermionParity ⊠ CU1Irrep]((0, (0, 0)) => 3, (0, (0, 1)) => 0, (1, 1) => 1),
-    Vect[FermionParity ⊠ CU1Irrep]((0, (0, 0)) => 1, (0, (0, 1)) => 0, (1, 1) => 2)',
-    Vect[FermionParity ⊠ CU1Irrep]((0, (0, 0)) => 2, (0, (0, 1)) => 2, (1, 1) => 1),
-    Vect[FermionParity ⊠ CU1Irrep]((0, (0, 0)) => 2, (0, (0, 1)) => 1, (1, 1) => 2)',
+    Vect[FermionParity ⊠ CU1Irrep]((0, (0, 0)) => 1, (0, (0, 1)) => 1, (1, 1) => 1),
+    Vect[FermionParity ⊠ CU1Irrep]((0, (0, 0)) => 2, (0, (0, 1)) => 0, (1, 1) => 1)',
+    Vect[FermionParity ⊠ CU1Irrep]((0, (0, 0)) => 2, (0, (0, 1)) => 1, (1, 1) => 1),
+    Vect[FermionParity ⊠ CU1Irrep]((0, (0, 0)) => 2, (0, (0, 1)) => 1, (1, 1) => 1)',
+    Vect[FermionParity ⊠ CU1Irrep]((0, (0, 0)) => 1, (0, (0, 1)) => 1, (1, 1) => 0),
 )
 
 VfRepSU₂ = (
     Vect[FermionSpin](0 => 3, 1 // 2 => 1),
-    Vect[FermionSpin](0 => 2, 1 => 1),
-    Vect[FermionSpin](1 // 2 => 1, 1 => 1)',
-    Vect[FermionSpin](0 => 2, 1 // 2 => 2),
-    Vect[FermionSpin](0 => 1, 1 // 2 => 1, 3 // 2 => 1)',
+    Vect[FermionSpin](0 => 2, 1 => 1)',
+    Vect[FermionSpin](1 // 2 => 1, 1 => 1),
+    Vect[FermionSpin](0 => 2, 1 // 2 => 2)',
+    Vect[FermionSpin](0 => 1, 1 // 2 => 1, 3 // 2 => 1),
 )
 
 I_Hubbard = FermionParity ⊠ SU2Irrep ⊠ U1Irrep
 VfHubbard = (
     Vect[I_Hubbard]((0, 0, 0) => 3, (1, 1 // 2, -1) => 1),
-    Vect[I_Hubbard]((0, 0, 0) => 1, (0, 0, +2) => 1, (0, 1, 0) => 1),
-    Vect[I_Hubbard]((1, 1 // 2, +1) => 1, (1, 1 // 2, -1) => 1, (0, 1, -2) => 1, (0, 1, +2) => 1)',
-    Vect[I_Hubbard]((0, 0, 0) => 2, (1, 1 // 2, +1) => 1, (1, 1 // 2, -1) => 1),
-    Vect[I_Hubbard]((0, 0, 0) => 1, (1, 1 // 2, -1) => 1, (1, 3 // 2, +1) => 1)',
+    Vect[I_Hubbard]((0, 0, 0) => 1, (0, 0, -2) => 1, (0, 1, 0) => 1)',
+    Vect[I_Hubbard]((1, 1 // 2, -1) => 1, (1, 1 // 2, +1) => 1, (0, 1, -2) => 1, (0, 1, +2) => 1),
+    Vect[I_Hubbard]((0, 0, 0) => 2, (1, 1 // 2, +1) => 1, (1, 1 // 2, -1) => 1)',
+    Vect[I_Hubbard]((0, 0, 0) => 1, (1, 1 // 2, +1) => 1, (1, 3 // 2, -1) => 1),
 )
 
 # SimpleFusion, anyonic braiding
 Vfib = (
-    Vect[FibonacciAnyon](:I => 1, :τ => 2),
+    Vect[FibonacciAnyon](:I => 2, :τ => 1),
     Vect[FibonacciAnyon](:I => 1, :τ => 1)',
-    Vect[FibonacciAnyon](:I => 3, :τ => 2)',
-    Vect[FibonacciAnyon](:I => 2, :τ => 3),
-    Vect[FibonacciAnyon](:I => 2, :τ => 2),
+    Vect[FibonacciAnyon](:I => 3, :τ => 1),
+    Vect[FibonacciAnyon](:I => 1, :τ => 2)',
+    Vect[FibonacciAnyon](:I => 3, :τ => 1),
 )
 
 # Generic fusion, bosonic
 VRepA4 = (
-    Vect[A4Irrep](0 => 2, 1 => 1, 2 => 0, 3 => 1)',
-    Vect[A4Irrep](0 => 1, 1 => 1, 2 => 1, 3 => 1),
-    Vect[A4Irrep](0 => 1, 1 => 2, 2 => 1, 3 => 2)',
-    Vect[A4Irrep](0 => 1, 1 => 0, 2 => 2, 3 => 1),
-    Vect[A4Irrep](0 => 1, 1 => 1, 2 => 0, 3 => 1)',
-)
-
-# Generic fusion, bosonic
-VRepA4 = (
-    Vect[A4Irrep](0 => 2, 1 => 1, 2 => 0, 3 => 1)',
-    Vect[A4Irrep](0 => 1, 1 => 1, 2 => 1, 3 => 1),
-    Vect[A4Irrep](0 => 1, 1 => 2, 2 => 1, 3 => 2)',
-    Vect[A4Irrep](0 => 1, 1 => 0, 2 => 2, 3 => 1),
-    Vect[A4Irrep](0 => 1, 1 => 1, 2 => 0, 3 => 1)',
+    Vect[A4Irrep](0 => 2, 1 => 1, 2 => 0, 3 => 1),
+    Vect[A4Irrep](0 => 1, 1 => 1, 2 => 1, 3 => 0)',
+    Vect[A4Irrep](0 => 2, 1 => 0, 2 => 0, 3 => 1),
+    Vect[A4Irrep](0 => 0, 1 => 1, 2 => 1, 3 => 1)',
+    Vect[A4Irrep](0 => 0, 1 => 2, 2 => 0, 3 => 1),
 )
 
 # Generic fusion, fermionic
 VfRepA4 = (
-    Vect[FermionParity ⊠ A4Irrep]((0, 0) => 2, (1, 1) => 1, (0, 2) => 0, (1, 3) => 1)',
-    Vect[FermionParity ⊠ A4Irrep]((1, 0) => 1, (0, 1) => 1, (0, 2) => 1, (1, 3) => 1),
-    Vect[FermionParity ⊠ A4Irrep]((0, 0) => 1, (0, 1) => 1, (1, 1) => 1, (1, 2) => 1, (0, 3) => 2)',
-    Vect[FermionParity ⊠ A4Irrep]((0, 0) => 2, (1, 1) => 0, (1, 2) => 2, (0, 3) => 1),
-    Vect[FermionParity ⊠ A4Irrep]((1, 0) => 1, (0, 1) => 1, (1, 2) => 0, (0, 3) => 1)',
+    Vect[FermionParity ⊠ A4Irrep]((0, 0) => 2, (1, 1) => 1, (0, 2) => 0, (1, 3) => 1),
+    Vect[FermionParity ⊠ A4Irrep]((1, 0) => 1, (0, 1) => 1, (0, 2) => 1, (1, 3) => 0)',
+    Vect[FermionParity ⊠ A4Irrep]((0, 0) => 2, (0, 1) => 0, (1, 1) => 0, (1, 2) => 1, (0, 3) => 1),
+    Vect[FermionParity ⊠ A4Irrep]((0, 0) => 0, (1, 1) => 1, (1, 2) => 1, (0, 3) => 1)',
+    Vect[FermionParity ⊠ A4Irrep]((1, 0) => 0, (0, 1) => 2, (1, 2) => 0, (0, 3) => 1),
 )
 
 # Generic fusion, anyonic braiding
 I_A4Z4 = A4Irrep ⊠ Z4Element{2}
 VRepA4Twistedℤ₄ = (
-    Vect[I_A4Z4]((0, 0) => 2, (1, 1) => 1, (2, 3) => 2, (3, 2) => 1)',
-    Vect[I_A4Z4]((0, 0) => 1, (1, 1) => 1, (2, 3) => 0, (3, 2) => 1),
-    Vect[I_A4Z4]((0, 0) => 2, (1, 1) => 2, (2, 3) => 1, (3, 2) => 1)',
-    Vect[I_A4Z4]((0, 0) => 2, (1, 1) => 0, (2, 3) => 2, (3, 2) => 1),
-    Vect[I_A4Z4]((0, 0) => 1, (1, 1) => 1, (2, 3) => 1, (3, 2) => 1)',
+    Vect[I_A4Z4]((0, 0) => 2, (1, 1) => 1, (2, 3) => 0, (3, 2) => 1),
+    Vect[I_A4Z4]((0, 0) => 1, (1, 1) => 1, (2, 3) => 1, (3, 2) => 0)',
+    Vect[I_A4Z4]((0, 0) => 2, (1, 1) => 1, (2, 3) => 1, (3, 2) => 1),
+    Vect[I_A4Z4]((0, 0) => 0, (1, 1) => 1, (2, 3) => 1, (3, 2) => 1)',
+    Vect[I_A4Z4]((0, 0) => 0, (1, 1) => 2, (2, 3) => 0, (3, 2) => 1),
 )
 
 # Multifusion categories: GenericUnit, SimpleFusion
@@ -359,19 +352,19 @@ C0, C1 = IsingBimodule(1, 1, 0), IsingBimodule(1, 1, 1)
 D0, D1 = IsingBimodule(2, 2, 0), IsingBimodule(2, 2, 1)
 M, Mop = IsingBimodule(1, 2, 0), IsingBimodule(2, 1, 0)
 VIBM = (
-    Vect[IsingBimodule](C0 => 1, C1 => 2),
-    Vect[IsingBimodule](Mop => 2)',
-    Vect[IsingBimodule](D0 => 3, D1 => 4)',
+    Vect[IsingBimodule](C0 => 2, C1 => 1),
+    Vect[IsingBimodule](Mop => 1)',
+    Vect[IsingBimodule](D0 => 2, D1 => 2),
     Vect[IsingBimodule](M => 2)',
-    Vect[IsingBimodule](C0 => 2, C1 => 3),
+    Vect[IsingBimodule](C0 => 3, C1 => 2),
 )
 
 VIBMRepA4 = (
     Vect[IsingBimodule ⊠ A4Irrep]((C0, 0) => 2, (C1, 3) => 1),
-    Vect[IsingBimodule ⊠ A4Irrep]((Mop, 3) => 2)',
-    Vect[IsingBimodule ⊠ A4Irrep]((D0, 1) => 3, (D1, 2) => 4)',
+    Vect[IsingBimodule ⊠ A4Irrep]((Mop, 3) => 1)',
+    Vect[IsingBimodule ⊠ A4Irrep]((D0, 1) => 2, (D1, 2) => 2),
     Vect[IsingBimodule ⊠ A4Irrep]((M, 3) => 2)',
-    Vect[IsingBimodule ⊠ A4Irrep]((C0, 2) => 2, (C1, 3) => 2),
+    Vect[IsingBimodule ⊠ A4Irrep]((C0, 2) => 3, (C1, 3) => 2),
 )
 
 for V in (Vtr, VRepℤ₂, VRepℤ₃, VRepU₁, VfRepℤ₂, VTwistedVecℤ₄, VTwistedVecℤ₃, VRepCU₁, VRepSU₂, VfRepCU₁, VfRepSU₂, VfHubbard, Vfib, VRepA4, VfRepA4, VRepA4Twistedℤ₄, VIBM, VIBMRepA4)
