@@ -65,7 +65,14 @@ function artin_braid(f::FusionTree{I, N}, i; inv::Bool = false) where {I, N}
     c = inner_extended[i]
     e = inner_extended[i + 1]
     c′ = only(a ⊗ d)
-    coeff = oftype(oneT, _artin_braid_local((a, b, c, d, e, c′), inv))
+    coeff = oftype(
+        oneT,
+        if inv
+            conj(Rsymbol(d, c, e) * Fsymbol(d, a, b, e, c′, c)) * Rsymbol(d, a, c′)
+        else
+            Rsymbol(c, d, e) * conj(Fsymbol(d, a, b, e, c′, c) * Rsymbol(a, d, c′))
+        end
+    )
     inner′ = TupleTools.setindex(inner, c′, i - 1)
     f′ = FusionTree{I}(uncoupled′, coupled′, isdual′, inner′)
     return f′ => coeff
