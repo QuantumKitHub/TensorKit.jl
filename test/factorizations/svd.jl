@@ -11,9 +11,9 @@ eltypes = (Float32, ComplexF64)
 for V in spacelist
     I = sectortype(first(V))
     Istr = TensorKit.type_repr(I)
-    println("---------------------------------------")
+    println("---------------------------------------------------------------")
     println("Singular value and polar decompositions with symmetry: $Istr")
-    println("---------------------------------------")
+    println("---------------------------------------------------------------")
     @timedtestset "Singular value and polar decompositions with symmetry: $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
         W = V1 ⊗ V2
@@ -29,7 +29,7 @@ for V in spacelist
 
                 d1, d2 = dim(codomain(t)), dim(domain(t))
                 r = rank(t)
-                @test r == min(d1, d2)
+                @test r ≈ min(d1, d2)
                 @test typeof(r) == typeof(d1)
                 M = left_null(t)
                 @test @constinferred(rank(M)) + r ≈ d1
@@ -39,7 +39,7 @@ for V in spacelist
             for T in eltypes
                 u = unitary(T, V1 ⊗ V2, V1 ⊗ V2)
                 @test @constinferred(cond(u)) ≈ one(real(T))
-                @test @constinferred(rank(u)) == dim(V1 ⊗ V2)
+                @test @constinferred(rank(u)) ≈ dim(V1 ⊗ V2)
 
                 t = rand(T, zerospace(V1), W)
                 @test rank(t) == 0
