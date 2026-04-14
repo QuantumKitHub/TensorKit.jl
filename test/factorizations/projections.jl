@@ -18,7 +18,7 @@ for V in spacelist
         V1, V2, V3, V4, V5 = V
         W = V1 ⊗ V2 ⊗ V3
         Vd = fuse(V1 ⊗ V2)
-        
+
         @testset "Hermitian projections" begin
             for T in eltypes,
                     t in (
