@@ -25,7 +25,7 @@ function truncspace(space::ElementarySpace; by = abs, rev::Bool = true)
     return TruncationSpace(space, by, rev)
 end
 
-spacetype(::Type{<:TruncationSpace{S}}) where {S} = S
+TensorKit.spacetype(::Type{<:TruncationSpace{S}}) where {S} = S
 
 # truncate!
 # ---------
