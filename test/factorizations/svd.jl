@@ -212,8 +212,8 @@ for V in spacelist
                 @test ϵ1 ≈ ϵ2
 
                 trunc = truncspace(space(S2, 1))
-                @test spacetype(typeof(trunc)) == spacetype(V)
-                @test sectortype(trunc) == sectortype(V)
+                @test spacetype(typeof(trunc)) == spacetype(W)
+                @test sectortype(trunc) == sectortype(W)
                 U3, S3, Vᴴ3, ϵ3 = @constinferred svd_trunc(t; trunc)
                 @test t * Vᴴ3' ≈ U3 * S3
                 @test isisometric(U3)
