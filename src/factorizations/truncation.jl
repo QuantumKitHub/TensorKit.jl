@@ -25,6 +25,8 @@ function truncspace(space::ElementarySpace; by = abs, rev::Bool = true)
     return TruncationSpace(space, by, rev)
 end
 
+spacetype(::Type{<:TruncationSpace{S}}) where {S} = S
+
 # truncate!
 # ---------
 _blocklength(d::Integer, ind) = _blocklength(Base.OneTo(d), ind)
