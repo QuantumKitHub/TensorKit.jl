@@ -44,6 +44,25 @@ for pullback! in (:svd_pullback!, :eig_pullback!, :eigh_pullback!)
     end
 end
 
+for pullback! in (:eig_vals_pullback!, :eigh_vals_pullback!)
+    @eval function MAK.$pullback!(
+            Δt::AbstractTensorMap, t::AbstractTensorMap, DV, ΔD, inds = _notrunc_ind(t);
+            kwargs...
+        )
+        D, V = DV
+        foreachblock(Δt, t) do c, (Δb, b)
+            haskey(inds, c) || return nothing
+            ind = inds[c]
+            Dc = block(D, c)
+            Vc = block(V, c)
+            ΔDc = block(ΔD, c)
+            MAK.$pullback!(Δb, b, (Dc, Vc), ΔDc, ind; kwargs...)
+            return nothing
+        end
+        return Δt
+    end
+end
+
 for pullback_trunc! in (:svd_trunc_pullback!, :eig_trunc_pullback!, :eigh_trunc_pullback!)
     @eval function MAK.$pullback_trunc!(
             Δt::AbstractTensorMap, t::AbstractTensorMap, F, ΔF; kwargs...
