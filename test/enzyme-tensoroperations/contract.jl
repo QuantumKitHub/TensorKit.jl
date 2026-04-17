@@ -3,44 +3,10 @@ using TensorKit
 using TensorOperations
 using VectorInterface: One, Zero
 using Enzyme, EnzymeTestUtils
-Enzyme.Compiler.VERBOSE_ERRORS[] = true
-
-@isdefined(TestSetup) || include("../../setup.jl")
-using .TestSetup
 
 is_ci = get(ENV, "CI", "false") == "true"
 
-spacelist = (
-    (ℂ^2, (ℂ^3)', ℂ^3, ℂ^2, (ℂ^2)'),
-    (
-        Vect[FermionParity](0 => 1, 1 => 1),
-        Vect[FermionParity](0 => 1, 1 => 2)',
-        Vect[FermionParity](0 => 2, 1 => 1)',
-        Vect[FermionParity](0 => 2, 1 => 3),
-        Vect[FermionParity](0 => 2, 1 => 2),
-    ),
-    (
-        Vect[U1Irrep](0 => 2, 1 => 1, -1 => 1),
-        Vect[U1Irrep](0 => 2, 1 => 1, -1 => 1),
-        Vect[U1Irrep](0 => 2, 1 => 2, -1 => 1)',
-        Vect[U1Irrep](0 => 1, 1 => 1, -1 => 2),
-        Vect[U1Irrep](0 => 1, 1 => 2, -1 => 1)',
-    ),
-    (
-        Vect[SU2Irrep](0 => 2, 1 // 2 => 1),
-        Vect[SU2Irrep](0 => 1, 1 => 1),
-        Vect[SU2Irrep](1 // 2 => 1, 1 => 1)',
-        Vect[SU2Irrep](1 // 2 => 2),
-        Vect[SU2Irrep](0 => 1, 1 // 2 => 1, 3 // 2 => 1)',
-    ),
-    (
-        Vect[FibonacciAnyon](:I => 2, :τ => 1),
-        Vect[FibonacciAnyon](:I => 1, :τ => 2)',
-        Vect[FibonacciAnyon](:I => 2, :τ => 2)',
-        Vect[FibonacciAnyon](:I => 2, :τ => 3),
-        Vect[FibonacciAnyon](:I => 2, :τ => 2),
-    ),
-)
+spacelist = ad_spacelist(fast_tests)
 eltypes = (Float64, ComplexF64)
 
 @timedtestset "Enzyme - TensorOperations" begin
