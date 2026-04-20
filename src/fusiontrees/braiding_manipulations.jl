@@ -64,7 +64,7 @@ function artin_braid(f::FusionTree{I, N}, i; inv::Bool = false) where {I, N}
     a = inner_extended[i - 1]
     c = inner_extended[i]
     e = inner_extended[i + 1]
-    c′ = first(a ⊗ d)
+    c′ = only(a ⊗ d)
     coeff = oftype(
         oneT,
         if inv
@@ -223,7 +223,7 @@ function braid(f::FusionTree{I, N}, (p, _)::Index2Tuple{N, 0}, (levels, _)::Inde
             for j in 1:(i - 1)
                 if p[j] > p[i]
                     a, b = f.uncoupled[p[j]], f.uncoupled[p[i]]
-                    coeff *= Rsymbol(a, b, first(a ⊗ b))
+                    coeff *= Rsymbol(a, b, only(a ⊗ b))
                 end
             end
         end
@@ -308,7 +308,6 @@ end
         f′, coeff2 = braid(f, p, levels)
         (f₁′, f₂′), coeff3 = repartition((f′, f0), N₁)
         return (f₁′, f₂′) => coeff1 * coeff2 * coeff3
-
     else
         src, (p1, p2), (l1, l2) = key
 

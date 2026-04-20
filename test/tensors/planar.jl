@@ -1,15 +1,18 @@
 using Test, TestExtras
 using Adapt
 using TensorKit
+using TensorKit: type_repr
 using TensorKit: PlanarTrivial, ℙ
 using TensorKit: planaradd!, planartrace!, planarcontract!
 using TensorOperations
 
-@isdefined(TestSetup) || include("../setup.jl")
-using .TestSetup
+spacelist = default_spacelist(fast_tests)
 
-@testset "Braiding tensor" begin
-    for V in (Vtr, VU₁, VfU₁, VfSU₂, Vfib)
+for V in spacelist
+    I = sectortype(first(V))
+    Istr = type_repr(I)
+    BraidingStyle(I) isa NoBraiding && continue
+    @timedtestset "Braiding tensor with symmetry: $Istr" verbose = true begin
         W = V[1] ⊗ V[2] ← V[2] ⊗ V[1]
         t1 = @constinferred BraidingTensor(W)
         @test space(t1) == W

@@ -1,34 +1,61 @@
-name: Compat Check
+name: CompatCheck
 
 on:
   push:
     branches:
-      - 'master'
       - 'main'
       - 'release-'
+
     tags: '*'
+
+    paths:
+      - 'Project.toml'
+      - 'test/Project.toml'
+
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
   workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Cancel intermediate builds: only if it is a pull request build.
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 
 jobs:
-  test:
-    name: Compat bounds check - ${{ matrix.julia-version }}
+  setup-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      groups: ${{ steps.mk.outputs.groups }}
+      version: ${{ steps.mk.outputs.version }}
+      os: ${{ steps.mk.outputs.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: mk
+        shell: bash
+        run: |
+          # Auto-discover test groups from all subdirectory names.
+          groups=$(find test -mindepth 1 -maxdepth 1 -type d \
+            | xargs -I{} basename {} | sort \
+            | jq -R -s -c '[split("\n")[] | select(length > 0)]')
+
+          echo "groups=${groups}" >> "$GITHUB_OUTPUT"
+  compatcheck:
+    name: "Compat (${{ matrix.group }}, Julia ${{ matrix.julia-version }})"
+    needs: setup-matrix
+    if: github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         downgrade_mode: ['deps']
-        # TODO: this should be ['1.10', '1'] but that is currently broken:
-        # https://github.com/julia-actions/julia-downgrade-compat/issues/25
-        julia-version: ['1.10', '1.12']
+        group: ${{ fromJSON(needs.setup-matrix.outputs.groups) }}
+        julia-version: ['1', '1.10']
     steps:
       - uses: actions/checkout@v6
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.julia-version }}
+      - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-downgrade-compat@v2
         with:
           mode: ${{ matrix.downgrade_mode }}
@@ -36,3 +63,7 @@ jobs:
           julia_version: ${{ matrix.julia-version }}
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
+        with:
+          test_args: '${{ matrix.group }} --fast'
+        env:
+          JULIA_NUM_THREADS: "4"

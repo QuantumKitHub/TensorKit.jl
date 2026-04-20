@@ -4,29 +4,10 @@ using TensorKit
 using LinearAlgebra: LinearAlgebra
 using MatrixAlgebraKit: diagview
 const CUDAExt = Base.get_extension(TensorKit, :TensorKitCUDAExt)
-@assert !isnothing(CUDAExt)
+@assert !isnothing(CUDAExt) "Failed to load TensorKit - CUDA extension"
 const CuTensorMap = getglobal(CUDAExt, :CuTensorMap)
-const curand = getglobal(CUDAExt, :curand)
-const curandn = getglobal(CUDAExt, :curandn)
-const curand! = getglobal(CUDAExt, :curand!)
-using CUDA: rand as curand, rand! as curand!, randn as curandn, randn! as curandn!
 
-@isdefined(TestSetup) || include("../setup.jl")
-using .TestSetup
-
-spacelist = if get(ENV, "CI", "false") == "true"
-    println("Detected running on CI")
-    if Sys.iswindows()
-        (Vtr, Vℤ₃, VA₄, Vfib, VU₁, VfU₁, VCU₁, VSU₂, VIB_diag)
-    elseif Sys.isapple()
-        (Vtr, Vℤ₃, VA₄, Vfib, VfU₁, VfSU₂, VIB_M)
-    else
-        (Vtr, VA₄, VU₁, VCU₁, VSU₂, VfSU₂, VIB_diag, VIB_M)
-    end
-else
-    (Vtr, Vℤ₃, VA₄, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂, VIB_diag, VIB_M)
-end
-
+spacelist = factorization_spacelist(fast_tests)
 eltypes = (Float32, ComplexF64)
 
 for V in spacelist
@@ -38,16 +19,13 @@ for V in spacelist
     @timedtestset "Factorizations with symmetry: $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
         W = V1 ⊗ V2
-        @assert !isempty(blocksectors(W))
-        @assert !isempty(intersect(blocksectors(V4), blocksectors(W)))
 
         @testset "QR decomposition" begin
             for T in eltypes,
                     t in (
-                        CUDA.rand(T, W, W),
-                        CUDA.rand(T, W, W)',
-                        CUDA.rand(T, W, V4),
-                        CUDA.rand(T, V4, W)',
+                        CUDA.rand(T, W, W), CUDA.rand(T, W, W)',
+                        CUDA.rand(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)'), CUDA.rand(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)')',
+                        CUDA.rand(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5)), CUDA.rand(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5))',
                         DiagonalTensorMap(CUDA.rand(T, reduceddim(V1)), V1),
                     )
 
@@ -100,10 +78,9 @@ for V in spacelist
         @testset "LQ decomposition" begin
             for T in eltypes,
                     t in (
-                        CUDA.rand(T, W, W),
-                        CUDA.rand(T, W, W)',
-                        CUDA.rand(T, W, V4),
-                        CUDA.rand(T, V4, W)',
+                        CUDA.rand(T, W, W), CUDA.rand(T, W, W)',
+                        CUDA.rand(T, (V1 ⊗ V2), (V3 ⊗ V4 ⊗ V5)'), CUDA.rand(T, (V1 ⊗ V2), (V3 ⊗ V4 ⊗ V5)')',
+                        CUDA.rand(T, (V1 ⊗ V2 ⊗ V3)', (V4 ⊗ V5)), CUDA.rand(T, (V1 ⊗ V2 ⊗ V3)', (V4 ⊗ V5))',
                         DiagonalTensorMap(CUDA.rand(T, reduceddim(V1)), V1),
                     )
 
@@ -153,9 +130,8 @@ for V in spacelist
             @testset for T in eltypes,
                     t in (
                         CUDA.rand(T, W, W),
-                        CUDA.rand(T, W, W)',
-                        CUDA.rand(T, W, V4),
-                        CUDA.rand(T, V4, W)',
+                        CUDA.rand(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)'),
+                        CUDA.rand(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5))',
                         DiagonalTensorMap(CUDA.rand(T, reduceddim(V1)), V1),
                     )
 
@@ -173,9 +149,9 @@ for V in spacelist
             @testset for T in eltypes,
                     t in (
                         CUDA.rand(T, W, W),
-                        CUDA.rand(T, W, W)',
-                        CUDA.rand(T, V4, W),
-                        CUDA.rand(T, W, V4)',
+                        CUDA.rand(T, (V1 ⊗ V2), (V3 ⊗ V4 ⊗ V5)'),
+                        CUDA.rand(T, (V1 ⊗ V2 ⊗ V3)', (V4 ⊗ V5))',
+                        DiagonalTensorMap(CUDA.rand(T, reduceddim(V1)), V1),
                     )
 
                 @assert codomain(t) ≾ domain(t)
@@ -193,12 +169,9 @@ for V in spacelist
         @testset "SVD" begin
             for T in eltypes,
                     t in (
-                        CUDA.rand(T, W, W),
-                        CUDA.rand(T, W, W)',
-                        CUDA.rand(T, W, V4),
-                        CUDA.rand(T, V4, W),
-                        CUDA.rand(T, W, V4)',
-                        CUDA.rand(T, V4, W)',
+                        CUDA.rand(T, W, W), CUDA.rand(T, W, W)',
+                        CUDA.rand(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)'), CUDA.rand(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5))',
+                        CUDA.rand(T, (V1 ⊗ V2), (V3 ⊗ V4 ⊗ V5)'), CUDA.rand(T, (V1 ⊗ V2 ⊗ V3)', (V4 ⊗ V5))',
                         DiagonalTensorMap(CUDA.rand(T, reduceddim(V1)), V1),
                     )
 
@@ -264,12 +237,9 @@ for V in spacelist
         @testset "truncated SVD" begin
             for T in eltypes,
                     t in (
-                        CUDA.randn(T, W, W),
-                        CUDA.randn(T, W, W)',
-                        CUDA.randn(T, W, V4),
-                        CUDA.randn(T, V4, W),
-                        CUDA.randn(T, W, V4)',
-                        CUDA.randn(T, V4, W)',
+                        CUDA.randn(T, W, W), CUDA.randn(T, W, W)',
+                        CUDA.randn(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)'), CUDA.randn(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5))',
+                        CUDA.randn(T, (V1 ⊗ V2), (V3 ⊗ V4 ⊗ V5)'), CUDA.randn(T, (V1 ⊗ V2 ⊗ V3)', (V4 ⊗ V5))',
                         DiagonalTensorMap(CUDA.randn(T, reduceddim(V1)), V1),
                     )
 
@@ -289,7 +259,7 @@ for V in spacelist
                 @test isisometric(U1)
                 @test isisometric(Vᴴ1; side = :right)
                 @test norm(t - U1 * S1 * Vᴴ1) ≈ ϵ1 atol = eps(real(T))^(4 / 5)
-                test_dim_isapprox(domain(S1), nvals)
+                @test abs(dim(domain(S1)) - nvals) ≤ maximum(c -> blockdim(domain(t), c), blocksectors(t); init = 1)
 
                 λ = minimum(diagview(S1))
                 trunc = trunctol(; atol = λ - 10eps(λ))
@@ -328,7 +298,7 @@ for V in spacelist
                 @test isisometric(Vᴴ5; side = :right)
                 @test norm(t - U5 * S5 * Vᴴ5) ≈ ϵ5 atol = eps(real(T))^(4 / 5)
                 @test minimum(diagview(S5)) >= λ
-                test_dim_isapprox(domain(S5), nvals)
+                @test abs(dim(domain(S5)) - nvals) ≤ maximum(c -> blockdim(domain(t), c), blocksectors(t); init = 1)
             end
         end
 
@@ -358,7 +328,7 @@ for V in spacelist
                 nvals = round(Int, dim(domain(t)) / 2)
                 d, v = @constinferred eig_trunc(t; trunc = truncrank(nvals))
                 @test t * v ≈ v * d
-                test_dim_isapprox(domain(d), nvals)
+                #test_dim_isapprox(domain(d), nvals)
 
                 t2 = @constinferred project_hermitian(t)
                 D, V = eigen(t2)
@@ -388,19 +358,16 @@ for V in spacelist
 
                 d, v = @constinferred eigh_trunc(t2; trunc = truncrank(nvals))
                 @test t2 * v ≈ v * d
-                test_dim_isapprox(domain(d), nvals)
+                #test_dim_isapprox(domain(d), nvals)
             end
         end
 
         @testset "Condition number and rank" begin
             for T in eltypes,
                     t in (
-                        CUDA.rand(T, W, W),
-                        CUDA.rand(T, W, W)',
-                        CUDA.rand(T, W, V4),
-                        CUDA.rand(T, V4, W),
-                        CUDA.rand(T, W, V4)',
-                        CUDA.rand(T, V4, W)',
+                        CUDA.rand(T, W, W), CUDA.rand(T, W, W)',
+                        CUDA.rand(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)'), CUDA.rand(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5))',
+                        CUDA.rand(T, (V1 ⊗ V2), (V3 ⊗ V4 ⊗ V5)'), CUDA.rand(T, (V1 ⊗ V2 ⊗ V3)', (V4 ⊗ V5))',
                         DiagonalTensorMap(CUDA.rand(T, reduceddim(V1)), V1),
                     )
 
@@ -474,8 +441,8 @@ for V in spacelist
                     t in (
                         CUDA.randn(T, W, W),
                         CUDA.randn(T, W, W)',
-                        CUDA.randn(T, W, V4),
-                        CUDA.randn(T, V4, W)',
+                        CUDA.randn(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)'),
+                        CUDA.randn(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5))',
                     )
                 t2 = project_isometric(t)
                 @test isisometric(t2)

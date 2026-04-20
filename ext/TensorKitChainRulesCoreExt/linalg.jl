@@ -74,7 +74,8 @@ function ChainRulesCore.rrule(
     )
     function transpose_pullback(Δtdst)
         invp = TensorKit._canonicalize(TupleTools.invperm(linearize(p)), tsrc)
-        return NoTangent(), transpose(unthunk(Δtdst), invp; copy = true), NoTangent()
+        Δtsrc = transpose(unthunk(Δtdst), invp; copy = true)
+        return NoTangent(), ProjectTo(tsrc)(Δtsrc), NoTangent()
     end
     return transpose(tsrc, p; copy = true), transpose_pullback
 end
@@ -91,18 +92,18 @@ end
 
 function ChainRulesCore.rrule(::typeof(twist), A::AbstractTensorMap, is; inv::Bool = false, kwargs...)
     tA = twist(A, is; inv, kwargs...)
-    twist_pullback(ΔA) = NoTangent(), twist(unthunk(ΔA), is; inv = !inv, kwargs...), NoTangent()
+    twist_pullback(ΔA) = NoTangent(), ProjectTo(A)(twist(unthunk(ΔA), is; inv = !inv, kwargs...)), NoTangent()
     return tA, twist_pullback
 end
 
 function ChainRulesCore.rrule(::typeof(flip), A::AbstractTensorMap, is; inv::Bool = false)
     tA = flip(A, is; inv)
-    flip_pullback(ΔA) = NoTangent(), flip(unthunk(ΔA), is; inv = !inv), NoTangent()
+    flip_pullback(ΔA) = NoTangent(), ProjectTo(A)(flip(unthunk(ΔA), is; inv = !inv)), NoTangent()
     return tA, flip_pullback
 end
 
 function ChainRulesCore.rrule(::typeof(dot), a::AbstractTensorMap, b::AbstractTensorMap)
-    dot_pullback(Δd) = NoTangent(), @thunk(b * Δd'), @thunk(a * Δd)
+    dot_pullback(Δd) = NoTangent(), @thunk(ProjectTo(a)(b * Δd')), @thunk(ProjectTo(b)(a * Δd))
     return dot(a, b), dot_pullback
 end
 
