@@ -6,35 +6,7 @@ const CUDAExt = Base.get_extension(TensorKit, :TensorKitCUDAExt)
 @assert !isnothing(CUDAExt)
 const CuTensorMap = getglobal(CUDAExt, :CuTensorMap)
 
-<<<<<<< HEAD
-@isdefined(TestSetup) || include("../setup.jl")
-using .TestSetup
-
-for V in (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VA₄, Vfib, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂) #, VSU₃)
-    V1, V2, V3, V4, V5 = V
-    @assert V3 * V4 * V2 ≿ V1' * V5' # necessary for leftorth tests
-    @assert V3 * V4 ≾ V1' * V2' * V5' # necessary for rightorth tests
-end
-
-spacelist = try
-    if ENV["CI"] == "true"
-        println("Detected running on CI")
-        if Sys.iswindows()
-            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VA₄, VU₁, VfU₁, VCU₁, VSU₂)
-        elseif Sys.isapple()
-            (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VA₄, Vfib, VfU₁, VfSU₂) #, VSU₃)
-        else
-            (Vtr, Vℤ₂, Vfℤ₂, VA₄, Vfib, VU₁, VCU₁, VSU₂, VfSU₂) #, VSU₃)
-        end
-    else
-        (Vtr, VU₁, VSU₂, Vfℤ₂, VA₄)
-    end
-catch
-    (Vtr, Vℤ₂, Vfℤ₂, Vℤ₃, VA₄, Vfib, VU₁, VfU₁, VCU₁, VSU₂, VfSU₂) #, VSU₃)
-end
-=======
 spacelist = default_spacelist(fast_tests)
->>>>>>> 34ac960082055cd26fe35c6cc0da918c6c5a7c00
 
 for V in spacelist
     I = sectortype(first(V))
