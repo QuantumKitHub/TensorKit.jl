@@ -8,7 +8,7 @@ module TensorKit
 # Exports
 #---------
 # Reexport common sector types:
-export Sector, AbstractIrrep, Irrep, GroupElement, TimeReversed
+export Sector, AbstractIrrep, Irrep, GroupElement
 export FusionStyle, UniqueFusion, MultipleFusion, MultiplicityFreeFusion, SimpleFusion, GenericFusion
 export UnitStyle, SimpleUnit, GenericUnit
 export BraidingStyle, SymmetricBraiding, Bosonic, Fermionic, Anyonic, NoBraiding, HasBraiding
@@ -44,7 +44,7 @@ export infimum, supremum, isisomorphic, ismonomorphic, isepimorphic
 export sectortype, sectors, hassector
 export unit, rightunit, leftunit, allunits, isunit, otimes
 export Nsymbol, Fsymbol, Rsymbol, Bsymbol, frobenius_schur_phase, frobenius_schur_indicator, twist, fusiontensor
-export sectorscalartype, deligneproduct
+export sectorscalartype, fusionscalartype, braidingscalartype, deligneproduct
 
 # Export methods for fusion trees
 export fusiontrees, braid, permute, transpose
