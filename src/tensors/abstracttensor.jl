@@ -61,7 +61,7 @@ function storagetype(::Type{T}) where {T <: AbstractTensorMap}
         return similarstoragetype(scalartype(T))
     end
 end
-storagetype(T::Type) = throw(MethodError(storagetype, T))
+storagetype(T::Type) = throw(MethodError(storagetype, (T,)))
 
 # storage type determination and promotion - hooks for specializing
 # the default implementation tries to leverarge inference and `similar`
