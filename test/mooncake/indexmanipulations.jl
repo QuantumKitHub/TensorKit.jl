@@ -18,7 +18,7 @@ eltypes = (Float64, ComplexF64)
     hasbraiding = BraidingStyle(sectortype(eltype(V))) isa HasBraiding
     symmetricbraiding = BraidingStyle(sectortype(eltype(V))) isa SymmetricBraiding
 
-    symmetricbraiding && @timedtestset "add_permute!" begin
+    symmetricbraiding && @timedtestset "permute!" begin
         A = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
         α = randn(T)
         β = randn(T)
@@ -27,12 +27,12 @@ eltypes = (Float64, ComplexF64)
         for _ in 1:5
             p = randindextuple(numind(A))
             C = randn!(permute(A, p))
-            Mooncake.TestUtils.test_rule(rng, TensorKit.add_permute!, C, A, p, α, β; atol, rtol, mode)
+            Mooncake.TestUtils.test_rule(rng, TensorKit.permute!, C, A, p, α, β; atol, rtol, mode)
             A = C
         end
     end
 
-    @timedtestset "add_transpose!" begin
+    @timedtestset "transpose!" begin
         A = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
         α = randn(T)
         β = randn(T)
@@ -41,18 +41,18 @@ eltypes = (Float64, ComplexF64)
         for _ in 1:2
             p = randcircshift(numout(A), numin(A))
             C = randn!(transpose(A, p))
-            Mooncake.TestUtils.test_rule(rng, TensorKit.add_transpose!, C, A, p, One(), Zero(); atol, rtol, mode)
-            Mooncake.TestUtils.test_rule(rng, TensorKit.add_transpose!, C, A, p, α, β; atol, rtol, mode)
+            Mooncake.TestUtils.test_rule(rng, TensorKit.transpose!, C, A, p, One(), Zero(); atol, rtol, mode)
+            Mooncake.TestUtils.test_rule(rng, TensorKit.transpose!, C, A, p, α, β; atol, rtol, mode)
             if !(T <: Real)
-                Mooncake.TestUtils.test_rule(rng, TensorKit.add_transpose!, C, real(A), p, α, β; atol, rtol, mode)
-                Mooncake.TestUtils.test_rule(rng, TensorKit.add_transpose!, C, A, p, real(α), β; atol, rtol, mode)
-                Mooncake.TestUtils.test_rule(rng, TensorKit.add_transpose!, C, real(A), p, real(α), β; atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, TensorKit.transpose!, C, real(A), p, α, β; atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, TensorKit.transpose!, C, A, p, real(α), β; atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, TensorKit.transpose!, C, real(A), p, real(α), β; atol, rtol, mode)
             end
             A = C
         end
     end
 
-    hasbraiding && @timedtestset "add_braid!" begin
+    hasbraiding && @timedtestset "braid!" begin
         A = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
         α = randn(T)
         β = randn(T)
@@ -62,11 +62,11 @@ eltypes = (Float64, ComplexF64)
             p = randcircshift(numout(A), numin(A))
             levels = Tuple(randperm(numind(A)))
             C = randn!(transpose(A, p))
-            Mooncake.TestUtils.test_rule(rng, TensorKit.add_braid!, C, A, p, levels, α, β; atol, rtol, mode)
+            Mooncake.TestUtils.test_rule(rng, TensorKit.braid!, C, A, p, levels, α, β; atol, rtol, mode)
             if !(T <: Real)
-                Mooncake.TestUtils.test_rule(rng, TensorKit.add_braid!, C, real(A), p, levels, α, β; atol, rtol, mode)
-                Mooncake.TestUtils.test_rule(rng, TensorKit.add_braid!, C, A, p, levels, real(α), β; atol, rtol, mode)
-                Mooncake.TestUtils.test_rule(rng, TensorKit.add_braid!, C, A, p, levels, real(α), real(β); atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, TensorKit.braid!, C, real(A), p, levels, α, β; atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, TensorKit.braid!, C, A, p, levels, real(α), β; atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, TensorKit.braid!, C, A, p, levels, real(α), real(β); atol, rtol, mode)
             end
             A = C
         end

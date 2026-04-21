@@ -221,7 +221,7 @@ function planarcontract!(
 
     I = sectortype(C)
     BraidingStyle(I) isa Bosonic &&
-        return add_permute!(C, B, (reverse(cindB), oindB), α, β, backend)
+        return permute!(C, B, (reverse(cindB), oindB), α, β, backend, allocator)
 
     # Non-bosonic case: factor into a cyclic transpose (no crossings) + a single Artin braid
     # that swaps the two contracted legs, producing the R-symbol that A encodes. Naively
@@ -234,7 +234,7 @@ function planarcontract!(
         B′ = TO.tensoralloc_add(
             scalartype(B), B, (cindB, oindB), false, Val(true), allocator
         )
-        add_transpose!(B′, B, (cindB, oindB), One(), Zero(), backend)
+        transpose!(B′, B, (cindB, oindB), One(), Zero(), backend, allocator)
     end
 
     levelsA = A.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
@@ -244,9 +244,9 @@ function planarcontract!(
         ntuple(Returns(3), N - 2)...,
     )
 
-    add_braid!(
+    braid!(
         C, B′, ((2, 1), ntuple(i -> i + 2, N - 2)),
-        levels, α, β, backend,
+        levels, α, β, backend, allocator
     )
 
     B_in_layout || TO.tensorfree!(B′, allocator)
@@ -288,24 +288,13 @@ function planarcontract!(
         A′ = TO.tensoralloc_add(
             scalartype(A), A, (oindA, cindA), false, Val(true), allocator
         )
-        add_transpose!(A′, A, (oindA, cindA), One(), Zero(), backend)
+        transpose!(A′, A, (oindA, cindA), One(), Zero(), backend, allocator)
     end
 
-    levelsB = B.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
-    N = numind(A)
-    M = N - 2
-    levels = (
-        ntuple(Returns(3), M)...,
-        levelsB[cindB[1]], levelsB[cindB[2]],
-    )
-
-    add_braid!(
-        C, A′, (ntuple(identity, M), (N, N - 1)),
-        levels, α, β, backend,
-    )
-
-    A_in_layout || TO.tensorfree!(A′, allocator)
-    return C
+    p = (oindA, reverse(cindA))
+    N = length(oindA)
+    levels = (ntuple(identity, N)..., (B.adjoint ? (N + 1, N + 2) : (N + 2, N + 1))...)
+    return braid!(C, A, p, levels, α, β, backend, allocator)
 end
 
 # ambiguity fix:

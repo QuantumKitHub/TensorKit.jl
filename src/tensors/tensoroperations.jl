@@ -43,9 +43,9 @@ function TO.tensoradd!(
     if conjA
         A′ = adjoint(A)
         pA′ = adjointtensorindices(A, _canonicalize(pA, C))
-        add_permute!(C, A′, pA′, α, β, backend)
+        permute!(C, A′, pA′, α, β, backend)
     else
-        add_permute!(C, A, _canonicalize(pA, C), α, β, backend)
+        permute!(C, A, _canonicalize(pA, C), α, β, backend)
     end
     return C
 end
