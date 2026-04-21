@@ -97,7 +97,7 @@ frobenius_schur_indicator
 twist(::Sector)
 Base.isreal(::Type{<:Sector})
 TensorKitSectors.sectorscalartype
-deligneproduct(::Sector, ::Sector)
+deligneproduct(::Any, ::Any, ::Any, ::Vararg{Any})
 ```
 
 We have also the following methods that are specific to certain types of sectors and serve as accessors to their fields:
