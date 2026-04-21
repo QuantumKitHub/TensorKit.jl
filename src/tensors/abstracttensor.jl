@@ -47,7 +47,7 @@ end
 Return the type of vector that stores the data of a tensor.
 If this is not overloaded for a given tensor type, the default value of `storagetype(scalartype(t))` is returned.
 
-See also [`similarstoragetype`](@ref).
+See also [`TensorKit.similarstoragetype`](@ref).
 """ storagetype
 storagetype(t) = storagetype(typeof(t))
 function storagetype(::Type{T}) where {T <: AbstractTensorMap}

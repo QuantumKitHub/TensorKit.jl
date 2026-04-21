@@ -142,7 +142,7 @@ InnerProductStyle(ℂ^5)
     When creating tensors with indices in `ℝ^n` that have complex data, a one-time warning will be printed, but most operations should continue to work nonetheless.
 
 One more important concrete implementation of `ElementarySpace` with a `EuclideanInnerProduct()` is the [`GradedSpace`](@ref) type, which is used to represent a graded complex vector space, where the grading is provided by the irreducible representations of a group, or more generally, the simple objects of a unitary fusion category.
-We refer to the subsection on [graded spaces](@ref ss_rep) on the [next page](@ref s_sectorsrepfusion) for further information about `GradedSpace`.
+We refer to the subsection on [graded spaces](@ref ss_representationtheory) on the [next page](@ref s_sectorsrepfusion) for further information about `GradedSpace`.
 
 ## Operations with elementary spaces
 
@@ -176,7 +176,7 @@ A second type of operation with elementary spaces is the function [`flip(V::Elem
 `flip(V)` is different from `dual(V)` in the case of [`GradedSpace`](@ref).
 It is useful to flip a tensor index from a ket to a bra (or vice versa), by contracting that index with a unitary map from `V1` to `flip(V1)`.
 
-While we provide some trivial examples here, we refer to the section on [graded spaces](@ref ss_rep) for examples where `flip` acts non-trivially and produces results that are different than `dual`.
+While we provide some trivial examples here, we refer to the section on [graded spaces](@ref ss_representationtheory) for examples where `flip` acts non-trivially and produces results that are different than `dual`.
 
 ```@repl tensorkit
 flip(ℂ^4)
