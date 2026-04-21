@@ -1,11 +1,11 @@
 for transform in (:permute, :transpose)
-    add_transform! = Symbol(:add_, transform, :!)
-    add_transform_pullback = Symbol(add_transform!, :_pullback)
+    transform! = Symbol(transform, :!)
+    transform_pullback = Symbol(transform!, :_pullback)
     @eval @is_primitive(
         DefaultCtx,
         ReverseMode,
         Tuple{
-            typeof(TK.$add_transform!),
+            typeof(TK.$transform!),
             AbstractTensorMap,
             AbstractTensorMap, Index2Tuple,
             Number, Number, Vararg{Any},
@@ -13,7 +13,7 @@ for transform in (:permute, :transpose)
     )
 
     @eval function Mooncake.rrule!!(
-            ::CoDual{typeof(TK.$add_transform!)},
+            ::CoDual{typeof(TK.$transform!)},
             C_ΔC::CoDual{<:AbstractTensorMap},
             A_ΔA::CoDual{<:AbstractTensorMap}, p_Δp::CoDual{<:Index2Tuple},
             α_Δα::CoDual{<:Number}, β_Δβ::CoDual{<:Number},
@@ -30,17 +30,17 @@ for transform in (:permute, :transpose)
 
         # if we need to compute Δa, it is faster to allocate an intermediate permuted A
         # and store that instead of repeating the permutation in the pullback each time.
-        # effectively, we replace `add_permute` by `add ∘ permute`.
+        # effectively, we replace `permute!/transpose!` by `add ∘ permute/transpose`.
         Ap = if _needs_tangent(α)
             Ap = $transform(A, p)
             add!(C, Ap, α, β)
             Ap
         else
-            TK.$add_transform!(C, A, p, α, β, ba...)
+            TK.$transform!(C, A, p, α, β, ba...)
             nothing
         end
 
-        function $add_transform_pullback(::NoRData)
+        function $transform_pullback(::NoRData)
             copy!(C, C_cache)
 
             # ΔA
@@ -50,10 +50,10 @@ for transform in (:permute, :transpose)
             TC = VectorInterface.promote_scale(ΔC, α)
             if scalartype(ΔA) <: Real && !(TC <: Real)
                 ΔAc = TO.tensoralloc_add(TC, ΔC, pΔA, false, Val(false))
-                TK.$add_transform!(ΔAc, ΔC, pΔA, conj(α), Zero(), ba...)
+                TK.$transform!(ΔAc, ΔC, pΔA, conj(α), Zero(), ba...)
                 add!(ΔA, real(ΔAc))
             else
-                TK.$add_transform!(ΔA, ΔC, pΔA, conj(α), One(), ba...)
+                TK.$transform!(ΔA, ΔC, pΔA, conj(α), One(), ba...)
             end
             ΔAr = NoRData()
 
@@ -64,7 +64,7 @@ for transform in (:permute, :transpose)
             return NoRData(), ΔCr, ΔAr, NoRData(), Δαr, Δβr, map(Returns(NoRData()), ba)...
         end
 
-        return C_ΔC, $add_transform_pullback
+        return C_ΔC, $transform_pullback
     end
 end
 
@@ -72,7 +72,7 @@ end
     DefaultCtx,
     ReverseMode,
     Tuple{
-        typeof(TK.add_braid!),
+        typeof(TK.braid!),
         AbstractTensorMap,
         AbstractTensorMap, Index2Tuple, IndexTuple,
         Number, Number, Vararg{Any},
@@ -80,7 +80,7 @@ end
 )
 
 function Mooncake.rrule!!(
-        ::CoDual{typeof(TK.add_braid!)},
+        ::CoDual{typeof(TK.braid!)},
         C_ΔC::CoDual{<:AbstractTensorMap},
         A_ΔA::CoDual{<:AbstractTensorMap}, p_Δp::CoDual{<:Index2Tuple}, levels_Δlevels::CoDual{<:IndexTuple},
         α_Δα::CoDual{<:Number}, β_Δβ::CoDual{<:Number},
@@ -98,17 +98,17 @@ function Mooncake.rrule!!(
 
     # if we need to compute Δa, it is faster to allocate an intermediate braided A
     # and store that instead of repeating the permutation in the pullback each time.
-    # effectively, we replace `add_permute` by `add ∘ permute`.
+    # effectively, we replace `braid!` by `add ∘ braid`.
     Ap = if _needs_tangent(α)
         Ap = braid(A, p, levels)
         add!(C, Ap, α, β)
         Ap
     else
-        TK.add_braid!(C, A, p, levels, α, β, ba...)
+        TK.braid!(C, A, p, levels, α, β, ba...)
         nothing
     end
 
-    function add_braid!_pullback(::NoRData)
+    function braid!_pullback(::NoRData)
         copy!(C, C_cache)
 
         # ΔA
@@ -118,10 +118,10 @@ function Mooncake.rrule!!(
         TC = VectorInterface.promote_scale(ΔC, α)
         if scalartype(ΔA) <: Real && !(TC <: Real)
             ΔAc = TO.tensoralloc_add(TC, ΔC, pΔA, false, Val(false))
-            TK.add_braid!(ΔAc, ΔC, pΔA, ilevels, conj(α), Zero(), ba...)
+            TK.braid!(ΔAc, ΔC, pΔA, ilevels, conj(α), Zero(), ba...)
             add!(ΔA, real(ΔAc))
         else
-            TK.add_braid!(ΔA, ΔC, pΔA, ilevels, conj(α), One(), ba...)
+            TK.braid!(ΔA, ΔC, pΔA, ilevels, conj(α), One(), ba...)
         end
         ΔAr = NoRData()
 
@@ -132,7 +132,7 @@ function Mooncake.rrule!!(
         return NoRData(), ΔCr, ΔAr, NoRData(), NoRData(), Δαr, Δβr, map(Returns(NoRData()), ba)...
     end
 
-    return C_ΔC, add_braid!_pullback
+    return C_ΔC, braid!_pullback
 end
 
 # both are needed for correctly capturing every dispatch

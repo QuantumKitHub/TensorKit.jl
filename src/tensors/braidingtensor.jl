@@ -256,7 +256,7 @@ function planarcontract!(
     end
 
     if BraidingStyle(sectortype(B)) isa Bosonic
-        return add_permute!(C, B, (reverse(cindB), oindB), α, β, backend)
+        return permute!(C, B, (reverse(cindB), oindB), α, β, backend)
     end
 
     τ_levels = A.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
@@ -313,7 +313,7 @@ function planarcontract!(
     p = (oindA, reverse(cindA))
     N = length(oindA)
     levels = (ntuple(identity, N)..., (B.adjoint ? (N + 1, N + 2) : (N + 2, N + 1))...)
-    return add_braid!(C, A, p, levels, α, β, backend)
+    return braid!(C, A, p, levels, α, β, backend)
 end
 
 # ambiguity fix:
