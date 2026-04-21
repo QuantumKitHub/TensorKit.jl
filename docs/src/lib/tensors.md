@@ -55,6 +55,7 @@ Random.randexp(::Type, V::TensorMapSpace)
 as well as a `similar` constructor
 ```@docs
 Base.similar(::AbstractTensorMap, args...)
+similar_diagonal(::AbstractTensorMap, args...)
 ```
 
 ### Specific constructors
