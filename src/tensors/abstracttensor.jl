@@ -412,7 +412,7 @@ end
 Return an iterator over all subblocks of a tensor, i.e. all fusiontrees and their
 corresponding tensor subblocks.
 
-See also [`subblock`](@ref), [`fusiontrees`](@ref), and [`hassubblock`](@ref).
+See also [`subblock`](@ref) and [`fusiontrees`](@ref).
 """
 subblocks(t::AbstractTensorMap) = SubblockIterator(t, fusiontrees(t))
 
