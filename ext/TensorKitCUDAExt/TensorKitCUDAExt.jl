@@ -1,9 +1,9 @@
 module TensorKitCUDAExt
 
-using CUDA, CUDA.CUBLAS, CUDA.CUSOLVER, LinearAlgebra
+using CUDA, CUDA.cuBLAS, CUDA.cuSOLVER, CUDA.cuRAND, LinearAlgebra
 using CUDA: @allowscalar
 using cuTENSOR: cuTENSOR
-import CUDA: rand as curand, rand! as curand!, randn as curandn, randn! as curandn!
+import CUDA.cuRAND: rand as curand, rand! as curand!, randn as curandn, randn! as curandn!
 
 using TensorKit
 using TensorKit.Factorizations
