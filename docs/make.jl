@@ -9,7 +9,7 @@ end
 using Documenter
 using Random
 using TensorKit
-using TensorKit: FusionTreePair, Index2Tuple
+using TensorKit: FusionTreePair, FusionTreeBlock, Index2Tuple
 using TensorKit.TensorKitSectors
 using TensorKit.MatrixAlgebraKit
 using DocumenterInterLinks
