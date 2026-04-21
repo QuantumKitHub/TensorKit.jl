@@ -32,7 +32,7 @@ function planaradd!(
         α::Number, β::Number,
         backend, allocator
     )
-    return add_transpose!(C, A, p, α, β, backend)
+    return transpose!(C, A, p, α, β, backend)
 end
 
 # insert default backend
@@ -173,7 +173,7 @@ function planarcontract!(
         A′ = TO.tensoralloc_add(
             scalartype(A), A, (oindA, cindA), false, Val(true), allocator
         )
-        add_transpose!(A′, A, (oindA, cindA), One(), Zero(), backend)
+        transpose!(A′, A, (oindA, cindA), One(), Zero(), backend)
     end
 
     if cindB == codB && oindB == domB
@@ -182,7 +182,7 @@ function planarcontract!(
         B′ = TensorOperations.tensoralloc_add(
             scalartype(B), B, (cindB, oindB), false, Val(true), allocator
         )
-        add_transpose!(B′, B, (cindB, oindB), One(), Zero(), backend)
+        transpose!(B′, B, (cindB, oindB), One(), Zero(), backend)
     end
     mul!(C, A′, B′, α, β)
     (oindA == codA && cindA == domA) || TO.tensorfree!(A′, allocator)
