@@ -31,9 +31,7 @@ Hence, these last two sections can safely be skipped.
 To couple or fuse the different sectors together into a single block sector, we can sequentially fuse together two sectors into a single coupled sector, which is then fused with the next uncoupled sector, using the splitting tensors ``X_{a,b}^{c,μ} : R_c → R_a ⊗ R_b`` and their adjoints.
 This amounts to the canonical choice of our tensor product, and for a given tensor mapping from ``(((W_1 ⊗ W_2) ⊗ W_3) ⊗ … )⊗ W_{N_2})`` to ``(((V_1 ⊗ V_2) ⊗ V_3) ⊗ … )⊗ V_{N_1})``, the corresponding fusion and splitting trees take the form
 
-```@raw html
-<img src="../img/tree-simple.svg" alt="double fusion tree" class="color-invertible"/>
-```
+![double fusion tree](img/tree-simple.svg)
 
 for the specific case ``N_1 = 4`` and ``N_2 = 3``.
 We can separate this tree into the fusing part ``(b_1 ⊗ b_2) ⊗ b_3 → c`` and the splitting part ``c→(((a_1 ⊗ a_2) ⊗ a_3) ⊗ a_4)``.
@@ -50,9 +48,7 @@ This distinction is however important, when certain uncoupled sectors in the fus
 We use the isomorphisms ``Z_a : R_a^* → R_{\bar{a}}`` and its adjoint ``Z_a^† : R_{\bar{a}} → R_a^*``, as introduced in the section on [topological data of a fusion category](@ref ss_topologicalfusion), to build fusion and splitting trees that take the distinction between irreps and their conjugates into account.
 Hence, in the previous example, if e.g. the first and third space in the codomain and the second space in the domain of the tensor were dual spaces, the actual pair of splitting and fusion tree would look as
 
-```@raw html
-<img src="../img/tree-extended.svg" alt="extended double fusion tree" class="color-invertible"/>
-```
+![extended double fusion tree](img/tree-extended.svg)
 
 The presence of these isomorphisms will be important when we start to bend lines, to move uncoupled sectors from the incoming to the outgoing part of the fusion-splitting tree.
 Note that we can still represent the fusion tree as the adjoint of a corresponding splitting tree, because we also use the adjoint of the ``Z`` isomorphisms in the splitting part, and the ``Z`` isomorphism in the fusion part.
@@ -105,9 +101,7 @@ The first operation we discuss is an elementary braid of two neighbouring sector
 Because these two sectors do not appear on the same fusion vertex, some recoupling is necessary.
 The following represents two different ways to compute the result of such a braid as a linear combination of new fusion trees in canonical order:
 
-```@raw html
-<img src="../img/tree-artinbraid.svg" alt="artin braid" class="color-invertible"/>
-```
+![artin braid](img/tree-artinbraid.svg)
 
 While the upper path is the most intuitive, it requires two recouplings or F-moves (one forward and one reverse).
 On the other hand, the lower path requires only one (reverse) F- move, and two R-moves.
@@ -129,9 +123,7 @@ The permutation is decomposed into swaps between neighbouring sectors, and when 
 This interface does not allow to specify the most general braid, and in particular will never wind one line around another, but can be used as a more general building block for arbitrary braids than the elementary Artin generators.
 A graphical example makes this probably more clear, i.e for `levels = (1, 2, 3, 4, 5)` and `permutation = (5, 3, 1, 4, 2)`, the corresponding braid is given by
 
-```@raw html
-<img src="../img/tree-braidinterface.svg" alt="braid interface" class="color-invertible"/>
-```
+![braid interface](img/tree-braidinterface.svg)
 
 that is, the first sector or space goes to position 3, and crosses over all other lines, because it has the lowest level (i.e. think of level as depth in the third dimension), and so forth.
 We sketch this operation both as a general braid on the left hand side, and as a particular composition of Artin braids on the right hand side.
@@ -145,9 +137,7 @@ Other manipulations which are sometimes needed are
 
 *   [`insertat(f1::FusionTree{I, N₁}, i::Int, f2::FusionTree{I, N₂})`](@ref TensorKit.insertat) : inserts a fusion tree `f2` at the `i`th uncoupled sector of fusion tree `f1` (this requires that the coupled sector `f2` matches with the `i`th uncoupled sector of `f1`, and that `!f1.isdual[i]`, i.e. that there is no ``Z``-isomorphism on the `i`th line of `f1`), and recouple this into a linear combination of trees in canonical order, with `N₁ + N₂ - 1` uncoupled sectors, i.e. diagrammatically for `i = 3`
 
-```@raw html
-<img src="../img/tree-insertat.svg" alt="insertat" class="color-invertible"/>
-```
+![insertat](img/tree-insertat.svg)
 
 *   [`split(f::FusionTree{I, N}, M::Int)`](@ref TensorKit.split) : splits a fusion tree `f` into two trees `f1` and `f2`, such that `f1` has the first `M` uncoupled sectors of `f`, and `f2` the remaining `N - M`.
     This function is type stable if `M` is a compile time constant.
@@ -155,9 +145,7 @@ Other manipulations which are sometimes needed are
     `split` is the inverse of `join`: `f == join(split(f, M)...)` holds for all valid `M`.
     Diagrammatically, for `M = 4`, the function `split` returns
 
-```@raw html
-<img src="../img/tree-split.svg" alt="split" class="color-invertible"/>
-```
+![split](img/tree-split.svg)
 
 *   [`join(f₁::FusionTree{I, N₁}, f₂::FusionTree{I, N₂})`](@ref TensorKit.join) : connects the coupled sector of `f₁` to the first uncoupled sector of `f₂`, producing a single tree with `N₁ + N₂ - 1` uncoupled sectors.
     Requires `f₁.coupled == f₂.uncoupled[1]` and `!f₂.isdual[1]`.
@@ -167,9 +155,7 @@ Other manipulations which are sometimes needed are
     This is a simple application of `insertat`.
     Diagrammatically, this operation is represented as:
 
-```@raw html
-<img src="../img/tree-merge.svg" alt="merge" class="color-invertible"/>
-```
+![merge](img/tree-merge.svg)
 
 ## Manipulations on a splitting - fusion tree pair
 
@@ -205,9 +191,7 @@ We now discuss how to actually bend lines, and thus, move sectors from the incom
 Hereby, we exploit the relations between the (co)evaluation (exact pairing) and the fusion tensors, discussed in [topological data of a fusion category](@ref ss_topologicalfusion).
 The main ingredient that we need is summarized in
 
-```@raw html
-<img src="../img/tree-linebending.svg" alt="line bending" class="color-invertible"/>
-```
+![line bending](img/tree-linebending.svg)
 
 We will only need the B-symbol and not the A-symbol.
 Applying the left evaluation on the second sector of a splitting tensor thus yields a linear combination of fusion tensors (when `FusionStyle(I) == GenericFusion()`, or just a scalar times the corresponding fusion tensor otherwise), with corresponding ``Z`` ismorphism.
@@ -217,9 +201,7 @@ However, we have to be careful if we bend a line on which a ``Z`` isomorphism (o
 Indeed, it is exactly for this operation that we explicitly need to take the presence of these isomorphisms into account.
 Indeed, we obtain the relation
 
-```@raw html
-<img src="../img/tree-linebending2.svg" alt="dual line bending" class="color-invertible"/>
-```
+![dual line bending](img/tree-linebending2.svg)
 
 Hence, bending an `isdual` sector from the splitting tree to the fusion tree yields an additional Frobenius-Schur factor, and of course leads to a normal sector (which is no longer `isdual` and does thus not come with a ``Z``-isomorphism) on the fusion side.
 We again use the adjoint of this relation to bend an `isdual` sector from the fusion tree to the splitting tree.
@@ -233,9 +215,7 @@ This return values are correctly inferred if `N` is a compile time constant.
 
 Graphically, for `N₁ = 4`, `N₂ = 3`, `N = 2` and some particular choice of `isdual` in both the fusion and splitting tree:
 
-```@raw html
-<img src="../img/tree-repartition.svg" alt="repartition" class="color-invertible"/>
-```
+![repartition](img/tree-repartition.svg)
 
 The result is returned as a `Pair`: for a `FusionTreePair` input, this is a `Pair{FusionTreePair, <:Number}`; for a `FusionTreeBlock` input, a `Pair{FusionTreeBlock, Matrix}`.
 Note that the summation is only over the ``κ_j`` labels, such that, in the case of `FusionStyle(I) isa UniqueFusion`, the linear combination simplifies to a single term with a scalar coefficient.

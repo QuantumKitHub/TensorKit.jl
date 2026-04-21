@@ -91,9 +91,7 @@ blocks(X)
 Let us now return to the global ``\mathbb{Z}_2`` invariance of the Hamiltonian \eqref{eq:isingham}, and consider what this implies for its local terms ``ZZ`` and ``X``.
 Representing these operators as `TensorMap`s, the invariance of ``H`` under a global ``\mathbb{Z}_2`` transformation implies the following identities for the local tensors:
 
-```@raw html
-<center><img src="../img/symmetric_tutorial/ZZX_symm.svg" alt="ZZX_symm" class="color-invertible" style="zoom: 170%"/></center>
-```
+![ZZX_symm](img/symmetric_tutorial/ZZX_symm.svg)
 
 These identitities precisely mean that these local tensors transform trivially under a tensor product representation of ``\mathbb{Z}_2``.
 This implies that, recalling [the introduction on symmetries](@ref ss_symmetries), in an appropriate basis for the local physical vector space, our local tensors would become block-diagonal where each so-called *matrix block* is labeled by a ``\mathbb{Z}_2`` irrep.
@@ -142,9 +140,7 @@ Similarly, ``XX`` acts with a minus sign on both ``\ket{+} \otimes \ket{-}`` and
 Having introduced this notion of 'fusing' irreps, we can now associate a well-defined *coupled irrep* to each of the four two-site basis states, which is given by the tensor product of the two *uncoupled irreps* associated to each individual site.
 From the matrix elements of ``ZZ`` given above, we clearly see that this operator only maps between states in the domain and codomain that have the same coupled irrep.
 This means that we can associate each of these matrix elements to a so-called *fusion tree* of ``\mathbb{Z}_2`` irreps with a corresponding coefficient of 1,
-```@raw html
-<center><img src="../img/symmetric_tutorial/Z2_fusiontrees.svg" alt="Z2_fusiontrees" class="color-invertible" style="zoom: 170%"/></center>
-```
+![Z2_fusiontrees](img/symmetric_tutorial/Z2_fusiontrees.svg)
 This diagram should be read from top to bottom, where it represents the fusion of the two uncoupled irreps in the domain to the coupled irrep on the middle line, and the splitting of this coupled irrep to the uncoupled irreps in the codomain.
 From this our previous statement becomes very clear: the ``ZZ`` operator indeed consists of two distinct two-dimensional matrix blocks, each of which are labeled by the value of the *coupled irrep* on the middle line of each fusion tree.
 The first block corresponds to the even coupled irrep '0', and acts within the two-dimensional subspace spanned by ``\{\ket{+,+}, \ket{-,-}\}``, while the second block corresponds to the odd coupled irrep '1', and acts within the two-dimensional subspace spanned by ``\{\ket{+,-}, \ket{-,+}\}``.
@@ -172,9 +168,7 @@ These can be thought of as generalization of group irreps, and appear in the con
 
 Consider a generic fusion tree of the form
 
-```@raw html
-<center><img src="../img/symmetric_tutorial/fusiontree.svg" alt="fusiontree" class="color-invertible" style="zoom: 170%"/></center>
-```
+![fusiontree](img/symmetric_tutorial/fusiontree.svg)
 
 which can be used to label a subblock of a `TensorMap` corresponding to a two-site operator.
 This object should actually be seen as a *pair of fusion trees*.
@@ -346,9 +340,7 @@ N \ket{n} &= n \ket{n}
 
 It is then a simple observation that these matrix elements are exactly captured by the following ``\mathsf{U}_1`` fusion trees with corresponding subblock values:
 
-```@raw html
-<center><img src="../img/symmetric_tutorial/U1_fusiontrees.svg" alt="U1_fusiontrees" class="color-invertible" style="zoom: 170%"/></center>
-```
+![U1_fusiontrees](img/symmetric_tutorial/U1_fusiontrees.svg)
 
 This gives us all the information necessary to construct the corresponding `TensorMap`s.
 We follow the same steps as outlined in the previous example, starting with the construction of the physical space.
@@ -404,15 +396,11 @@ This means we can represent ``a^+`` as a `TensorMap(..., V ← V ⊗ A)`, where 
 Similarly, the decrease in occupation number when acting with ``a^-`` can be thought of as the *splitting* of an `U1Irrep(n)` into an `U1Irrep(n - 1)` and an `U1Irrep(1)`, leading to a representation in terms of a `TensorMap(.
 ., A ⊗ V ← V)`. Based on these observations, we can represent the matrix elements \eqref{eq:bosonopmatel} as subblocks labeled by the ``\mathsf{U}_1`` fusion trees
 
-```@raw html
-<center><img src="../img/symmetric_tutorial/bosonops.svg" alt="bosonops" class="color-invertible" style="zoom: 170%"/></center>
-```
+![bosonops](img/symmetric_tutorial/bosonops.svg)
 
 We can then combine these operators to get the appropriate Hamiltonian terms,
 
-```@raw html
-<center><img src="../img/symmetric_tutorial/bosonham.svg" alt="bosonham" class="color-invertible" style="zoom: 170%"/></center>
-```
+![bosonham](img/symmetric_tutorial/bosonham.svg)
 
 !!! note
     Although we have made a suggestive distinction between the 'left' and 'right' versions of the operators ``a_L^\pm`` and ``a_R^\pm``, one can actually be obtained from the other by permuting the physical and auxiliary indices of the corresponding `TensorMap`s.
@@ -551,9 +539,7 @@ c_1^- c_2^+ \ket{1, 0} = c_1^- c_2^+ c_1^+ \ket{0, 0} = - c_2^+ c_1^- c_1^+ \ket
 
 Once we have these matrix elements the hard part is done, and we can straightforwardly associate these to the following ``f\mathbb{Z}_2`` fusion trees with corresponding reduced tensor elements,
 
-```@raw html
-<center><img src="../img/symmetric_tutorial/fZ2_fusiontrees.svg" alt="fZ2_fusiontrees" class="color-invertible" style="zoom: 170%"/></center>
-```
+![fZ2_fusiontrees](img/symmetric_tutorial/fZ2_fusiontrees.svg)
 
 Given this information, we can go through the same procedure again to construct ``c^+ c^-``, ``c^- c^+`` and ``N`` operators as `TensorMap`s over ``f\mathbb{Z}_2``-graded vector spaces.
 
@@ -643,9 +629,7 @@ Finally, we show how the more intuitive approach can be used to obtain an elegan
 Let us recall some basics of representation theory first. Consider a group ``G`` and a corresponding representation space ``V``, such that every element ``g \in G`` can be realized as a unitary operator ``U_g : V \to V``.
 Let ``h`` be a `TensorMap` whose domain and codomain are given by the tensor product of two of these representation spaces.
 By definition, the statement that '``h`` is symmetric under ``G``' means that
-```@raw html
-<center><img src="../img/symmetric_tutorial/symmetric_tensor.svg" alt="symmetric_tensor" class="color-invertible" style="zoom: 170%"/></center>
-```
+![symmetric_tensor](img/symmetric_tutorial/symmetric_tensor.svg)
 for every ``g \in G``.
 If we label the irreducible representations of ``G`` by ``l``, then any representation space can be decomposed into a direct sum of irreducible representations, ``V = \bigoplus_l V^{(l)}``, in such a way that ``U_g`` is block-diagonal where each matrix block is labeled by a particular irrep ``l``.
 For each irrep space ``V^{(l)}`` we can define an orthonormal basis labeled as ``\ket{l, m}``, where the auxiliary label ``m`` can take ``\text{dim}\left( V^{(l)} \right)`` different values.
@@ -663,15 +647,11 @@ This set of coefficients, which can be interpreted as a ``\text{dim}\left( V^{(l
 These recoupling coefficients turn out to be essential to the structure of symmetric tensors, which can be best understood in the context of the [Wigner-Eckart theorem](https://en.wikipedia.org/wiki/Wigner%E2%80%93Eckart_theorem).
 This theorem implies that for any [`TensorMap` ``h`` that is symmetric under ``G``](@ref ss_symmetries), its matrix elements in the tensor product irrep basis are given by the product of Clebsch-Gordan coefficients which characterize the coupling of the basis states in the domain and codomain, and a so-called *reduced tensor element* which only depends on the irrep labels.
 Concretely, the matrix element ``\bra{l_1,m_1} \otimes \bra{l_2,m_2} h \ket{l_3,m_3} \otimes \ket{l_4,m_4}`` is given by
-```@raw html
-<center><img src="../img/symmetric_tutorial/wignereckart.svg" alt="wignereckart" class="color-invertible" style="zoom: 170%"/></center>
-```
+![wignereckart](img/symmetric_tutorial/wignereckart.svg)
 Here, the sum runs over all possible irreps ``k`` in the fusion product ``l_3 \otimes l_4`` and over all basis states ``\ket{k,n}`` of ``V^{(k)}``.
 The reduced tensor elements ``h_{\text{red}}`` are independent of the basis state labels and only depend on the irrep labels themselves.
 Each reduced tensor element should be interpreted as being labeled by an irrep fusion tree,
-```@raw html
-<center><img src="../img/symmetric_tutorial/anotherfusiontree.svg" alt="anotherfusiontree" class="color-invertible" style="zoom: 170%"/></center>
-```
+![anotherfusiontree](img/symmetric_tutorial/anotherfusiontree.svg)
 The fusion tree itself in turn implies the Clebsch-Gordan coefficients ``C^{k}_{l_1,l_2}`` and conjugate coefficients ``{C^{\dagger}}_{k}^{l_1,l_2}`` encode the splitting (decomposition) of the coupled basis state ``\ket{k,n}`` to the codomain basis states ``\ket{l_1,m_1} \otimes \ket{l_2,m_2}`` and the coupling of the domain basis states ``\ket{l_3,m_3} \otimes \ket{l_4,m_4}`` to the coupled basis state ``\ket{k,n}`` respectively.
 
 The Wigner-Eckart theorem dictates that this structure in terms of Clebsch-Gordan coefficients is necessary to ensure that the corresponding tensor is symmetric.
@@ -728,9 +708,7 @@ Given the matrix elements of the operator in the irrep basis, this can in genera
 A simpler way to achieve the same thing is to make use of the fact that the [Clebsch-Gordan tensors form a complete orthonormal basis](https://en.wikipedia.org/wiki/Clebsch%E2%80%93Gordan_coefficients#Orthogonality_relations) on the coupled space.
 Indeed, by projecting out the appropriate Clebsch-Gordan coefficients and using their orthogonality relations, we can construct a diagonal operator on each coupled irrep space ``V^{(k)}``.
 Each of these diagonal operators is proportional to the identity, where the proportionality factor is precisely the reduced tensor element associated to the corresponding irrep fusion tree.
-```@raw html
-<center><img src="../img/symmetric_tutorial/none2symm.svg" alt="none2symm" class="color-invertible" style="zoom: 170%"/></center>
-```
+![none2symm](img/symmetric_tutorial/none2symm.svg)
 
 This procedure works for any group symmetry, and all we need are matrix elements of the operator in the irrep basis and the Clebsch-Gordan coefficients.
 In the following, we demonstrate this explicit procedure for the particular example of ``G = \mathsf{SU}_2``.
@@ -882,9 +860,7 @@ In particular, we have for each irrep ``l``
 ```
 It then follows from Eq. \eqref{eq:casimir_decomp} that the reduced tensor elements of the exchange interaction are completely determined by the eigenvalue of the quadratic Casimir on the uncoupled and coupled irreps.
 Indeed, to each fusion tree we can associate a well-defined value
-```@raw html
-<center><img src="../img/symmetric_tutorial/SU2_fusiontrees.svg" alt="SU2_fusiontrees" class="color-invertible" style="zoom: 170%"/></center>
-```
+![SU2_fusiontrees](img/symmetric_tutorial/SU2_fusiontrees.svg)
 This gives us all we need to directly construct the exchange interaction as a symmetric `TensorMap`,
 ```@example symmetric_tutorial
 V = SU2Space(1 => 1)
@@ -948,9 +924,7 @@ For any ``N``, the [quadratic Casimir](https://en.wikipedia.org/wiki/Casimir_ele
 ```
 commutes with all ``\mathsf{SU}_N`` generators, meaning it has a well defined eigenvalue in each irrep.
 This observation then immediately given the reduced tensor elements of the exchange interaction as
-```@raw html
-<center><img src="../img/symmetric_tutorial/SUN_fusiontrees.svg" alt="SUN_fusiontrees" class="color-invertible" style="zoom: 170%"/></center>
-```
+![SUN_fusiontrees](img/symmetric_tutorial/SUN_fusiontrees.svg)
 Using these to directly construct the corresponding symmetric `TensorMap` is much simpler than going through the explicit projection procedure using Clebsch-Gordan coefficients.
 
 For the particular example of ``\mathsf{SU}_3``, the generators are given by ``T^k = \frac{1}{2} \lambda^k`` , where ``\lambda^k`` are the [Gell-Mann matrices](https://en.wikipedia.org/wiki/Clebsch%E2%80%93Gordan_coefficients_for_SU(3)#Generators_of_the_Lie_algebra).
@@ -1018,9 +992,7 @@ which favors neighboring anyons fusing to the vacuum can be constructed as a `Te
 V = Vect[FibonacciAnyon](:τ => 1)
 ```
 and assigning the following nonzero subblock value to the two-site fusion trees
-```@raw html
-<center><img src="../img/symmetric_tutorial/Fib_fusiontrees.svg" alt="Fib_fusiontrees" class="color-invertible" style="zoom: 170%"/></center>
-```
+![Fib_fusiontrees](img/symmetric_tutorial/Fib_fusiontrees.svg)
 This allows us to define this, at first sight, exotic and complicated Hamiltonian in a few simple lines of code,
 ```@example symmetric_tutorial
 h = ones(V ⊗ V ← V ⊗ V)
