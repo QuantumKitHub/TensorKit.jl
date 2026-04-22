@@ -2,7 +2,6 @@
 if Base.active_project() != joinpath(@__DIR__, "Project.toml")
     using Pkg
     Pkg.activate(@__DIR__)
-    Pkg.develop(PackageSpec(; path = joinpath(@__DIR__, "..")))
     Pkg.resolve()
     Pkg.instantiate()
 end
@@ -10,7 +9,7 @@ end
 using Documenter
 using Random
 using TensorKit
-using TensorKit: FusionTreePair, Index2Tuple
+using TensorKit: FusionTreePair, FusionTreeBlock, Index2Tuple
 using TensorKit.TensorKitSectors
 using TensorKit.MatrixAlgebraKit
 using DocumenterInterLinks
