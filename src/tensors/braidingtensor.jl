@@ -128,8 +128,6 @@ end
             throw(SectorMismatch())
     end
     d = (dims(codomain(b), f₁.uncoupled)..., dims(domain(b), f₂.uncoupled)...)
-    n1 = d[1] * d[2]
-    n2 = d[3] * d[4]
     data_parent = storagetype(b)(undef, prod(d))
     data = sreshape(StridedView(data_parent), d)
     r = _braiding_factor(f₁, f₂, b.adjoint)
