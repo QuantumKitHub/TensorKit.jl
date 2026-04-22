@@ -10,9 +10,15 @@ delete!(testsuite, "braidingtensor") # not part of the testsuite (see file heade
 # CUDA tests: only run if CUDA is functional
 using CUDA: CUDA
 CUDA.functional() || filter!(!startswith("cuda") ∘ first, testsuite)
+# AMDGPU tests: only run if AMDGPU is functional
+using AMDGPU
+AMDGPU.functional() || filter!(!startswith("amd") ∘ first, testsuite)
 
-# On Buildkite (GPU CI runner): only run CUDA tests
-get(ENV, "BUILDKITE", "false") == "true" && filter!(startswith("cuda") ∘ first, testsuite)
+# On Buildkite (GPU CI runner): only run CUDA and AMDGPU tests
+if get(ENV, "BUILDKITE", "false") == "true"
+    f(str) = startswith(first(str), "cuda") || startswith(first(str), "amd")
+    filter!(f, testsuite)
+end
 
 # ChainRules / Mooncake: skip on Apple CI and on Julia prerelease builds
 if (Sys.isapple() && get(ENV, "CI", "false") == "true") || !isempty(VERSION.prerelease)
