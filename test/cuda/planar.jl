@@ -30,6 +30,8 @@ for V in spacelist
         @test storagetype(t2) == CuVector{ComplexF64, CUDA.DeviceMemory}
         t3 = @testinferred adapt(storagetype(t2), t1)
         @test storagetype(t3) == storagetype(t2)
+        t4 = @testinferred adapt(scalartype(t2), t1)
+        @test storagetype(t3) == storagetype(t2)
         # allowscalar needed for the StridedView comparison
         @test t3 ≈ t2
 
