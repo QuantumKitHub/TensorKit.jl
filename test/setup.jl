@@ -87,9 +87,9 @@ function randsector(::Type{I}) where {I <: Sector}
     return a
 end
 function hasfusiontensor(I::Type{<:Sector})
-    isa(UnitStyle(I), GenericUnit) && return false
     try
-        TensorKit.fusiontensor(unit(I), unit(I), unit(I))
+        u = first(allunits(I))
+        fusiontensor(u, u, u)
         return true
     catch e
         if e isa MethodError
