@@ -5,8 +5,7 @@ using CUDA: @allowscalar
 using cuTENSOR: cuTENSOR
 using Strided: StridedViews
 import CUDA: rand as curand, rand! as curand!, randn as curandn, randn! as curandn!
-using CUDA.KernelAbstractions
-using CUDA.KernelAbstractions: @kernel, @index
+using CUDA.KernelAbstractions: @kernel, @index, get_backend
 
 using TensorKit
 using TensorKit.Factorizations
@@ -28,7 +27,7 @@ function TensorKit.fill_braidingsubblock!(data::TD, val) where {T, TD <: Union{<
         idx_val = idx[1] == idx[4] && idx[2] == idx[3] ? val : zero(val)
         @inbounds subblock[idx] = idx_val
     end
-    kernel = fill_subblock_kernel!(KernelAbstractions.get_backend(data))
+    kernel = fill_subblock_kernel!(get_backend(data))
     kernel(data, val; ndrange = size(data))
     return data
 end
