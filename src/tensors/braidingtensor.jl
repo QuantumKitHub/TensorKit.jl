@@ -28,8 +28,7 @@ struct BraidingTensor{T, S, A <: DenseVector{T}} <: AbstractTensorMap{T, S, 2, 2
     end
 end
 function BraidingTensor{T}(V1::S, V2::S, adjoint::Bool = false) where {T, S <: IndexSpace}
-    TA = similarstoragetype(T)
-    return BraidingTensor{T, S, TA}(V1, V2, adjoint)
+    return braidingtensortype(S, T)(V1, V2, adjoint)
 end
 function BraidingTensor(V1::S, V2::S, adjoint::Bool = false) where {S <: IndexSpace}
     T = BraidingStyle(sectortype(S)) isa SymmetricBraiding ? Float64 : ComplexF64
@@ -60,9 +59,8 @@ end
 
 # these are here to make the preprocessing for `@planar` expressions less painful
 function braidingtensortype(::Type{S}, ::Type{TorA}) where {S <: IndexSpace, TorA}
-    T = eltype(TorA)
-    TA = similarstoragetype(TorA)
-    return BraidingTensor{T, S, TA}
+    A = similarstoragetype(TorA)
+    return BraidingTensor{scalartype(A), S, A}
 end
 braidingtensortype(V::S, ::Type{TorA}) where {S <: IndexSpace, TorA} = braidingtensortype(S, TorA)
 braidingtensortype(V1::S, V2::S, ::Type{TorA}) where {S <: IndexSpace, TorA} = braidingtensortype(S, TorA)
@@ -73,10 +71,7 @@ end
 function braidingtensortype(V::HomSpace, ::Type{TorA}) where {TorA}
     domain(V) == reverse(codomain(V)) ||
         throw(SpaceMismatch("Cannot define a braiding on $V"))
-    T = eltype(TorA)
-    S = spacetype(V[2])
-    TA = similarstoragetype(TorA)
-    return braidingtensortype(S, TA)
+    return braidingtensortype(spacetype(V), TorA)
 end
 
 storagetype(::Type{BraidingTensor{T, S, A}}) where {T, S, A} = A
