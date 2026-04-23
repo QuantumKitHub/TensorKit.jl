@@ -92,7 +92,7 @@ This means the following methods should be implemented for a new sector type `I 
 
 *   `Base.iterate(::Type{SectorValues{I}} [, state])` should implement the iterator interface so as to enable iterating over all values of the sector `I` according to the canonical order defined by `isless`.
 *   `Base.IteratorSize(::Type{SectorValues{I}})` should return `HasLength()` if the number of different values of sector `I` is finite and rather small, and `SizeUnknown()` or `IsInfinite()` otherwise.
-    This is used to encode the degeneracies of the different sectors in a `GradedSpace` object efficiently, as discussed in the next section on [Graded spaces](@ref ss_rep).
+    This is used to encode the degeneracies of the different sectors in a `GradedSpace` object efficiently, as discussed in the next section on [Graded spaces](@ref ss_representationtheory).
 *   If `IteratorSize(::Type{SectorValues{I}}) == HasLength()`, then `Base.length(::Type{SectorValues{I}})` should return the number of different values of sector `I`.
 
 Furthermore, the standard definitions `Base.IteratorEltype(::Type{SectorValues{I}}) = HasEltype()` and `Base.eltype(::Type{SectorValues{I}}) = I` are provided by default in TensorKitSectors.jl.
@@ -330,7 +330,7 @@ The storage benefits for small `N` are not only due to a smaller integer type in
 Base.IteratorSize(::Type{SectorValues{<:ZNIrrep}}) = HasLength()
 Base.IteratorSize(::Type{SectorValues{<:LargeZNIrrep}}) = SizeUnknown()
 ```
-As a result, the `GradedSpace` implementation (see next section on [Graded spaces](@ref ss_rep)) to store general direct sum objects ``V = ⨁_a ℂ^{n_a} ⊗ R_{a}`` will use a very different internal representation for those two cases.
+As a result, the `GradedSpace` implementation (see next section on [Graded spaces](@ref ss_representationtheory)) to store general direct sum objects ``V = ⨁_a ℂ^{n_a} ⊗ R_{a}`` will use a very different internal representation for those two cases.
 
 We furthermore define some aliases for the first (and most commonly used `ℤ{N}` irreps)
 ```julia

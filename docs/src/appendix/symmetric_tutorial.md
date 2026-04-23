@@ -2,7 +2,7 @@
 
 In this tutorial, we will demonstrate how to construct specific [`TensorMap`](@ref)s which are relevant to some common physical systems, with an increasing degree of complexity.
 We will assume the reader is somewhat familiar with [the notion of a *tensor map*](@ref ss_whatistensor) and has a rough idea of [what it means for a tensor map to be *symmetric*](@ref ss_symmetries).
-In going through these examples we aim to provide a relatively gentle introduction to the meaning of [symmetry sectors](@ref ss_sectors) and [vector spaces](@ref ss_rep) within the context of TensorKit.jl, [how to initialize a `TensorMap` over a given vector space](@ref ss_tensor_construction) and finally how to manually set the data of a [symmetric `TensorMap`](@ref ss_tutorial_symmetries).
+In going through these examples we aim to provide a relatively gentle introduction to the meaning of [symmetry sectors](@ref ss_sectors) and [vector spaces](@ref ss_representationtheory) within the context of TensorKit.jl, [how to initialize a `TensorMap` over a given vector space](@ref ss_tensor_construction) and finally how to manually set the data of a [symmetric `TensorMap`](@ref ss_tutorial_symmetries).
 We will keep our discussion as intuitive and simple as possible, only adding as many technical details as strictly necessary to understand each example.
 When considering a different physical system of interest, you should then be able to adapt these recipes and the intuition behind them to your specific problem at hand.
 

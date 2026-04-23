@@ -47,7 +47,7 @@ end
 Return the type of vector that stores the data of a tensor.
 If this is not overloaded for a given tensor type, the default value of `storagetype(scalartype(t))` is returned.
 
-See also [`similarstoragetype`](@ref).
+See also [`TensorKit.similarstoragetype`](@ref).
 """ storagetype
 storagetype(t) = storagetype(typeof(t))
 function storagetype(::Type{T}) where {T <: AbstractTensorMap}
@@ -212,7 +212,6 @@ See also [`domain`](@ref) and [`space`](@ref).
 
 codomain(t::AbstractTensorMap) = codomain(space(t))
 codomain(t::AbstractTensorMap, i) = codomain(t)[i]
-target(t::AbstractTensorMap) = codomain(t) # categorical terminology
 
 @doc """
     domain(t::AbstractTensorMap{T,S,N₁,N₂}) -> ProductSpace{S,N₂}
@@ -226,7 +225,6 @@ See also [`codomain`](@ref) and [`space`](@ref).
 
 domain(t::AbstractTensorMap) = domain(space(t))
 domain(t::AbstractTensorMap, i) = domain(t)[i]
-source(t::AbstractTensorMap) = domain(t) # categorical terminology
 
 @doc """
     numout(x) -> Int
@@ -412,7 +410,7 @@ end
 Return an iterator over all subblocks of a tensor, i.e. all fusiontrees and their
 corresponding tensor subblocks.
 
-See also [`subblock`](@ref), [`fusiontrees`](@ref), and [`hassubblock`](@ref).
+See also [`subblock`](@ref) and [`fusiontrees`](@ref).
 """
 subblocks(t::AbstractTensorMap) = SubblockIterator(t, fusiontrees(t))
 

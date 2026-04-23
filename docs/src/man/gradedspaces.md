@@ -102,7 +102,7 @@ With [`hassector(V, a)`](@ref) one can check if `V` contains a sector `a` with `
 Finally, `dim(V)` returns the total dimension of the space `V`, i.e. ``∑_a n_a d_a`` or thus `dim(V) = sum(dim(V, a) * dim(a) for a in sectors(V))`.
 Note that a representation space `V` has certain sectors `a` with dimensions `n_a`, then its dual `V'` will report to have sectors `dual(a)`, and `dim(V', dual(a)) == n_a`.
 There is a subtelty regarding the difference between the dual of a representation space ``R_a^*``, on which the conjugate representation acts, and the representation space of the irrep `dual(a) == conj(a)` that is isomorphic to the conjugate representation, i.e. ``R_{\overline{a}} ≂ R_a^*`` but they are not equal.
-We return to this in the section on [fusion trees](@ref ss_fusiontrees).
+We return to this in the section on [fusion trees](@ref sss_fusiontrees).
 This is true also in more general fusion categories beyond the representation categories of groups.
 
 Other methods for `ElementarySpace`, such as [`dual`](@ref), [`fuse`](@ref) and [`flip`](@ref) also work.
@@ -118,7 +118,7 @@ The function [`dims(W, as)`](@ref) returns the corresponding tuple with degenera
 [`hassector(W, as)`](@ref) is equivalent to `dim(W, as) > 0`.
 Finally, there is the function [`blocksectors(W)`](@ref) which returns a list (of type `Vector`) with all possible "block sectors" or total/coupled sectors that can result from fusing the individual uncoupled sectors in `W`.
 Correspondingly, [`blockdim(W, a)`](@ref) counts the total degeneracy dimension of the coupled sector `a` in `W`.
-The machinery for computing this is the topic of the next section on [Fusion trees](@ref ss_fusiontrees), but first, it's time for some examples.
+The machinery for computing this is the topic of the next section on [Fusion trees](@ref sss_fusiontrees), but first, it's time for some examples.
 
 ## Examples
 
