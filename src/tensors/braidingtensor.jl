@@ -166,8 +166,6 @@ function fill_braidingblock!(data, b::BraidingTensor, s::Sector)
         r = _braiding_factor(f₁, f₂, b.adjoint)
         # change offset to account for single block
         subblock = StridedView(data, sz, str, off - base_offset)
-        # without the zero-value, the non-trivial block is not set
-        # correctly in the GPU case
         isnothing(r) ? zerovector!(subblock) : fill_braidingsubblock!(subblock, r)
     end
     return data
