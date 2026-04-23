@@ -46,8 +46,11 @@ function flip(t::AbstractTensorMap, I; inv::Bool = false)
     return t′
 end
 
+# --------------
+#   permute(!)
+# --------------
 """
-    permute!(tdst, tsrc, (p₁, p₂)::Index2Tuple[, α=1[, β=0[, backend[, allocator]]]]) -> tdst
+    permute!(tdst, tsrc, (p₁, p₂)::Index2Tuple, α = 1, β = 0, [backend], [allocator]) -> tdst
 
 Compute `tdst = β * tdst + α * permute(tsrc, (p₁, p₂))`, writing the result into `tdst`.
 The codomain and domain of `tdst` correspond to the indices in `p₁` and `p₂` of `tsrc` respectively.
@@ -55,24 +58,10 @@ Optionally specify a `backend` and `allocator` for the underlying array operatio
 
 See also [`permute`](@ref) for creating a new tensor.
 """
-function Base.permute!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple)
-    return permute!(tdst, tsrc, p, One(), Zero())
-end
-function Base.permute!(
-        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple,
-        α::Number, β::Number
-    )
-    return permute!(tdst, tsrc, p, α, β, TO.DefaultBackend())
-end
-function Base.permute!(
-        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple,
-        α::Number, β::Number, backend
-    )
-    return permute!(tdst, tsrc, p, α, β, backend, TO.DefaultAllocator())
-end
 @propagate_inbounds function Base.permute!(
         tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple,
-        α::Number, β::Number, backend, allocator
+        α::Number = One(), β::Number = Zero(),
+        backend::AbstractBackend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
     )
     @boundscheck spacecheck_transform(permute, tdst, tsrc, p)
     transformer = treepermuter(tdst, tsrc, p)
@@ -80,8 +69,7 @@ end
 end
 
 """
-    permute(tsrc, (p₁, p₂)::Index2Tuple; copy=false,
-            backend=DefaultBackend(), allocator=DefaultAllocator()) -> tdst::TensorMap
+    permute(tsrc, (p₁, p₂)::Index2Tuple; copy = false, [backend], [allocator]) -> tdst
 
 Return tensor `tdst` obtained by permuting the indices of `tsrc`.
 The codomain and domain of `tdst` correspond to the indices in `p₁` and `p₂` of `tsrc` respectively.
@@ -94,7 +82,7 @@ See also [`permute!`](@ref) for writing into an existing destination.
 """
 function permute(
         t::AbstractTensorMap, p::Index2Tuple;
-        copy::Bool = false, backend=TO.DefaultBackend(), allocator=TO.DefaultAllocator()
+        copy::Bool = false, backend::AbstractBackend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
     )
     # share data if possible
     if !copy
@@ -109,18 +97,12 @@ function permute(
     tdst = similar(t, promote_permute(t), permute(space(t), p))
     return @inbounds permute!(tdst, t, p, One(), Zero(), backend, allocator)
 end
-function permute(
-        t::AdjointTensorMap, (p₁, p₂)::Index2Tuple;
-        copy::Bool = false, backend=TO.DefaultBackend(), allocator=TO.DefaultAllocator()
-    )
+function permute(t::AdjointTensorMap, (p₁, p₂)::Index2Tuple; kwargs...)
     p₁′ = adjointtensorindices(t, p₂)
     p₂′ = adjointtensorindices(t, p₁)
-    return adjoint(permute(adjoint(t), (p₁′, p₂′); copy, backend, allocator))
+    return adjoint(permute(adjoint(t), (p₁′, p₂′); kwargs...))
 end
-permute(
-    t::AbstractTensorMap, p::IndexTuple;
-    copy::Bool = false, backend=TO.DefaultBackend(), allocator=TO.DefaultAllocator()
-) = permute(t, (p, ()); copy, backend, allocator)
+permute(t::AbstractTensorMap, p::IndexTuple; kwargs...) = permute(t, (p, ()); kwargs...)
 
 function has_shared_permute(t::AbstractTensorMap, (p₁, p₂)::Index2Tuple)
     return (p₁ === codomainind(t) && p₂ === domainind(t))
@@ -144,9 +126,11 @@ function has_shared_permute(t::AdjointTensorMap, (p₁, p₂)::Index2Tuple)
     return has_shared_permute(t', (p₁′, p₂′))
 end
 
-# Braid
+# -------------
+#   braid(!)
+# -------------
 """
-    braid!(tdst, tsrc, (p₁, p₂)::Index2Tuple, levels::IndexTuple[, α=1[, β=0[, backend[, allocator]]]]) -> tdst
+    braid!(tdst, tsrc, (p₁, p₂)::Index2Tuple, levels::IndexTuple, α = 1, β = 0, [backend], [allocator]) -> tdst
 
 Compute `tdst = β * tdst + α * braid(tsrc, (p₁, p₂), levels)`, writing the result into `tdst`.
 The codomain and domain of `tdst` correspond to the indices in `p₁` and `p₂` of `tsrc` respectively.
@@ -156,26 +140,10 @@ Optionally specify a `backend` and `allocator` for the underlying array operatio
 
 See also [`braid`](@ref) for creating a new tensor.
 """
-function braid!(
-        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, levels::IndexTuple
-    )
-    return braid!(tdst, tsrc, p, levels, One(), Zero())
-end
-function braid!(
-        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, levels::IndexTuple,
-        α::Number, β::Number
-    )
-    return braid!(tdst, tsrc, p, levels, α, β, TO.DefaultBackend())
-end
-function braid!(
-        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, levels::IndexTuple,
-        α::Number, β::Number, backend
-    )
-    return braid!(tdst, tsrc, p, levels, α, β, backend, TO.DefaultAllocator())
-end
 @propagate_inbounds function braid!(
         tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, levels::IndexTuple,
-        α::Number, β::Number, backend, allocator
+        α::Number = One(), β::Number = Zero(),
+        backend::AbstractBackend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
     )
     @boundscheck spacecheck_transform(braid, tdst, tsrc, p, levels)
     levels1 = TupleTools.getindices(levels, codomainind(tsrc))
@@ -200,7 +168,7 @@ See also [`braid!`](@ref) for writing into an existing destination.
 """
 function braid(
         t::AbstractTensorMap, p::Index2Tuple, levels::IndexTuple;
-        copy::Bool = false, backend=TO.DefaultBackend(), allocator=TO.DefaultAllocator()
+        copy::Bool = false, backend::AbstractBackend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
     )
     length(levels) == numind(t) || throw(ArgumentError("invalid levels"))
 
@@ -213,11 +181,13 @@ function braid(
 end
 # TODO: braid for `AdjointTensorMap`; think about how to map the `levels` argument.
 
-# Transpose
+# ----------------
+#   transpose(!)
+# ----------------
 _transpose_indices(t::AbstractTensorMap) = (reverse(domainind(t)), reverse(codomainind(t)))
 
 """
-    transpose!(tdst, tsrc, (p₁, p₂)::Index2Tuple[, α=1[, β=0[, backend[, allocator]]]]) -> tdst
+    transpose!(tdst, tsrc, (p₁, p₂)::Index2Tuple, α = 1, β = 0, [backend], [allocator]) -> tdst
 
 Compute `tdst = β * tdst + α * transpose(tsrc, (p₁, p₂))`, writing the result into `tdst`.
 The codomain and domain of `tdst` correspond to the indices in `p₁` and `p₂` of `tsrc` respectively.
@@ -231,26 +201,10 @@ See also [`transpose`](@ref) for creating a new tensor.
 function LinearAlgebra.transpose!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap)
     return transpose!(tdst, tsrc, _transpose_indices(tsrc))
 end
-function LinearAlgebra.transpose!(
-        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple
-    )
-    return transpose!(tdst, tsrc, p, One(), Zero())
-end
-function LinearAlgebra.transpose!(
-        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple,
-        α::Number, β::Number
-    )
-    return transpose!(tdst, tsrc, p, α, β, TO.DefaultBackend())
-end
-function LinearAlgebra.transpose!(
-        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple,
-        α::Number, β::Number, backend
-    )
-    return transpose!(tdst, tsrc, p, α, β, backend, TO.DefaultAllocator())
-end
 @propagate_inbounds function LinearAlgebra.transpose!(
         tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple,
-        α::Number, β::Number, backend, allocator
+        α::Number = One(), β::Number = Zero(),
+        backend::AbstractBackend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
     )
     @boundscheck spacecheck_transform(transpose, tdst, tsrc, p)
     transformer = treetransposer(tdst, tsrc, p)
@@ -274,7 +228,7 @@ See also [`transpose!`](@ref) for writing into an existing destination.
 """
 function LinearAlgebra.transpose(
         t::AbstractTensorMap, p::Index2Tuple = _transpose_indices(t);
-        copy::Bool = false, backend=TO.DefaultBackend(), allocator=TO.DefaultAllocator()
+        copy::Bool = false, backend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
     )
     sectortype(t) === Trivial && return permute(t, p; copy, backend, allocator)
     (!copy && p == (codomainind(t), domainind(t))) && return t
@@ -286,15 +240,18 @@ end
 
 function LinearAlgebra.transpose(
         t::AdjointTensorMap, (p₁, p₂)::Index2Tuple = _transpose_indices(t);
-        copy::Bool = false, backend=TO.DefaultBackend(), allocator=TO.DefaultAllocator()
+        copy::Bool = false, backend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
     )
     p₁′ = map(n -> adjointtensorindex(t, n), p₂)
     p₂′ = map(n -> adjointtensorindex(t, n), p₁)
     return adjoint(transpose(adjoint(t), (p₁′, p₂′); copy, backend, allocator))
 end
 
+# -------------------
+#   repartition(!)
+# -------------------
 """
-    repartition!(tdst, tsrc[, α=1[, β=0[, backend[, allocator]]]]) -> tdst
+    repartition!(tdst, tsrc, α = 1, β = 0, [backend], [allocator]) -> tdst
 
 Compute `tdst = β * tdst + α * repartition(tsrc)`, writing the result into `tdst`.
 This is a special case of `transpose!` that only changes the partition of indices between
@@ -303,22 +260,10 @@ Optionally specify a `backend` and `allocator` for the underlying array operatio
 
 See also [`repartition`](@ref) for creating a new tensor.
 """
-function repartition!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap)
-    return repartition!(tdst, tsrc, One(), Zero())
-end
-function repartition!(
-        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, α::Number, β::Number
-    )
-    return repartition!(tdst, tsrc, α, β, TO.DefaultBackend())
-end
-function repartition!(
-        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, α::Number, β::Number, backend
-    )
-    return repartition!(tdst, tsrc, α, β, backend, TO.DefaultAllocator())
-end
 @propagate_inbounds function repartition!(
         tdst::AbstractTensorMap, tsrc::AbstractTensorMap,
-        α::Number, β::Number, backend, allocator
+        α::Number = One(), β::Number = Zero(),
+        backend::AbstractBackend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
     )
     check_spacetype(tdst, tsrc)
     numind(tsrc) == numind(tdst) ||
@@ -344,7 +289,7 @@ See also [`repartition!`](@ref) for writing into an existing destination.
 """
 @constprop :aggressive function repartition(
         t::AbstractTensorMap, N₁::Int, N₂::Int = numind(t) - N₁;
-        copy::Bool = false, backend=TO.DefaultBackend(), allocator=TO.DefaultAllocator()
+        copy::Bool = false, backend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
     )
     N₁ + N₂ == numind(t) ||
         throw(ArgumentError("Invalid repartition: $(numind(t)) to ($N₁, $N₂)"))
