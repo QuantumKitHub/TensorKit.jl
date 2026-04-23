@@ -135,14 +135,14 @@ function buffersize(transformer::GenericTreeTransformer)
 end
 
 function allocate_buffers(
-        tdst::TensorMap, tsrc::TensorMap, transformer::GenericTreeTransformer;
+        tdst::TensorMap, tsrc::TensorMap, transformer::GenericTreeTransformer,
         allocator=TO.DefaultAllocator()
     )
     sz = buffersize(transformer)
     return similar(tdst.data, sz), similar(tsrc.data, sz)
 end
 function allocate_buffers(
-        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, transformer;
+        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, transformer,
         allocator=TO.DefaultAllocator()
     )
     # be pessimistic and assume the worst for now
