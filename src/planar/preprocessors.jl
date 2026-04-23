@@ -184,7 +184,8 @@ function _construct_braidingtensors!(ex, preargs, indexmap, non_braiding) # ex i
             if foundV1 && foundV2
                 s = gensym(:τ)
                 storageex = Expr(:call, GlobalRef(TensorKit, :promote_storagetype), non_braiding...)
-                constructex = Expr(:call, GlobalRef(TensorKit, :BraidingTensor), storageex, V1, V2)
+                braidingex = Expr(:call, GlobalRef(TensorKit, :braidingtensortype), V1, V2, storageex)
+                constructex = Expr(:call, braidingex, V1, V2)
                 push!(preargs, Expr(:(=), s, constructex))
                 obj = _is_adjoint(obj) ? _add_adjoint(s) : s
                 success = true

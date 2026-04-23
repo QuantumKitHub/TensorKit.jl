@@ -53,25 +53,30 @@ function BraidingTensor{T}(V::HomSpace, adjoint::Bool = false) where {T}
         throw(SpaceMismatch("Cannot define a braiding on $V"))
     return BraidingTensor{T}(V[2], V[1], adjoint)
 end
+
+function Base.adjoint(b::BraidingTensor{T, S, A}) where {T, S, A}
+    return BraidingTensor{T, S, A}(b.V1, b.V2, !b.adjoint)
+end
+
 # these are here to make the preprocessing for `@planar` expressions less painful
-function BraidingTensor(TorA::Type, V1::S, V2::S, adjoint::Bool = false) where {S <: IndexSpace}
+function braidingtensortype(::Type{S}, ::Type{TorA}) where {S <: IndexSpace, TorA}
     T = eltype(TorA)
     TA = similarstoragetype(TorA)
-    return BraidingTensor{T, S, TA}(V1, V2, adjoint)
+    return BraidingTensor{T, S, TA}
 end
-function BraidingTensor(TorA::Type, V1::IndexSpace, V2::IndexSpace, adjoint::Bool = false)
-    return BraidingTensor(TorA, promote(V1, V2)..., adjoint)
+braidingtensortype(V::S, ::Type{TorA}) where {S <: IndexSpace, TorA} = braidingtensortype(S, TorA)
+braidingtensortype(V1::S, V2::S, ::Type{TorA}) where {S <: IndexSpace, TorA} = braidingtensortype(S, TorA)
+function braidingtensortype(V1::IndexSpace, V2::IndexSpace, ::Type{TorA}) where {TorA}
+    S = promote(V1, V2)
+    return braidingtensortype(S..., TorA)
 end
-function BraidingTensor(TorA::Type, V::HomSpace, adjoint::Bool = false)
+function braidingtensortype(V::HomSpace, ::Type{TorA}) where {TorA}
     domain(V) == reverse(codomain(V)) ||
         throw(SpaceMismatch("Cannot define a braiding on $V"))
     T = eltype(TorA)
     S = spacetype(V[2])
-    TA = storagetype(TorA)
-    return BraidingTensor{T, S, TA}(V[2], V[1], adjoint)
-end
-function Base.adjoint(b::BraidingTensor{T, S, A}) where {T, S, A}
-    return BraidingTensor{T, S, A}(b.V1, b.V2, !b.adjoint)
+    TA = similarstoragetype(TorA)
+    return braidingtensortype(S, TA)
 end
 
 storagetype(::Type{BraidingTensor{T, S, A}}) where {T, S, A} = A
