@@ -36,7 +36,7 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 ### Added
 
-- Basic tensor support for AMDGPU via a new extension ([#341](https://github.com/QuantumKitHub/TensorKit.jl/pull/341))
+- Partial tensor support for AMDGPU via a new extension ([#341](https://github.com/QuantumKitHub/TensorKit.jl/pull/341))
 - Define `spacetype` for `TruncationSpace` ([#403](https://github.com/QuantumKitHub/TensorKit.jl/pull/403))
 
 ### Changed
