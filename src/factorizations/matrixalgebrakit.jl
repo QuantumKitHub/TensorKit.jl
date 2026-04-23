@@ -31,6 +31,7 @@ for f! in (
         :left_polar!, :right_polar!,
     )
     @eval function MAK.$f!(t::AbstractTensorMap, F, alg::AbstractAlgorithm)
+        $(f! in (:eig_full!, :eigh_full!) && :(LinearAlgebra.checksquare(t)))
         foreachblock(t, F...) do _, (tblock, Fblocks...)
             Fblocks′ = $f!(tblock, Fblocks, alg)
             # deal with the case where the output is not in-place
@@ -50,6 +51,7 @@ for f! in (
         :project_hermitian!, :project_antihermitian!, :project_isometric!,
     )
     @eval function MAK.$f!(t::AbstractTensorMap, N, alg::AbstractAlgorithm)
+        $(f! in (:eig_vals!, :eigh_vals!, :project_hermitian!, :project_antihermitian!) && :(LinearAlgebra.checksquare(t)))
         foreachblock(t, N) do _, (tblock, Nblock)
             Nblock′ = $f!(tblock, Nblock, alg)
             # deal with the case where the output is not the same as the input

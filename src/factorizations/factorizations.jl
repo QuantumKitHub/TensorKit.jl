@@ -76,6 +76,13 @@ function MAK.isantihermitian(t::AbstractTensorMap; kwargs...)
 end
 LinearAlgebra.ishermitian(t::AbstractTensorMap) = MAK.ishermitian(t)
 
+function LinearAlgebra.checksquare(t::AbstractTensorMap)
+    dom = domain(t)
+    cod = codomain(t)
+    dom == cod || throw(SpaceMismatch(lazy"tensor is not square: codomain $cod ≠ domain $cod"))
+    return dom
+end
+
 function LinearAlgebra.isposdef(t::AbstractTensorMap)
     return isposdef!(copy_oftype(t, factorisation_scalartype(isposdef, t)))
 end

@@ -48,6 +48,13 @@ for V in spacelist
                 @test !isantihermitian(ta_approx)
                 @test isantihermitian(ta_approx; atol = 10 * noisefactor) || (T <: Real && t isa DiagonalTensorMap)
             end
+
+            @test_throws SpaceMismatch project_hermitian(rand(V1, V1^2))
+            @test_throws SpaceMismatch project_antihermitian(rand(V1, V1^2))
+            if V1 != V1'
+                @test_throws SpaceMismatch project_hermitian(rand(V1, V1'))
+                @test_throws SpaceMismatch project_antihermitian(rand(V1, V1'))
+            end
         end
 
         @testset "Isometric projections" begin
