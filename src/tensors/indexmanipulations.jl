@@ -111,8 +111,8 @@ function has_shared_permute(t::TensorMap, (p₁, p₂)::Index2Tuple)
     if p₁ === codomainind(t) && p₂ === domainind(t)
         return true
     elseif sectortype(t) === Trivial
-        stridet = i -> stride(t[], i)
-        sizet = i -> size(t[], i)
+        stridet = Base.Fix1(stride, t[])
+        sizet = Base.Fix1(size, t[])
         canfuse1, d1, s1 = TO._canfuse(sizet.(p₁), stridet.(p₁))
         canfuse2, d2, s2 = TO._canfuse(sizet.(p₂), stridet.(p₂))
         return canfuse1 && canfuse2 && s1 == 1 && (d2 == 1 || s2 == d1)
@@ -170,7 +170,7 @@ function braid(
         t::AbstractTensorMap, p::Index2Tuple, levels::IndexTuple;
         copy::Bool = false, backend::AbstractBackend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
     )
-    length(levels) == numind(t) || throw(ArgumentError("invalid levels"))
+    length(levels) == numind(t) || throw(ArgumentError(lazy"length of levels should be $(numind(t)), got $(length(levels))"))
 
     BraidingStyle(sectortype(t)) isa SymmetricBraiding && return permute(t, p; copy, backend, allocator)
     (!copy && p == (codomainind(t), domainind(t))) && return t
