@@ -18,22 +18,42 @@ When making changes to this project, please update the "Unreleased" section with
 
 When releasing a new version, move the "Unreleased" changes to a new version section with the release date.
 
-## [Unreleased](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.16.3...HEAD)
+## [Unreleased](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.16.4...HEAD)
 
 ### Added
 
-
 ### Changed
-
 
 ### Deprecated
 
-
 ### Removed
-
 
 ### Fixed
 
+### Performance
+
+## [0.16.4](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.16.3...v0.16.4) - 2026-04-23
+
+### Added
+
+- Basic tensor support for AMDGPU via a new extension ([#341](https://github.com/QuantumKitHub/TensorKit.jl/pull/341))
+- Define `spacetype` for `TruncationSpace` ([#403](https://github.com/QuantumKitHub/TensorKit.jl/pull/403))
+- Add square checks for `project_(anti)hermitian` and eigenvalue decompositions ([#408](https://github.com/QuantumKitHub/TensorKit.jl/pull/408))
+
+### Changed
+
+- Updated MatrixAlgebraKit dependency to v0.6.5 with corresponding API updates ([#390](https://github.com/QuantumKitHub/TensorKit.jl/pull/390))
+
+### Fixed
+
+- Fix ignored `adjoint` flag in `BraidingTensor` ([#392](https://github.com/QuantumKitHub/TensorKit.jl/pull/392))
+- Fix `MethodError` for certain tensor operations ([#406](https://github.com/QuantumKitHub/TensorKit.jl/pull/406))
+
+### Performance
+
+- Vectorize fusiontree manipulations ([#261](https://github.com/QuantumKitHub/TensorKit.jl/pull/261))
+- Avoid generic matmul fallback ([#378](https://github.com/QuantumKitHub/TensorKit.jl/pull/378))
+- Reduce cache footprint by decoupling degeneracy-dependent data ([#387](https://github.com/QuantumKitHub/TensorKit.jl/pull/387))
 
 ## [0.16.3](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.16.2...v0.16.3) - 2026-02-22
 
