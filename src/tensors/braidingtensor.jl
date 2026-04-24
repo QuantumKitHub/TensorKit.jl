@@ -69,8 +69,6 @@ function braidingtensortype(V1::IndexSpace, V2::IndexSpace, ::Type{TorA}) where 
     return braidingtensortype(S..., TorA)
 end
 function braidingtensortype(V::HomSpace, ::Type{TorA}) where {TorA}
-    domain(V) == reverse(codomain(V)) ||
-        throw(SpaceMismatch("Cannot define a braiding on $V"))
     return braidingtensortype(spacetype(V), TorA)
 end
 
