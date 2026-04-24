@@ -83,6 +83,23 @@ _add_adjoint(ex) = Expr(TO.prime, ex)
 # spaces from the rest of the expression. Construct the explicit BraidingTensor objects and
 # insert them in the expression.
 function _construct_braidingtensors(ex)
+    function filter_f(expr)
+        if TO.istensor(expr)
+            return _remove_adjoint(TO.decomposetensor(expr)[1]) != :τ
+        elseif TO.istensorexpr(expr)
+            return any(filter_f, expr.args)
+        else
+            return false
+        end
+    end
+    function extract_tensors(tensor_ex)
+        if TO.istensor(tensor_ex)
+            return [TO.decomposetensor(tensor_ex)[1]]
+        elseif TO.istensorexpr(tensor_ex)
+            return collect(Iterators.flatmap(extract_tensors, filter(filter_f, tensor_ex.args)))
+        end
+    end
+    # get storagetype
     ex isa Expr || return ex
     if ex.head == :macrocall && ex.args[1] == Symbol("@notensor")
         return ex
@@ -104,7 +121,9 @@ function _construct_braidingtensors(ex)
                 )
             end
         end
-        newrhs, success = _construct_braidingtensors!(rhs, preargs, indexmap)
+        # if this is a definition, the lhs tensor is NOT yet defined
+        no_τ_ex = reduce(vcat, Iterators.flatmap(extract_tensors, filter(filter_f, rhs.args)); init = Symbol[])
+        newrhs, success = _construct_braidingtensors!(rhs, preargs, indexmap, no_τ_ex)
         success ||
             throw(ArgumentError("cannot determine the spaces of all braiding tensors in $ex"))
         pre = Expr(
@@ -115,7 +134,8 @@ function _construct_braidingtensors(ex)
     elseif TO.istensorexpr(ex)
         preargs = Vector{Any}()
         indexmap = Dict{Any, Any}()
-        newex, success = _construct_braidingtensors!(ex, preargs, indexmap)
+        no_τ_ex = reduce(vcat, Iterators.flatmap(extract_tensors, filter(filter_f, ex.args)); init = Symbol[])
+        newex, success = _construct_braidingtensors!(ex, preargs, indexmap, no_τ_ex)
         success ||
             throw(ArgumentError("cannot determine the spaces of all braiding tensors in $ex"))
         pre = Expr(
@@ -128,7 +148,7 @@ function _construct_braidingtensors(ex)
     end
 end
 
-function _construct_braidingtensors!(ex, preargs, indexmap) # ex is guaranteed to be a single tensor expression
+function _construct_braidingtensors!(ex, preargs, indexmap, non_braiding) # ex is guaranteed to be a single tensor expression
     if TO.isscalarexpr(ex)
         # ex could be tensorscalar call with more braiding tensors
         return _construct_braidingtensors(ex), true
@@ -163,7 +183,9 @@ function _construct_braidingtensors!(ex, preargs, indexmap) # ex is guaranteed t
             end
             if foundV1 && foundV2
                 s = gensym(:τ)
-                constructex = Expr(:call, GlobalRef(TensorKit, :BraidingTensor), V1, V2)
+                storageex = Expr(:call, GlobalRef(TensorKit, :promote_storagetype), non_braiding...)
+                braidingex = Expr(:call, GlobalRef(TensorKit, :braidingtensortype), V1, V2, storageex)
+                constructex = Expr(:call, braidingex, V1, V2)
                 push!(preargs, Expr(:(=), s, constructex))
                 obj = _is_adjoint(obj) ? _add_adjoint(s) : s
                 success = true
@@ -196,7 +218,7 @@ function _construct_braidingtensors!(ex, preargs, indexmap) # ex is guaranteed t
         newargs = Vector{Any}(undef, length(args))
         success = true
         for i in 1:length(ex.args)
-            newargs[i], successa = _construct_braidingtensors!(args[i], preargs, indexmap)
+            newargs[i], successa = _construct_braidingtensors!(args[i], preargs, indexmap, non_braiding)
             success = success && successa
         end
         newex = Expr(ex.head, newargs...)
@@ -212,7 +234,7 @@ function _construct_braidingtensors!(ex, preargs, indexmap) # ex is guaranteed t
             for i in 2:length(ex.args)
                 successes[i] && continue
                 newargs[i], successa = _construct_braidingtensors!(
-                    args[i], preargs, indexmap
+                    args[i], preargs, indexmap, non_braiding
                 )
                 successes[i] = successa
             end
@@ -232,7 +254,7 @@ function _construct_braidingtensors!(ex, preargs, indexmap) # ex is guaranteed t
         indices = [TO.getindices(arg) for arg in args]
         for i in 2:length(ex.args)
             indexmapa = copy(indexmap)
-            newargs[i], successa = _construct_braidingtensors!(args[i], preargs, indexmapa)
+            newargs[i], successa = _construct_braidingtensors!(args[i], preargs, indexmapa, non_braiding)
             for l in indices[i]
                 if !haskey(indexmap, l) && haskey(indexmapa, l)
                     indexmap[l] = indexmapa[l]
@@ -243,10 +265,10 @@ function _construct_braidingtensors!(ex, preargs, indexmap) # ex is guaranteed t
         newex = Expr(ex.head, newargs...)
         return newex, success
     elseif isexpr(ex, :call) && ex.args[1] == :/ && length(ex.args) == 3
-        newarg, success = _construct_braidingtensors!(ex.args[2], preargs, indexmap)
+        newarg, success = _construct_braidingtensors!(ex.args[2], preargs, indexmap, non_braiding)
         return Expr(:call, :/, newarg, ex.args[3]), success
     elseif isexpr(ex, :call) && ex.args[1] == :\ && length(ex.args) == 3
-        newarg, success = _construct_braidingtensors!(ex.args[3], preargs, indexmap)
+        newarg, success = _construct_braidingtensors!(ex.args[3], preargs, indexmap, non_braiding)
         return Expr(:call, :\, ex.args[2], newarg), success
     else
         error("unexpected expression $ex")
