@@ -179,7 +179,16 @@ function braid(
     tdst = similar(t, promote_braid(t), permute(space(t), p))
     return @inbounds braid!(tdst, t, p, levels, One(), Zero(), backend, allocator)
 end
-# TODO: braid for `AdjointTensorMap`; think about how to map the `levels` argument.
+function braid(
+        t::AdjointTensorMap, (p₁, p₂)::Index2Tuple, levels::IndexTuple;
+        kwargs...
+    )
+    p₁′ = adjointtensorindices(t, p₂)
+    p₂′ = adjointtensorindices(t, p₁)
+    perm = adjointtensorindices(adjoint(t), ntuple(identity, numind(t)))
+    levels′ = TupleTools.getindices(levels, perm)
+    return adjoint(braid(adjoint(t), (p₁′, p₂′), levels′; kwargs...))
+end
 
 # ----------------
 #   transpose(!)
