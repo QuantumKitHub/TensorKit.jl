@@ -409,7 +409,7 @@ while the second will return the spacetype if all types are equal, and throw a [
 """
 check_spacetype(::Type{Bool}, x, y, z...) = _allequal(spacetype, (x, y, z...))
 @noinline function check_spacetype(x, y, z...)
-    check_spacetype(Bool, x, y, z...) || throw(SpaceMismatch("incompatible space types"))
+    check_spacetype(Bool, x, y, z...) || throw(SpaceMismatch(lazy"incompatible space types ($(map(spacetype, (x, y, z...))))"))
     return spacetype(x)
 end
 
