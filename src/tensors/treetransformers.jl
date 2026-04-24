@@ -142,6 +142,13 @@ function allocate_buffers(
     return similar(tdst.data, sz), similar(tsrc.data, sz)
 end
 function allocate_buffers(
+        data_dst::DenseVector, data_src::DenseVector, transformer::GenericTreeTransformer,
+        allocator=TO.DefaultAllocator()
+    )
+    sz = buffersize(transformer)
+    return similar(data_dst, sz), similar(data_src, sz)
+end
+function allocate_buffers(
         tdst::AbstractTensorMap, tsrc::AbstractTensorMap, transformer,
         allocator=TO.DefaultAllocator()
     )
