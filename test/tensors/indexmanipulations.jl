@@ -129,6 +129,14 @@ for V in spacelist
             @tensor tb[a, b] := flip(t1, (1, 3))[x, y, a, z] * flip(t2, (2, 4))[y, b, z, x]
             @test flip(ta, (1, 2)) ≈ tb
         end
+        hasbraiding && !symmetricbraiding && @timedtestset "Braid AdjointTensorMap: adjoint identity" begin
+            t = rand(ComplexF64, V1 ⊗ V2 ← V3)
+            p = ((2,), (1, 3))
+            levels = (1, 3, 2)
+            t1 = copy(braid(t', p, levels))
+            t2 = braid(copy(t'), p, levels)
+            @test t1 ≈ t2
+        end
     end
     TensorKit.empty_globalcaches!()
 end
