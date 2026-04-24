@@ -564,19 +564,40 @@ end
 
     return tdst
 end
+@propagate_inbounds function add_transform!(
+        tdst::TensorMap, tsrc::TensorMap, p::Index2Tuple, transformer::TreeTransformer,
+        α::Number, β::Number, backend, allocator
+    )
+    @boundscheck spacecheck_transform(permute, tdst, tsrc, p)
+    if p[1] === codomainind(tsrc) && p[2] === domainind(tsrc)
+        add!(tdst, tsrc, α, β)
+        return tdst
+    end
+    if use_threaded_transform(tdst, transformer)
+        add_kernel_threaded!(tdst.data, tsrc.data, p, transformer, α, β, backend, allocator)
+    else
+        add_kernel_nonthreaded!(tdst.data, tsrc.data, p, transformer, α, β, backend, allocator)
+    end
+    return tdst
+end
+@propagate_inbounds function add_transform!(
+        tdst::TensorMap, tsrc::TensorMap, p::Index2Tuple, ::TrivialTreeTransformer,
+        α::Number, β::Number, backend, allocator
+    )
+    @boundscheck spacecheck_transform(permute, tdst, tsrc, p)
+    if p[1] === codomainind(tsrc) && p[2] === domainind(tsrc)
+        add!(tdst, tsrc, α, β)
+        return tdst
+    end
+    TO.tensoradd!(tdst[], tsrc[], p, false, α, β, backend, allocator)
+    return tdst
+end
 
 function use_threaded_transform(t::TensorMap, transformer)
     return get_num_transformer_threads() > 1 && length(t.data) > Strided.MINTHREADLENGTH
 end
 function use_threaded_transform(t::AbstractTensorMap, transformer)
     return get_num_transformer_threads() > 1 && dim(space(t)) > Strided.MINTHREADLENGTH
-end
-
-# Trivial implementations
-# -----------------------
-function add_trivial_kernel!(tdst, tsrc, p, transformer, α, β, backend, allocator)
-    TO.tensoradd!(tdst[], tsrc[], p, false, α, β, backend, allocator)
-    return nothing
 end
 
 # Non-threaded implementations
@@ -590,11 +611,11 @@ function add_kernel_nonthreaded!(
     return nothing
 end
 function add_kernel_nonthreaded!(
-        ::UniqueFusion, tdst, tsrc, p, transformer::AbelianTreeTransformer, α, β, backend,
-        allocator
+        data_dst::DenseVector, data_src::DenseVector, p, transformer::AbelianTreeTransformer,
+        α, β, backend, allocator
     )
     for subtransformer in transformer.data
-        _add_transform_single!(tdst, tsrc, p, subtransformer, α, β, backend, allocator)
+        _add_transform_single!(data_dst, data_src, p, subtransformer, α, β, backend, allocator)
     end
     return nothing
 end
@@ -615,28 +636,20 @@ function add_kernel_nonthreaded!(
 end
 # specialization in the case of TensorMap
 function add_kernel_nonthreaded!(
-        ::FusionStyle, tdst, tsrc, p, transformer::GenericTreeTransformer, α, β, backend,
-        allocator
+        data_dst::DenseVector, data_src::DenseVector, p, transformer::GenericTreeTransformer,
+        α, β, backend, allocator
     )
-    # preallocate buffers
-    buffers = allocate_buffers(tdst, tsrc, transformer, allocator)
+    buffers = allocate_buffers(data_dst, data_src, transformer, allocator)
 
     for subtransformer in transformer.data
         # Special case without intermediate buffers whenever there is only a single block
         if length(subtransformer[1]) == 1
-            _add_transform_single!(tdst, tsrc, p, subtransformer, α, β, backend, allocator)
+            _add_transform_single!(data_dst, data_src, p, subtransformer, α, β, backend, allocator)
         else
-            _add_transform_multi!(tdst, tsrc, p, subtransformer, buffers, α, β, backend, allocator)
+            _add_transform_multi!(data_dst, data_src, p, subtransformer, buffers, α, β, backend, allocator)
         end
     end
     return nothing
-end
-# ambiguity resolution
-function add_kernel_nonthreaded!(
-        ::UniqueFusion, tdst, tsrc, p, transformer::GenericTreeTransformer, α, β, backend,
-        allocator
-    )
-    throw(ArgumentError("Cannot combine `GenericTreeTransformer` with `UniqueFusion`"))
 end
 # Threaded implementations
 # ------------------------
@@ -660,8 +673,8 @@ function add_kernel_threaded!(
     return nothing
 end
 function add_kernel_threaded!(
-        ::UniqueFusion, tdst, tsrc, p, transformer::AbelianTreeTransformer, α, β, backend,
-        allocator; ntasks::Int = get_num_transformer_threads()
+        data_dst::DenseVector, data_src::DenseVector, p, transformer::AbelianTreeTransformer,
+        α, β, backend, allocator; ntasks::Int = get_num_transformer_threads()
     )
     nblocks = length(transformer.data)
     counter = Threads.Atomic{Int}(1)
@@ -671,7 +684,7 @@ function add_kernel_threaded!(
                 local_counter = Threads.atomic_add!(counter, 1)
                 local_counter > nblocks && break
                 @inbounds subtransformer = transformer.data[local_counter]
-                _add_transform_single!(tdst, tsrc, p, subtransformer, α, β, backend, allocator)
+                _add_transform_single!(data_dst, data_src, p, subtransformer, α, β, backend, allocator)
             end
         end
     end
@@ -708,8 +721,8 @@ function add_kernel_threaded!(
 end
 # specialization in the case of TensorMap
 function add_kernel_threaded!(
-        ::FusionStyle, tdst, tsrc, p, transformer::GenericTreeTransformer, α, β, backend,
-        allocator; ntasks::Int = get_num_transformer_threads()
+        data_dst::DenseVector, data_src::DenseVector, p, transformer::GenericTreeTransformer,
+        α, β, backend, allocator; ntasks::Int = get_num_transformer_threads()
     )
     nblocks = length(transformer.data)
 
@@ -717,29 +730,22 @@ function add_kernel_threaded!(
     Threads.@sync for _ in 1:min(ntasks, nblocks)
         Threads.@spawn begin
             # preallocate buffers for each task
-            buffers = allocate_buffers(tdst, tsrc, transformer, allocator)
+            buffers = allocate_buffers(data_dst, data_src, transformer, allocator)
 
             while true
                 local_counter = Threads.atomic_add!(counter, 1)
                 local_counter > nblocks && break
                 @inbounds subtransformer = transformer.data[local_counter]
                 if length(subtransformer[1]) == 1
-                    _add_transform_single!(tdst, tsrc, p, subtransformer, α, β, backend, allocator)
+                    _add_transform_single!(data_dst, data_src, p, subtransformer, α, β, backend, allocator)
                 else
-                    _add_transform_multi!(tdst, tsrc, p, subtransformer, buffers, α, β, backend, allocator)
+                    _add_transform_multi!(data_dst, data_src, p, subtransformer, buffers, α, β, backend, allocator)
                 end
             end
         end
     end
 
     return nothing
-end
-# ambiguity resolution
-function add_kernel_threaded!(
-        ::UniqueFusion, tdst, tsrc, p, transformer::GenericTreeTransformer, α, β, backend,
-        allocator; ntasks::Int = get_num_transformer_threads()
-    )
-    throw(ArgumentError("Cannot combine `GenericTreeTransformer` with `UniqueFusion`"))
 end
 
 
@@ -763,22 +769,24 @@ function _add_transform_single!(
     return nothing
 end
 function _add_transform_single!(
-        tdst, tsrc, p, (coeff, struct_dst, struct_src)::AbelianTransformerData,
+        data_dst::DenseVector, data_src::DenseVector, p,
+        (coeff, struct_dst, struct_src)::AbelianTransformerData,
         α, β, backend, allocator
     )
-    subblock_dst = StridedView(tdst.data, struct_dst...)
-    subblock_src = StridedView(tsrc.data, struct_src...)
+    subblock_dst = StridedView(data_dst, struct_dst...)
+    subblock_src = StridedView(data_src, struct_src...)
     TO.tensoradd!(subblock_dst, subblock_src, p, false, α * coeff, β, backend, allocator)
     return nothing
 end
 function _add_transform_single!(
-        tdst, tsrc, p, (basistransform, structs_dst, structs_src)::GenericTransformerData,
+        data_dst::DenseVector, data_src::DenseVector, p,
+        (basistransform, structs_dst, structs_src)::GenericTransformerData,
         α, β, backend, allocator
     )
     struct_dst = (structs_dst[1], only(structs_dst[2])...)
     struct_src = (structs_src[1], only(structs_src[2])...)
     coeff = only(basistransform)
-    _add_transform_single!(tdst, tsrc, p, (coeff, struct_dst, struct_src), α, β, backend, allocator)
+    _add_transform_single!(data_dst, data_src, p, (coeff, struct_dst, struct_src), α, β, backend, allocator)
     return nothing
 end
 
@@ -817,33 +825,31 @@ function _add_transform_multi!(
     return nothing
 end
 function _add_transform_multi!(
-        tdst, tsrc, p, (U, (sz_dst, structs_dst), (sz_src, structs_src)),
+        data_dst::DenseVector, data_src::DenseVector, p,
+        (U, (sz_dst, structs_dst), (sz_src, structs_src))::GenericTransformerData,
         (buffer1, buffer2), α, β, backend, allocator
     )
     rows, cols = size(U)
     blocksize = prod(sz_src)
-    matsize = (
-        prod(TupleTools.getindices(sz_src, codomainind(tsrc))),
-        prod(TupleTools.getindices(sz_src, domainind(tsrc))),
-    )
 
     # Filling up a buffer with contiguous data
     buffer_src = StridedView(buffer2, (blocksize, cols), (1, blocksize), 0)
+    ptriv = (ntuple(identity, length(sz_src)), ())
     for (i, struct_src) in enumerate(structs_src)
-        subblock_src = sreshape(StridedView(tsrc.data, sz_src, struct_src...), matsize)
-        bufblock_src = sreshape(buffer_src[:, i], matsize)
-        copy!(bufblock_src, subblock_src)
+        subblock_src = StridedView(data_src, sz_src, struct_src...)
+        bufblock_src = sreshape(buffer_src[:, i], sz_src)
+        TO.tensoradd!(bufblock_src, subblock_src, ptriv, false, One(), Zero(), backend, allocator)
     end
 
     # Resummation into a second buffer using BLAS
     buffer_dst = StridedView(buffer1, (blocksize, rows), (1, blocksize), 0)
-    mul!(buffer_dst, buffer_src, transpose(StridedView(U)), α, Zero())
+    mul!(buffer_dst, buffer_src, transpose(StridedView(U)))
 
     # Filling up the output
     for (i, struct_dst) in enumerate(structs_dst)
-        subblock_dst = StridedView(tdst.data, sz_dst, struct_dst...)
+        subblock_dst = StridedView(data_dst, sz_dst, struct_dst...)
         bufblock_dst = sreshape(buffer_dst[:, i], sz_src)
-        TO.tensoradd!(subblock_dst, bufblock_dst, p, false, One(), β, backend, allocator)
+        TO.tensoradd!(subblock_dst, bufblock_dst, p, false, α, β, backend, allocator)
     end
 
     return nothing
