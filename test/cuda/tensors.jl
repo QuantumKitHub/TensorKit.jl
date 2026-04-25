@@ -14,6 +14,7 @@ for V in spacelist
     println("---------------------------------------")
     println("CUDA Tensors with symmetry: $Istr")
     println("---------------------------------------")
+    hasbraiding = BraidingStyle(I) isa HasBraiding
     symmetricbraiding = BraidingStyle(I) isa SymmetricBraiding
     @timedtestset "Tensors with symmetry: $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
@@ -359,14 +360,14 @@ for V in spacelist
                 @test TensorKit.to_cpu(dHrA12) ≈ hHrA12
             end
         end
-        BraidingStyle(I) isa HasBraiding && @timedtestset "Index flipping: test flipping inverse" begin
+        hasbraiding && @timedtestset "Index flipping: test flipping inverse" begin
             t = CUDA.rand(ComplexF64, V1 ⊗ V1' ← V1' ⊗ V1)
             for i in 1:4
                 @test t ≈ flip(flip(t, i), i; inv = true)
                 @test t ≈ flip(flip(t, i; inv = true), i)
             end
         end
-        @timedtestset "Index flipping: test via explicit flip" begin
+        symmetricbraiding && @timedtestset "Index flipping: test via explicit flip" begin
             t = CUDA.rand(ComplexF64, V1 ⊗ V1' ← V1' ⊗ V1)
             F1 = adapt(CuArray{ComplexF64}, unitary(flip(V1), V1))
 
@@ -379,7 +380,7 @@ for V in spacelist
             @tensor tf[a, b; c, d] := conj(F1[d, d']) * t[a, b; c, d']
             @test twist!(flip(t, 4), 4) ≈ tf
         end
-        @timedtestset "Index flipping: test via contraction" begin
+        symmetricbraiding && @timedtestset "Index flipping: test via contraction" begin
             t1 = CUDA.rand(ComplexF64, V1 ⊗ V2 ⊗ V3 ← V4)
             t2 = CUDA.rand(ComplexF64, V2' ⊗ V5 ← V4' ⊗ V1)
             @tensor ta[a, b] := t1[x, y, a, z] * t2[y, b, z, x]
@@ -565,10 +566,10 @@ end
             d2 = dim(codomain(t2))
             d3 = dim(domain(t1))
             d4 = dim(domain(t2))
-            At = convert(Array, t)
+            At = convert(Array, adapt(Vector{T}, t))
             @test reshape(At, (d1, d2, d3, d4)) ≈
-                reshape(convert(Array, t1), (d1, 1, d3, 1)) .*
-                reshape(convert(Array, t2), (1, d2, 1, d4))
+            reshape(convert(Array, adapt(Vector{T}, t1)), (d1, 1, d3, 1)) .*
+            reshape(convert(Array, adapt(Vector{T}, t2)), (1, d2, 1, d4))
         end
     end
 end
