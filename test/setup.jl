@@ -111,20 +111,12 @@ function force_planar(V::GradedSpace)
 end
 force_planar(V::ProductSpace) = mapreduce(force_planar, ⊗, V)
 function force_planar(tsrc::TensorMap{<:Any, ComplexSpace})
-    tdst = TensorMap{scalartype(tsrc)}(
-        undef,
-        force_planar(codomain(tsrc)) ←
-            force_planar(domain(tsrc))
-    )
+    tdst = similar(tsrc, force_planar(codomain(tsrc)) ← force_planar(domain(tsrc)))
     copyto!(block(tdst, PlanarTrivial()), block(tsrc, Trivial()))
     return tdst
 end
 function force_planar(tsrc::TensorMap{<:Any, <:GradedSpace})
-    tdst = TensorMap{scalartype(tsrc)}(
-        undef,
-        force_planar(codomain(tsrc)) ←
-            force_planar(domain(tsrc))
-    )
+    tdst = similar(tsrc, force_planar(codomain(tsrc)) ← force_planar(domain(tsrc)))
     for (c, b) in blocks(tsrc)
         copyto!(block(tdst, c ⊠ PlanarTrivial()), b)
     end
