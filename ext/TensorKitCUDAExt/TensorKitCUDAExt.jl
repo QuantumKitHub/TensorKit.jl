@@ -5,7 +5,7 @@ using CUDA: @allowscalar
 using cuTENSOR: cuTENSOR
 import CUDA.cuRAND: rand as curand, rand! as curand!, randn as curandn, randn! as curandn!
 using Strided: StridedViews
-using CUDA.KernelAbstractions: @kernel, @index, get_backend
+using CUDA.CUDACore.KernelAbstractions: @kernel, @index, get_backend
 
 using TensorKit
 using TensorKit.Factorizations
