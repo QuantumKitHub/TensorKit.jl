@@ -54,10 +54,6 @@ function storagetype(::Type{T}) where {T <: AbstractTensorMap}
     if T isa Union
         # attempt to be slightly more specific by promoting unions
         return promote_storagetype(T.a, T.b)
-    elseif eltype(T) isa Union
-        # attempt to be slightly more specific by promoting unions
-        TU = eltype(T)
-        return promote_storagetype(TU.a, TU.b)
     else
         # fallback definition by using scalartype
         return similarstoragetype(scalartype(T))
