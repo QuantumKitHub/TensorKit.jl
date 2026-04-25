@@ -7,6 +7,8 @@ const CUDAExt = Base.get_extension(TensorKit, :TensorKitCUDAExt)
 @assert !isnothing(CUDAExt) "Failed to load TensorKit - CUDA extension"
 const CuTensorMap = getglobal(CUDAExt, :CuTensorMap)
 
+using CUDA.CUBLAS
+
 spacelist = factorization_spacelist(fast_tests)
 eltypes = (Float32, ComplexF64)
 

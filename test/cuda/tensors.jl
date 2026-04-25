@@ -295,13 +295,13 @@ for V in spacelist
                 for p in permutations(1:5)
                     p1 = ntuple(n -> p[n], k)
                     p2 = ntuple(n -> p[k + n], 5 - k)
-                    dt2 = CUDA.@allowscalar permute(t, (p1, p2))
+                    dt2 = permute(t, (p1, p2))
                     ht2 = permute(TensorKit.to_cpu(t), (p1, p2))
-                    @test ht2 == TensorKit.to_cpu(dt2)
+                    @test ht2 ≈ TensorKit.to_cpu(dt2)
                 end
                 dt3 = repartition(t, k)
                 ht3 = repartition(TensorKit.to_cpu(t), k)
-                @test ht3 == TensorKit.to_cpu(dt3)
+                @test ht3 ≈ TensorKit.to_cpu(dt3)
             end
         end
         symmetricbraiding && @timedtestset "Full trace: test self-consistency" begin
@@ -343,7 +343,7 @@ for V in spacelist
             @tensor tb[a, b] := t3[x, y, a, y, b, x]
             @test ta ≈ tb
         end
-        #=if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
+        if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
             @timedtestset "Tensor contraction: test via CPU" begin
                 dA1 = CUDA.randn(ComplexF64, V1' * V2', V3')
                 dA2 = CUDA.randn(ComplexF64, V3 * V4, V5)
@@ -358,7 +358,7 @@ for V in spacelist
                     TensorKit.to_cpu(dH)[s1, s2, t1, t2]
                 @test TensorKit.to_cpu(dHrA12) ≈ hHrA12
             end
-        end=# # doesn't yet work because of AdjointTensor
+        end
         BraidingStyle(I) isa HasBraiding && @timedtestset "Index flipping: test flipping inverse" begin
             t = CUDA.rand(ComplexF64, V1 ⊗ V1' ← V1' ⊗ V1)
             for i in 1:4

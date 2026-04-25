@@ -2,72 +2,78 @@
 # special (2,2) tensor that implements a standard braiding operation
 #====================================================================#
 """
-    struct BraidingTensor{T,S<:IndexSpace} <: AbstractTensorMap{T, S, 2, 2}
+    struct BraidingTensor{T, S <: IndexSpace, A <: DenseVector{T}} <: AbstractTensorMap{T, S, 2, 2}
     BraidingTensor(V1::S, V2::S, adjoint::Bool=false) where {S<:IndexSpace}
+    BraidingTensor{T, S, A}(V1::S, V2::S, adjoint::Bool=false) where {T, S, A}
 
 Specific subtype of [`AbstractTensorMap`](@ref) for representing the braiding tensor that
 braids the first input over the second input; its inverse can be obtained as the adjoint.
 
 It holds that `domain(BraidingTensor(V1, V2)) == V1 ⊗ V2` and
-`codomain(BraidingTensor(V1, V2)) == V2 ⊗ V1`.
+`codomain(BraidingTensor(V1, V2)) == V2 ⊗ V1`. The storage type `TA`
+controls the array type of the braiding tensor used when indexing
+and multiplying with other tensors.
 """
-struct BraidingTensor{T, S} <: AbstractTensorMap{T, S, 2, 2}
+struct BraidingTensor{T, S, A <: DenseVector{T}} <: AbstractTensorMap{T, S, 2, 2}
     V1::S
     V2::S
     adjoint::Bool
-    function BraidingTensor{T, S}(V1::S, V2::S, adjoint::Bool = false) where {T, S <: IndexSpace}
-        for a in sectors(V1)
-            for b in sectors(V2)
-                for c in (a ⊗ b)
-                    Nsymbol(a, b, c) == Nsymbol(b, a, c) ||
-                        throw(ArgumentError("Cannot define a braiding between $a and $b"))
-                end
-            end
+    function BraidingTensor{T, S, A}(V1::S, V2::S, adjoint::Bool = false) where {T, S <: IndexSpace, A <: DenseVector{T}}
+        for a in sectors(V1), b in sectors(V2), c in (a ⊗ b)
+            Nsymbol(a, b, c) == Nsymbol(b, a, c) ||
+                throw(ArgumentError("Cannot define a braiding between $a and $b"))
         end
-        return new{T, S}(V1, V2, adjoint)
+        return new{T, S, A}(V1, V2, adjoint)
         # partial construction: only construct rowr and colr when needed
     end
 end
 function BraidingTensor{T}(V1::S, V2::S, adjoint::Bool = false) where {T, S <: IndexSpace}
-    return BraidingTensor{T, S}(V1, V2, adjoint)
-end
-function BraidingTensor{T}(V1::IndexSpace, V2::IndexSpace, adjoint::Bool = false) where {T}
-    return BraidingTensor{T}(promote(V1, V2)..., adjoint)
-end
-function BraidingTensor(V1::IndexSpace, V2::IndexSpace, adjoint::Bool = false)
-    return BraidingTensor(promote(V1, V2)..., adjoint)
+    return braidingtensortype(S, T)(V1, V2, adjoint)
 end
 function BraidingTensor(V1::S, V2::S, adjoint::Bool = false) where {S <: IndexSpace}
     T = BraidingStyle(sectortype(S)) isa SymmetricBraiding ? Float64 : ComplexF64
-    return BraidingTensor{T, S}(V1, V2, adjoint)
+    return BraidingTensor{T}(V1, V2, adjoint)
+end
+function BraidingTensor(V1::IndexSpace, V2::IndexSpace, adjoint::Bool = false)
+    return BraidingTensor(promote(V1, V2)..., adjoint)
 end
 function BraidingTensor(V::HomSpace, adjoint::Bool = false)
     domain(V) == reverse(codomain(V)) ||
         throw(SpaceMismatch("Cannot define a braiding on $V"))
     return BraidingTensor(V[2], V[1], adjoint)
 end
+function BraidingTensor{T, S, A}(V::HomSpace, adjoint::Bool = false) where {T, S, A}
+    domain(V) == reverse(codomain(V)) ||
+        throw(SpaceMismatch("Cannot define a braiding on $V"))
+    return BraidingTensor{T, S, A}(V[2], V[1], adjoint)
+end
 function BraidingTensor{T}(V::HomSpace, adjoint::Bool = false) where {T}
     domain(V) == reverse(codomain(V)) ||
         throw(SpaceMismatch("Cannot define a braiding on $V"))
     return BraidingTensor{T}(V[2], V[1], adjoint)
 end
-function Base.adjoint(b::BraidingTensor{T, S}) where {T, S}
-    return BraidingTensor{T, S}(b.V1, b.V2, !b.adjoint)
+
+function Base.adjoint(b::BraidingTensor{T, S, A}) where {T, S, A}
+    return BraidingTensor{T, S, A}(b.V1, b.V2, !b.adjoint)
 end
 
+# these are here to make the preprocessing for `@planar` expressions less painful
+function braidingtensortype(::Type{S}, ::Type{TorA}) where {S <: IndexSpace, TorA}
+    A = similarstoragetype(TorA)
+    return BraidingTensor{scalartype(A), S, A}
+end
+braidingtensortype(V::S, ::Type{TorA}) where {S <: IndexSpace, TorA} = braidingtensortype(S, TorA)
+braidingtensortype(V1::S, V2::S, ::Type{TorA}) where {S <: IndexSpace, TorA} = braidingtensortype(S, TorA)
+function braidingtensortype(V1::IndexSpace, V2::IndexSpace, ::Type{TorA}) where {TorA}
+    S = promote(V1, V2)
+    return braidingtensortype(S..., TorA)
+end
+function braidingtensortype(V::HomSpace, ::Type{TorA}) where {TorA}
+    return braidingtensortype(spacetype(V), TorA)
+end
+
+storagetype(::Type{BraidingTensor{T, S, A}}) where {T, S, A} = A
 space(b::BraidingTensor) = b.adjoint ? b.V1 ⊗ b.V2 ← b.V2 ⊗ b.V1 : b.V2 ⊗ b.V1 ← b.V1 ⊗ b.V2
-
-# specializations to ignore the storagetype of BraidingTensor
-promote_storagetype(::Type{A}, ::Type{B}) where {A <: BraidingTensor, B <: AbstractTensorMap} = storagetype(B)
-promote_storagetype(::Type{A}, ::Type{B}) where {A <: AbstractTensorMap, B <: BraidingTensor} = storagetype(A)
-promote_storagetype(::Type{A}, ::Type{B}) where {A <: BraidingTensor, B <: BraidingTensor} = storagetype(A)
-
-promote_storagetype(::Type{T}, ::Type{A}, ::Type{B}) where {T <: Number, A <: BraidingTensor, B <: AbstractTensorMap} =
-    similarstoragetype(B, T)
-promote_storagetype(::Type{T}, ::Type{A}, ::Type{B}) where {T <: Number, A <: AbstractTensorMap, B <: BraidingTensor} =
-    similarstoragetype(A, T)
-promote_storagetype(::Type{T}, ::Type{A}, ::Type{B}) where {T <: Number, A <: BraidingTensor, B <: BraidingTensor} =
-    similarstoragetype(A, T)
 
 function Base.getindex(b::BraidingTensor)
     sectortype(b) === Trivial || throw(SectorMismatch())
@@ -99,6 +105,13 @@ function _braiding_factor(f₁, f₂, inv::Bool = false)
     return r
 end
 
+# generates scalar indexing errors on GPU
+function fill_braidingsubblock!(data, val)
+    f(I) = ((I[1] == I[4]) & (I[2] == I[3])) * val
+    return data .= f.(CartesianIndices(data))
+end
+
+
 @inline function subblock(
         b::BraidingTensor, (f₁, f₂)::Tuple{FusionTree{I, 2}, FusionTree{I, 2}}
     ) where {I <: Sector}
@@ -113,17 +126,10 @@ end
             throw(SectorMismatch())
     end
     d = (dims(codomain(b), f₁.uncoupled)..., dims(domain(b), f₂.uncoupled)...)
-    n1 = d[1] * d[2]
-    n2 = d[3] * d[4]
-    data = sreshape(StridedView(Matrix{eltype(b)}(undef, n1, n2)), d)
-    fill!(data, zero(eltype(b)))
-
+    data_parent = storagetype(b)(undef, prod(d))
+    data = sreshape(StridedView(data_parent), d)
     r = _braiding_factor(f₁, f₂, b.adjoint)
-    if !isnothing(r)
-        @inbounds for i in axes(data, 1), j in axes(data, 2)
-            data[i, j, j, i] = r
-        end
-    end
+    isnothing(r) ? zerovector!(data) : fill_braidingsubblock!(data, r)
     return data
 end
 
@@ -134,8 +140,33 @@ TensorMap(b::BraidingTensor) = copy!(similar(b), b)
 Base.convert(::Type{TensorMap}, b::BraidingTensor) = TensorMap(b)
 
 Base.complex(b::BraidingTensor{<:Complex}) = b
-function Base.complex(b::BraidingTensor)
-    return BraidingTensor{complex(scalartype(b))}(space(b), b.adjoint)
+function Base.complex(b::BraidingTensor{T, S, A}) where {T, S, A}
+    Tc = complex(T)
+    Ac = similarstoragetype(A, Tc)
+    return BraidingTensor{Tc, S, Ac}(space(b), b.adjoint)
+end
+
+# Trivial
+function fill_braidingblock!(data, b::BraidingTensor, s::Trivial)
+    V1, V2 = codomain(b)
+    d1, d2 = dim(V1), dim(V2)
+    subblock = sreshape(StridedView(data), (d1, d2, d2, d1))
+    fill_braidingsubblock!(subblock, one(eltype(b)))
+    return data
+end
+
+# Nontrivial
+function fill_braidingblock!(data, b::BraidingTensor, s::Sector)
+    base_offset = first(blockstructure(b)[s][2]) - 1
+
+    for ((f₁, f₂), (sz, str, off)) in pairs(subblockstructure(space(b)))
+        (f₁.coupled == f₂.coupled == s) || continue
+        r = _braiding_factor(f₁, f₂, b.adjoint)
+        # change offset to account for single block
+        subblock = StridedView(data, sz, str, off - base_offset)
+        isnothing(r) ? zerovector!(subblock) : fill_braidingsubblock!(subblock, r)
+    end
+    return data
 end
 
 function block(b::BraidingTensor, s::Sector)
@@ -145,36 +176,12 @@ function block(b::BraidingTensor, s::Sector)
     # TODO: probably always square?
     m = blockdim(codomain(b), s)
     n = blockdim(domain(b), s)
-    data = Matrix{eltype(b)}(undef, (m, n))
 
-    length(data) == 0 && return data # s ∉ blocksectors(b)
+    data = reshape(storagetype(b)(undef, m * n), (m, n))
 
-    data = fill!(data, zero(eltype(b)))
+    m * n == 0  && return data # s ∉ blocksectors(b)
 
-    V1, V2 = codomain(b)
-    if sectortype(b) === Trivial
-        d1, d2 = dim(V1), dim(V2)
-        subblock = sreshape(StridedView(data), (d1, d2, d2, d1))
-        @inbounds for i in axes(subblock, 1), j in axes(subblock, 2)
-            subblock[i, j, j, i] = one(eltype(b))
-        end
-        return data
-    end
-
-    base_offset = first(blockstructure(b)[s][2]) - 1
-
-    for ((f₁, f₂), (sz, str, off)) in pairs(subblockstructure(space(b)))
-        (f₁.coupled == f₂.coupled == s) || continue
-        r = _braiding_factor(f₁, f₂, b.adjoint)
-        isnothing(r) && continue
-        # change offset to account for single block
-        subblock = StridedView(data, sz, str, off - base_offset)
-        @inbounds for i in axes(subblock, 1), j in axes(subblock, 2)
-            subblock[i, j, j, i] = r
-        end
-    end
-
-    return data
+    return fill_braidingblock!(data, b, s)
 end
 
 # Index manipulations
