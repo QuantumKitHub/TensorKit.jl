@@ -589,6 +589,7 @@ function add_transform_kernel!(
             )
         end
     else
+        cp = TO.allocator_checkpoint!(allocator)
         # Non-Abelian fusion: trees sharing the same set of uncoupled (external) sectors
         # form a *fusion block* and mix under the transformation via a recoupling matrix U
         # (rows = destination trees, columns = source trees). We iterate over blocks.
@@ -633,6 +634,7 @@ function add_transform_kernel!(
                 TO.tensorfree!(buffer, allocator)
             end
         end
+        TO.allocator_reset!(allocator, cp)
     end
     return nothing
 end
@@ -663,6 +665,7 @@ function add_transform_kernel!(
     #   U            — recoupling matrix (rows = dst trees, cols = src trees)
     #   sz_{dst,src} — array shape of each block (same for all trees in the block)
     #   structs_{dst,src}[i] — (offset, strides) into the flat data vector for tree i
+    cp = TO.allocator_checkpoint!(allocator)
     tforeach(transformer.data; scheduler) do (U, (sz_dst, structs_dst), (sz_src, structs_src))
         if length(U) == 1
             # Degenerate block with a single tree: no matmul needed.
@@ -706,5 +709,6 @@ function add_transform_kernel!(
             TO.tensorfree!(buffer, allocator)
         end
     end
+    TO.allocator_reset!(allocator, cp)
     return nothing
 end
