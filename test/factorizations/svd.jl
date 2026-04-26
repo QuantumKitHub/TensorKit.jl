@@ -49,9 +49,9 @@ for V in spacelist
             end
             for T in eltypes, t in (randn(T, W, W), randn(T, W, W)')
                 project_hermitian!(t)
-                vals = @constinferred LinearAlgebra.eigvals(t)
-                λmax = maximum(s -> maximum(abs, s), values(vals))
-                λmin = minimum(s -> minimum(abs, s), values(vals))
+                vals = @constinferred eigh_vals(t)
+                λmax = maximum(abs, vals)
+                λmin = minimum(abs, vals)
                 @test cond(t) ≈ λmax / λmin
             end
         end
