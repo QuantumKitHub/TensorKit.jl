@@ -203,3 +203,12 @@ end
 function _transformer_weight((mat, structs_dst, structs_src)::GenericTransformerData)
     return length(mat) * prod(structs_dst[1])
 end
+
+"""
+    adapt_transformer(transformer::TreeTransformer, data::AbstractVector)
+
+Return a version of `transformer` whose internal arrays are compatible with `data`.
+Default is a no-op. Backends (e.g. CUDA, AMDGPU) should overload this for their vector types
+to ensure the recoupling matrix `U` inside `GenericTreeTransformer` is on the correct device.
+"""
+adapt_transformer(t::TreeTransformer, ::AbstractVector) = t
