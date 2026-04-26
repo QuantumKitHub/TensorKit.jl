@@ -255,35 +255,13 @@ function planarcontract!(
         throw(SpaceMismatch("$(space(C)) ≠ permute($(space(A))[$oindA, $cindA] * $(space(B))[$cindB, $oindB], ($p1, $p2)"))
     end
 
-    if BraidingStyle(sectortype(B)) isa Bosonic
-        return add_permute!(C, B, (reverse(cindB), oindB), α, β, backend)
-    end
-
     τ_levels = A.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
-    scale!(C, β)
-
-    inv_braid = τ_levels[cindA[1]] > τ_levels[cindA[2]]
-    for (f₁, f₂) in fusiontrees(B)
-        local newtrees
-        for ((f₁′, f₂′), coeff′) in transpose((f₁, f₂), (cindB, oindB))
-            for (f₁′′, coeff′′) in artin_braid(f₁′, 1; inv = inv_braid)
-                f12 = (f₁′′, f₂′)
-                coeff = coeff′ * coeff′′
-                if @isdefined newtrees
-                    newtrees[f12] = get(newtrees, f12, zero(coeff)) + coeff
-                else
-                    newtrees = Dict(f12 => coeff)
-                end
-            end
-        end
-        for ((f₁′, f₂′), coeff) in newtrees
-            TO.tensoradd!(
-                C[f₁′, f₂′], B[f₁, f₂], (reverse(cindB), oindB), false,
-                α * coeff, One(), backend, allocator
-            )
-        end
-    end
-    return C
+    p = (reverse(cindB), oindB)
+    nB = numind(B)
+    levels = ntuple(i -> i + 2, nB)
+    levels = TupleTools.setindex(levels, τ_levels[cindA[1]], cindB[1])
+    levels = TupleTools.setindex(levels, τ_levels[cindA[2]], cindB[2])
+    return add_braid!(C, B, p, levels, α, β, backend)
 end
 function planarcontract!(
         C::AbstractTensorMap,
@@ -310,9 +288,16 @@ function planarcontract!(
         throw(SpaceMismatch("$(space(C)) ≠ permute($(space(A))[$oindA, $cindA] * $(space(B))[$cindB, $oindB], ($p1, $p2)"))
     end
 
+    if BraidingStyle(sectortype(A)) isa Bosonic
+        return add_permute!(C, A, (oindA, reverse(cindA)), α, β, backend)
+    end
+
+    τ_levels = B.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
     p = (oindA, reverse(cindA))
-    N = length(oindA)
-    levels = (ntuple(identity, N)..., (B.adjoint ? (N + 1, N + 2) : (N + 2, N + 1))...)
+    nA = numind(A)
+    levels = ntuple(i -> i + 2, nA)
+    levels = TupleTools.setindex(levels, τ_levels[cindB[1]], cindA[1])
+    levels = TupleTools.setindex(levels, τ_levels[cindB[2]], cindA[2])
     return add_braid!(C, A, p, levels, α, β, backend)
 end
 
