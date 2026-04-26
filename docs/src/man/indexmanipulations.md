@@ -1,5 +1,9 @@
 # [Index manipulations](@id s_indexmanipulations)
 
+```@meta
+CollapsedDocStrings = true
+```
+
 ```@setup indexmanip
 using TensorKit
 using LinearAlgebra
@@ -62,11 +66,6 @@ They form a hierarchy from most general to most restricted:
 - [`braid`](@ref) is the most general: it accepts any permutation and requires a `levels` argument — a tuple of heights, one per index — that determines whether each index crosses over or under the others it has to pass.
 - [`permute`](@ref) is a simpler interface for sector types with a symmetric braiding (`BraidingStyle(I) isa SymmetricBraiding`), where over- and under-crossings are equivalent and `levels` is therefore not needed.
 - [`transpose`](@ref) is restricted to *cyclic* permutations (indices do not cross). Unlike `braid`, it introduces a compensating (inverse) twist to satisfy the categorical definition of transpose, as illustrated below:
-
-```@raw html
-<img src="../img/tensor-transpose.svg" alt="transpose" class="color-invertible"/>
-```
-
 - [`repartition`](@ref) only moves the codomain/domain boundary without reordering the indices at all.
 
 For plain tensors (`sectortype(t) == Trivial`), `permute` and `braid` act like `permutedims` on the underlying array:
