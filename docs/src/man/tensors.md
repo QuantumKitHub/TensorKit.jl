@@ -5,7 +5,7 @@ using TensorKit
 using LinearAlgebra
 ```
 
-This last page explains how to create and manipulate tensors in TensorKit.jl.
+This page explains how to construct and access tensors in TensorKit.jl.
 As this is probably the most important part of the manual, we will also focus more strongly on the usage and interface, and less so on the underlying implementation.
 The only aspect of the implementation that we will address is the storage of the tensor data, as this is important to know how to create and initialize a tensor, but will in fact also shed light on how some of the methods work.
 
