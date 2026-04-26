@@ -1,25 +1,10 @@
-# Index manipulations
-#---------------------
+# =============
+#  Reweighting
+# =============
 
-# find the scalartype after applying operations: take into account fusion and/or braiding
-# might need to become Float or Complex to capture complex recoupling coefficients but don't alter precision
-for (operation, manipulation) in (
-        :flip => :sector, :twist => :braiding,
-        :transpose => :fusion, :permute => :sector, :braid => :sector,
-    )
-    promote_op = Symbol(:promote_, operation)
-    manipulation_scalartype = Symbol(manipulation, :scalartype)
-
-    @eval begin
-        $promote_op(t::AbstractTensorMap) = $promote_op(typeof(t))
-        $promote_op(::Type{T}) where {T <: AbstractTensorMap} =
-            $promote_op(scalartype(T), sectortype(T))
-        $promote_op(::Type{T}, ::Type{I}) where {T <: Number, I <: Sector} =
-            $manipulation_scalartype(I) <: Integer ? T :
-            $manipulation_scalartype(I) <: Real ? float(T) : complex(T)
-    end
-end
-
+# ------
+# flip
+# ------
 """
     flip(t::AbstractTensorMap, I) -> t′::AbstractTensorMap
 
@@ -43,6 +28,172 @@ function flip(t::AbstractTensorMap, I; inv::Bool = false)
     return t′
 end
 
+# ---------
+# twist(!)
+# ---------
+function has_shared_twist(t, inds)
+    I = sectortype(t)
+    if BraidingStyle(I) == NoBraiding()
+        for i in inds
+            cs = sectors(space(t, i))
+            all(isunit, cs) || throw(SectorMismatch(lazy"Cannot twist sectors $cs"))
+        end
+        return true
+    elseif BraidingStyle(I) == Bosonic()
+        return true
+    else
+        for i in inds
+            cs = sectors(space(t, i))
+            all(isone ∘ twist, cs) || return false
+        end
+        return true
+    end
+end
+
+"""
+    twist!(t::AbstractTensorMap, i::Int; inv::Bool=false) -> t
+    twist!(t::AbstractTensorMap, inds; inv::Bool=false) -> t
+
+Apply a twist to the `i`th index of `t`, or all indices in `inds`, storing the result in `t`.
+If `inv=true`, use the inverse twist.
+
+See [`twist`](@ref) for creating a new tensor.
+"""
+function twist!(t::AbstractTensorMap, inds; inv::Bool = false)
+    if !all(in(allind(t)), inds)
+        msg = "Can't twist indices $inds of a tensor with only $(numind(t)) indices."
+        throw(ArgumentError(msg))
+    end
+    (scalartype(t) <: Real && !(sectorscalartype(sectortype(t)) <: Real)) &&
+        throw(ArgumentError("Can't in-place twist a real tensor with complex sector type"))
+    has_shared_twist(t, inds) && return t
+
+    (scalartype(t) <: Real && !(sectorscalartype(sectortype(t)) <: Real)) &&
+        throw(ArgumentError("No in-place `twist!` for a real tensor with complex sector type"))
+
+    N₁ = numout(t)
+    for (f₁, f₂) in fusiontrees(t)
+        θ = prod(i -> i <= N₁ ? twist(f₁.uncoupled[i]) : twist(f₂.uncoupled[i - N₁]), inds)
+        inv && (θ = θ')
+        scale!(t[f₁, f₂], θ)
+    end
+    return t
+end
+
+"""
+    twist(tsrc::AbstractTensorMap, i::Int; inv::Bool = false, copy::Bool = false) -> tdst
+    twist(tsrc::AbstractTensorMap, inds; inv::Bool = false, copy::Bool = false) -> tdst
+
+Apply a twist to the `i`th index of `tsrc` and return the result as a new tensor.
+If `inv = true`, use the inverse twist.
+If `copy = false`, `tdst` might share data with `tsrc` whenever possible. Otherwise, a copy is always made.
+
+See [`twist!`](@ref) for storing the result in place.
+"""
+function twist(t::AbstractTensorMap, inds; inv::Bool = false, copy::Bool = false)
+    if has_shared_twist(t, inds)
+        copy || return t
+        return copy!(similar(t), t)
+    end
+    tdst = similar(t, promote_twist(t))
+    copy!(tdst, t)
+    return twist!(tdst, inds; inv)
+end
+
+# =========================
+#  Space insertion/removal
+# =========================
+
+# Methods which change the number of indices, implement using `Val(i)` for type inference
+"""
+    insertleftunit(tsrc::AbstractTensorMap, i=numind(t) + 1;
+                   conj=false, dual=false, copy=false) -> tdst
+
+Insert a trivial vector space, isomorphic to the underlying field, at position `i`,
+which can be specified as an `Int` or as `Val(i)` for improved type stability.
+More specifically, adds a left monoidal unit or its dual.
+
+If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwise, a copy is always made.
+
+See also [`insertrightunit`](@ref insertrightunit(::AbstractTensorMap, ::Val{i}) where {i}),
+[`removeunit`](@ref removeunit(::AbstractTensorMap, ::Val{i}) where {i}).
+"""
+function insertleftunit(
+        t::AbstractTensorMap, ::Val{i} = Val(numind(t) + 1);
+        copy::Bool = false, conj::Bool = false, dual::Bool = false
+    ) where {i}
+    W = insertleftunit(space(t), Val(i); conj, dual)
+    if t isa TensorMap
+        return TensorMap{scalartype(t)}(copy ? Base.copy(t.data) : t.data, W)
+    else
+        tdst = similar(t, W)
+        for (c, b) in blocks(t)
+            copy!(block(tdst, c), b)
+        end
+        return tdst
+    end
+end
+
+"""
+    insertrightunit(tsrc::AbstractTensorMap, i=numind(t);
+                    conj=false, dual=false, copy=false) -> tdst
+
+Insert a trivial vector space, isomorphic to the underlying field, after position `i`,
+which can be specified as an `Int` or as `Val(i)` for improved type stability.
+More specifically, adds a right monoidal unit or its dual.
+
+If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwise, a copy is always made.
+
+See also [`insertleftunit`](@ref insertleftunit(::AbstractTensorMap, ::Val{i}) where {i}),
+[`removeunit`](@ref removeunit(::AbstractTensorMap, ::Val{i}) where {i}).
+"""
+function insertrightunit(
+        t::AbstractTensorMap, ::Val{i} = Val(numind(t));
+        copy::Bool = false, conj::Bool = false, dual::Bool = false
+    ) where {i}
+    W = insertrightunit(space(t), Val(i); conj, dual)
+    if t isa TensorMap
+        return TensorMap{scalartype(t)}(copy ? Base.copy(t.data) : t.data, W)
+    else
+        tdst = similar(t, W)
+        for (c, b) in blocks(t)
+            copy!(block(tdst, c), b)
+        end
+        return tdst
+    end
+end
+
+"""
+    removeunit(tsrc::AbstractTensorMap, i; copy=false) -> tdst
+
+This removes a trivial tensor product factor at position `1 ≤ i ≤ N`, where `i`
+can be specified as an `Int` or as `Val(i)` for improved type stability.
+For this to work, that factor has to be isomorphic to the field of scalars.
+
+If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwise, a copy is always made.
+
+This operation undoes the work of [`insertleftunit`](@ref insertleftunit(::AbstractTensorMap, ::Val{i}) where {i})
+and [`insertrightunit`](@ref insertrightunit(::AbstractTensorMap, ::Val{i}) where {i}).
+"""
+function removeunit(t::AbstractTensorMap, ::Val{i}; copy::Bool = false) where {i}
+    W = removeunit(space(t), Val(i))
+    if t isa TensorMap
+        return TensorMap{scalartype(t)}(copy ? Base.copy(t.data) : t.data, W)
+    else
+        tdst = similar(t, W)
+        for (c, b) in blocks(t)
+            copy!(block(tdst, c), b)
+        end
+        return tdst
+    end
+end
+
+# TODO: fusion/splitting of indices
+
+# ============================
+# Index rearrangements
+# ============================
+
 # --------------
 #   permute(!)
 # --------------
@@ -61,8 +212,8 @@ See also [`permute`](@ref) for creating a new tensor.
         backend::AbstractBackend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
     )
     @boundscheck spacecheck_transform(permute, tdst, tsrc, p)
-    transformer = treepermuter(tdst, tsrc, p)
-    return @inbounds add_transform!(tdst, tsrc, p, transformer, α, β, backend, allocator)
+    levels = ntuple(identity, numind(tsrc))
+    return @inbounds braid!(tdst, tsrc, p, levels, α, β, backend, allocator)
 end
 
 """
@@ -92,7 +243,8 @@ function permute(
 
     # general case
     tdst = similar(t, promote_permute(t), permute(space(t), p))
-    return @inbounds permute!(tdst, t, p, One(), Zero(), backend, allocator)
+    levels = ntuple(identity, numind(t))
+    return @inbounds braid!(tdst, t, p, levels, One(), Zero(), backend, allocator)
 end
 function permute(t::AdjointTensorMap, (p₁, p₂)::Index2Tuple; kwargs...)
     p₁′ = adjointtensorindices(t, p₂)
@@ -169,7 +321,6 @@ function braid(
     )
     length(levels) == numind(t) || throw(ArgumentError(lazy"length of levels should be $(numind(t)), got $(length(levels))"))
 
-    BraidingStyle(sectortype(t)) isa SymmetricBraiding && return permute(t, p; copy, backend, allocator)
     (!copy && p == (codomainind(t), domainind(t))) && return t
 
     # general case
@@ -305,166 +456,29 @@ See also [`repartition!`](@ref) for writing into an existing destination.
     return transpose(t, (p₁, p₂); copy, backend, allocator)
 end
 
-# Twist
-function has_shared_twist(t, inds)
-    I = sectortype(t)
-    if BraidingStyle(I) == NoBraiding()
-        for i in inds
-            cs = sectors(space(t, i))
-            all(isunit, cs) || throw(SectorMismatch(lazy"Cannot twist sectors $cs"))
-        end
-        return true
-    elseif BraidingStyle(I) == Bosonic()
-        return true
-    else
-        for i in inds
-            cs = sectors(space(t, i))
-            all(isone ∘ twist, cs) || return false
-        end
-        return true
-    end
-end
-
-"""
-    twist!(t::AbstractTensorMap, i::Int; inv::Bool=false) -> t
-    twist!(t::AbstractTensorMap, inds; inv::Bool=false) -> t
-
-Apply a twist to the `i`th index of `t`, or all indices in `inds`, storing the result in `t`.
-If `inv=true`, use the inverse twist.
-
-See [`twist`](@ref) for creating a new tensor.
-"""
-function twist!(t::AbstractTensorMap, inds; inv::Bool = false)
-    if !all(in(allind(t)), inds)
-        msg = "Can't twist indices $inds of a tensor with only $(numind(t)) indices."
-        throw(ArgumentError(msg))
-    end
-    (scalartype(t) <: Real && !(sectorscalartype(sectortype(t)) <: Real)) &&
-        throw(ArgumentError("Can't in-place twist a real tensor with complex sector type"))
-    has_shared_twist(t, inds) && return t
-
-    (scalartype(t) <: Real && !(sectorscalartype(sectortype(t)) <: Real)) &&
-        throw(ArgumentError("No in-place `twist!` for a real tensor with complex sector type"))
-
-    N₁ = numout(t)
-    for (f₁, f₂) in fusiontrees(t)
-        θ = prod(i -> i <= N₁ ? twist(f₁.uncoupled[i]) : twist(f₂.uncoupled[i - N₁]), inds)
-        inv && (θ = θ')
-        scale!(t[f₁, f₂], θ)
-    end
-    return t
-end
-
-"""
-    twist(tsrc::AbstractTensorMap, i::Int; inv::Bool = false, copy::Bool = false) -> tdst
-    twist(tsrc::AbstractTensorMap, inds; inv::Bool = false, copy::Bool = false) -> tdst
-
-Apply a twist to the `i`th index of `tsrc` and return the result as a new tensor.
-If `inv = true`, use the inverse twist.
-If `copy = false`, `tdst` might share data with `tsrc` whenever possible. Otherwise, a copy is always made.
-
-See [`twist!`](@ref) for storing the result in place.
-"""
-function twist(t::AbstractTensorMap, inds; inv::Bool = false, copy::Bool = false)
-    if has_shared_twist(t, inds)
-        copy || return t
-        return copy!(similar(t), t)
-    end
-    tdst = similar(t, promote_twist(t))
-    copy!(tdst, t)
-    return twist!(tdst, inds; inv)
-end
-
-# Methods which change the number of indices, implement using `Val(i)` for type inference
-"""
-    insertleftunit(tsrc::AbstractTensorMap, i=numind(t) + 1;
-                   conj=false, dual=false, copy=false) -> tdst
-
-Insert a trivial vector space, isomorphic to the underlying field, at position `i`,
-which can be specified as an `Int` or as `Val(i)` for improved type stability.
-More specifically, adds a left monoidal unit or its dual.
-
-If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwise, a copy is always made.
-
-See also [`insertrightunit`](@ref insertrightunit(::AbstractTensorMap, ::Val{i}) where {i}),
-[`removeunit`](@ref removeunit(::AbstractTensorMap, ::Val{i}) where {i}).
-"""
-function insertleftunit(
-        t::AbstractTensorMap, ::Val{i} = Val(numind(t) + 1);
-        copy::Bool = false, conj::Bool = false, dual::Bool = false
-    ) where {i}
-    W = insertleftunit(space(t), Val(i); conj, dual)
-    if t isa TensorMap
-        return TensorMap{scalartype(t)}(copy ? Base.copy(t.data) : t.data, W)
-    else
-        tdst = similar(t, W)
-        for (c, b) in blocks(t)
-            copy!(block(tdst, c), b)
-        end
-        return tdst
-    end
-end
-
-"""
-    insertrightunit(tsrc::AbstractTensorMap, i=numind(t);
-                    conj=false, dual=false, copy=false) -> tdst
-
-Insert a trivial vector space, isomorphic to the underlying field, after position `i`,
-which can be specified as an `Int` or as `Val(i)` for improved type stability.
-More specifically, adds a right monoidal unit or its dual.
-
-If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwise, a copy is always made.
-
-See also [`insertleftunit`](@ref insertleftunit(::AbstractTensorMap, ::Val{i}) where {i}),
-[`removeunit`](@ref removeunit(::AbstractTensorMap, ::Val{i}) where {i}).
-"""
-function insertrightunit(
-        t::AbstractTensorMap, ::Val{i} = Val(numind(t));
-        copy::Bool = false, conj::Bool = false, dual::Bool = false
-    ) where {i}
-    W = insertrightunit(space(t), Val(i); conj, dual)
-    if t isa TensorMap
-        return TensorMap{scalartype(t)}(copy ? Base.copy(t.data) : t.data, W)
-    else
-        tdst = similar(t, W)
-        for (c, b) in blocks(t)
-            copy!(block(tdst, c), b)
-        end
-        return tdst
-    end
-end
-
-"""
-    removeunit(tsrc::AbstractTensorMap, i; copy=false) -> tdst
-
-This removes a trivial tensor product factor at position `1 ≤ i ≤ N`, where `i`
-can be specified as an `Int` or as `Val(i)` for improved type stability.
-For this to work, that factor has to be isomorphic to the field of scalars.
-
-If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwise, a copy is always made.
-
-This operation undoes the work of [`insertleftunit`](@ref insertleftunit(::AbstractTensorMap, ::Val{i}) where {i})
-and [`insertrightunit`](@ref insertrightunit(::AbstractTensorMap, ::Val{i}) where {i}).
-"""
-function removeunit(t::AbstractTensorMap, ::Val{i}; copy::Bool = false) where {i}
-    W = removeunit(space(t), Val(i))
-    if t isa TensorMap
-        return TensorMap{scalartype(t)}(copy ? Base.copy(t.data) : t.data, W)
-    else
-        tdst = similar(t, W)
-        for (c, b) in blocks(t)
-            copy!(block(tdst, c), b)
-        end
-        return tdst
-    end
-end
-
-# Fusing and splitting
-# TODO: add functionality for easy fusing and splitting of tensor indices
-
 #-------------------------------------
-# Full implementations based on `add`
+# Internal implementations
 #-------------------------------------
+
+# find the scalartype after applying operations: take into account fusion and/or braiding
+# might need to become Float or Complex to capture complex recoupling coefficients but don't alter precision
+for (operation, manipulation) in (
+        :flip => :sector, :twist => :braiding,
+        :transpose => :fusion, :permute => :sector, :braid => :sector,
+    )
+    promote_op = Symbol(:promote_, operation)
+    manipulation_scalartype = Symbol(manipulation, :scalartype)
+
+    @eval begin
+        $promote_op(t::AbstractTensorMap) = $promote_op(typeof(t))
+        $promote_op(::Type{T}) where {T <: AbstractTensorMap} =
+            $promote_op(scalartype(T), sectortype(T))
+        $promote_op(::Type{T}, ::Type{I}) where {T <: Number, I <: Sector} =
+            $manipulation_scalartype(I) <: Integer ? T :
+            $manipulation_scalartype(I) <: Real ? float(T) : complex(T)
+    end
+end
+
 spacecheck_transform(f, tdst::AbstractTensorMap, tsrc::AbstractTensorMap, args...) =
     spacecheck_transform(f, space(tdst), space(tsrc), args...)
 @noinline function spacecheck_transform(f, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple)
