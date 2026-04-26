@@ -184,12 +184,6 @@ repartition!
 twist!
 ```
 
-```@docs
-TensorKit.add_permute!
-TensorKit.add_braid!
-TensorKit.add_transpose!
-```
-
 ### Tensor map composition, traces, contractions and tensor products
 
 ```@docs
