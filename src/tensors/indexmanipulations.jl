@@ -661,6 +661,7 @@ function add_transform_kernel!(
         data_dst::DenseVector, data_src::DenseVector, p, transformer::GenericTreeTransformer,
         α, β, backend, allocator, scheduler
     )
+    transformer = adapt_transformer(transformer, data_dst)
     # Each entry covers one fusion block:
     #   U            — recoupling matrix (rows = dst trees, cols = src trees)
     #   sz_{dst,src} — array shape of each block (same for all trees in the block)

@@ -169,6 +169,11 @@ for f in (:sqrt, :log, :asin, :acos, :acosh, :atanh, :acoth)
     end
 end
 
-function TensorKit._add_transform_multi!(tdst::CuTensorMap, tsrc, p, (U, structs_dst, structs_src)::Tuple{<:Array, TD, TS}, buffers, alpha, beta, backend...) where {TD, TS}
-    return TensorKit._add_transform_multi!(tdst, tsrc, p, (CUDA.Adapt.adapt(CuArray, U), structs_dst, structs_src), buffers, alpha, beta, backend...)
+function TensorKit.adapt_transformer(
+        t::TensorKit.GenericTreeTransformer, data::CuVector
+    )
+    new_data = map(t.data) do (U, structs_dst, structs_src)
+        return CUDA.Adapt.adapt(CuArray, U), structs_dst, structs_src
+    end
+    return TensorKit.GenericTreeTransformer(new_data)
 end
