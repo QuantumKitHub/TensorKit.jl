@@ -2,6 +2,7 @@
 
 ```@meta
 CurrentModule = TensorKit
+CollapsedDocStrings = true
 ```
 
 # Type hierarchy
