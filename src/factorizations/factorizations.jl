@@ -79,7 +79,7 @@ LinearAlgebra.ishermitian(t::AbstractTensorMap) = MAK.ishermitian(t)
 function LinearAlgebra.checksquare(t::AbstractTensorMap)
     dom = domain(t)
     cod = codomain(t)
-    dom == cod || throw(SpaceMismatch(lazy"tensor is not square: codomain $cod ≠ domain $cod"))
+    dom == cod || throw(SpaceMismatch(lazy"tensor is not square: codomain $cod ≠ domain $dom"))
     return dom
 end
 
