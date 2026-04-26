@@ -169,11 +169,4 @@ for f in (:sqrt, :log, :asin, :acos, :acosh, :atanh, :acoth)
     end
 end
 
-function TensorKit.adapt_transformer(
-        t::TensorKit.GenericTreeTransformer, data::CuVector
-    )
-    new_data = map(t.data) do (U, structs_dst, structs_src)
-        return CUDA.Adapt.adapt(CuArray, U), structs_dst, structs_src
-    end
-    return TensorKit.GenericTreeTransformer(new_data)
-end
+TensorKit.adapt_transformer(U::AbstractMatrix, ::Type{A}) where {A <: CuVector} = CUDA.CUDACore.Adapt.adapt(CuArray, U)

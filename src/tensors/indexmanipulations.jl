@@ -624,7 +624,8 @@ function add_transform_kernel!(
                         ptriv, false, One(), Zero(), backend, allocator
                     )
                 end
-                mul!(buffer_dst, buffer_src, transpose(StridedView(U)))
+                U′ = adapt_transformer(U, storagetype(tdst))
+                mul!(buffer_dst, buffer_src, transpose(StridedView(U′)))
                 @inbounds for (i, (f₃, f₄)) in enumerate(fusiontrees(dst))
                     TO.tensoradd!(
                         tdst[f₃, f₄], sreshape(buffer_dst[:, i], sz_src),
@@ -661,7 +662,6 @@ function add_transform_kernel!(
         data_dst::DenseVector, data_src::DenseVector, p, transformer::GenericTreeTransformer,
         α, β, backend, allocator, scheduler
     )
-    transformer = adapt_transformer(transformer, data_dst)
     # Each entry covers one fusion block:
     #   U            — recoupling matrix (rows = dst trees, cols = src trees)
     #   sz_{dst,src} — array shape of each block (same for all trees in the block)
@@ -697,7 +697,8 @@ function add_transform_kernel!(
 
             # 2. Recoupling: buffer_dst = buffer_src * U^T  (each output tree is a linear
             #    combination of input trees weighted by the recoupling coefficients).
-            mul!(buffer_dst, buffer_src, transpose(StridedView(U)))
+            U′ = adapt_transformer(U, typeof(data_dst))
+            mul!(buffer_dst, buffer_src, transpose(StridedView(U′)))
 
             # 3. Insert: scatter column i of buffer_dst into the destination, applying the
             #    actual index permutation p in the same tensoradd! call.
@@ -713,3 +714,12 @@ function add_transform_kernel!(
     TO.allocator_reset!(allocator, cp)
     return nothing
 end
+
+"""
+    adapt_transformer(U::AbstractMatrix, ::Type{A})
+
+Return a version of the basis transformation `U` that is compatible for storage type `A`.
+Default is a no-op.
+Backends (e.g. CUDA, AMDGPU) should overload this for their vector types to ensure the recoupling matrix `U` is on the correct device.
+"""
+adapt_transformer(U::AbstractMatrix, ::Type{A}) where {A} = U
