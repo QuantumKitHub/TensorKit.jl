@@ -15,11 +15,8 @@ for (operation, manipulation) in (
         $promote_op(::Type{T}) where {T <: AbstractTensorMap} =
             $promote_op(scalartype(T), sectortype(T))
         $promote_op(::Type{T}, ::Type{I}) where {T <: Number, I <: Sector} =
-            sectorscalartype(I) <: Integer ? T :
-            sectorscalartype(I) <: Real ? float(T) : complex(T)
-        # TODO: currently the manipulations all use sectorscalartype, change to:
-        # $manipulation_scalartype(I) <: Integer ? T :
-        # $manipulation_scalartype(I) <: Real ? float(T) : complex(T)
+            $manipulation_scalartype(I) <: Integer ? T :
+            $manipulation_scalartype(I) <: Real ? float(T) : complex(T)
     end
 end
 
@@ -369,7 +366,10 @@ If `copy = false`, `tdst` might share data with `tsrc` whenever possible. Otherw
 See [`twist!`](@ref) for storing the result in place.
 """
 function twist(t::AbstractTensorMap, inds; inv::Bool = false, copy::Bool = false)
-    !copy && has_shared_twist(t, inds) && return t
+    if has_shared_twist(t, inds)
+        copy || return t
+        return copy!(similar(t), t)
+    end
     tdst = similar(t, promote_twist(t))
     copy!(tdst, t)
     return twist!(tdst, inds; inv)
