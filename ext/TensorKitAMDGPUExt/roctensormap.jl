@@ -162,3 +162,12 @@ for f in (:sqrt, :log, :asin, :acos, :acosh, :atanh, :acoth)
         return tf
     end
 end
+
+function TensorKit.adapt_transformer(
+        t::TensorKit.GenericTreeTransformer, data::ROCVector
+    )
+    new_data = map(t.data) do (U, structs_dst, structs_src)
+        return AMDGPU.Adapt.adapt(ROCArray, U), structs_dst, structs_src
+    end
+    return TensorKit.GenericTreeTransformer(new_data)
+end
