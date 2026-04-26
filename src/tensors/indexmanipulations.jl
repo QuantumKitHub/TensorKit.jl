@@ -498,47 +498,18 @@ end
 
 # Deprecated add_*! wrappers
 # --------------------------
-"""
-    add_permute!(tdst, tsrc, (p₁, p₂)::Index2Tuple, α::Number, β::Number[, backend])
-
-!!! warning "Deprecated"
-    `add_permute!` is deprecated. Use `permute!(tdst, tsrc, p, α, β[, backend])` instead.
-"""
-function add_permute!(
-        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple,
-        α::Number, β::Number, backend::AbstractBackend...
-    )
-    Base.depwarn("`add_permute!` is deprecated, use `permute!` instead", :add_permute!)
-    return @inbounds permute!(tdst, tsrc, p, α, β, backend...)
-end
-
-"""
-    add_braid!(tdst, tsrc, (p₁, p₂)::Index2Tuple, levels::IndexTuple, α::Number, β::Number[, backend])
-
-!!! warning "Deprecated"
-    `add_braid!` is deprecated. Use `braid!(tdst, tsrc, p, levels, α, β[, backend])` instead.
-"""
-function add_braid!(
-        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, levels::IndexTuple,
-        α::Number, β::Number, backend::AbstractBackend...
-    )
-    Base.depwarn("`add_braid!` is deprecated, use `braid!` instead", :add_braid!)
-    return @inbounds braid!(tdst, tsrc, p, levels, α, β, backend...)
-end
-
-"""
-    add_transpose!(tdst, tsrc, (p₁, p₂)::Index2Tuple, α::Number, β::Number[, backend])
-
-!!! warning "Deprecated"
-    `add_transpose!` is deprecated. Use `transpose!(tdst, tsrc, p, α, β[, backend])` instead.
-"""
-function add_transpose!(
-        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple,
-        α::Number, β::Number, backend::AbstractBackend...
-    )
-    Base.depwarn("`add_transpose!` is deprecated, use `transpose!` instead", :add_transpose!)
-    return @inbounds transpose!(tdst, tsrc, p, α, β, backend...)
-end
+Base.@deprecate(
+    add_permute!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, α::Number, β::Number, backend::AbstractBackend...),
+    permute!(tdst, tsrc, p, α, β, backend...)
+)
+Base.@deprecate(
+    add_braid!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, levels::IndexTuple, α::Number, β::Number, backend::AbstractBackend...),
+    braid!(tdst, tsrc, p, levels, α, β, backend...)
+)
+Base.@deprecate(
+    add_transpose!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, α::Number, β::Number, backend::AbstractBackend...),
+    transpose!(tdst, tsrc, p, α, β, backend...)
+)
 
 @propagate_inbounds function add_transform!(
         tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, transformer,
@@ -629,9 +600,11 @@ function add_transform_kernel!(
     tforeach(transformer.data; scheduler) do (U, (sz_dst, structs_dst), (sz_src, structs_src))
         if length(U) == 1
             coeff = only(U)
-            TO.tensoradd!(StridedView(data_dst, sz_dst, only(structs_dst)...),
-                          StridedView(data_src, sz_src, only(structs_src)...),
-                          p, false, α * coeff, β, backend, allocator)
+            TO.tensoradd!(
+                StridedView(data_dst, sz_dst, only(structs_dst)...),
+                StridedView(data_src, sz_src, only(structs_src)...),
+                p, false, α * coeff, β, backend, allocator
+            )
         else
             buffer1, buffer2 = tl_buffers[]
             rows, cols = size(U)
