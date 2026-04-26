@@ -592,7 +592,6 @@ function add_transform_kernel!(
         # Non-Abelian fusion: trees sharing the same set of uncoupled (external) sectors
         # form a *fusion block* and mix under the transformation via a recoupling matrix U
         # (rows = destination trees, columns = source trees). We iterate over blocks.
-        tl_buffers = OhMyThreads.TaskLocalValue(() -> allocate_buffers(tdst, tsrc, transformer, allocator))
         tforeach(fusionblocks(tsrc); scheduler) do src
             dst, U = transformer(src)
             if length(src) == 1
@@ -611,19 +610,19 @@ function add_transform_kernel!(
                 #   2. Recoupling: buffer_dst = buffer_src * U^T  (blocksize × rows)
                 #   3. Insert: scatter columns of buffer_dst to destination blocks,
                 #      applying the actual permutation p in the same step.
-                buffer1, buffer2 = tl_buffers[]
                 rows, cols = size(U)
                 sz_src = size(tsrc[first(fusiontrees(src))...])
                 blocksize = prod(sz_src)
                 ptriv = (ntuple(identity, length(sz_src)), ())
-                buffer_src = StridedView(buffer2, (blocksize, cols), (1, blocksize), 0)
+                buffer = TO.tensoralloc(storagetype(tdst), blocksize * (rows + cols), Val(true), allocator)
+                buffer_dst = StridedView(buffer, (blocksize, rows), (1, blocksize), 0)
+                buffer_src = StridedView(buffer, (blocksize, cols), (1, blocksize), blocksize * rows)
                 @inbounds for (i, (f₁, f₂)) in enumerate(fusiontrees(src))
                     TO.tensoradd!(
                         sreshape(buffer_src[:, i], sz_src), tsrc[f₁, f₂],
                         ptriv, false, One(), Zero(), backend, allocator
                     )
                 end
-                buffer_dst = StridedView(buffer1, (blocksize, rows), (1, blocksize), 0)
                 mul!(buffer_dst, buffer_src, transpose(StridedView(U)))
                 @inbounds for (i, (f₃, f₄)) in enumerate(fusiontrees(dst))
                     TO.tensoradd!(
@@ -631,6 +630,7 @@ function add_transform_kernel!(
                         p, false, α, β, backend, allocator
                     )
                 end
+                TO.tensorfree!(buffer, allocator)
             end
         end
     end
@@ -663,7 +663,6 @@ function add_transform_kernel!(
     #   U            — recoupling matrix (rows = dst trees, cols = src trees)
     #   sz_{dst,src} — array shape of each block (same for all trees in the block)
     #   structs_{dst,src}[i] — (offset, strides) into the flat data vector for tree i
-    tl_buffers = OhMyThreads.TaskLocalValue(() -> allocate_buffers(data_dst, data_src, transformer, allocator))
     tforeach(transformer.data; scheduler) do (U, (sz_dst, structs_dst), (sz_src, structs_src))
         if length(U) == 1
             # Degenerate block with a single tree: no matmul needed.
@@ -676,14 +675,15 @@ function add_transform_kernel!(
         else
             # Multi-tree block: pack → recoupling matmul → unpack.
             # buffer2 = source staging area, buffer1 = destination staging area.
-            buffer1, buffer2 = tl_buffers[]
             rows, cols = size(U)
             blocksize = prod(sz_src)
             ptriv = (ntuple(identity, length(sz_src)), ())
+            buffer = TO.tensoralloc(typeof(data_dst), blocksize * (rows + cols), Val(true), allocator)
+            buffer_dst = StridedView(buffer, (blocksize, rows), (1, blocksize), 0)
+            buffer_src = StridedView(buffer, (blocksize, cols), (1, blocksize), blocksize * rows)
 
             # 1. Extract: copy each source block into column i of buffer_src as a flat vector,
             #    using a trivial permutation so the layout is canonical before the matmul.
-            buffer_src = StridedView(buffer2, (blocksize, cols), (1, blocksize), 0)
             @inbounds for (i, struct_src_i) in enumerate(structs_src)
                 TO.tensoradd!(
                     sreshape(buffer_src[:, i], sz_src), StridedView(data_src, sz_src, struct_src_i...),
@@ -693,7 +693,6 @@ function add_transform_kernel!(
 
             # 2. Recoupling: buffer_dst = buffer_src * U^T  (each output tree is a linear
             #    combination of input trees weighted by the recoupling coefficients).
-            buffer_dst = StridedView(buffer1, (blocksize, rows), (1, blocksize), 0)
             mul!(buffer_dst, buffer_src, transpose(StridedView(U)))
 
             # 3. Insert: scatter column i of buffer_dst into the destination, applying the
@@ -704,6 +703,7 @@ function add_transform_kernel!(
                     p, false, α, β, backend, allocator
                 )
             end
+            TO.tensorfree!(buffer, allocator)
         end
     end
     return nothing

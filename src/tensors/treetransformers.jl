@@ -128,34 +128,6 @@ function repack_transformer_structure(structures::Dictionary, trees)
     return sz, strides_offsets
 end
 
-function buffersize(transformer::GenericTreeTransformer)
-    return maximum(transformer.data; init = 0) do (basistransform, structures_dst, _)
-        return prod(structures_dst[1]) * size(basistransform, 1)
-    end
-end
-
-function allocate_buffers(
-        tdst::TensorMap, tsrc::TensorMap, transformer::GenericTreeTransformer,
-        allocator = TO.DefaultAllocator()
-    )
-    sz = buffersize(transformer)
-    return similar(tdst.data, sz), similar(tsrc.data, sz)
-end
-function allocate_buffers(
-        data_dst::DenseVector, data_src::DenseVector, transformer::GenericTreeTransformer,
-        allocator = TO.DefaultAllocator()
-    )
-    sz = buffersize(transformer)
-    return similar(data_dst, sz), similar(data_src, sz)
-end
-function allocate_buffers(
-        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, transformer,
-        allocator = TO.DefaultAllocator()
-    )
-    # be pessimistic and assume the worst for now
-    sz = dim(space(tsrc))
-    return similar(storagetype(tdst), sz), similar(storagetype(tsrc), sz)
-end
 
 function treetransformertype(Vdst, Vsrc)
     I = sectortype(Vdst)
