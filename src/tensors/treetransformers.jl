@@ -128,25 +128,6 @@ function repack_transformer_structure(structures::Dictionary, trees)
     return sz, strides_offsets
 end
 
-function buffersize(transformer::GenericTreeTransformer)
-    return maximum(transformer.data; init = 0) do (basistransform, structures_dst, _)
-        return prod(structures_dst[1]) * size(basistransform, 1)
-    end
-end
-
-function allocate_buffers(
-        tdst::TensorMap, tsrc::TensorMap, transformer::GenericTreeTransformer
-    )
-    sz = buffersize(transformer)
-    return similar(tdst.data, sz), similar(tsrc.data, sz)
-end
-function allocate_buffers(
-        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, transformer
-    )
-    # be pessimistic and assume the worst for now
-    sz = dim(space(tsrc))
-    return similar(storagetype(tdst), sz), similar(storagetype(tsrc), sz)
-end
 
 function treetransformertype(Vdst, Vsrc)
     I = sectortype(Vdst)
@@ -185,22 +166,17 @@ end
     return TreeTransformer(fusiontreebraider, p, Vdst, Vsrc)
 end
 
-for (transform, treetransformer) in
-    ((:permute, :treepermuter), (:transpose, :treetransposer))
-    @eval begin
-        function $treetransformer(::AbstractTensorMap, ::AbstractTensorMap, p::Index2Tuple)
-            return fusiontreetransform(f) = $transform(f, p)
-        end
-        function $treetransformer(tdst::TensorMap, tsrc::TensorMap, p::Index2Tuple)
-            return $treetransformer(space(tdst), space(tsrc), p)
-        end
-        @cached function $treetransformer(
-                Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple
-            )::treetransformertype(Vdst, Vsrc)
-            fusiontreetransform(f) = $transform(f, p)
-            return TreeTransformer(fusiontreetransform, p, Vdst, Vsrc)
-        end
-    end
+function treetransposer(::AbstractTensorMap, ::AbstractTensorMap, p::Index2Tuple)
+    return fusiontreetransform(f) = transpose(f, p)
+end
+function treetransposer(tdst::TensorMap, tsrc::TensorMap, p::Index2Tuple)
+    return treetransposer(space(tdst), space(tsrc), p)
+end
+@cached function treetransposer(
+        Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple
+    )::treetransformertype(Vdst, Vsrc)
+    fusiontreetransform(f) = transpose(f, p)
+    return TreeTransformer(fusiontreetransform, p, Vdst, Vsrc)
 end
 
 # default cachestyle is GlobalLRUCache
