@@ -51,8 +51,8 @@ function has_shared_twist(t, inds)
 end
 
 """
-    twist!(t::AbstractTensorMap, i::Int; inv::Bool=false) -> t
-    twist!(t::AbstractTensorMap, inds; inv::Bool=false) -> t
+    twist!(t::AbstractTensorMap, i::Int; inv::Bool = false) -> t
+    twist!(t::AbstractTensorMap, inds; inv::Bool = false) -> t
 
 Apply a twist to the `i`th index of `t`, or all indices in `inds`, storing the result in `t`.
 If `inv=true`, use the inverse twist.
@@ -106,8 +106,10 @@ end
 
 # Methods which change the number of indices, implement using `Val(i)` for type inference
 """
-    insertleftunit(tsrc::AbstractTensorMap, i=numind(t) + 1;
-                   conj=false, dual=false, copy=false) -> tdst
+    insertleftunit(
+            tsrc::AbstractTensorMap, i = numind(t) + 1;
+            conj = false, dual = false, copy = false
+        ) -> tdst
 
 Insert a trivial vector space, isomorphic to the underlying field, at position `i`,
 which can be specified as an `Int` or as `Val(i)` for improved type stability.
@@ -135,8 +137,10 @@ function insertleftunit(
 end
 
 """
-    insertrightunit(tsrc::AbstractTensorMap, i=numind(t);
-                    conj=false, dual=false, copy=false) -> tdst
+    insertrightunit(
+            tsrc::AbstractTensorMap, i = numind(t);
+            conj = false, dual = false, copy = false
+        ) -> tdst
 
 Insert a trivial vector space, isomorphic to the underlying field, after position `i`,
 which can be specified as an `Int` or as `Val(i)` for improved type stability.
@@ -164,7 +168,7 @@ function insertrightunit(
 end
 
 """
-    removeunit(tsrc::AbstractTensorMap, i; copy=false) -> tdst
+    removeunit(tsrc::AbstractTensorMap, i; copy = false) -> tdst
 
 This removes a trivial tensor product factor at position `1 ≤ i ≤ N`, where `i`
 can be specified as an `Int` or as `Val(i)` for improved type stability.
@@ -302,8 +306,10 @@ See also [`braid`](@ref) for creating a new tensor.
 end
 
 """
-    braid(tsrc, (p₁, p₂)::Index2Tuple, levels::IndexTuple; copy=false,
-          backend=DefaultBackend(), allocator=DefaultAllocator()) -> tdst::TensorMap
+    braid(
+            tsrc, (p₁, p₂)::Index2Tuple, levels::IndexTuple; copy = false,
+            backend = DefaultBackend(), allocator = DefaultAllocator()
+        ) -> tdst::TensorMap
 
 Return tensor `tdst` obtained by braiding the indices of `tsrc`.
 The codomain and domain of `tdst` correspond to the indices in `p₁` and `p₂` of `tsrc` respectively.
@@ -369,8 +375,10 @@ end
 end
 
 """
-    transpose(tsrc, (p₁, p₂)::Index2Tuple; copy=false,
-              backend=DefaultBackend(), allocator=DefaultAllocator()) -> tdst::TensorMap
+    transpose(
+            tsrc, (p₁, p₂)::Index2Tuple; copy = false,
+            backend = DefaultBackend(), allocator = DefaultAllocator()
+        ) -> tdst::TensorMap
 
 Return tensor `tdst` obtained by transposing the indices of `tsrc`.
 The codomain and domain of `tdst` correspond to the indices in `p₁` and `p₂` of `tsrc` respectively.
@@ -432,8 +440,10 @@ See also [`repartition`](@ref) for creating a new tensor.
 end
 
 """
-    repartition(tsrc, N₁::Int, N₂::Int=numind(tsrc)-N₁; copy=false,
-                backend=DefaultBackend(), allocator=DefaultAllocator()) -> tdst
+    repartition(
+            tsrc, N₁::Int, N₂::Int = numind(tsrc) - N₁; copy = false,
+            backend = DefaultBackend(), allocator = DefaultAllocator()
+        ) -> tdst
 
 Return tensor `tdst` obtained by repartitioning the indices of `tsrc`.
 The codomain and domain of `tdst` correspond to the first `N₁` and last `N₂` spaces of `tsrc`,
