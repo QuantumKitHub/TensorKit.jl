@@ -9,7 +9,8 @@ using LinearAlgebra
 using Zygote
 using MatrixAlgebraKit
 using MatrixAlgebraKit: diagview
-
+using MatrixAlgebraKit: remove_qr_gauge_dependence!, remove_lq_gauge_dependence!,
+    remove_eigh_gauge_dependence!, remove_eig_gauge_dependence!, remove_svd_gauge_dependence!
 
 # Tests
 # -----
@@ -52,7 +53,7 @@ for V in spacelist
                     @test_logs (:warn, r"^`qr") match_mode = :any full_pb((ΔQ, ΔR))
                 end
 
-                remove_qrgauge_dependence!(ΔQ, t, Q)
+                remove_qr_gauge_dependence!(ΔQ, ΔR, t, Q, R)
 
                 test_ad_rrule(qr_full, t; fkwargs, atol, rtol, output_tangent = (ΔQ, ΔR))
                 test_ad_rrule(
@@ -90,7 +91,7 @@ for V in spacelist
                     # @test_logs (:warn, r"^`lq") match_mode = :any full_pb((ΔL, ΔQ))
                 end
 
-                remove_lqgauge_dependence!(ΔQ, t, Q)
+                remove_lq_gauge_dependence!(ΔL, ΔQ, t, L, Q)
 
                 test_ad_rrule(lq_full, t; fkwargs, atol, rtol, output_tangent = (ΔL, ΔQ))
                 test_ad_rrule(
@@ -114,7 +115,7 @@ for V in spacelist
                 Δv = rand_tangent(v)
                 Δd = rand_tangent(d)
                 Δd2 = randn!(similar(d, space(d)))
-                remove_eiggauge_dependence!(Δv, d, v)
+                remove_eig_gauge_dependence!(Δv, d, v)
 
                 test_ad_rrule(eig_full, t; output_tangent = (Δd, Δv), atol, rtol)
                 test_ad_rrule(first ∘ eig_full, t; output_tangent = Δd, atol, rtol)
@@ -126,7 +127,7 @@ for V in spacelist
                 Δv = rand_tangent(v)
                 Δd = rand_tangent(d)
                 Δd2 = randn!(similar(d, space(d)))
-                remove_eighgauge_dependence!(Δv, d, v)
+                remove_eigh_gauge_dependence!(Δv, d, v)
 
                 # necessary for FiniteDifferences to not complain
                 eigh_full′ = eigh_full ∘ project_hermitian
@@ -155,7 +156,7 @@ for V in spacelist
                 USVᴴ = svd_compact(t)
                 ΔU, ΔS, ΔVᴴ = rand_tangent.(USVᴴ)
                 ΔS2 = randn!(similar(ΔS, space(ΔS)))
-                ΔU, ΔVᴴ = remove_svdgauge_dependence!(ΔU, ΔVᴴ, USVᴴ...; degeneracy_atol)
+                ΔU, ΔVᴴ = remove_svd_gauge_dependence!(ΔU, ΔVᴴ, USVᴴ...; degeneracy_atol)
 
                 # test_ad_rrule(svd_full, t; output_tangent = (ΔU, ΔS, ΔVᴴ), atol, rtol)
                 # test_ad_rrule(svd_full, t; output_tangent = (ΔU, ΔS2, ΔVᴴ), atol, rtol)
@@ -170,7 +171,7 @@ for V in spacelist
                 trunc = truncspace(V_trunc)
                 USVᴴ_trunc = svd_trunc(t; trunc)
                 ΔUSVᴴ_trunc = (rand_tangent.(Base.front(USVᴴ_trunc))..., zero(last(USVᴴ_trunc)))
-                remove_svdgauge_dependence!(
+                remove_svd_gauge_dependence!(
                     ΔUSVᴴ_trunc[1], ΔUSVᴴ_trunc[3], Base.front(USVᴴ_trunc)...; degeneracy_atol
                 )
                 test_ad_rrule(
