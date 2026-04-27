@@ -367,7 +367,7 @@ for V in spacelist
                 @test t ≈ flip(flip(t, i; inv = true), i)
             end
         end
-        symmetricbraiding && "Index flipping: test via explicit flip" begin
+        symmetricbraiding && @timedtestset "Index flipping: test via explicit flip" begin
             t = cuRAND.rand(ComplexF64, V1 ⊗ V1' ← V1' ⊗ V1)
             F1 = adapt(CuArray{ComplexF64}, unitary(flip(V1), V1))
 
