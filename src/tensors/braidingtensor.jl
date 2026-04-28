@@ -229,76 +229,59 @@ end
 
 function planarcontract!(
         C::AbstractTensorMap,
-        A::BraidingTensor,
-        (oindA, cindA)::Index2Tuple,
-        B::AbstractTensorMap,
-        (cindB, oindB)::Index2Tuple,
-        (p1, p2)::Index2Tuple,
+        A::BraidingTensor, pA::Index2Tuple,
+        B::AbstractTensorMap, pB::Index2Tuple,
+        pAB::Index2Tuple,
         α::Number, β::Number,
         backend, allocator
     )
     # special case only defined for contracting 2 indices
     length(oindA) == length(cindA) == 2 ||
-        return planarcontract!(
-        C, TensorMap(A), (oindA, cindA), B, (cindB, oindB), (p1, p2),
-        α, β, backend, allocator
-    )
+        return planarcontract!(C, TensorMap(A), pA, B, pB, pAB, α, β, backend, allocator)
+
+    spacecheck_contract(C, A, pA, false, B, pB, false, pAB)
 
     codA, domA = codomainind(A), domainind(A)
     codB, domB = codomainind(B), domainind(B)
     oindA, cindA, oindB, cindB = reorder_indices(
-        codA, domA, codB, domB, oindA, cindA, oindB, cindB, p1, p2
+        codA, domA, codB, domB, pA..., reverse(pB)..., pAB...
     )
 
-    if space(B, cindB[1]) != space(A, cindA[1])' ||
-            space(B, cindB[2]) != space(A, cindA[2])'
-        throw(SpaceMismatch("$(space(C)) ≠ permute($(space(A))[$oindA, $cindA] * $(space(B))[$cindB, $oindB], ($p1, $p2)"))
-    end
-
     τ_levels = A.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
-    p = (reverse(cindB), oindB)
-    nB = numind(B)
-    levels = ntuple(i -> i + 2, nB)
-    levels = TupleTools.setindex(levels, τ_levels[cindA[1]], cindB[1])
-    levels = TupleTools.setindex(levels, τ_levels[cindA[2]], cindB[2])
-    return add_braid!(C, B, p, levels, α, β, backend)
+    τ_level_1 = τ_levels[cindA[1]]
+    τ_level_2 = τ_levels[cindA[2]]
+    levels_B = ntuple(i -> i == cindB[1] ? τ_level_1 : i == cindB[2] ? τ_level_2 : 3, numind(B))
+    add_braid!(C, B, (reverse(cindB)..., oindB), levels_B, α, β, backend)
+    return C
 end
 function planarcontract!(
         C::AbstractTensorMap,
-        A::AbstractTensorMap, (oindA, cindA)::Index2Tuple,
-        B::BraidingTensor, (cindB, oindB)::Index2Tuple,
-        (p1, p2)::Index2Tuple,
+        A::AbstractTensorMap, pA::Index2Tuple,
+        B::BraidingTensor, pB::Index2Tuple,
+        pAB::Index2Tuple,
         α::Number, β::Number,
         backend, allocator
     )
+    oindA, cindA = pA
+    cindB, oindB = pB
     # special case only defined for contracting 2 indices
     length(oindB) == length(cindB) == 2 ||
-        return planarcontract!(
-        C, A, (oindA, cindA), TensorMap(B), (cindB, oindB), (p1, p2),
-        α, β, backend, allocator
-    )
+        return planarcontract!(C, A, pA, TensorMap(B), pB, pAB, α, β, backend, allocator)
+
+    spacecheck_contract(C, A, pA, false, B, pB, false, pAB)
 
     codA, domA = codomainind(A), domainind(A)
     codB, domB = codomainind(B), domainind(B)
     oindA, cindA, oindB, cindB = reorder_indices(
-        codA, domA, codB, domB, oindA, cindA, oindB, cindB, p1, p2
+        codA, domA, codB, domB, pA..., reverse(pB)..., pAB...
     )
 
-    if space(B, cindB[1]) != space(A, cindA[1])' || space(B, cindB[2]) != space(A, cindA[2])'
-        throw(SpaceMismatch("$(space(C)) ≠ permute($(space(A))[$oindA, $cindA] * $(space(B))[$cindB, $oindB], ($p1, $p2)"))
-    end
-
-    if BraidingStyle(sectortype(A)) isa Bosonic
-        return add_permute!(C, A, (oindA, reverse(cindA)), α, β, backend)
-    end
-
     τ_levels = B.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
-    p = (oindA, reverse(cindA))
-    nA = numind(A)
-    levels = ntuple(i -> i + 2, nA)
-    levels = TupleTools.setindex(levels, τ_levels[cindB[1]], cindA[1])
-    levels = TupleTools.setindex(levels, τ_levels[cindB[2]], cindA[2])
-    return add_braid!(C, A, p, levels, α, β, backend)
+    τ_level_1 = τ_levels[cindB[1]]
+    τ_level_2 = τ_levels[cindB[2]]
+    levels_A = ntuple(i -> i == cindA[1] ? τ_level_1 : i == cindA[2] ? τ_level_2 : 3, numind(A))
+    add_braid!(C, A, (oindA, reverse(cindA)), levels_A, α, β, backend)
+    return C
 end
 
 # ambiguity fix:
@@ -310,7 +293,7 @@ function planarcontract!(
         α::Number, β::Number, backend, allocator
     )
     return planarcontract!(
-        C, TensorMap(A), pA, TensorMap(B), pB, pAB, α, β, backend, allocator
+        C, A, pA, TensorMap(B), pB, pAB, α, β, backend, allocator
     )
 end
 
