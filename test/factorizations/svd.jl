@@ -21,9 +21,9 @@ for V in spacelist
         @testset "Condition number and rank" begin
             for T in eltypes,
                     t in (
-                        rand(T, W, W), rand(T, W, W)',
-                        rand(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)'), rand(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5))',
-                        rand(T, (V1 ⊗ V2), (V3 ⊗ V4 ⊗ V5)'), rand(T, (V1 ⊗ V2 ⊗ V3)', (V4 ⊗ V5))',
+                        randn(T, W, W), randn(T, W, W)',
+                        randn(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)'), randn(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5))',
+                        randn(T, (V1 ⊗ V2), (V3 ⊗ V4 ⊗ V5)'), randn(T, (V1 ⊗ V2 ⊗ V3)', (V4 ⊗ V5))',
                         DiagonalTensorMap(rand(T, reduceddim(Vd)), Vd),
                     )
 
@@ -47,7 +47,7 @@ for V in spacelist
                 @test rank(t2) == 0
                 @test cond(t2) == 0.0
             end
-            for T in eltypes, t in (rand(T, W, W), rand(T, W, W)')
+            for T in eltypes, t in (randn(T, W, W), randn(T, W, W)')
                 project_hermitian!(t)
                 vals = @constinferred LinearAlgebra.eigvals(t)
                 λmax = maximum(s -> maximum(abs, s), values(vals))
