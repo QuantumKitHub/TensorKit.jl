@@ -1,7 +1,7 @@
 using Test, TestExtras
 using TensorKit
 using LinearAlgebra: LinearAlgebra
-using MatrixAlgebraKit: defaulttol, diagview
+using MatrixAlgebraKit: DefaultAlgorithm, defaulttol, diagview
 
 spacelist = factorization_spacelist(fast_tests)
 
@@ -71,6 +71,10 @@ for V in spacelist
                 @test isisometric(w)
                 @test isposdef(p)
 
+                w′, p′ = @constinferred left_polar(t, DefaultAlgorithm())
+                @test w ≈ w′
+                @test p ≈ p′
+
                 w, p = @constinferred left_orth(t; alg = :polar)
                 @test w * p ≈ t
                 @test isisometric(w)
@@ -89,6 +93,10 @@ for V in spacelist
                 @test p * wᴴ ≈ t
                 @test isisometric(wᴴ; side = :right)
                 @test isposdef(p)
+
+                p′, wᴴ′ = @constinferred right_polar(t, DefaultAlgorithm())
+                @test p′ ≈ p
+                @test wᴴ′ ≈ wᴴ
 
                 p, wᴴ = @constinferred right_orth(t; alg = :polar)
                 @test p * wᴴ ≈ t
@@ -110,13 +118,27 @@ for V in spacelist
                 @test isunitary(u)
                 @test isunitary(vᴴ)
 
+                u′, s′, vᴴ′ = @constinferred svd_full(t, DefaultAlgorithm())
+                @test u ≈ u′
+                @test s ≈ s′
+                @test vᴴ ≈ vᴴ′
+
                 u, s, vᴴ = @constinferred svd_compact(t)
                 @test u * s * vᴴ ≈ t
                 @test isisometric(u)
                 @test isposdef(s)
                 @test isisometric(vᴴ; side = :right)
 
+                u′, s′, vᴴ′ = @constinferred svd_compact(t, DefaultAlgorithm())
+                @test u ≈ u′
+                @test s ≈ s′
+                @test vᴴ ≈ vᴴ′
+
                 s′ = @constinferred svd_vals(t)
+                @test s′ ≈ diagview(s)
+                @test s′ isa TensorKit.SectorVector
+
+                s′ = @constinferred svd_vals(t, DefaultAlgorithm())
                 @test s′ ≈ diagview(s)
                 @test s′ isa TensorKit.SectorVector
 
@@ -157,7 +179,16 @@ for V in spacelist
                 @test isunitary(U)
                 @test isunitary(Vᴴ)
 
+                U, S, Vᴴ = @constinferred svd_full(t, DefaultAlgorithm())
+                @test U * S * Vᴴ ≈ t
+                @test isunitary(U)
+                @test isunitary(Vᴴ)
+
                 U, S, Vᴴ = @constinferred svd_compact(t)
+                @test U * S * Vᴴ ≈ t
+                @test dim(U) == dim(S) == dim(Vᴴ) == dim(t) == 0
+
+                U, S, Vᴴ = @constinferred svd_compact(t, DefaultAlgorithm())
                 @test U * S * Vᴴ ≈ t
                 @test dim(U) == dim(S) == dim(Vᴴ) == dim(t) == 0
             end
@@ -180,9 +211,21 @@ for V in spacelist
                 @test isisometric(U)
                 @test isisometric(Vᴴ; side = :right)
 
+                U, S, Vᴴ, ϵ = @constinferred svd_trunc(t, DefaultAlgorithm(; trunc = notrunc()))
+                @test U * S * Vᴴ ≈ t
+                @test ϵ ≈ 0
+                @test isisometric(U)
+                @test isisometric(Vᴴ; side = :right)
+
                 # when rank of t is already smaller than truncrank
                 t_rank = ceil(Int, min(dim(codomain(t)), dim(domain(t))))
                 U, S, Vᴴ, ϵ = @constinferred svd_trunc(t; trunc = truncrank(t_rank + 1))
+                @test U * S * Vᴴ ≈ t
+                @test ϵ ≈ 0
+                @test isisometric(U)
+                @test isisometric(Vᴴ; side = :right)
+
+                U, S, Vᴴ, ϵ = @constinferred svd_trunc(t, DefaultAlgorithm(; trunc = truncrank(t_rank + 1)))
                 @test U * S * Vᴴ ≈ t
                 @test ϵ ≈ 0
                 @test isisometric(U)

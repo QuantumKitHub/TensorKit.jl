@@ -2,7 +2,7 @@ using Adapt, CUDA, CUDA.cuRAND, cuTENSOR
 using Test, TestExtras
 using TensorKit
 using LinearAlgebra: LinearAlgebra
-using MatrixAlgebraKit: diagview
+using MatrixAlgebraKit: DefaultAlgorithm, diagview
 const CUDAExt = Base.get_extension(TensorKit, :TensorKitCUDAExt)
 @assert !isnothing(CUDAExt) "Failed to load TensorKit - CUDA extension"
 const CuTensorMap = getglobal(CUDAExt, :CuTensorMap)
@@ -35,7 +35,15 @@ for V in spacelist
                 @test Q * R ≈ t
                 @test isunitary(Q)
 
+                Q, R = @constinferred qr_full(t, DefaultAlgorithm())
+                @test Q * R ≈ t
+                @test isunitary(Q)
+
                 Q, R = @constinferred qr_compact(t)
+                @test Q * R ≈ t
+                @test isisometric(Q)
+
+                Q, R = @constinferred qr_compact(t, DefaultAlgorithm())
                 @test Q * R ≈ t
                 @test isisometric(Q)
 
@@ -43,11 +51,23 @@ for V in spacelist
                 @test Q * R ≈ t
                 @test isisometric(Q)
 
+                Q, R = @constinferred left_orth(t, DefaultAlgorithm())
+                @test Q * R ≈ t
+                @test isisometric(Q)
+
                 N = @constinferred qr_null(t)
                 @test isisometric(N)
                 @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
 
+                N = @constinferred qr_null(t, DefaultAlgorithm())
+                @test isisometric(N)
+                @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
+
                 N = @constinferred left_null(t)
+                @test isisometric(N)
+                @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
+
+                N = @constinferred left_null(t, DefaultAlgorithm())
                 @test isisometric(N)
                 @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
             end
@@ -61,7 +81,17 @@ for V in spacelist
                 @test isunitary(Q)
                 @test dim(R) == dim(t) == 0
 
+                Q, R = @constinferred qr_full(t, DefaultAlgorithm())
+                @test Q * R ≈ t
+                @test isunitary(Q)
+                @test dim(R) == dim(t) == 0
+
                 Q, R = @constinferred qr_compact(t)
+                @test Q * R ≈ t
+                @test isisometric(Q)
+                @test dim(Q) == dim(R) == dim(t)
+
+                Q, R = @constinferred qr_compact(t, DefaultAlgorithm())
                 @test Q * R ≈ t
                 @test isisometric(Q)
                 @test dim(Q) == dim(R) == dim(t)
@@ -71,7 +101,16 @@ for V in spacelist
                 @test isisometric(Q)
                 @test dim(Q) == dim(R) == dim(t)
 
+                Q, R = @constinferred left_orth(t, DefaultAlgorithm())
+                @test Q * R ≈ t
+                @test isisometric(Q)
+                @test dim(Q) == dim(R) == dim(t)
+
                 N = @constinferred qr_null(t)
+                @test isunitary(N)
+                @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
+
+                N = @constinferred qr_null(t, DefaultAlgorithm())
                 @test isunitary(N)
                 @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
             end
@@ -90,7 +129,15 @@ for V in spacelist
                 @test L * Q ≈ t
                 @test isunitary(Q)
 
+                L, Q = @constinferred lq_full(t, DefaultAlgorithm())
+                @test L * Q ≈ t
+                @test isunitary(Q)
+
                 L, Q = @constinferred lq_compact(t)
+                @test L * Q ≈ t
+                @test isisometric(Q; side = :right)
+
+                L, Q = @constinferred lq_compact(t, DefaultAlgorithm())
                 @test L * Q ≈ t
                 @test isisometric(Q; side = :right)
 
@@ -98,7 +145,15 @@ for V in spacelist
                 @test L * Q ≈ t
                 @test isisometric(Q; side = :right)
 
+                L, Q = @constinferred right_orth(t, DefaultAlgorithm())
+                @test L * Q ≈ t
+                @test isisometric(Q; side = :right)
+
                 Nᴴ = @constinferred lq_null(t)
+                @test isisometric(Nᴴ; side = :right)
+                @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
+
+                Nᴴ = @constinferred lq_null(t, DefaultAlgorithm())
                 @test isisometric(Nᴴ; side = :right)
                 @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
             end
@@ -112,7 +167,17 @@ for V in spacelist
                 @test isunitary(Q)
                 @test dim(L) == dim(t) == 0
 
+                L, Q = @constinferred lq_full(t, DefaultAlgorithm())
+                @test L * Q ≈ t
+                @test isunitary(Q)
+                @test dim(L) == dim(t) == 0
+
                 L, Q = @constinferred lq_compact(t)
+                @test L * Q ≈ t
+                @test isisometric(Q; side = :right)
+                @test dim(Q) == dim(L) == dim(t)
+
+                L, Q = @constinferred lq_compact(t, DefaultAlgorithm())
                 @test L * Q ≈ t
                 @test isisometric(Q; side = :right)
                 @test dim(Q) == dim(L) == dim(t)
@@ -122,7 +187,16 @@ for V in spacelist
                 @test isisometric(Q; side = :right)
                 @test dim(Q) == dim(L) == dim(t)
 
+                L, Q = @constinferred right_orth(t, DefaultAlgorithm())
+                @test L * Q ≈ t
+                @test isisometric(Q; side = :right)
+                @test dim(Q) == dim(L) == dim(t)
+
                 Nᴴ = @constinferred lq_null(t)
+                @test isunitary(Nᴴ)
+                @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
+
+                Nᴴ = @constinferred lq_null(t, DefaultAlgorithm())
                 @test isunitary(Nᴴ)
                 @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
             end
@@ -143,6 +217,11 @@ for V in spacelist
                 @test isisometric(w)
                 @test isposdef(p)
 
+                w, p = @constinferred left_polar(t, DefaultAlgorithm())
+                @test w * p ≈ t
+                @test isisometric(w)
+                @test isposdef(p)
+
                 w, p = @constinferred left_orth(t; alg = :polar)
                 @test w * p ≈ t
                 @test isisometric(w)
@@ -158,6 +237,11 @@ for V in spacelist
 
                 @assert codomain(t) ≾ domain(t)
                 p, wᴴ = @constinferred right_polar(t)
+                @test p * wᴴ ≈ t
+                @test isisometric(wᴴ; side = :right)
+                @test isposdef(p)
+
+                p, wᴴ = @constinferred right_polar(t, DefaultAlgorithm())
                 @test p * wᴴ ≈ t
                 @test isisometric(wᴴ; side = :right)
                 @test isposdef(p)
@@ -182,13 +266,28 @@ for V in spacelist
                 @test isunitary(u)
                 @test isunitary(vᴴ)
 
+                u, s, vᴴ = @constinferred svd_full(t, DefaultAlgorithm())
+                @test u * s * vᴴ ≈ t
+                @test isunitary(u)
+                @test isunitary(vᴴ)
+
                 u, s, vᴴ = @constinferred svd_compact(t)
                 @test u * s * vᴴ ≈ t
                 @test isisometric(u)
                 @test isposdef(s)
                 @test isisometric(vᴴ; side = :right)
 
+                u, s, vᴴ = @constinferred svd_compact(t, DefaultAlgorithm())
+                @test u * s * vᴴ ≈ t
+                @test isisometric(u)
+                @test isposdef(s)
+                @test isisometric(vᴴ; side = :right)
+
                 s′ = @constinferred svd_vals(t)
+                @test parent(s′) ≈ parent(diagview(s))
+                @test s′ isa TensorKit.SectorVector
+
+                s′ = @constinferred svd_vals(t, DefaultAlgorithm())
                 @test parent(s′) ≈ parent(diagview(s))
                 @test s′ isa TensorKit.SectorVector
 
@@ -230,7 +329,16 @@ for V in spacelist
                 @test isunitary(U)
                 @test isunitary(Vᴴ)
 
+                U, S, Vᴴ = @constinferred svd_full(t, DefaultAlgorithm())
+                @test U * S * Vᴴ ≈ t
+                @test isunitary(U)
+                @test isunitary(Vᴴ)
+
                 U, S, Vᴴ = @constinferred svd_compact(t)
+                @test U * S * Vᴴ ≈ t
+                @test dim(U) == dim(S) == dim(Vᴴ) == dim(t) == 0
+
+                U, S, Vᴴ = @constinferred svd_compact(t, DefaultAlgorithm())
                 @test U * S * Vᴴ ≈ t
                 @test dim(U) == dim(S) == dim(Vᴴ) == dim(t) == 0
             end
@@ -248,6 +356,12 @@ for V in spacelist
                 @constinferred normalize!(t)
 
                 U, S, Vᴴ, ϵ = @constinferred svd_trunc(t; trunc = notrunc())
+                @test U * S * Vᴴ ≈ t
+                @test ϵ ≈ 0
+                @test isisometric(U)
+                @test isisometric(Vᴴ; side = :right)
+
+                U, S, Vᴴ, ϵ = @constinferred svd_trunc(t, DefaultAlgorithm(; trunc = notrunc()))
                 @test U * S * Vᴴ ≈ t
                 @test ϵ ≈ 0
                 @test isisometric(U)
@@ -316,7 +430,14 @@ for V in spacelist
                 d, v = @constinferred eig_full(t)
                 @test t * v ≈ v * d
 
+                d, v = @constinferred eig_full(t, DefaultAlgorithm())
+                @test t * v ≈ v * d
+
                 d′ = @constinferred eig_vals(t)
+                @test parent(d′) ≈ parent(diagview(d))
+                @test d′ isa TensorKit.SectorVector
+
+                d′ = @constinferred eig_vals(t, DefaultAlgorithm())
                 @test parent(d′) ≈ parent(diagview(d))
                 @test d′ isa TensorKit.SectorVector
 
@@ -332,12 +453,21 @@ for V in spacelist
                 @test t * v ≈ v * d
                 #test_dim_isapprox(domain(d), nvals)
 
+                d, v = @constinferred eig_trunc(t, DefaultAlgorithm(; trunc = truncrank(nvals)))
+                @test t * v ≈ v * d
+                #test_dim_isapprox(domain(d), nvals)
+
                 t2 = @constinferred project_hermitian(t)
                 D, V = eigen(t2)
                 @test isisometric(V)
                 D̃, Ṽ = @constinferred eigh_full(t2)
                 @test D ≈ D̃
                 @test V ≈ Ṽ
+
+                D̃, Ṽ = @constinferred eigh_full(t2, DefaultAlgorithm())
+                @test D ≈ D̃
+                @test V ≈ Ṽ
+
                 λ = minimum(real, parent(diagview(D)))
                 @test cond(Ṽ) ≈ one(real(T))
                 @test isposdef(t2) == isposdef(λ)
@@ -352,6 +482,10 @@ for V in spacelist
                 @test parent(d′) ≈ parent(diagview(d))
                 @test d′ isa TensorKit.SectorVector
 
+                d′ = @constinferred eigh_vals(t2, DefaultAlgorithm())
+                @test parent(d′) ≈ parent(diagview(d))
+                @test d′ isa TensorKit.SectorVector
+
                 λ = minimum(real, parent(diagview(d)))
                 @test cond(v) ≈ one(real(T))
                 @test isposdef(t2) == isposdef(λ)
@@ -359,6 +493,10 @@ for V in spacelist
                 @test !isposdef(t2 - λ * one(t) - 0.1 * one(t2))
 
                 d, v = @constinferred eigh_trunc(t2; trunc = truncrank(nvals))
+                @test t2 * v ≈ v * d
+                #test_dim_isapprox(domain(d), nvals)
+
+                d, v = @constinferred eigh_trunc(t2, DefaultAlgorithm(; trunc = truncrank(nvals)))
                 @test t2 * v ≈ v * d
                 #test_dim_isapprox(domain(d), nvals)
             end
@@ -423,6 +561,11 @@ for V in spacelist
                 th′ = @constinferred project_hermitian(t)
                 @test ishermitian(th′)
                 @test th′ ≈ th
+
+                th′ = @constinferred project_hermitian(t, DefaultAlgorithm())
+                @test ishermitian(th′)
+                @test th′ ≈ th
+
                 @test t == tc
                 th_approx = th + noisefactor * ta
                 @test !ishermitian(th_approx) || (T <: Real && t isa DiagonalTensorMap)
@@ -431,6 +574,11 @@ for V in spacelist
                 ta′ = project_antihermitian(t)
                 @test isantihermitian(ta′)
                 @test ta′ ≈ ta
+
+                ta′ = @constinferred project_antihermitian(t, DefaultAlgorithm())
+                @test isantihermitian(ta′)
+                @test ta′ ≈ ta
+
                 @test t == tc
                 ta_approx = ta + noisefactor * th
                 @test !isantihermitian(ta_approx)
@@ -448,6 +596,10 @@ for V in spacelist
                     )
                 t2 = project_isometric(t)
                 @test isisometric(t2)
+                t2′ = @constinferred project_isometric(t, DefaultAlgorithm())
+                @test isisometric(t2′)
+                @test t2′ * ((t2′)' * t) ≈ t
+
                 t3 = project_isometric(t2)
                 @test t3 ≈ t2 # stability of the projection
                 @test t2 * (t2' * t) ≈ t
