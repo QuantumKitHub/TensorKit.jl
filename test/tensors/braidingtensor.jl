@@ -15,6 +15,29 @@ for V_tuple in spacelist
     println("BraidingTensor planar contractions with symmetry: $Istr")
     println("---------------------------------------")
     @timedtestset "BraidingTensor planar contractions with symmetry: $Istr" verbose = true begin
+        @timedtestset "planaradd! with BraidingTensor" begin
+            b = BraidingTensor(V, V')
+            bb = TensorMap(b)
+            # Cyclic rotations of the planar leg cycle (cod1, cod2, dom2, dom1).
+            # Use transpose (F-symbols only) as reference, since permute requires SymmetricBraiding.
+            # rotation 0 (identity)
+            @planar t1[-1 -2; -3 -4] := b[-1 -2; -3 -4]
+            @test t1 ≈ bb
+            # rotation 1: single-tree cycle (4,1,2,3) → (p1=(2,4), p2=(1,3))
+            @planar t2[-1 -2; -3 -4] := b[-3 -1; -4 -2]
+            @test t2 ≈ transpose(bb, ((2, 4), (1, 3)))
+            # rotation 2: single-tree cycle (3,4,1,2) → (p1=(4,3), p2=(2,1))
+            @planar t3[-1 -2; -3 -4] := b[-4 -3; -2 -1]
+            @test t3 ≈ transpose(bb, ((4, 3), (2, 1)))
+            # rotation 3: single-tree cycle (2,3,4,1) → (p1=(3,1), p2=(4,2))
+            @planar t4[-1 -2; -3 -4] := b[-2 -4; -1 -3]
+            @test t4 ≈ transpose(bb, ((3, 1), (4, 2)))
+            # adjoint BraidingTensor (rotation 0)
+            ba = b'
+            @planar t5[-1 -2; -3 -4] := ba[-1 -2; -3 -4]
+            @test t5 ≈ TensorMap(ba)
+        end
+
         @timedtestset "τ as left factor, all legs contracted" begin
             # BraidingTensor(V, V') on leading codomain indices
             ττ = TensorMap(BraidingTensor(V, V'))
@@ -195,6 +218,17 @@ for V_tuple in spacelist
             @test t1 ≈ t2
             @test t1 ≈ t3
             @test t1 ≈ t4
+        end
+
+        @timedtestset "BraidingTensor × BraidingTensor" begin
+            # b1 domain == b2 codomain == V⊗V', straight-through (planar) contraction
+            b1 = BraidingTensor(V, V')   # space: V'⊗V ← V⊗V'
+            b2 = BraidingTensor(V', V)   # space: V⊗V' ← V'⊗V
+            bb1 = TensorMap(b1)
+            bb2 = TensorMap(b2)
+            @planar t1[-1 -2; -3 -4] := b1[-1 -2; 1 2] * b2[1 2; -3 -4]
+            @planar t2[-1 -2; -3 -4] := bb1[-1 -2; 1 2] * bb2[1 2; -3 -4]
+            @test t1 ≈ t2
         end
     end
     TensorKit.empty_globalcaches!()
