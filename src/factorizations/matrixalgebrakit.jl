@@ -82,6 +82,17 @@ for f in [
         MAK.$f!(t, MAK.select_algorithm(MAK.$f!, t, nothing; alg.kwargs...))
     @eval MAK.$f!(t::AbstractTensorMap, out, alg::DefaultAlgorithm) =
         MAK.$f!(t, out, MAK.select_algorithm(MAK.$f!, t, nothing; alg.kwargs...))
+
+    # disambiguate
+    @eval MAK.$f!(t::AdjointTensorMap, alg::DefaultAlgorithm) =
+        MAK.$f!(t, MAK.select_algorithm(MAK.$f!, t, nothing; alg.kwargs...))
+    @eval MAK.$f!(t::AdjointTensorMap, out, alg::DefaultAlgorithm) =
+        MAK.$f!(t, out, MAK.select_algorithm(MAK.$f!, t, nothing; alg.kwargs...))
+
+    @eval MAK.$f!(t::DiagonalTensorMap, alg::DefaultAlgorithm) =
+        MAK.$f!(t, MAK.select_algorithm(MAK.$f!, t, nothing; alg.kwargs...))
+    @eval MAK.$f!(t::DiagonalTensorMap, out, alg::DefaultAlgorithm) =
+        MAK.$f!(t, out, MAK.select_algorithm(MAK.$f!, t, nothing; alg.kwargs...))
 end
 
 
