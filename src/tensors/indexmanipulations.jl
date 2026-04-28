@@ -584,59 +584,68 @@ function add_transform_kernel!(
         tforeach(fusiontrees(tsrc); scheduler) do (f₁, f₂)
             (f₁′, f₂′), coeff = transformer((f₁, f₂))
             @inbounds TO.tensoradd!(
-                tdst[f₁′, f₂′], tsrc[f₁, f₂],
-                p, false, α * coeff, β, backend, allocator
+                tdst[f₁′, f₂′], tsrc[f₁, f₂], p, false, α * coeff, β, backend, allocator
             )
         end
-    else
-        cp = TO.allocator_checkpoint!(allocator)
-        # Non-Abelian fusion: trees sharing the same set of uncoupled (external) sectors
-        # form a *fusion block* and mix under the transformation via a recoupling matrix U
-        # (rows = destination trees, columns = source trees). We iterate over blocks.
-        tforeach(fusionblocks(tsrc); scheduler) do src
-            dst, U = transformer(src)
-            if length(src) == 1
-                # Degenerate block: single tree, U is a 1×1 scalar — skip the buffer + matmul.
-                (f₁, f₂) = only(fusiontrees(src))
-                (f₁′, f₂′) = only(fusiontrees(dst))
-                @inbounds TO.tensoradd!(
-                    tdst[f₁′, f₂′], tsrc[f₁, f₂],
-                    p, false, α * only(U), β, backend, allocator
-                )
-            else
-                # Multi-tree block: apply recoupling via a three-step pack → matmul → unpack.
-                #   1. Extract: flatten each source block into a column of buffer_src
-                #      (shape blocksize × cols), using a trivial permutation so that the
-                #      index layout is canonical before the matmul.
-                #   2. Recoupling: buffer_dst = buffer_src * U^T  (blocksize × rows)
-                #   3. Insert: scatter columns of buffer_dst to destination blocks,
-                #      applying the actual permutation p in the same step.
-                rows, cols = size(U)
-                sz_src = size(tsrc[first(fusiontrees(src))...])
-                blocksize = prod(sz_src)
-                ptriv = (ntuple(identity, length(sz_src)), ())
-                buffer = TO.tensoralloc(storagetype(tdst), blocksize * (rows + cols), Val(true), allocator)
-                buffer_dst = StridedView(buffer, (blocksize, rows), (1, blocksize), 0)
-                buffer_src = StridedView(buffer, (blocksize, cols), (1, blocksize), blocksize * rows)
-                @inbounds for (i, (f₁, f₂)) in enumerate(fusiontrees(src))
-                    TO.tensoradd!(
-                        sreshape(buffer_src[:, i], sz_src), tsrc[f₁, f₂],
-                        ptriv, false, One(), Zero(), backend, allocator
-                    )
-                end
-                U′ = adapt_transformer(U, storagetype(tdst))
-                mul!(buffer_dst, buffer_src, transpose(StridedView(U′)))
-                @inbounds for (i, (f₃, f₄)) in enumerate(fusiontrees(dst))
-                    TO.tensoradd!(
-                        tdst[f₃, f₄], sreshape(buffer_dst[:, i], sz_src),
-                        p, false, α, β, backend, allocator
-                    )
-                end
-                TO.tensorfree!(buffer, allocator)
-            end
-        end
-        TO.allocator_reset!(allocator, cp)
+        return nothing
     end
+    cp = TO.allocator_checkpoint!(allocator)
+    # Non-Abelian fusion: trees sharing the same set of uncoupled (external) sectors
+    # form a *fusion block* and mix under the transformation via a recoupling matrix U
+    # (rows = destination trees, columns = source trees). We iterate over blocks.
+
+    # buffers have to be created without race condition: err on the side of caution
+    buffersz = 2 * buffersize(transformer)
+    generate_buffer = let lock = Threads.ReentrantLock(), allocator = allocator
+        () -> @lock lock TO.tensoralloc(typeof(data_dst), buffersz, Val(true), allocator)
+    end
+
+    OhMyThreads.@tasks for src in fusionblocks(tsrc)
+        # setup
+        OhMyThreads.@set scheduler = scheduler
+        OhMyThreads.@local buffer = generate_buffer()
+
+        dst, U = transformer(src)
+
+        if length(src) == 1
+            # Degenerate block: single tree, U is a 1×1 scalar — skip the buffer + matmul.
+            (f₁, f₂) = only(fusiontrees(src))
+            (f₁′, f₂′) = only(fusiontrees(dst))
+            @inbounds TO.tensoradd!(
+                tdst[f₁′, f₂′], tsrc[f₁, f₂], p, false, α * only(U), β, backend, allocator
+            )
+        else
+            # Multi-tree block: apply recoupling via a three-step pack → matmul → unpack.
+            #   1. Extract: flatten each source block into a column of buffer_src
+            #      (shape blocksize × cols), using a trivial permutation so that the
+            #      index layout is canonical before the matmul.
+            #   2. Recoupling: buffer_dst = buffer_src * U^T  (blocksize × rows)
+            #   3. Insert: scatter columns of buffer_dst to destination blocks,
+            #      applying the actual permutation p in the same step.
+            rows, cols = size(U)
+            sz_src = size(tsrc[first(fusiontrees(src))...])
+            blocksize = prod(sz_src)
+            ptriv = (ntuple(identity, length(sz_src)), ())
+            buffer_dst = StridedView(buffer, (blocksize, rows), (1, blocksize), 0)
+            buffer_src = StridedView(buffer, (blocksize, cols), (1, blocksize), blocksize * rows)
+            @inbounds for (i, (f₁, f₂)) in enumerate(fusiontrees(src))
+                TO.tensoradd!(
+                    sreshape(buffer_src[:, i], sz_src), tsrc[f₁, f₂],
+                    ptriv, false, One(), Zero(), backend, allocator
+                )
+            end
+            U′ = adapt_transformer(U, storagetype(tdst))
+            mul!(buffer_dst, buffer_src, transpose(StridedView(U′)))
+            @inbounds for (i, (f₃, f₄)) in enumerate(fusiontrees(dst))
+                TO.tensoradd!(
+                    tdst[f₃, f₄], sreshape(buffer_dst[:, i], sz_src),
+                    p, false, α, β, backend, allocator
+                )
+            end
+            TO.tensorfree!(buffer, allocator)
+        end
+    end
+    TO.allocator_reset!(allocator, cp)
     return nothing
 end
 
@@ -667,7 +676,19 @@ function add_transform_kernel!(
     #   sz_{dst,src} — array shape of each block (same for all trees in the block)
     #   structs_{dst,src}[i] — (offset, strides) into the flat data vector for tree i
     cp = TO.allocator_checkpoint!(allocator)
-    tforeach(transformer.data; scheduler) do (U, (sz_dst, structs_dst), (sz_src, structs_src))
+
+    # buffers have to be created without race condition: err on the side of caution
+    buffersz = 2 * buffersize(transformer)
+    generate_buffer = let lock = Threads.ReentrantLock(), allocator = allocator
+        () -> @lock lock TO.tensoralloc(typeof(data_dst), buffersz, Val(true), allocator)
+    end
+
+    OhMyThreads.@tasks for subtransformer in transformer.data
+        # setup
+        OhMyThreads.@set scheduler = scheduler
+        OhMyThreads.@local buffer = generate_buffer()
+        U, (sz_dst, structs_dst), (sz_src, structs_src) = subtransformer
+
         if length(U) == 1
             # Degenerate block with a single tree: no matmul needed.
             coeff = only(U)
@@ -682,7 +703,6 @@ function add_transform_kernel!(
             rows, cols = size(U)
             blocksize = prod(sz_src)
             ptriv = (ntuple(identity, length(sz_src)), ())
-            buffer = TO.tensoralloc(typeof(data_dst), blocksize * (rows + cols), Val(true), allocator)
             buffer_dst = StridedView(buffer, (blocksize, rows), (1, blocksize), 0)
             buffer_src = StridedView(buffer, (blocksize, cols), (1, blocksize), blocksize * rows)
 
