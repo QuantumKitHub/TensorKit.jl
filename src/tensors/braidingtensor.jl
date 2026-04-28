@@ -217,8 +217,6 @@ end
 
 # Planar operations
 # -----------------
-# TODO: implement specialized methods
-
 function planaradd!(
         C::AbstractTensorMap,
         A::BraidingTensor, p::Index2Tuple,
@@ -236,7 +234,7 @@ function planarcontract!(
         backend, allocator
     )
     # special case only defined for contracting 2 indices
-    length(oindA) == length(cindA) == 2 ||
+    length.(pA) == (2, 2) ||
         return planarcontract!(C, TensorMap(A), pA, B, pB, pAB, α, β, backend, allocator)
 
     spacecheck_contract(C, A, pA, false, B, pB, false, pAB)
@@ -262,10 +260,8 @@ function planarcontract!(
         α::Number, β::Number,
         backend, allocator
     )
-    oindA, cindA = pA
-    cindB, oindB = pB
     # special case only defined for contracting 2 indices
-    length(oindB) == length(cindB) == 2 ||
+    length.(pB) == (2, 2) ||
         return planarcontract!(C, A, pA, TensorMap(B), pB, pAB, α, β, backend, allocator)
 
     spacecheck_contract(C, A, pA, false, B, pB, false, pAB)
