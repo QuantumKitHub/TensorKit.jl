@@ -26,18 +26,19 @@ if (Sys.isapple() && get(ENV, "CI", "false") == "true") || !isempty(VERSION.prer
     filter!(!startswith("mooncake") ∘ first, testsuite)
 end
 
+args = parse_args(ARGS; custom = ["fast"])
 # --fast: skip AD tests and inject fast_tests=true into each worker sandbox
-fast = "--fast" in ARGS
-filtered_args = filter(!=("--fast"), ARGS)
-# if fast
-#     filter!(!startswith("chainrules") ∘ first, testsuite)
-#     filter!(!startswith("mooncake") ∘ first, testsuite)
-# end
+fast = !isnothing(args.custom["fast"])
+
 setup_path = joinpath(@__DIR__, "setup.jl")
-init_code = quote
+const init_worker_code = quote
     const fast_tests = $fast
     include($setup_path)
     using .TestSetup
 end
+const init_code = quote
+    using ..TestSetup
+    const fast_tests = $fast
+end
 
-ParallelTestRunner.runtests(TensorKit, filtered_args; testsuite, init_code)
+ParallelTestRunner.runtests(TensorKit, args; init_worker_code, init_code)
