@@ -249,7 +249,7 @@ function planarcontract!(
     τ_level_1 = τ_levels[cindA[1]]
     τ_level_2 = τ_levels[cindA[2]]
     levels_B = ntuple(i -> i == cindB[1] ? τ_level_1 : i == cindB[2] ? τ_level_2 : 3, numind(B))
-    add_braid!(C, B, (reverse(cindB)..., oindB), levels_B, α, β, backend)
+    add_braid!(C, B, (reverse(cindB), oindB), levels_B, α, β, backend)
     return C
 end
 function planarcontract!(
