@@ -21,7 +21,6 @@ function EnzymeRules.augmented_primal(
     )
     cacheC = !isa(β, Const) && copy(C.val)
     cacheA = EnzymeRules.overwritten(config)[3] ? copy(A.val) : nothing
-
     TensorKit.planartrace!(C.val, A.val, p.val, q.val, α.val, β.val, backend.val, allocator.val)
     primal = EnzymeRules.needs_primal(config) ? C.val : nothing
     shadow = EnzymeRules.needs_shadow(config) ? C.dval : nothing
@@ -43,26 +42,18 @@ function EnzymeRules.reverse(
     cacheC, cacheA = cache
     Cval = something(cacheC, C.val)
     Aval = something(cacheA, A.val)
-
     if !isa(A, Const) && !isa(C, Const)
         planartrace_pullback_ΔA!(A.dval, C.dval, Aval, p.val, q.val, α.val, backend.val, allocator.val)
     end
     Δαr = if !isa(α, Const) && !isa(C, Const)
-        planartrace_pullback_Δα(C.dval, A.val, p.val, q.val, α.val, backend.val, allocator.val)
+        planartrace_pullback_Δα(C.dval, Aval, p.val, q.val, α.val, backend.val, allocator.val)
     elseif !isa(α, Const)
         zero(α.val)
     else
         nothing
     end
-    Δβr = if !isa(β, Const) && !isa(C, Const)
-        pullback_dβ(C.dval, C.val, β)
-    elseif !isa(β, Const)
-        zero(β.val)
-    else
-        nothing
-    end
+    Δβr = pullback_dΒ(β, C, Cval)
     !isa(C, Const) && pullback_dC!(C.dval, β.val)
-
     return nothing, nothing, nothing, nothing, Δαr, Δβr, nothing, nothing
 end
 

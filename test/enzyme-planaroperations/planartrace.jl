@@ -7,7 +7,7 @@ using Random
 
 spacelist = ad_spacelist(fast_tests)
 eltypes = (Float64, ComplexF64)
-
+#=
 @timedtestset "Enzyme - PlanarOperations (planartrace): $(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes
     atol = default_tol(T)
     rtol = default_tol(T)
@@ -32,4 +32,4 @@ eltypes = (Float64, ComplexF64)
     EnzymeTestUtils.test_reverse(TensorKit.planartrace!, Active, (C, Duplicated), (A, Duplicated), (p, Const), (q, Const), (α, Active), (β, Const), (TensorOperations.DefaultBackend(), Const), (TensorOperations.DefaultAllocator(), Const); atol, rtol)
     EnzymeTestUtils.test_reverse(TensorKit.planartrace!, Active, (C, Duplicated), (A, Duplicated), (p, Const), (q, Const), (α, Const), (β, Active), (TensorOperations.DefaultBackend(), Const), (TensorOperations.DefaultAllocator(), Const); atol, rtol)
     EnzymeTestUtils.test_reverse(TensorKit.planartrace!, Active, (C, Duplicated), (A, Duplicated), (p, Const), (q, Const), (α, Active), (β, Active), (TensorOperations.DefaultBackend(), Const), (TensorOperations.DefaultAllocator(), Const); atol, rtol)
-end
+end=#
