@@ -5,7 +5,6 @@ testsuite = ParallelTestRunner.find_tests(@__DIR__)
 
 # Exclude non-test files
 delete!(testsuite, "setup")          # shared setup module
-delete!(testsuite, "braidingtensor") # not part of the testsuite (see file header)
 
 # CUDA tests: only run if CUDA is functional
 using CUDA: CUDA
