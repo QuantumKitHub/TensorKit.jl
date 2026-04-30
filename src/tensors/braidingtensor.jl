@@ -221,7 +221,7 @@ function planarcontract!(
 
     I = sectortype(C)
     BraidingStyle(I) isa Bosonic &&
-        return add_permute!(C, B, (reverse(cindB), oindB), α, β, backend, allocator)
+        return add_permute!(C, B, (reverse(cindB), oindB), α, β, backend)
 
     # Non-bosonic case: factor into a cyclic transpose (no crossings) + a single Artin braid
     # that swaps the two contracted legs, producing the R-symbol that A encodes. Naively
@@ -274,7 +274,7 @@ function planarcontract!(
 
     I = sectortype(C)
     BraidingStyle(I) isa Bosonic &&
-        return add_permute!(C, A, (oindA, reverse(cindA)), α, β, backend, allocator)
+        return add_permute!(C, A, (oindA, reverse(cindA)), α, β, backend)
 
     # Non-bosonic case: cyclic transpose A → (oindA, cindA) (no crossings), then a single
     # Artin braid swaps A′'s last two indices, producing the R-symbol that B encodes. Naively
