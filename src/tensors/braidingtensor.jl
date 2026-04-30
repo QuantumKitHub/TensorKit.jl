@@ -199,32 +199,6 @@ function add_transform!(
     )
 end
 
-# VectorInterface
-# ---------------
-# TODO
-
-# TensorOperations
-# ----------------
-# TODO: implement specialized methods
-
-# function TO.tensoradd!(
-#         C::AbstractTensorMap,
-#         A::BraidingTensor, pA::Index2Tuple, conjA::Symbol,
-#         α::Number, β::Number, backend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
-#     )
-#     return TO.tensoradd!(C, TensorMap(A), pA, conjA, α, β, backend, allocator)
-# end
-
-# Planar operations
-# -----------------
-# function planaradd!(
-#         C::AbstractTensorMap,
-#         A::BraidingTensor, p::Index2Tuple,
-#         α::Number, β::Number, backend, allocator
-#     )
-#     return planaradd!(C, TensorMap(A), p, α, β, backend, allocator)
-# end
-
 function planarcontract!(
         C::AbstractTensorMap,
         A::BraidingTensor, pA::Index2Tuple,
@@ -346,13 +320,3 @@ function planarcontract!(
         C, A, pA, TensorMap(B), pB, pAB, α, β, backend, allocator
     )
 end
-
-# function planartrace!(
-#         C::AbstractTensorMap,
-#         A::BraidingTensor,
-#         p::Index2Tuple, q::Index2Tuple,
-#         α::Number, β::Number,
-#         backend, allocator
-#     )
-#     return planartrace!(C, TensorMap(A), p, q, α, β, backend, allocator)
-# end
