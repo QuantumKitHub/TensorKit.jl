@@ -207,23 +207,23 @@ end
 # ----------------
 # TODO: implement specialized methods
 
-function TO.tensoradd!(
-        C::AbstractTensorMap,
-        A::BraidingTensor, pA::Index2Tuple, conjA::Symbol,
-        α::Number, β::Number, backend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
-    )
-    return TO.tensoradd!(C, TensorMap(A), pA, conjA, α, β, backend, allocator)
-end
+# function TO.tensoradd!(
+#         C::AbstractTensorMap,
+#         A::BraidingTensor, pA::Index2Tuple, conjA::Symbol,
+#         α::Number, β::Number, backend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
+#     )
+#     return TO.tensoradd!(C, TensorMap(A), pA, conjA, α, β, backend, allocator)
+# end
 
 # Planar operations
 # -----------------
-function planaradd!(
-        C::AbstractTensorMap,
-        A::BraidingTensor, p::Index2Tuple,
-        α::Number, β::Number, backend, allocator
-    )
-    return planaradd!(C, TensorMap(A), p, α, β, backend, allocator)
-end
+# function planaradd!(
+#         C::AbstractTensorMap,
+#         A::BraidingTensor, p::Index2Tuple,
+#         α::Number, β::Number, backend, allocator
+#     )
+#     return planaradd!(C, TensorMap(A), p, α, β, backend, allocator)
+# end
 
 function planarcontract!(
         C::AbstractTensorMap,
@@ -245,12 +245,37 @@ function planarcontract!(
         codA, domA, codB, domB, pA..., reverse(pB)..., pAB...
     )
 
-    levelsA = A.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
-    levelsB = ntuple(i -> i + 2, numind(B))
-    levelsB = TupleTools.setindex(levelsB, levelsA[cindA[1]], cindB[1])
-    levelsB = TupleTools.setindex(levelsB, levelsA[cindA[2]], cindB[2])
+    I = sectortype(C)
+    BraidingStyle(I) isa Bosonic &&
+        return add_permute!(C, B, (reverse(cindB), oindB), α, β, backend, allocator)
 
-    add_braid!(C, B, (reverse(cindB), oindB), levelsB, α, β, backend)
+    # Non-bosonic case: factor into a cyclic transpose (no crossings) + a single Artin braid
+    # that swaps the two contracted legs, producing the R-symbol that A encodes. Naively
+    # using a single `add_braid!` is wrong: it would resolve cyclic moves as crossings and
+    # pick up spurious R-symbol factors.
+    B_in_layout = (cindB == codB && oindB == domB)
+    if B_in_layout
+        B′ = B
+    else
+        B′ = TO.tensoralloc_add(
+            scalartype(B), B, (cindB, oindB), false, Val(true), allocator
+        )
+        add_transpose!(B′, B, (cindB, oindB), One(), Zero(), backend)
+    end
+
+    levelsA = A.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
+    N = numind(B)
+    levels = (
+        levelsA[cindA[1]], levelsA[cindA[2]],
+        ntuple(Returns(3), N - 2)...,
+    )
+
+    add_braid!(
+        C, B′, ((2, 1), ntuple(i -> i + 2, N - 2)),
+        levels, α, β, backend,
+    )
+
+    B_in_layout || TO.tensorfree!(B′, allocator)
     return C
 end
 function planarcontract!(
@@ -261,7 +286,7 @@ function planarcontract!(
         α::Number, β::Number,
         backend, allocator
     )
-    # special case only defined for contracting 2 indices
+    # special case only defined for contracting all 4 indices of B (2 contracted + 2 open)
     length.(pB) == (2, 2) ||
         return planarcontract!(C, A, pA, TensorMap(B), pB, pAB, α, β, backend, allocator)
 
@@ -273,12 +298,39 @@ function planarcontract!(
         codA, domA, codB, domB, pA..., reverse(pB)..., pAB...
     )
 
-    levelsB = B.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
-    levelsA = ntuple(Returns(3), numind(A))
-    levelsA = TupleTools.setindex(levelsA, levelsB[cindB[1]], cindA[1])
-    levelsA = TupleTools.setindex(levelsA, levelsB[cindB[2]], cindA[2])
+    I = sectortype(C)
+    BraidingStyle(I) isa Bosonic &&
+        return add_permute!(C, A, (oindA, reverse(cindA)), α, β, backend, allocator)
 
-    add_braid!(C, A, (oindA, reverse(cindA)), levelsA, α, β, backend)
+    # Non-bosonic case: cyclic transpose A → (oindA, cindA) (no crossings), then a single
+    # Artin braid swaps A′'s last two indices, producing the R-symbol that B encodes. Naively
+    # using a single `add_braid!` is wrong: it would resolve cyclic moves as crossings and
+    # pick up spurious R-symbol factors.
+
+    A_in_layout = (oindA == codA && cindA == domA)
+    if A_in_layout
+        A′ = A
+    else
+        A′ = TO.tensoralloc_add(
+            scalartype(A), A, (oindA, cindA), false, Val(true), allocator
+        )
+        add_transpose!(A′, A, (oindA, cindA), One(), Zero(), backend)
+    end
+
+    levelsB = B.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
+    N = numind(A)
+    M = N - 2
+    levels = (
+        ntuple(Returns(3), M)...,
+        levelsB[cindB[1]], levelsB[cindB[2]],
+    )
+
+    add_braid!(
+        C, A′, (ntuple(identity, M), (N, N - 1)),
+        levels, α, β, backend,
+    )
+
+    A_in_layout || TO.tensorfree!(A′, allocator)
     return C
 end
 
@@ -295,12 +347,12 @@ function planarcontract!(
     )
 end
 
-function planartrace!(
-        C::AbstractTensorMap,
-        A::BraidingTensor,
-        p::Index2Tuple, q::Index2Tuple,
-        α::Number, β::Number,
-        backend, allocator
-    )
-    return planartrace!(C, TensorMap(A), p, q, α, β, backend, allocator)
-end
+# function planartrace!(
+#         C::AbstractTensorMap,
+#         A::BraidingTensor,
+#         p::Index2Tuple, q::Index2Tuple,
+#         α::Number, β::Number,
+#         backend, allocator
+#     )
+#     return planartrace!(C, TensorMap(A), p, q, α, β, backend, allocator)
+# end
