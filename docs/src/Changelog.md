@@ -18,7 +18,7 @@ When making changes to this project, please update the "Unreleased" section with
 
 When releasing a new version, move the "Unreleased" changes to a new version section with the release date.
 
-## [Unreleased](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.16.4...HEAD)
+## [Unreleased](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.16.5...HEAD)
 
 ### Added
 
@@ -31,6 +31,17 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 ### Fixed
 
 ### Performance
+
+## [0.16.5](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.16.4...v0.16.5) - 2026-04-30
+
+### Added
+
+- Support for `DefaultAlgorithm` ([#422](https://github.com/QuantumKitHub/TensorKit.jl/pull/422), [#423](https://github.com/QuantumKitHub/TensorKit.jl/pull/423))
+
+### Fixed
+
+- Improve `checksquare` error message ([#417](https://github.com/QuantumKitHub/TensorKit.jl/pull/417))
+- Fix `BraidingTensor` `planarcontract!` ([#418](https://github.com/QuantumKitHub/TensorKit.jl/pull/418))
 
 ## [0.16.4](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.16.3...v0.16.4) - 2026-04-23
 
