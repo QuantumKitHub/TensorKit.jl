@@ -245,11 +245,12 @@ function planarcontract!(
         codA, domA, codB, domB, pA..., reverse(pB)..., pAB...
     )
 
-    τ_levels = A.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
-    τ_level_1 = τ_levels[cindA[1]]
-    τ_level_2 = τ_levels[cindA[2]]
-    levels_B = ntuple(i -> i == cindB[1] ? τ_level_1 : i == cindB[2] ? τ_level_2 : 3, numind(B))
-    add_braid!(C, B, (reverse(cindB), oindB), levels_B, α, β, backend)
+    levelsA = A.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
+    levelsB = ntuple(i -> i + 2, numind(B))
+    levelsB = TupleTools.setindex(levelsB, levelsA[cindA[1]], cindB[1])
+    levelsB = TupleTools.setindex(levelsB, levelsA[cindA[2]], cindB[2])
+
+    add_braid!(C, B, (reverse(cindB), oindB), levelsB, α, β, backend)
     return C
 end
 function planarcontract!(
@@ -272,11 +273,12 @@ function planarcontract!(
         codA, domA, codB, domB, pA..., reverse(pB)..., pAB...
     )
 
-    τ_levels = B.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
-    τ_level_1 = τ_levels[cindB[1]]
-    τ_level_2 = τ_levels[cindB[2]]
-    levels_A = ntuple(i -> i == cindA[1] ? τ_level_1 : i == cindA[2] ? τ_level_2 : 3, numind(A))
-    add_braid!(C, A, (oindA, reverse(cindA)), levels_A, α, β, backend)
+    levelsB = B.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
+    levelsA = ntuple(Returns(3), numind(A))
+    levelsA = TupleTools.setindex(levelsA, levelsB[cindB[1]], cindA[1])
+    levelsA = TupleTools.setindex(levelsA, levelsB[cindB[2]], cindA[2])
+
+    add_braid!(C, A, (oindA, reverse(cindA)), levelsA, α, β, backend)
     return C
 end
 
