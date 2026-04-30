@@ -199,121 +199,113 @@ function add_transform!(
     )
 end
 
-# VectorInterface
-# ---------------
-# TODO
-
-# TensorOperations
-# ----------------
-# TODO: implement specialized methods
-
-function TO.tensoradd!(
-        C::AbstractTensorMap,
-        A::BraidingTensor, pA::Index2Tuple, conjA::Symbol,
-        α::Number, β::Number, backend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
-    )
-    return TO.tensoradd!(C, TensorMap(A), pA, conjA, α, β, backend, allocator)
-end
-
-# Planar operations
-# -----------------
-# TODO: implement specialized methods
-
-function planaradd!(
-        C::AbstractTensorMap,
-        A::BraidingTensor, p::Index2Tuple,
-        α::Number, β::Number, backend, allocator
-    )
-    return planaradd!(C, TensorMap(A), p, α, β, backend, allocator)
-end
-
 function planarcontract!(
         C::AbstractTensorMap,
-        A::BraidingTensor,
-        (oindA, cindA)::Index2Tuple,
-        B::AbstractTensorMap,
-        (cindB, oindB)::Index2Tuple,
-        (p1, p2)::Index2Tuple,
+        A::BraidingTensor, pA::Index2Tuple,
+        B::AbstractTensorMap, pB::Index2Tuple,
+        pAB::Index2Tuple,
         α::Number, β::Number,
         backend, allocator
     )
     # special case only defined for contracting 2 indices
-    length(oindA) == length(cindA) == 2 ||
-        return planarcontract!(
-        C, TensorMap(A), (oindA, cindA), B, (cindB, oindB), (p1, p2),
-        α, β, backend, allocator
-    )
+    length.(pA) == (2, 2) ||
+        return planarcontract!(C, TensorMap(A), pA, B, pB, pAB, α, β, backend, allocator)
+
+    spacecheck_contract(C, A, pA, false, B, pB, false, pAB)
 
     codA, domA = codomainind(A), domainind(A)
     codB, domB = codomainind(B), domainind(B)
     oindA, cindA, oindB, cindB = reorder_indices(
-        codA, domA, codB, domB, oindA, cindA, oindB, cindB, p1, p2
+        codA, domA, codB, domB, pA..., reverse(pB)..., pAB...
     )
 
-    if space(B, cindB[1]) != space(A, cindA[1])' ||
-            space(B, cindB[2]) != space(A, cindA[2])'
-        throw(SpaceMismatch("$(space(C)) ≠ permute($(space(A))[$oindA, $cindA] * $(space(B))[$cindB, $oindB], ($p1, $p2)"))
-    end
-
-    if BraidingStyle(sectortype(B)) isa Bosonic
+    I = sectortype(C)
+    BraidingStyle(I) isa Bosonic &&
         return add_permute!(C, B, (reverse(cindB), oindB), α, β, backend)
+
+    # Non-bosonic case: factor into a cyclic transpose (no crossings) + a single Artin braid
+    # that swaps the two contracted legs, producing the R-symbol that A encodes. Naively
+    # using a single `add_braid!` is wrong: it would resolve cyclic moves as crossings and
+    # pick up spurious R-symbol factors.
+    B_in_layout = (cindB == codB && oindB == domB)
+    if B_in_layout
+        B′ = B
+    else
+        B′ = TO.tensoralloc_add(
+            scalartype(B), B, (cindB, oindB), false, Val(true), allocator
+        )
+        add_transpose!(B′, B, (cindB, oindB), One(), Zero(), backend)
     end
 
-    τ_levels = A.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
-    scale!(C, β)
+    levelsA = A.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
+    N = numind(B)
+    levels = (
+        levelsA[cindA[1]], levelsA[cindA[2]],
+        ntuple(Returns(3), N - 2)...,
+    )
 
-    inv_braid = τ_levels[cindA[1]] > τ_levels[cindA[2]]
-    for (f₁, f₂) in fusiontrees(B)
-        local newtrees
-        for ((f₁′, f₂′), coeff′) in transpose((f₁, f₂), (cindB, oindB))
-            for (f₁′′, coeff′′) in artin_braid(f₁′, 1; inv = inv_braid)
-                f12 = (f₁′′, f₂′)
-                coeff = coeff′ * coeff′′
-                if @isdefined newtrees
-                    newtrees[f12] = get(newtrees, f12, zero(coeff)) + coeff
-                else
-                    newtrees = Dict(f12 => coeff)
-                end
-            end
-        end
-        for ((f₁′, f₂′), coeff) in newtrees
-            TO.tensoradd!(
-                C[f₁′, f₂′], B[f₁, f₂], (reverse(cindB), oindB), false,
-                α * coeff, One(), backend, allocator
-            )
-        end
-    end
+    add_braid!(
+        C, B′, ((2, 1), ntuple(i -> i + 2, N - 2)),
+        levels, α, β, backend,
+    )
+
+    B_in_layout || TO.tensorfree!(B′, allocator)
     return C
 end
 function planarcontract!(
         C::AbstractTensorMap,
-        A::AbstractTensorMap, (oindA, cindA)::Index2Tuple,
-        B::BraidingTensor, (cindB, oindB)::Index2Tuple,
-        (p1, p2)::Index2Tuple,
+        A::AbstractTensorMap, pA::Index2Tuple,
+        B::BraidingTensor, pB::Index2Tuple,
+        pAB::Index2Tuple,
         α::Number, β::Number,
         backend, allocator
     )
-    # special case only defined for contracting 2 indices
-    length(oindB) == length(cindB) == 2 ||
-        return planarcontract!(
-        C, A, (oindA, cindA), TensorMap(B), (cindB, oindB), (p1, p2),
-        α, β, backend, allocator
-    )
+    # special case only defined for contracting all 4 indices of B (2 contracted + 2 open)
+    length.(pB) == (2, 2) ||
+        return planarcontract!(C, A, pA, TensorMap(B), pB, pAB, α, β, backend, allocator)
+
+    spacecheck_contract(C, A, pA, false, B, pB, false, pAB)
 
     codA, domA = codomainind(A), domainind(A)
     codB, domB = codomainind(B), domainind(B)
     oindA, cindA, oindB, cindB = reorder_indices(
-        codA, domA, codB, domB, oindA, cindA, oindB, cindB, p1, p2
+        codA, domA, codB, domB, pA..., reverse(pB)..., pAB...
     )
 
-    if space(B, cindB[1]) != space(A, cindA[1])' || space(B, cindB[2]) != space(A, cindA[2])'
-        throw(SpaceMismatch("$(space(C)) ≠ permute($(space(A))[$oindA, $cindA] * $(space(B))[$cindB, $oindB], ($p1, $p2)"))
+    I = sectortype(C)
+    BraidingStyle(I) isa Bosonic &&
+        return add_permute!(C, A, (oindA, reverse(cindA)), α, β, backend)
+
+    # Non-bosonic case: cyclic transpose A → (oindA, cindA) (no crossings), then a single
+    # Artin braid swaps A′'s last two indices, producing the R-symbol that B encodes. Naively
+    # using a single `add_braid!` is wrong: it would resolve cyclic moves as crossings and
+    # pick up spurious R-symbol factors.
+
+    A_in_layout = (oindA == codA && cindA == domA)
+    if A_in_layout
+        A′ = A
+    else
+        A′ = TO.tensoralloc_add(
+            scalartype(A), A, (oindA, cindA), false, Val(true), allocator
+        )
+        add_transpose!(A′, A, (oindA, cindA), One(), Zero(), backend)
     end
 
-    p = (oindA, reverse(cindA))
-    N = length(oindA)
-    levels = (ntuple(identity, N)..., (B.adjoint ? (N + 1, N + 2) : (N + 2, N + 1))...)
-    return add_braid!(C, A, p, levels, α, β, backend)
+    levelsB = B.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
+    N = numind(A)
+    M = N - 2
+    levels = (
+        ntuple(Returns(3), M)...,
+        levelsB[cindB[1]], levelsB[cindB[2]],
+    )
+
+    add_braid!(
+        C, A′, (ntuple(identity, M), (N, N - 1)),
+        levels, α, β, backend,
+    )
+
+    A_in_layout || TO.tensorfree!(A′, allocator)
+    return C
 end
 
 # ambiguity fix:
@@ -325,277 +317,6 @@ function planarcontract!(
         α::Number, β::Number, backend, allocator
     )
     return planarcontract!(
-        C, TensorMap(A), pA, TensorMap(B), pB, pAB, α, β, backend, allocator
+        C, A, pA, TensorMap(B), pB, pAB, α, β, backend, allocator
     )
 end
-
-function planartrace!(
-        C::AbstractTensorMap,
-        A::BraidingTensor,
-        p::Index2Tuple, q::Index2Tuple,
-        α::Number, β::Number,
-        backend, allocator
-    )
-    return planartrace!(C, TensorMap(A), p, q, α, β, backend, allocator)
-end
-
-# function planarcontract!(C::AbstractTensorMap{<:Any,S,N₁,N₂},
-#                          A::BraidingTensor{S},
-#                          (oindA, cindA)::Index2Tuple{0,4},
-#                          B::AbstractTensorMap{<:Any,S},
-#                          (cindB, oindB)::Index2Tuple{4,<:Any},
-#                          (p1, p2)::Index2Tuple{N₁,N₂},
-#                          α::Number, β::Number,
-#                          backend::Backend...) where {S,N₁,N₂}
-#     codA, domA = codomainind(A), domainind(A)
-#     codB, domB = codomainind(B), domainind(B)
-#     oindA, cindA, oindB, cindB = reorder_indices(codA, domA, codB, domB, oindA, cindA,
-#                                                  oindB, cindB, p1, p2)
-
-#     @assert space(B, cindB[1]) == space(A, cindA[1])' &&
-#             space(B, cindB[2]) == space(A, cindA[2])' &&
-#             space(B, cindB[3]) == space(A, cindA[3])' &&
-#             space(B, cindB[4]) == space(A, cindA[4])'
-
-#     if BraidingStyle(sectortype(B)) isa Bosonic
-#         return trace!(α, B, β, C, (), oindB, (cindB[1], cindB[2]), (cindB[3], cindB[4]))
-#     end
-
-#     if iszero(β)
-#         fill!(C, β)
-#     elseif β != 1
-#         rmul!(C, β)
-#     end
-#     I = sectortype(B)
-#     u = unit(I)
-#     f₀ = FusionTree{I}((), u, (), (), ())
-#     braidingtensor_levels = A.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
-#     inv_braid = braidingtensor_levels[cindA[2]] > braidingtensor_levels[cindA[3]]
-#     for (f₁, f₂) in fusiontrees(B)
-#         local newtrees
-#         for ((f₁′, f₂′), coeff′) in transpose(f₁, f₂, cindB, oindB)
-#             f₁′.coupled == u || continue
-#             a = f₁′.uncoupled[1]
-#             b = f₁′.uncoupled[2]
-#             f₁′.uncoupled[3] == dual(a) || continue
-#             f₁′.uncoupled[4] == dual(b) || continue
-#             # should be automatic by matching spaces:
-#             # f₁′.isdual[1] != f₁′.isdual[3] || continue
-#             # f₁′.isdual[2] != f₁′.isdual[4] || continue
-#             for (f₁′′, coeff′′) in artin_braid(f₁′, 2; inv=inv_braid)
-#                 f₁′′.innerlines[1] == u || continue
-#                 coeff = coeff′ * coeff′′ * sqrtdim(a) * sqrtdim(b)
-#                 if f₁′′.isdual[1]
-#                     coeff *= frobenius_schur_phase(a)
-#                 end
-#                 if f₁′′.isdual[3]
-#                     coeff *= frobenius_schur_phase(b)
-#                 end
-#                 f12 = (f₀, f₂′)
-#                 if @isdefined newtrees
-#                     newtrees[f12] = get(newtrees, f12, zero(coeff)) + coeff
-#                 else
-#                     newtrees = Dict(f12 => coeff)
-#                 end
-#             end
-#         end
-#         @isdefined(newtrees) || continue
-#         for ((f₁′, f₂′), coeff) in newtrees
-#             TO._trace!(coeff * α, B[f₁, f₂], true, C[f₁′, f₂′], oindB,
-#                        (cindB[1], cindB[2]), (cindB[3], cindB[4]))
-#         end
-#     end
-#     return C
-# end
-# function planarcontract!(C::AbstractTensorMap{<:Any,S,N₁,N₂},
-#                          A::AbstractTensorMap{<:Any,S},
-#                          (oindA, cindA)::Index2Tuple{0,4},
-#                          B::BraidingTensor{S},
-#                          (cindB, oindB)::Index2Tuple{4,<:Any},
-#                          (p1, p2)::Index2Tuple{N₁,N₂},
-#                          α::Number, β::Number,
-#                          backends...) where {S,N₁,N₂}
-#     codA, domA = codomainind(A), domainind(A)
-#     codB, domB = codomainind(B), domainind(B)
-#     oindA, cindA, oindB, cindB = reorder_indices(codA, domA, codB, domB, oindA, cindA,
-#                                                  oindB, cindB, p1, p2)
-
-#     @assert space(B, cindB[1]) == space(A, cindA[1])' &&
-#             space(B, cindB[2]) == space(A, cindA[2])' &&
-#             space(B, cindB[3]) == space(A, cindA[3])' &&
-#             space(B, cindB[4]) == space(A, cindA[4])'
-
-#     if BraidingStyle(sectortype(B)) isa Bosonic
-#         return trace!(α, A, β, C, oindA, (), (cindA[1], cindA[2]), (cindA[3], cindA[4]))
-#     end
-
-#     if iszero(β)
-#         fill!(C, β)
-#     elseif β != 1
-#         rmul!(C, β)
-#     end
-#     I = sectortype(B)
-#     u = unit(I)
-#     f₀ = FusionTree{I}((), u, (), (), ())
-#     braidingtensor_levels = B.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
-#     inv_braid = braidingtensor_levels[cindB[2]] > braidingtensor_levels[cindB[3]]
-#     for (f₁, f₂) in fusiontrees(A)
-#         local newtrees
-#         for ((f₁′, f₂′), coeff′) in transpose(f₁, f₂, oindA, cindA)
-#             f₂′.coupled == u || continue
-#             a = f₂′.uncoupled[1]
-#             b = f₂′.uncoupled[2]
-#             f₂′.uncoupled[3] == dual(a) || continue
-#             f₂′.uncoupled[4] == dual(b) || continue
-#             # should be automatic by matching spaces:
-#             # f₂′.isdual[1] != f₂′.isdual[3] || continue
-#             # f₂′.isdual[3] != f₂′.isdual[4] || continue
-#             for (f₂′′, coeff′′) in artin_braid(f₂′, 2; inv=inv_braid)
-#                 f₂′′.innerlines[1] == u || continue
-#                 coeff = coeff′ * conj(coeff′′ * sqrtdim(a) * sqrtdim(b))
-#                 if f₂′′.isdual[1]
-#                     coeff *= conj(frobenius_schur_phase(a))
-#                 end
-#                 if f₂′′.isdual[3]
-#                     coeff *= conj(frobenius_schur_phase(b))
-#                 end
-#                 f12 = (f₁′, f₀)
-#                 if @isdefined newtrees
-#                     newtrees[f12] = get(newtrees, f12, zero(coeff)) + coeff
-#                 else
-#                     newtrees = Dict(f12 => coeff)
-#                 end
-#             end
-#         end
-#         @isdefined(newtrees) || continue
-#         for ((f₁′, f₂′), coeff) in newtrees
-#             TO._trace!(coeff * α, A[f₁, f₂], true, C[f₁′, f₂′], oindA,
-#                        (cindA[1], cindA[2]), (cindA[3], cindA[4]))
-#         end
-#     end
-#     return C
-# end
-# function planarcontract!(C::AbstractTensorMap{<:Any,S,N₁,N₂},
-#                          A::BraidingTensor{S},
-#                          (oindA, cindA)::Index2Tuple{1,3},
-#                          B::AbstractTensorMap{<:Any,S},
-#                          (cindB, oindB)::Index2Tuple{1,<:Any},
-#                          (p1, p2)::Index2Tuple{N₁,N₂},
-#                          α::Number, β::Number,
-#                          backend::Backend...) where {S,N₁,N₂}
-#     codA, domA = codomainind(A), domainind(A)
-#     codB, domB = codomainind(B), domainind(B)
-#     oindA, cindA, oindB, cindB = reorder_indices(codA, domA, codB, domB, oindA, cindA,
-#                                                  oindB, cindB, p1, p2)
-
-#     @assert space(B, cindB[1]) == space(A, cindA[1])' &&
-#             space(B, cindB[2]) == space(A, cindA[2])' &&
-#             space(B, cindB[3]) == space(A, cindA[3])'
-
-#     if BraidingStyle(sectortype(B)) isa Bosonic
-#         return trace!(α, B, β, C, (cindB[2],), oindB, (cindB[1],), (cindB[3],))
-#     end
-
-#     if iszero(β)
-#         fill!(C, β)
-#     elseif β != 1
-#         rmul!(C, β)
-#     end
-#     I = sectortype(B)
-#     u = unit(I)
-#     braidingtensor_levels = A.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
-#     inv_braid = braidingtensor_levels[cindA[2]] > braidingtensor_levels[cindA[3]]
-#     for (f₁, f₂) in fusiontrees(B)
-#         local newtrees
-#         for ((f₁′, f₂′), coeff′) in transpose(f₁, f₂, cindB, oindB)
-#             a = f₁′.uncoupled[1]
-#             b = f₁′.uncoupled[2]
-#             b == f₁′.coupled || continue
-#             a == dual(f₁′.uncoupled[3]) || continue
-#             # should be automatic by matching spaces:
-#             # f₁′.isdual[1] != f₁.isdual[3] || continue
-#             for (f₁′′, coeff′′) in artin_braid(f₁′, 2; inv=inv_braid)
-#                 f₁′′.innerlines[1] == u || continue
-#                 coeff = coeff′ * coeff′′ * sqrtdim(a)
-#                 if f₁′′.isdual[1]
-#                     coeff *= frobenius_schur_phase(a)
-#                 end
-#                 f₁′′′ = FusionTree{I}((b,), b, (f₁′′.isdual[3],), (), ())
-#                 f12 = (f₁′′′, f₂′)
-#                 if @isdefined newtrees
-#                     newtrees[f12] = get(newtrees, f12, zero(coeff)) + coeff
-#                 else
-#                     newtrees = Dict(f12 => coeff)
-#                 end
-#             end
-#         end
-#         @isdefined(newtrees) || continue
-#         for ((f₁′, f₂′), coeff) in newtrees
-#             TO._trace!(coeff * α, B[f₁, f₂], true, C[f₁′, f₂′],
-#                        (cindB[2], oindB...), (cindB[1],), (cindB[3],))
-#         end
-#     end
-#     return C
-# end
-# function planarcontract!(C::AbstractTensorMap{<:Any,S,N₁,N₂},
-#                          A::AbstractTensorMap{<:Any,S},
-#                          (oindA, cindA)::Index2Tuple{<:Any,3},
-#                          B::BraidingTensor{S},
-#                          (cindB, oindB)::Index2Tuple{3,1},
-#                          (p1, p2)::Index2Tuple{N₁,N₂},
-#                          α::Number, β::Number,
-#                          backend::Backend...) where {S,N₁,N₂}
-#     codA, domA = codomainind(A), domainind(A)
-#     codB, domB = codomainind(B), domainind(B)
-#     oindA, cindA, oindB, cindB = reorder_indices(codA, domA, codB, domB, oindA, cindA,
-#                                                  oindB, cindB, p1, p2)
-
-#     @assert space(B, cindB[1]) == space(A, cindA[1])' &&
-#             space(B, cindB[2]) == space(A, cindA[2])' &&
-#             space(B, cindB[3]) == space(A, cindA[3])'
-
-#     if BraidingStyle(sectortype(A)) isa Bosonic
-#         return trace!(α, A, β, C, oindA, (cindA[2],), (cindA[1],), (cindA[3],))
-#     end
-
-#     if iszero(β)
-#         fill!(C, β)
-#     elseif β != 1
-#         rmul!(C, β)
-#     end
-#     I = sectortype(B)
-#     u = unit(I)
-#     braidingtensor_levels = B.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
-#     inv_braid = braidingtensor_levels[cindB[2]] > braidingtensor_levels[cindB[3]]
-#     for (f₁, f₂) in fusiontrees(A)
-#         local newtrees
-#         for ((f₁′, f₂′), coeff′) in transpose(f₁, f₂, oindA, cindA)
-#             a = f₂′.uncoupled[1]
-#             b = f₂′.uncoupled[2]
-#             b == f₂′.coupled || continue
-#             a == dual(f₂′.uncoupled[3]) || continue
-#             # should be automatic by matching spaces:
-#             # f₂′.isdual[1] != f₂.isdual[3] || continue
-#             for (f₂′′, coeff′′) in artin_braid(f₂′, 2; inv=inv_braid)
-#                 f₂′′.innerlines[1] == u || continue
-#                 coeff = coeff′ * conj(coeff′′ * sqrtdim(a))
-#                 if f₂′′.isdual[1]
-#                     coeff *= conj(frobenius_schur_phase(a))
-#                 end
-#                 f₂′′′ = FusionTree{I}((b,), b, (f₂′′.isdual[3],), (), ())
-#                 f12 = (f₁′, f₂′′′)
-#                 if @isdefined newtrees
-#                     newtrees[f12] = get(newtrees, f12, zero(coeff)) + coeff
-#                 else
-#                     newtrees = Dict(f12 => coeff)
-#                 end
-#             end
-#         end
-#         @isdefined(newtrees) || continue
-#         for ((f₁′, f₂′), coeff) in newtrees
-#             TO._trace!(coeff * α, A[f₁, f₂], true, C[f₁′, f₂′],
-#                        (oindA..., cindA[2]), (cindA[1],), (cindA[3],))
-#         end
-#     end
-#     return C
-# end

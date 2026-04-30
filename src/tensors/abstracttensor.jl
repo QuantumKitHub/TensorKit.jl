@@ -130,6 +130,7 @@ Determine an appropriate storage type for the combination of tensors `A` and `B`
 Optionally, a scalartype `T` for the destination can be supplied that might differ from the inputs.
 """ promote_storagetype
 
+@inline promote_storagetype(A::AbstractTensorMap) = storagetype(A)
 @inline promote_storagetype(A::AbstractTensorMap, B::AbstractTensorMap, Cs::AbstractTensorMap...) =
     promote_storagetype(storagetype(A), storagetype(B), map(storagetype, Cs)...)
 @inline promote_storagetype(::Type{T}, A::AbstractTensorMap, B::AbstractTensorMap, Cs::AbstractTensorMap...) where {T <: Number} =
