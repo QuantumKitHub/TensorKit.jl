@@ -1,7 +1,7 @@
 using Test, TestExtras
 using TensorKit
 using LinearAlgebra: LinearAlgebra
-using MatrixAlgebraKit: diagview
+using MatrixAlgebraKit: DefaultAlgorithm, diagview
 
 
 spacelist = factorization_spacelist(fast_tests)
@@ -29,7 +29,14 @@ for V in spacelist
                 d, v = @constinferred eig_full(t)
                 @test t * v ≈ v * d
 
+                d, v = @constinferred eig_full(t, DefaultAlgorithm())
+                @test t * v ≈ v * d
+
                 d′ = @constinferred eig_vals(t)
+                @test d′ ≈ diagview(d)
+                @test d′ isa TensorKit.SectorVector
+
+                d′ = @constinferred eig_vals(t, DefaultAlgorithm())
                 @test d′ ≈ diagview(d)
                 @test d′ isa TensorKit.SectorVector
 
@@ -45,12 +52,21 @@ for V in spacelist
                 @test t * v ≈ v * d
                 @test abs(dim(domain(d)) - nvals) ≤ maximum(c -> blockdim(domain(t), c), blocksectors(t); init = 1)
 
+                d, v = @constinferred eig_trunc(t, DefaultAlgorithm(; trunc = truncrank(nvals)))
+                @test t * v ≈ v * d
+                @test abs(dim(domain(d)) - nvals) ≤ maximum(c -> blockdim(domain(t), c), blocksectors(t); init = 1)
+
                 t2 = @constinferred project_hermitian(t)
                 D, V = eigen(t2)
                 @test isisometric(V)
                 D̃, Ṽ = @constinferred eigh_full(t2)
                 @test D ≈ D̃
                 @test V ≈ Ṽ
+
+                D̃, Ṽ = @constinferred eigh_full(t2, DefaultAlgorithm())
+                @test D ≈ D̃
+                @test V ≈ Ṽ
+
                 λ = minimum(real, diagview(D))
                 @test cond(Ṽ) ≈ one(real(T))
                 @test isposdef(t2) == isposdef(λ)
@@ -65,6 +81,10 @@ for V in spacelist
                 @test d′ ≈ diagview(d)
                 @test d′ isa TensorKit.SectorVector
 
+                d′ = @constinferred eigh_vals(t2, DefaultAlgorithm())
+                @test d′ ≈ diagview(d)
+                @test d′ isa TensorKit.SectorVector
+
                 λ = minimum(real, diagview(d))
                 @test cond(v) ≈ one(real(T))
                 @test isposdef(t2) == isposdef(λ)
@@ -72,6 +92,10 @@ for V in spacelist
                 @test !isposdef(t2 - λ * one(t) - 0.1 * one(t2))
 
                 d, v = @constinferred eigh_trunc(t2; trunc = truncrank(nvals))
+                @test t2 * v ≈ v * d
+                @test abs(dim(domain(d)) - nvals) ≤ maximum(c -> blockdim(domain(t), c), blocksectors(t); init = 1)
+
+                d, v = @constinferred eigh_trunc(t2, DefaultAlgorithm(; trunc = truncrank(nvals)))
                 @test t2 * v ≈ v * d
                 @test abs(dim(domain(d)) - nvals) ≤ maximum(c -> blockdim(domain(t), c), blocksectors(t); init = 1)
             end

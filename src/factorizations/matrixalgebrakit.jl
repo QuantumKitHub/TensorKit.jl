@@ -64,6 +64,38 @@ end
 
 MAK.zero!(t::AbstractTensorMap) = zerovector!(t)
 
+# Default algorithm
+# -----------------
+for f in [
+        :lq_full, :lq_compact, :lq_null,
+        :qr_full, :qr_compact, :qr_null,
+        :schur_full, :schur_vals,
+        :eig_full, :eig_vals, :eig_trunc, :eig_trunc_no_error,
+        :eigh_full, :eigh_vals, :eigh_trunc, :eigh_trunc_no_error,
+        :svd_full, :svd_compact, :svd_trunc, :svd_trunc_no_error, :svd_vals,
+        :left_polar, :right_polar,
+        :left_orth, :right_orth, :left_null, :right_null,
+        :project_hermitian, :project_antihermitian, :project_isometric,
+    ]
+    f! = Symbol(f, :!)
+    @eval MAK.$f!(t::AbstractTensorMap, alg::DefaultAlgorithm) =
+        MAK.$f!(t, MAK.select_algorithm(MAK.$f!, t, nothing; alg.kwargs...))
+    @eval MAK.$f!(t::AbstractTensorMap, out, alg::DefaultAlgorithm) =
+        MAK.$f!(t, out, MAK.select_algorithm(MAK.$f!, t, nothing; alg.kwargs...))
+
+    # disambiguate
+    @eval MAK.$f!(t::AdjointTensorMap, alg::DefaultAlgorithm) =
+        MAK.$f!(t, MAK.select_algorithm(MAK.$f!, t, nothing; alg.kwargs...))
+    @eval MAK.$f!(t::AdjointTensorMap, out, alg::DefaultAlgorithm) =
+        MAK.$f!(t, out, MAK.select_algorithm(MAK.$f!, t, nothing; alg.kwargs...))
+
+    @eval MAK.$f!(t::DiagonalTensorMap, alg::DefaultAlgorithm) =
+        MAK.$f!(t, MAK.select_algorithm(MAK.$f!, t, nothing; alg.kwargs...))
+    @eval MAK.$f!(t::DiagonalTensorMap, out, alg::DefaultAlgorithm) =
+        MAK.$f!(t, out, MAK.select_algorithm(MAK.$f!, t, nothing; alg.kwargs...))
+end
+
+
 # Singular value decomposition
 # ----------------------------
 function MAK.initialize_output(::typeof(svd_full!), t::AbstractTensorMap, ::AbstractAlgorithm)

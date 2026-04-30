@@ -1,7 +1,7 @@
 using Test, TestExtras
 using TensorKit
 using LinearAlgebra: LinearAlgebra
-using MatrixAlgebraKit: diagview
+using MatrixAlgebraKit: DefaultAlgorithm, diagview
 
 
 spacelist = factorization_spacelist(fast_tests)
@@ -35,6 +35,11 @@ for V in spacelist
                 th′ = @constinferred project_hermitian(t)
                 @test ishermitian(th′)
                 @test th′ ≈ th
+
+                th′ = @constinferred project_hermitian(t, DefaultAlgorithm())
+                @test ishermitian(th′)
+                @test th′ ≈ th
+
                 @test t == tc
                 th_approx = th + noisefactor * ta
                 @test !ishermitian(th_approx) || (T <: Real && t isa DiagonalTensorMap)
@@ -43,6 +48,11 @@ for V in spacelist
                 ta′ = project_antihermitian(t)
                 @test isantihermitian(ta′)
                 @test ta′ ≈ ta
+
+                ta′ = @constinferred project_antihermitian(t, DefaultAlgorithm())
+                @test isantihermitian(ta′)
+                @test ta′ ≈ ta
+
                 @test t == tc
                 ta_approx = ta + noisefactor * th
                 @test !isantihermitian(ta_approx)
@@ -64,6 +74,10 @@ for V in spacelist
                     )
                 t2 = project_isometric(t)
                 @test isisometric(t2)
+                t2′ = @constinferred project_isometric(t, DefaultAlgorithm())
+                @test isisometric(t2′)
+                @test t2′ * ((t2′)' * t) ≈ t
+
                 t3 = project_isometric(t2)
                 @test t3 ≈ t2 # stability of the projection
                 @test t2 * (t2' * t) ≈ t
