@@ -59,13 +59,12 @@ end
 
 for f in (:qr, :lq)
     remove_f_gauge_dependence! = Symbol(:remove_, f, :_gauge_dependence!)
-    remove_f_null_gauge_dependence! = Symbol(:remove_, f, :_null_gauge_dependence!)
     @eval function MAK.$remove_f_gauge_dependence!(
             ΔF₁::AbstractTensorMap, ΔF₂::AbstractTensorMap, A, F₁, F₂;
             kwargs...
         )
         foreachblock(ΔF₁, ΔF₂, A, F₁, F₂) do _, (Δf₁, Δf₂, a, f₁, f₂)
-            MAK.$remove_f_gauge_dependence!(Δf₁, Δf₂, a, f₁, f₂)
+            MAK.$remove_f_gauge_dependence!(Δf₁, Δf₂, a, f₁, f₂; kwargs...)
             return nothing
         end
         return ΔF₁, ΔF₂
@@ -88,22 +87,12 @@ for f in (:eig, :eigh)
         end
         return ΔV
     end
-    @eval function MAK.$remove_f_gauge_dependence!(ΔV::AbstractTensorMap, D, V, inds; kwargs...)
-        foreachblock(ΔV, D, V) do c, (Δv, d, v)
-            haskey(inds, c) || return nothing
-            ind = inds[c]
-            MAK.$remove_f_gauge_dependence!(Δv, d, v, ind; kwargs...)
-            return nothing
-        end
-        return ΔV
-    end
 end
 function MAK.remove_svd_gauge_dependence!(
-        ΔU::AbstractTensorMap, ΔVᴴ::AbstractTensorMap, U, S, Vᴴ;
-        kwargs...
+        ΔU::AbstractTensorMap, ΔVᴴ::AbstractTensorMap, U, S, Vᴴ; kwargs...
     )
     foreachblock(ΔU, ΔVᴴ, U, S, Vᴴ) do c, (Δu, Δvᴴ, u, s, vᴴ)
-        MAK.remove_svd_gauge_dependence!(Δu, Δvᴴ, u, s, vᴴ)
+        MAK.remove_svd_gauge_dependence!(Δu, Δvᴴ, u, s, vᴴ; kwargs...)
         return nothing
     end
     return ΔU, ΔVᴴ
