@@ -87,8 +87,7 @@ for V in spacelist
 
                 if fuse(codomain(t)) ≺ fuse(domain(t))
                     _, full_pb = Zygote.pullback(lq_full, t)
-                    # broken due to typo in MAK
-                    # @test_logs (:warn, r"^`lq") match_mode = :any full_pb((ΔL, ΔQ))
+                    @test_logs (:warn, r"^`lq") match_mode = :any full_pb((ΔL, ΔQ))
                 end
 
                 remove_lq_gauge_dependence!(ΔL, ΔQ, t, L, Q)
