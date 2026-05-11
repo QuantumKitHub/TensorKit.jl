@@ -27,7 +27,7 @@ function remove_svdgauge_dependence!(
     return ΔU, ΔVᴴ
 end
 
-@timedtestset "Enzyme - Factorizations (SVD): $(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes, t in (randn(T, V[1] ← V[1]), randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4]))
+@timedtestset "Enzyme - Factorizations (SVD): $(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes, t in (randn(T, V[1] ← V[1]), randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])'))
     atol = default_tol(T)
     rtol = default_tol(T)
 
@@ -35,7 +35,7 @@ end
     #EnzymeTestUtils.test_reverse(svd_vals, Duplicated, (t, Duplicated); atol, rtol)
 
     USVᴴ = svd_compact(t)
-    ΔUSVᴴ = EnzymeTestUtils.rand_tangent(USVᴴ)
+    ΔUSVᴴ = EnzymeTestUtils.rand_tangent.(USVᴴ)
     remove_svdgauge_dependence!(ΔUSVᴴ[1], ΔUSVᴴ[3], USVᴴ...)
     EnzymeTestUtils.test_reverse(svd_compact, Duplicated, (t, Duplicated); output_tangent = ΔUSVᴴ, atol, rtol)
 
