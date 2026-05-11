@@ -968,7 +968,7 @@ end
 ```
 If we use the adjoint representation of ``\mathsf{SU}_3`` as physical space, the Heisenberg exchange interaction can then be constructed as
 ```@example symmetric_tutorial
-V = Vect[SUNIrrep{3}](SU3Irrep("8") => 1)
+V = Vect[SU3Irrep](SU3Irrep("8") => 1)
 TT = zeros(ComplexF64, V ⊗ V ← V ⊗ V)
 for (s, f) in fusiontrees(TT)
     l3 = f.uncoupled[1]
