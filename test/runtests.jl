@@ -40,4 +40,4 @@ const init_code = quote
     const fast_tests = $fast
 end
 
-ParallelTestRunner.runtests(TensorKit, args; init_worker_code, init_code)
+ParallelTestRunner.runtests(TensorKit, args; testsuite, init_worker_code, init_code)
