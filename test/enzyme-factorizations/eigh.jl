@@ -32,7 +32,7 @@ end
     DV = eigh_full(th)
     ΔDV = EnzymeTestUtils.rand_tangent(DV)
     remove_eighgauge_dependence!(ΔDV[2], DV...)
-    EnzymeTestUtils.test_reverse(eigh_full ∘ project_hermitian, Duplicated, (t, Duplicated); output_tangent = ΔDV, atol, rtol)
+    EnzymeTestUtils.test_reverse(eigh_full ∘ project_hermitian, Duplicated, (th, Duplicated); output_tangent = ΔDV, atol, rtol)
 
     #D = eigh_vals(th)
     #EnzymeTestUtils.test_reverse(eigh_vals ∘ project_hermitian, Duplicated, (t, Duplicated); atol, rtol)
@@ -44,5 +44,5 @@ end
     ΔDVtrunc = EnzymeTestUtils.rand_tangent(DVtrunc)
     remove_eighgauge_dependence!(ΔDVtrunc[2], DVtrunc...)
     proj_eigh(t, alg) = eigh_trunc_no_error(project_hermitian(t), alg)
-    EnzymeTestUtils.test_reverse(proj_eigh, Duplicated, (t, Duplicated), (alg, Const); output_tangent = ΔDVtrunc, atol, rtol)
+    EnzymeTestUtils.test_reverse(proj_eigh, Duplicated, (th, Duplicated), (alg, Const); output_tangent = ΔDVtrunc, atol, rtol)
 end
