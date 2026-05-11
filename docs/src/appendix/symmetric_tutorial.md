@@ -960,7 +960,6 @@ The eigenvalue of the quadratic Casimir for a given irrep is given by [Freudenth
 \Omega(D(p,q)) = \frac{1}{3} (p^2 + q^2 + 3p + 3q + pq).
 ```
 This can be computed using SUNRepresentations.jl's `casimir` method, where `casimir(2, l)` returns the quadratic Casimir for irrep `l`.
-```
 If we use the adjoint representation of ``\mathsf{SU}_3`` as physical space, the Heisenberg exchange interaction can then be constructed as
 ```@example symmetric_tutorial
 V = Vect[SU3Irrep](SU3Irrep("8") => 1)
