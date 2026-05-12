@@ -113,7 +113,6 @@ end
 
 # implement on arrays
 similarstoragetype(::Type{A}) where {A <: DenseVector{<:Number}} = A
-similarstoragetype(::Type{A}, ::Type{A}) where {A <: DenseVector{<:Number}} = A
 Base.@assume_effects :foldable similarstoragetype(::Type{A}) where {A <: AbstractArray{<:Number}} =
     Core.Compiler.return_type(similar, Tuple{A, Int})
 Base.@assume_effects :foldable similarstoragetype(::Type{A}, ::Type{T}) where {A <: AbstractArray, T <: Number} =
