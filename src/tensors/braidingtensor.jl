@@ -189,15 +189,13 @@ end
 has_shared_permute(t::BraidingTensor, ::Index2Tuple) = false
 function add_transform!(
         tdst::AbstractTensorMap,
-        tsrc::BraidingTensor{T, S},
+        tsrc::BraidingTensor{T, S, A},
         (p₁, p₂)::Index2Tuple,
         fusiontreetransform,
         α::Number, β::Number, backend::AbstractBackend...
-    ) where {T, S}
-    tsrc_map = similar(tdst, storagetype(tdst), space(tsrc))
-    copy!(tsrc_map, tsrc)
+    ) where {T, S, A}
     return add_transform!(
-        tdst, tsrc_map, (p₁, p₂), fusiontreetransform, α, β,
+        tdst, TensorMap(tsrc), (p₁, p₂), fusiontreetransform, α, β,
         backend...
     )
 end
@@ -265,8 +263,7 @@ function planarcontract!(
     )
     # special case only defined for contracting all 4 indices of B (2 contracted + 2 open)
     if length.(pB) != (2, 2)
-        tB = TensorMapWithStorage{eltype(B), similarstoragetype(A, eltype(B)), spacetype(tB′), numout(tB′), numin(tB′)}(B)
-        return planarcontract!(C, A, pA, tB, pB, pAB, α, β, backend, allocator)
+        return planarcontract!(C, A, pA, TensorMap(B), pB, pAB, α, β, backend, allocator)
     end
 
     spacecheck_contract(C, A, pA, false, B, pB, false, pAB)
