@@ -408,11 +408,6 @@ for randf in (:rand, :randn, :randexp, :randisometry)
     end
 end
 
-# Moving arbitrary TensorMaps to CPU
-#-----------------------------
-to_cpu(t::TensorMapWithStorage{T, Vector{T}}) where {T} = t # no op
-to_cpu(t::TensorMap) = convert(TensorMapWithStorage{scalartype(t), similarstoragetype(scalartype(t))}, t)
-
 # Efficient copy constructors
 #-----------------------------
 Base.copy(t::TensorMap) = typeof(t)(copy(t.data), t.space)

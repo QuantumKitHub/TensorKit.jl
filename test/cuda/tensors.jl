@@ -116,7 +116,7 @@ for V in spacelist
             for T in (Int, Float32, ComplexF64)
                 t = @constinferred cuRAND.rand(T, W)
                 d = convert(Dict, t)
-                @test convert(Dict, TensorKit.to_cpu(t)) == d
+                @test convert(Dict, adapt(Array, t)) == d
             end
         end
         symmetricbraiding && @timedtestset "Basic linear algebra" begin
@@ -208,8 +208,8 @@ for V in spacelist
                     t = cuRAND.rand(T, W)
                     t2 = @constinferred cuRAND.rand!(similar(t))
                     α = rand(T)
-                    @test norm(t, 2) ≈ norm(TensorKit.to_cpu(t), 2)
-                    @test dot(t2, t) ≈ dot(TensorKit.to_cpu(t2), TensorKit.to_cpu(t))
+                    @test norm(t, 2) ≈ norm(adapt(Array, t), 2)
+                    @test dot(t2, t) ≈ dot(adapt(Array, t2), adapt(Array, t))
                     @test adapt(Vector{T}, (α * t)) ≈ α * adapt(Vector{T}, t)
                     @test adapt(Vector{T}, (t + t)) ≈ 2 * adapt(Vector{T}, t)
                 end
@@ -221,17 +221,17 @@ for V in spacelist
 
                     tr = @constinferred real(t)
                     @test scalartype(tr) <: Real
-                    @test real(TensorKit.to_cpu(t)) == TensorKit.to_cpu(tr)
+                    @test real(adapt(Array, t)) == adapt(Array, tr)
                     @test storagetype(tr) == CuVector{real(T), CUDA.DeviceMemory}
 
                     ti = @constinferred imag(t)
                     @test scalartype(ti) <: Real
-                    @test imag(TensorKit.to_cpu(t)) == TensorKit.to_cpu(ti)
+                    @test imag(adapt(Array, t)) == adapt(Array, ti)
                     @test storagetype(ti) == CuVector{real(T), CUDA.DeviceMemory}
 
                     tc = @inferred complex(t)
                     @test scalartype(tc) <: Complex
-                    @test complex(TensorKit.to_cpu(t)) == TensorKit.to_cpu(tc)
+                    @test complex(adapt(Array, t)) == adapt(Array, tc)
                     @test storagetype(tc) == CuVector{complex(T), CUDA.DeviceMemory}
 
                     tc2 = @inferred complex(tr, ti)
@@ -244,7 +244,7 @@ for V in spacelist
             W = V1 ⊗ V2
             t = @constinferred cuRAND.randn(W ← W)
             @test typeof(convert(typeof(t), t')) == typeof(t)
-            @test typeof(TensorKit.to_cpu(t')) == typeof(TensorKit.to_cpu(t)')
+            @test typeof(adapt(Array, t')) == typeof(adapt(Array, t)')
             tc = complex(t)
             @test convert(typeof(tc), t) == tc
             @test typeof(convert(typeof(tc), t)) == typeof(tc)
@@ -297,12 +297,12 @@ for V in spacelist
                     p1 = ntuple(n -> p[n], k)
                     p2 = ntuple(n -> p[k + n], 5 - k)
                     dt2 = permute(t, (p1, p2))
-                    ht2 = permute(TensorKit.to_cpu(t), (p1, p2))
-                    @test ht2 ≈ TensorKit.to_cpu(dt2)
+                    ht2 = permute(adapt(Array, t), (p1, p2))
+                    @test ht2 ≈ adapt(Array, dt2)
                 end
                 dt3 = repartition(t, k)
-                ht3 = repartition(TensorKit.to_cpu(t), k)
-                @test ht3 ≈ TensorKit.to_cpu(dt3)
+                ht3 = repartition(adapt(Array, t), k)
+                @test ht3 ≈ adapt(Array, dt3)
             end
         end
         symmetricbraiding && @timedtestset "Full trace: test self-consistency" begin
@@ -354,10 +354,10 @@ for V in spacelist
                 @tensor dHrA12[a, s1, s2, c] := drhoL[a, a'] * conj(dA1[a', t1, b]) *
                     dA2[b, t2, c'] * drhoR[c', c] *
                     dH[s1, s2, t1, t2]
-                @tensor hHrA12[a, s1, s2, c] := TensorKit.to_cpu(drhoL)[a, a'] * conj(TensorKit.to_cpu(dA1)[a', t1, b]) *
-                    TensorKit.to_cpu(dA2)[b, t2, c'] * TensorKit.to_cpu(drhoR)[c', c] *
-                    TensorKit.to_cpu(dH)[s1, s2, t1, t2]
-                @test TensorKit.to_cpu(dHrA12) ≈ hHrA12
+                @tensor hHrA12[a, s1, s2, c] := adapt(Array, drhoL)[a, a'] * conj(adapt(Array, dA1)[a', t1, b]) *
+                    adapt(Array, dA2)[b, t2, c'] * adapt(Array, drhoR)[c', c] *
+                    adapt(Array, dH)[s1, s2, t1, t2]
+                @test adapt(Array, dHrA12) ≈ hHrA12
             end
         end
         hasbraiding && @timedtestset "Index flipping: test flipping inverse" begin
@@ -429,30 +429,30 @@ for V in spacelist
                 t1 = cuRAND.rand(T, W1, W1)
                 t2 = cuRAND.rand(T, W2, W2)
                 t = cuRAND.rand(T, W1, W2)
-                ht1 = TensorKit.to_cpu(t1)
-                ht2 = TensorKit.to_cpu(t2)
-                ht = TensorKit.to_cpu(t)
-                @test TensorKit.to_cpu(t1 * t) ≈ ht1 * ht
-                @test TensorKit.to_cpu(t1' * t) ≈ ht1' * ht
-                @test TensorKit.to_cpu(t2 * t') ≈ ht2 * ht'
-                @test TensorKit.to_cpu(t2' * t') ≈ ht2' * ht'
+                ht1 = adapt(Array, t1)
+                ht2 = adapt(Array, t2)
+                ht = adapt(Array, t)
+                @test adapt(Array, t1 * t) ≈ ht1 * ht
+                @test adapt(Array, t1' * t) ≈ ht1' * ht
+                @test adapt(Array, t2 * t') ≈ ht2 * ht'
+                @test adapt(Array, t2' * t') ≈ ht2' * ht'
 
-                @test TensorKit.to_cpu(inv(t1)) ≈ inv(ht1)
-                @test TensorKit.to_cpu(pinv(t)) ≈ pinv(ht)
+                @test adapt(Array, inv(t1)) ≈ inv(ht1)
+                @test adapt(Array, pinv(t)) ≈ pinv(ht)
 
                 if T == Float32 || T == ComplexF32
                     continue
                 end
 
-                @test TensorKit.to_cpu(t1 \ t) ≈ ht1 \ ht
-                @test TensorKit.to_cpu(t1' \ t) ≈ ht1' \ ht
-                @test TensorKit.to_cpu(t2 \ t') ≈ ht2 \ ht'
-                @test TensorKit.to_cpu(t2' \ t') ≈ ht2' \ ht'
+                @test adapt(Array, t1 \ t) ≈ ht1 \ ht
+                @test adapt(Array, t1' \ t) ≈ ht1' \ ht
+                @test adapt(Array, t2 \ t') ≈ ht2 \ ht'
+                @test adapt(Array, t2' \ t') ≈ ht2' \ ht'
 
-                @test TensorKit.to_cpu(t2 / t) ≈ ht2 / ht
-                @test TensorKit.to_cpu(t2' / t) ≈ ht2' / ht
-                @test TensorKit.to_cpu(t1 / t') ≈ ht1 / ht'
-                @test TensorKit.to_cpu(t1' / t') ≈ ht1' / ht'
+                @test adapt(Array, t2 / t) ≈ ht2 / ht
+                @test adapt(Array, t2' / t) ≈ ht2' / ht
+                @test adapt(Array, t1 / t') ≈ ht1 / ht'
+                @test adapt(Array, t1' / t') ≈ ht1' / ht'
             end
         end
         symmetricbraiding && @timedtestset "Tensor functions" begin
@@ -461,14 +461,14 @@ for V in spacelist
                 t = project_hermitian!(cuRAND.randn(T, W, W))
                 s = dim(W)
                 #@test (@constinferred sqrt(t))^2 ≈ t
-                #@test TensorKit.to_cpu(sqrt(t)) ≈ sqrt(TensorKit.to_cpu(t))
+                #@test adapt(Array, sqrt(t)) ≈ sqrt(adapt(Array, t))
 
                 expt = @constinferred exp(t)
-                @test TensorKit.to_cpu(expt) ≈ exp(TensorKit.to_cpu(t))
+                @test adapt(Array, expt) ≈ exp(adapt(Array, t))
 
                 # log doesn't work on CUDA yet (scalar indexing)
                 #@test exp(@constinferred log(project_hermitian!(expt))) ≈ expt
-                #@test TensorKit.to_cpu(log(project_hermitian!(expt))) ≈ log(TensorKit.to_cpu(expt))
+                #@test adapt(Array, log(project_hermitian!(expt))) ≈ log(adapt(Array, expt))
 
                 #=@test (@constinferred cos(t))^2 + (@constinferred sin(t))^2 ≈
                           id(storagetype(t), W)
