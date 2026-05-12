@@ -225,7 +225,7 @@ function planarcontract!(
 
     # Non-bosonic case: factor into a cyclic transpose (no crossings) + a single Artin braid
     # that swaps the two contracted legs, producing the R-symbol that A encodes. Naively
-    # using a single `add_braid!` is wrong: it would resolve cyclic moves as crossings and
+    # using a single `braid!` is wrong: it would resolve cyclic moves as crossings and
     # pick up spurious R-symbol factors.
     B_in_layout = (cindB == codB && oindB == domB)
     if B_in_layout
@@ -274,11 +274,11 @@ function planarcontract!(
 
     I = sectortype(C)
     BraidingStyle(I) isa Bosonic &&
-        return add_permute!(C, A, (oindA, reverse(cindA)), α, β, backend)
+        return permute!(C, A, (oindA, reverse(cindA)), α, β, backend, allocator)
 
     # Non-bosonic case: cyclic transpose A → (oindA, cindA) (no crossings), then a single
     # Artin braid swaps A′'s last two indices, producing the R-symbol that B encodes. Naively
-    # using a single `add_braid!` is wrong: it would resolve cyclic moves as crossings and
+    # using a single `braid!` is wrong: it would resolve cyclic moves as crossings and
     # pick up spurious R-symbol factors.
 
     A_in_layout = (oindA == codA && cindA == domA)
@@ -291,10 +291,21 @@ function planarcontract!(
         transpose!(A′, A, (oindA, cindA), One(), Zero(), backend, allocator)
     end
 
-    p = (oindA, reverse(cindA))
-    N = length(oindA)
-    levels = (ntuple(identity, N)..., (B.adjoint ? (N + 1, N + 2) : (N + 2, N + 1))...)
-    return braid!(C, A, p, levels, α, β, backend, allocator)
+    levelsB = B.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
+    N = numind(A)
+    M = N - 2
+    levels = (
+        ntuple(Returns(3), M)...,
+        levelsB[cindB[1]], levelsB[cindB[2]],
+    )
+
+    braid!(
+        C, A′, (ntuple(identity, M), (N, N - 1)),
+        levels, α, β, backend, allocator
+    )
+
+    A_in_layout || TO.tensorfree!(A′, allocator)
+    return C
 end
 
 # ambiguity fix:
