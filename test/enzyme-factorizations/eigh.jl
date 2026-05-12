@@ -35,7 +35,7 @@ end
     EnzymeTestUtils.test_reverse(eigh_full ∘ project_hermitian, Duplicated, (th, Duplicated); output_tangent = ΔDV, atol, rtol)
 
     #D = eigh_vals(th)
-    #EnzymeTestUtils.test_reverse(eigh_vals ∘ project_hermitian, Duplicated, (t, Duplicated); atol, rtol)
+    #EnzymeTestUtils.test_reverse(eigh_vals ∘ project_hermitian, Duplicated, (th, Duplicated); atol, rtol)
 
     V_trunc = spacetype(th)(c => min(size(b)...) ÷ 2 for (c, b) in blocks(t))
     trunc = truncspace(V_trunc)
