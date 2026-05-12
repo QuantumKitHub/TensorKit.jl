@@ -348,7 +348,7 @@ function insertleftunit(
     ) where {i}
     W = insertleftunit(space(t), Val(i); conj, dual)
     if t isa TensorMap
-        return TensorMapWithStorage{scalartype(t), storagetype(t)}(copy ? Base.copy(t.data) : t.data, W)
+        return TensorMap{scalartype(t)}(copy ? Base.copy(t.data) : t.data, W)
     else
         tdst = similar(t, W)
         for (c, b) in blocks(t)
@@ -377,7 +377,7 @@ function insertrightunit(
     ) where {i}
     W = insertrightunit(space(t), Val(i); conj, dual)
     if t isa TensorMap
-        return TensorMapWithStorage{scalartype(t), storagetype(t)}(copy ? Base.copy(t.data) : t.data, W)
+        return TensorMap{scalartype(t)}(copy ? Base.copy(t.data) : t.data, W)
     else
         tdst = similar(t, W)
         for (c, b) in blocks(t)
@@ -402,7 +402,7 @@ and [`insertrightunit`](@ref insertrightunit(::AbstractTensorMap, ::Val{i}) wher
 function removeunit(t::AbstractTensorMap, ::Val{i}; copy::Bool = false) where {i}
     W = removeunit(space(t), Val(i))
     if t isa TensorMap
-        return TensorMapWithStorage{scalartype(t), storagetype(t)}(copy ? Base.copy(t.data) : t.data, W)
+        return TensorMap{scalartype(t)}(copy ? Base.copy(t.data) : t.data, W)
     else
         tdst = similar(t, W)
         for (c, b) in blocks(t)
