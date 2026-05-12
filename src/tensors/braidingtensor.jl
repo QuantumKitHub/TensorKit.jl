@@ -265,8 +265,7 @@ function planarcontract!(
     )
     # special case only defined for contracting all 4 indices of B (2 contracted + 2 open)
     if length.(pB) != (2, 2)
-        tB′ = TensorMap(B)
-        tB = TensorMapWithStorage{eltype(B), similarstoragetype(A, eltype(B)), spacetype(tB′), numout(tB′), numin(tB′)}(tB′)
+        tB = TensorMapWithStorage{eltype(B), similarstoragetype(A, eltype(B)), spacetype(tB′), numout(tB′), numin(tB′)}(B)
         return planarcontract!(C, A, pA, tB, pB, pAB, α, β, backend, allocator)
     end
 
