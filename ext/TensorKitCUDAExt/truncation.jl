@@ -10,7 +10,7 @@ function MatrixAlgebraKit.findtruncated(
         fill!(v, dim(c))
     end
 
-    perm = isempty(parent(values)) ? () : sortperm(parent(values); strategy.by, strategy.rev)
+    perm = isempty(parent(values)) ? Int64[] : sortperm(parent(values); strategy.by, strategy.rev)
     cumulative_dim = cumsum(Base.permute!(parent(dims), perm))
 
     result = similar(values, Bool)
@@ -36,7 +36,7 @@ function MatrixAlgebraKit.findtruncated(
         end
     end
 
-    perm = isempty(parent(values)) ? () : sortperm(parent(values); by = abs, rev = false)
+    perm = isempty(parent(values)) ? Int64[] : sortperm(parent(values); by = abs, rev = false)
     cumulative_err = cumsum(Base.permute!(parent(ϵᵖ), perm))
 
     result = similar(values, Bool)
