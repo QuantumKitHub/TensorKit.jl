@@ -308,6 +308,15 @@ function adjointtensorindices(t, p::Index2Tuple)
     return (adjointtensorindices(t, p[1]), adjointtensorindices(t, p[2]))
 end
 
+"""
+    isdual(x::AbstractTensorMap) -> Vector{Bool}
+
+Returns a Boolean vector indicating which spaces of `x` are dual spaces.
+"""
+function isdual(x::AbstractTensorMap)
+    return [isdual(space(x, i)) for i in 1:numind(x)]
+end
+
 # tensor characteristics: work on instances and pass to type
 #------------------------------------------------------------
 InnerProductStyle(t::AbstractTensorMap) = InnerProductStyle(typeof(t))

@@ -24,6 +24,7 @@ for V in spacelist
                 @test space(t) == (W ← one(W))
                 @test domain(t) == one(W)
                 @test typeof(t) == TensorMap{T, spacetype(t), 5, 0, Vector{T}}
+                @constinferred isdual(t)
                 # Array type input
                 t = @constinferred zeros(Vector{T}, W)
                 @test @constinferred(hash(t)) == hash(deepcopy(t))
