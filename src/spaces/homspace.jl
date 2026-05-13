@@ -56,9 +56,14 @@ const TensorMapSpace{S <: ElementarySpace, N₁, N₂} = HomSpace{
 numout(::Type{TensorMapSpace{S, N₁, N₂}}) where {S, N₁, N₂} = N₁
 numin(::Type{TensorMapSpace{S, N₁, N₂}}) where {S, N₁, N₂} = N₂
 
+Base.length(W::HomSpace) = numout(W) + numin(W)
 function Base.getindex(W::TensorMapSpace{<:IndexSpace, N₁, N₂}, i) where {N₁, N₂}
     return i <= N₁ ? codomain(W)[i] : dual(domain(W)[i - N₁])
 end
+
+Base.Broadcast.broadcastable(W::HomSpace) =
+    TupleTools.vcat(identity.(codomain(W)), dual.(domain(W)))
+Base.map(f, W::HomSpace) = f.(W)
 
 function ←(codom::ProductSpace{S}, dom::ProductSpace{S}) where {S <: ElementarySpace}
     return HomSpace(codom, dom)
