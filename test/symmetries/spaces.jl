@@ -444,6 +444,8 @@ end
         @test W[3] == V5
         @test W[4] == V4
         @test W[5] == V3
+        @test all(W .== (V1, V2, V5, V4, V3))
+        @test @constinferred(map(isdual, W)) == ntuple(i -> isdual(W[i]), length(W))
         @test @constinferred(hash(W)) == hash(deepcopy(W)) != hash(W')
         @test W == deepcopy(W)
         cod = codomain(W)
