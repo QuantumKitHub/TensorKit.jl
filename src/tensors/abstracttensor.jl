@@ -452,8 +452,8 @@ Base.@propagate_inbounds function subblock(t::AbstractTensorMap, sectors::Tuple{
         c2 = length(s₂) == 0 ? unit(I) : (length(s₂) == 1 ? s₂[1] : first(⊗(s₂...)))
         c2 == c1 || throw(SectorMismatch("Not a valid fusion channel for this tensor"))
     end
-    f₁ = FusionTree(s₁, c1, map(isdual, tuple(codomain(t)...)))
-    f₂ = FusionTree(s₂, c1, map(isdual, tuple(domain(t)...)))
+    f₁ = FusionTree(s₁, c1, map(isdual, codomain(t)))
+    f₂ = FusionTree(s₂, c1, map(isdual, domain(t)))
     return @inbounds subblock(t, (f₁, f₂))
 end
 Base.@propagate_inbounds function subblock(t::AbstractTensorMap, sectors::Tuple)
