@@ -341,6 +341,8 @@ end
 Base.length(P::ProductSpace) = length(P.spaces)
 Base.getindex(P::ProductSpace, n::Integer) = P.spaces[n]
 
+Base.Broadcast.broadcastable(P::ProductSpace) = P.spaces
+
 Base.iterate(P::ProductSpace, args...) = Base.iterate(P.spaces, args...)
 Base.indexed_iterate(P::ProductSpace, args...) = Base.indexed_iterate(P.spaces, args...)
 

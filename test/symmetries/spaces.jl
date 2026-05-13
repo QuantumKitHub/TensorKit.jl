@@ -295,6 +295,7 @@ end
     @test @constinferred(hash(P)) == hash(deepcopy(P)) != hash(P')
     @test P == deepcopy(P)
     @test P == typeof(P)(P...)
+    @test map(identity, P) == identity.(P)
     @constinferred (x -> tuple(x...))(P)
     @test @constinferred(dual(P)) == P'
     @test @constinferred(field(P)) == ℂ
