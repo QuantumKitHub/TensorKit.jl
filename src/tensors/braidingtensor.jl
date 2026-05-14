@@ -189,8 +189,6 @@ end
 has_shared_permute(t::BraidingTensor, ::Index2Tuple) = false
 function add_transform!(
         tdst::AbstractTensorMap,
-        tsrc::BraidingTensor,
-        (p₁, p₂)::Index2Tuple,
         tsrc::BraidingTensor, (p₁, p₂)::Index2Tuple,
         α::Number, β::Number, backend::AbstractBackend...
     )
