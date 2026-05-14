@@ -191,7 +191,7 @@ function add_transform!(
         tdst::AbstractTensorMap,
         tsrc::BraidingTensor,
         (p₁, p₂)::Index2Tuple,
-        fusiontreetransform,
+        tsrc::BraidingTensor, (p₁, p₂)::Index2Tuple,
         α::Number, β::Number, backend::AbstractBackend...
     )
     return add_transform!(
@@ -262,9 +262,9 @@ function planarcontract!(
         backend, allocator
     )
     # special case only defined for contracting all 4 indices of B (2 contracted + 2 open)
-    if length.(pB) != (2, 2)
-        return planarcontract!(C, A, pA, TensorMap(B), pB, pAB, α, β, backend, allocator)
-    end
+    length.(pB) == (2, 2) ||
+        planarcontract!(C, A, pA, TensorMap(B), pB, pAB, α, β, backend, allocator)
+
 
     spacecheck_contract(C, A, pA, false, B, pB, false, pAB)
 

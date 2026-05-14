@@ -344,7 +344,7 @@ See also [`insertrightunit`](@ref insertrightunit(::AbstractTensorMap, ::Val{i})
 """
 function insertleftunit(
         t::AbstractTensorMap, ::Val{i} = Val(numind(t) + 1);
-        copy::Bool = false, conj::Bool = false, dual::Bool = false,
+        copy::Bool = false, conj::Bool = false, dual::Bool = false
     ) where {i}
     W = insertleftunit(space(t), Val(i); conj, dual)
     if t isa TensorMap
@@ -373,7 +373,7 @@ See also [`insertleftunit`](@ref insertleftunit(::AbstractTensorMap, ::Val{i}) w
 """
 function insertrightunit(
         t::AbstractTensorMap, ::Val{i} = Val(numind(t));
-        copy::Bool = false, conj::Bool = false, dual::Bool = false,
+        copy::Bool = false, conj::Bool = false, dual::Bool = false
     ) where {i}
     W = insertrightunit(space(t), Val(i); conj, dual)
     if t isa TensorMap
