@@ -261,8 +261,7 @@ function planarcontract!(
     )
     # special case only defined for contracting all 4 indices of B (2 contracted + 2 open)
     length.(pB) == (2, 2) ||
-        planarcontract!(C, A, pA, TensorMap(B), pB, pAB, α, β, backend, allocator)
-
+        return planarcontract!(C, A, pA, TensorMap(B), pB, pAB, α, β, backend, allocator)
 
     spacecheck_contract(C, A, pA, false, B, pB, false, pAB)
 
