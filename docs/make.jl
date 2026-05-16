@@ -9,7 +9,7 @@ end
 using Documenter
 using Random
 using TensorKit
-using TensorKit: FusionTreePair, FusionTreeBlock, Index2Tuple
+using TensorKit: FusionTreePair, FusionTreeBlock, Index2Tuple, IndexTuple
 using TensorKit.TensorKitSectors
 using TensorKit.MatrixAlgebraKit
 using DocumenterInterLinks
@@ -26,8 +26,14 @@ pages = [
         "man/intro.md", "man/tutorial.md",
         "man/spaces.md", "man/symmetries.md",
         "man/sectors.md", "man/gradedspaces.md",
-        "man/fusiontrees.md", "man/tensors.md",
-        "man/tensormanipulations.md",
+        "man/fusiontrees.md",
+        "Tensors" => [
+            "man/tensors.md",
+            "man/linearalgebra.md",
+            "man/indexmanipulations.md",
+            "man/factorizations.md",
+            "man/contractions.md",
+        ],
     ],
     "Library" => [
         "lib/sectors.md", "lib/fusiontrees.md",

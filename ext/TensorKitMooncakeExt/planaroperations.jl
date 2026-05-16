@@ -60,7 +60,7 @@
 #     if length(q[1]) == 0
 #         ip = invperm(linearize(p))
 #         pΔA = _repartition(ip, A)
-#         TK.add_transpose!(ΔA, ΔC, pΔA, conj(α), One(), backend, allocator)
+#         TK.transpose!(ΔA, ΔC, pΔA, conj(α), One(), backend, allocator)
 #         return NoRData()
 #     end
 #     # if length(q[1]) == 1

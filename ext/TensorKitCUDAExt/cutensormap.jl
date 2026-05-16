@@ -169,6 +169,4 @@ for f in (:sqrt, :log, :asin, :acos, :acosh, :atanh, :acoth)
     end
 end
 
-function TensorKit._add_transform_multi!(tdst::CuTensorMap, tsrc, p, (U, structs_dst, structs_src)::Tuple{<:Array, TD, TS}, buffers, alpha, beta, backend...) where {TD, TS}
-    return TensorKit._add_transform_multi!(tdst, tsrc, p, (CUDA.CUDACore.Adapt.adapt(CuArray, U), structs_dst, structs_src), buffers, alpha, beta, backend...)
-end
+TensorKit.adapt_transformer(U::AbstractMatrix, ::Type{A}) where {A <: CuVector} = CUDA.CUDACore.Adapt.adapt(CuArray, U)

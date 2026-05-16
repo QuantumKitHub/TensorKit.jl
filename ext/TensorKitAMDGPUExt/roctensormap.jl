@@ -162,3 +162,5 @@ for f in (:sqrt, :log, :asin, :acos, :acosh, :atanh, :acoth)
         return tf
     end
 end
+
+TensorKit.adapt_transformer(U::AbstractMatrix, ::Type{A}) where {A <: ROCVector} = AMDGPU.Adapt.adapt(ROCArray, U)
