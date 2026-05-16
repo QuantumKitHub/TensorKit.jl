@@ -92,8 +92,7 @@ See [`twist!`](@ref) for storing the result in place.
 """
 function twist(t::AbstractTensorMap, inds; inv::Bool = false, copy::Bool = false)
     if has_shared_twist(t, inds)
-        copy || return t
-        return copy!(similar(t), t)
+        return copy ? Base.copy(t) : t
     end
     tdst = similar(t, promote_twist(t))
     copy!(tdst, t)
@@ -114,7 +113,12 @@ end
 Insert a trivial vector space, isomorphic to the underlying field, at position `i`,
 which can be specified as an `Int` or as `Val(i)` for improved type stability.
 More specifically, adds a left monoidal unit or its dual.
-
+Insert a trivial vector space, isomorphic to the underlying field, before position `i`,
+which should satisfy `1 ≤ i ≤ numind(t) + 1`
+and can be specified as an `Int` or as `Val(i)` for improved type stability,
+More specifically, add a left monoidal unit (or its dual) of the space associated with index `i`.
+The new index appears at position `i` in the new tensor,
+namely in its codomain for `1 ≤ i ≤ numout(t)` and in its domain otherwise.
 If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwise, a copy is always made.
 
 See also [`insertrightunit`](@ref insertrightunit(::AbstractTensorMap, ::Val{i}) where {i}),
@@ -143,8 +147,11 @@ end
         ) -> tdst
 
 Insert a trivial vector space, isomorphic to the underlying field, after position `i`,
-which can be specified as an `Int` or as `Val(i)` for improved type stability.
-More specifically, adds a right monoidal unit or its dual.
+which should satisfy `0 ≤ i ≤ numind(t)`
+and can be specified as an `Int` or as `Val(i)` for improved type stability,
+More specifically, add a right monoidal unit (or its dual) of the space associated with index `i`.
+The new index appears at position `i+1` in the new tensor,
+namely in its codomain for `0 ≤ i ≤ numout(t)` and in its domain otherwise.
 
 If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwise, a copy is always made.
 
@@ -221,7 +228,10 @@ See also [`permute`](@ref) for creating a new tensor.
 end
 
 """
-    permute(tsrc, (p₁, p₂)::Index2Tuple; copy = false, [backend], [allocator]) -> tdst
+    permute(
+        tsrc, (p₁, p₂)::Index2Tuple; copy = false,
+        backend = DefaultBackend(), allocator = DefaultAllocator()
+    ) -> tdst::TensorMap    
 
 Return tensor `tdst` obtained by permuting the indices of `tsrc`.
 The codomain and domain of `tdst` correspond to the indices in `p₁` and `p₂` of `tsrc` respectively.
@@ -307,9 +317,9 @@ end
 
 """
     braid(
-            tsrc, (p₁, p₂)::Index2Tuple, levels::IndexTuple; copy = false,
-            backend = DefaultBackend(), allocator = DefaultAllocator()
-        ) -> tdst::TensorMap
+        tsrc, (p₁, p₂)::Index2Tuple, levels::IndexTuple; copy = false,
+        backend = DefaultBackend(), allocator = DefaultAllocator()
+    ) -> tdst::TensorMap
 
 Return tensor `tdst` obtained by braiding the indices of `tsrc`.
 The codomain and domain of `tdst` correspond to the indices in `p₁` and `p₂` of `tsrc` respectively.
@@ -376,9 +386,9 @@ end
 
 """
     transpose(
-            tsrc, (p₁, p₂)::Index2Tuple; copy = false,
-            backend = DefaultBackend(), allocator = DefaultAllocator()
-        ) -> tdst::TensorMap
+        tsrc, (p₁, p₂)::Index2Tuple; copy = false,
+        backend = DefaultBackend(), allocator = DefaultAllocator()
+    ) -> tdst::TensorMap
 
 Return tensor `tdst` obtained by transposing the indices of `tsrc`.
 The codomain and domain of `tdst` correspond to the indices in `p₁` and `p₂` of `tsrc` respectively.
@@ -433,9 +443,9 @@ See also [`repartition`](@ref) for creating a new tensor.
     check_spacetype(tdst, tsrc)
     numind(tsrc) == numind(tdst) ||
         throw(ArgumentError("tsrc and tdst should have an equal amount of indices"))
-    all_inds = (codomainind(tsrc)..., reverse(domainind(tsrc))...)
-    p₁ = ntuple(i -> all_inds[i], numout(tdst))
-    p₂ = reverse(ntuple(i -> all_inds[i + numout(tdst)], numin(tdst)))
+    p₁, p₂ = let all_inds = (codomainind(tsrc)..., reverse(domainind(tsrc))...)
+        ntuple(i -> all_inds[i], numout(tdst)), reverse(ntuple(i -> all_inds[i + numout(tdst)], numin(tdst)))
+    end
     return transpose!(tdst, tsrc, (p₁, p₂), α, β, backend, allocator)
 end
 
@@ -460,9 +470,9 @@ See also [`repartition!`](@ref) for writing into an existing destination.
     )
     N₁ + N₂ == numind(t) ||
         throw(ArgumentError("Invalid repartition: $(numind(t)) to ($N₁, $N₂)"))
-    all_inds = (codomainind(t)..., reverse(domainind(t))...)
-    p₁ = ntuple(i -> all_inds[i], N₁)
-    p₂ = reverse(ntuple(i -> all_inds[i + N₁], N₂))
+    p₁, p₂ = let all_inds = (codomainind(t)..., reverse(domainind(t))...)
+        ntuple(i -> all_inds[i], N₁), reverse(ntuple(i -> all_inds[i + N₁], N₂))
+    end
     return transpose(t, (p₁, p₂); copy, backend, allocator)
 end
 
