@@ -17,8 +17,6 @@ for (operation, manipulation) in (
         $promote_op(::Type{T}, ::Type{I}) where {T <: Number, I <: Sector} =
             sectorscalartype(I) <: Integer ? T :
             sectorscalartype(I) <: Real ? float(T) : complex(T)
-        $promote_op(::Type{TA}, ::Type{I}) where {TA <: DenseVector, I <: Sector} =
-            similarstoragetype(TA, $promote_op(eltype(TA), I))
         # TODO: currently the manipulations all use sectorscalartype, change to:
         # $manipulation_scalartype(I) <: Integer ? T :
         # $manipulation_scalartype(I) <: Real ? float(T) : complex(T)
