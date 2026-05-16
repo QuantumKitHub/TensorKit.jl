@@ -10,7 +10,7 @@ using LinearAlgebra
 ```
 
 A `TensorMap{T, S, N₁, N₂}` is a linear map from a domain (a `ProductSpace{S, N₂}`) to a codomain (a `ProductSpace{S, N₁}`).
-In practice, the bipartition of the `N₁ + N₂` indices between domain and codomain is often not fixed: algorithms typically need to reshuffle indices between the two sides, reorder them, or change the arrow direction on individual indices before passing a tensor to a factorization or contraction.
+In practice, the bipartition of the `N₁ + N₂` indices between domain and codomain rarely remains fixed: algorithms typically need to reshuffle indices between the two sides, reorder them, or change the arrow direction on individual indices before passing a tensor to a factorization or contraction.
 
 Index manipulations cover all such operations.
 They act on the structure of the tensor data in a way that is fully determined by the categorical data of the `sectortype`, such that TensorKit automatically manipulates the tensor entries accordingly.
@@ -36,21 +36,25 @@ allind
 ## Reweighting
 
 Reweighting operations modify the entries of a tensor by applying local isomorphisms to individual indices, without changing the number of indices or their partition between domain and codomain.
-
-[`flip`](@ref) changes the arrow direction on selected indices by applying the corresponding isomorphism between a space and its dual.
-[`twist`](@ref) applies the topological spin (monoidal twist) to selected indices; for `BraidingStyle(I) == Bosonic()` this is always trivial.
+In particular, [`twist`](@ref) applies the topological spin (monoidal twist) to selected indices; this operation preserves the space of the indices and is completely trivial for `BraidingStyle(I) == Bosonic()`.
+In contrast, [`flip`](@ref) changes the arrow direction on selected indices by applying a (non-canonical!) isomorphism between the index space and its dual.
 
 ```@docs; canonical=false
-flip(t::AbstractTensorMap, I)
 twist(::AbstractTensorMap, ::Int)
 twist!
+flip(t::AbstractTensorMap, I)
 ```
 
 ## Inserting and removing unit spaces
 
-These functions add or remove a trivial tensor product factor at a specified index position, without affecting any other indices.
-[`insertleftunit`](@ref) inserts before position `i` and [`insertrightunit`](@ref) inserts after position `i`; [`removeunit`](@ref) undoes either insertion.
-Passing `Val(i)` instead of an `Int` for the position may improve type stability.
+The next set of functions add or remove a trivial tensor product factor at a specified index position, without affecting any other indices.
+We distinguish between [`insertleftunit`](@ref), which inserts a unit index before index `i` (the unit index becoming index `i`),
+and [`insertrightunit`](@ref), which inserts after index `i` (the unit index becoming index `i + 1`);
+[`removeunit`](@ref) undoes either insertion.
+
+For tensors `t` with `UnitStyle(sectortype(t)) = SimpleUnit()`, the only relevant difference between `insertleftunit(t, i + 1)` and `insertrightunit(t, i)` is that `insertleftunit(t, numout(t) + 1)` inserts the unit index as first index in the domain, whereas `insertrightunit(t, numout(t))` will insert the unit index as last index in the codomain. 
+
+Passing `Val(i)` instead of an integer `i` for the position may improve type stability.
 
 ```@docs; canonical=false
 insertleftunit(::AbstractTensorMap, ::Val{i}) where {i}
@@ -91,24 +95,14 @@ repartition!
 
 ## Fusing and splitting indices
 
-There is no dedicated function for fusing or splitting indices.
-For a plain tensor (`sectortype(t) == Trivial`), this is equivalent to `reshape` on the underlying array.
-
+There is no dedicated functionality for fusing or splitting indices.
 In the general case there is no canonical embedding of `V1 ⊗ V2` into the fused space `V = fuse(V1 ⊗ V2)`: any two such embeddings differ by a basis transform, i.e. there is a gauge freedom.
-TensorKit resolves this by requiring the user to construct an explicit isomorphism — the *fuser* — and contract it with the tensor:
+TensorKit resolves this by requiring the user to construct an explicit isomorphism — the *fuser* — and contract it with the tensor.
+One particular isomorphism can be constructed using the [`unitary](@ref) function.
+It preserves norms and inner products, and has an inverse given by its adjoint. 
+For a plain tensor (`sectortype(t) == Trivial`), applying this particular `unitary` is equivalent to `reshape` on the underlying array.
 
-```julia
-f = unitary(fuse(space(t, i) ⊗ space(t, j)), space(t, i) ⊗ space(t, j))
-@tensor t_fused[…, a, …] := f[a, i, j] * t[…, i, j, …]
-```
+Fusing index `i` and `j = i+1` of a tensor `t` is then accomplished as
 
-Splitting is then the adjoint of the same map:
 
-```julia
-@tensor t_split[…, i, j, …] := f'[i, j, a] * t_fused[…, a, …]
-```
-
-Using `f'` as the splitter guarantees that the round-trip is the identity, i.e. `t_split == t`.
-Using a *different* isomorphism to split would give a physically equivalent but numerically different tensor, so it is important to keep `f` and its adjoint consistent throughout a calculation.
-
-Note that tensor factorizations (SVD, QR, etc.) can be applied directly to any index bipartition without needing to fuse indices first; see [Tensor factorizations](@ref ss_tensor_factorization).
+The resulting `unitary` is a dense `TensorMap`, and this fusion and splitting approach is not optimized for maximal performance. However, because many tensor operations including tensor factorizations (SVD, QR, etc.) can be applied without needing any fusion, we do not expect fusion and splitting to be an essential part of performance critical parts of typical tensor algorithms. 
