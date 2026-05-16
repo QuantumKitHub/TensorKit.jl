@@ -379,7 +379,7 @@ function blas_contract!(
     bstyle = BraidingStyle(sectortype(C))
     bstyle isa SymmetricBraiding ||
         throw(SectorMismatch("only tensors with symmetric braiding rules can be contracted; try `@planar` instead"))
-    TC = storagetype(C) # without this, Anew below has wrong storagetype
+    TC = scalartype(C)
 
     # check which tensors have to be permuted/copied
     copyA = !(TO.isblascontractable(A, pA) && scalartype(A) === TC)

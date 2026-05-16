@@ -104,12 +104,6 @@ similarstoragetype(::Type{TT}) where {TT <: AbstractTensorMap} = similarstoraget
 function similarstoragetype(::Type{TT}, ::Type{T}) where {TT <: AbstractTensorMap, T <: Number}
     return similarstoragetype(storagetype(TT), T)
 end
-function similarstoragetype(::Type{<:AbstractTensorMap{T, S, N₁, N₂}}, ::Type{TA}) where {T <: Number, TA <: DenseVector, S, N₁, N₂}
-    return similarstoragetype(TA, T)
-end
-function similarstoragetype(t::AbstractTensorMap{T, S, N₁, N₂}, ::Type{TA}) where {T <: Number, TA <: DenseVector, S, N₁, N₂}
-    return similarstoragetype(typeof(t), TA)
-end
 
 # implement on arrays
 similarstoragetype(::Type{A}) where {A <: DenseVector{<:Number}} = A
