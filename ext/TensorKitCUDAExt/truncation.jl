@@ -10,7 +10,7 @@ function MatrixAlgebraKit.findtruncated(
         fill!(v, dim(c))
     end
 
-    perm = sortperm(parent(values); strategy.by, strategy.rev)
+    perm = isempty(parent(values)) ? Int64[] : sortperm(parent(values); strategy.by, strategy.rev)
     cumulative_dim = cumsum(Base.permute!(parent(dims), perm))
 
     result = similar(values, Bool)
@@ -36,12 +36,30 @@ function MatrixAlgebraKit.findtruncated(
         end
     end
 
-    perm = sortperm(parent(values); by = abs, rev = false)
+    perm = isempty(parent(values)) ? Int64[] : sortperm(parent(values); by = abs, rev = false)
     cumulative_err = cumsum(Base.permute!(parent(ϵᵖ), perm))
 
     result = similar(values, Bool)
     parent(result)[perm] .= cumulative_err .> ϵᵖmax
     return result
+end
+
+function MatrixAlgebraKit.findtruncated_svd(values::CuSectorVector, strategy::S) where {S <: MatrixAlgebraKit.TruncationStrategy}
+    # returning a CuSectorVector wrecks things in truncate_{co}domain
+    # because of scalar indexing
+    return CUDA.CUDACore.Adapt.adapt(Vector, MatrixAlgebraKit.findtruncated(values, strategy))
+end
+
+function MatrixAlgebraKit.findtruncated_svd(values::CuSectorVector, strategy::MatrixAlgebraKit.TruncationByOrder)
+    # returning a CuSectorVector wrecks things in truncate_{co}domain
+    # because of scalar indexing
+    return CUDA.CUDACore.Adapt.adapt(Vector, MatrixAlgebraKit.findtruncated(values, strategy))
+end
+
+function MatrixAlgebraKit.findtruncated_svd(values::CuSectorVector, strategy::MatrixAlgebraKit.TruncationByValue)
+    atol = TensorKit.Factorizations.rtol_to_atol(values, strategy.p, strategy.atol, strategy.rtol)
+    strategy′ = trunctol(; atol, strategy.by, strategy.keep_below)
+    return SectorDict(c => CUDA.CUDACore.Adapt.adapt(Vector, MatrixAlgebraKit.findtruncated_svd(d, strategy′)) for (c, d) in pairs(values))
 end
 
 # Needed until MatrixAlgebraKit patch hits...

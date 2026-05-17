@@ -14,6 +14,7 @@ for V in spacelist
     println("---------------------------------------")
     println("CUDA Tensors with symmetry: $Istr")
     println("---------------------------------------")
+    hasbraiding = BraidingStyle(I) isa HasBraiding
     symmetricbraiding = BraidingStyle(I) isa SymmetricBraiding
     @timedtestset "Tensors with symmetry: $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
@@ -115,7 +116,7 @@ for V in spacelist
             for T in (Int, Float32, ComplexF64)
                 t = @constinferred cuRAND.rand(T, W)
                 d = convert(Dict, t)
-                @test convert(Dict, TensorKit.to_cpu(t)) == d
+                @test convert(Dict, adapt(Array, t)) == d
             end
         end
         symmetricbraiding && @timedtestset "Basic linear algebra" begin
@@ -207,10 +208,10 @@ for V in spacelist
                     t = cuRAND.rand(T, W)
                     t2 = @constinferred cuRAND.rand!(similar(t))
                     α = rand(T)
-                    @test norm(t, 2) ≈ norm(TensorKit.to_cpu(t), 2)
-                    @test dot(t2, t) ≈ dot(TensorKit.to_cpu(t2), TensorKit.to_cpu(t))
-                    @test TensorKit.to_cpu(α * t) ≈ α * TensorKit.to_cpu(t)
-                    @test TensorKit.to_cpu(t + t) ≈ 2 * TensorKit.to_cpu(t)
+                    @test norm(t, 2) ≈ norm(adapt(Array, t), 2)
+                    @test dot(t2, t) ≈ dot(adapt(Array, t2), adapt(Array, t))
+                    @test adapt(Vector{T}, (α * t)) ≈ α * adapt(Vector{T}, t)
+                    @test adapt(Vector{T}, (t + t)) ≈ 2 * adapt(Vector{T}, t)
                 end
             end
             @timedtestset "Real and imaginary parts" begin
@@ -220,17 +221,17 @@ for V in spacelist
 
                     tr = @constinferred real(t)
                     @test scalartype(tr) <: Real
-                    @test real(TensorKit.to_cpu(t)) == TensorKit.to_cpu(tr)
+                    @test real(adapt(Array, t)) == adapt(Array, tr)
                     @test storagetype(tr) == CuVector{real(T), CUDA.DeviceMemory}
 
                     ti = @constinferred imag(t)
                     @test scalartype(ti) <: Real
-                    @test imag(TensorKit.to_cpu(t)) == TensorKit.to_cpu(ti)
+                    @test imag(adapt(Array, t)) == adapt(Array, ti)
                     @test storagetype(ti) == CuVector{real(T), CUDA.DeviceMemory}
 
                     tc = @inferred complex(t)
                     @test scalartype(tc) <: Complex
-                    @test complex(TensorKit.to_cpu(t)) == TensorKit.to_cpu(tc)
+                    @test complex(adapt(Array, t)) == adapt(Array, tc)
                     @test storagetype(tc) == CuVector{complex(T), CUDA.DeviceMemory}
 
                     tc2 = @inferred complex(tr, ti)
@@ -243,7 +244,7 @@ for V in spacelist
             W = V1 ⊗ V2
             t = @constinferred cuRAND.randn(W ← W)
             @test typeof(convert(typeof(t), t')) == typeof(t)
-            @test typeof(TensorKit.to_cpu(t')) == typeof(TensorKit.to_cpu(t)')
+            @test typeof(adapt(Array, t')) == typeof(adapt(Array, t)')
             tc = complex(t)
             @test convert(typeof(tc), t) == tc
             @test typeof(convert(typeof(tc), t)) == typeof(tc)
@@ -263,16 +264,22 @@ for V in spacelist
         symmetricbraiding && @timedtestset "Permutations: test via inner product invariance" begin
             W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
             t = cuRAND.rand(ComplexF64, W)
+            ht = adapt(Vector{ComplexF64}, t)
             t′ = cuRAND.randn!(similar(t))
+            ht′ = adapt(Vector{ComplexF64}, t′)
+            dot_htt′ = dot(ht′, ht)
+            dot_tt′ = dot(t′, t)
+            @test dot_tt′ ≈ dot_htt′
+            norm_t = norm(t)
             for k in 0:5
                 for p in permutations(1:5)
                     p1 = ntuple(n -> p[n], k)
                     p2 = ntuple(n -> p[k + n], 5 - k)
                     t2 = @constinferred permute(t, (p1, p2))
-                    t2 = permute(t, (p1, p2))
-                    @test norm(t2) ≈ norm(t)
                     t2′ = permute(t′, (p1, p2))
-                    @test dot(t2′, t2) ≈ dot(t′, t) ≈ dot(transpose(t2′), transpose(t2))
+                    @test norm(t2) ≈ norm_t
+                    @test dot(t2′, t2) ≈ dot_tt′
+                    @test dot(transpose(t2′), transpose(t2)) ≈ dot_tt′
                 end
                 t3 = @constinferred repartition(t, $k)
                 t3 = repartition(t, k)
@@ -290,32 +297,29 @@ for V in spacelist
                     p1 = ntuple(n -> p[n], k)
                     p2 = ntuple(n -> p[k + n], 5 - k)
                     dt2 = permute(t, (p1, p2))
-                    ht2 = permute(TensorKit.to_cpu(t), (p1, p2))
-                    @test ht2 ≈ TensorKit.to_cpu(dt2)
+                    ht2 = permute(adapt(Array, t), (p1, p2))
+                    @test ht2 ≈ adapt(Array, dt2)
                 end
-
-                dt3 = CUDA.@allowscalar repartition(t, k)
-                ht3 = repartition(TensorKit.to_cpu(t), k)
-                @test ht3 ≈ TensorKit.to_cpu(dt3)
+                dt3 = repartition(t, k)
+                ht3 = repartition(adapt(Array, t), k)
+                @test ht3 ≈ adapt(Array, dt3)
             end
         end
         symmetricbraiding && @timedtestset "Full trace: test self-consistency" begin
             t = cuRAND.rand(ComplexF64, V1 ⊗ V2' ⊗ V2 ⊗ V1')
-            CUDA.@allowscalar begin
-                t2 = permute(t, ((1, 2), (4, 3)))
-                s = @constinferred tr(t2)
-                @test conj(s) ≈ tr(t2')
-                if !isdual(V1)
-                    t2 = twist!(t2, 1)
-                end
-                if isdual(V2)
-                    t2 = twist!(t2, 2)
-                end
-                ss = tr(t2)
-                @tensor s2 = t[a, b, b, a]
-                @tensor t3[a, b] := t[a, c, c, b]
-                @tensor s3 = t3[a, a]
+            t2 = permute(t, ((1, 2), (4, 3)))
+            s = @constinferred tr(t2)
+            @test conj(s) ≈ tr(t2')
+            if !isdual(V1)
+                t2 = twist!(t2, 1)
             end
+            if isdual(V2)
+                t2 = twist!(t2, 2)
+            end
+            ss = tr(t2)
+            @tensor s2 = t[a, b, b, a]
+            @tensor t3[a, b] := t[a, c, c, b]
+            @tensor s3 = t3[a, a]
             @test ss ≈ s2
             @test ss ≈ s3
         end
@@ -328,20 +332,16 @@ for V in spacelist
         end
         symmetricbraiding && @timedtestset "Trace: test via conversion" begin
             t = cuRAND.rand(ComplexF64, V1 ⊗ V2' ⊗ V3 ⊗ V2 ⊗ V1' ⊗ V3')
-            CUDA.@allowscalar begin
-                @tensor t2[a, b] := t[c, d, b, d, c, a]
-                @tensor t3[a, b] := ad(t)[c, d, b, d, c, a]
-            end
+            @tensor t2[a, b] := t[c, d, b, d, c, a]
+            @tensor t3[a, b] := ad(t)[c, d, b, d, c, a]
             @test t3 ≈ ad(t2)
         end
         symmetricbraiding && @timedtestset "Trace and contraction" begin
             t1 = cuRAND.rand(ComplexF64, V1 ⊗ V2 ⊗ V3)
             t2 = cuRAND.rand(ComplexF64, V2' ⊗ V4 ⊗ V1')
-            CUDA.@allowscalar begin
-                t3 = t1 ⊗ t2
-                @tensor ta[a, b] := t1[x, y, a] * t2[y, b, x]
-                @tensor tb[a, b] := t3[x, y, a, y, b, x]
-            end
+            t3 = t1 ⊗ t2
+            @tensor ta[a, b] := t1[x, y, a] * t2[y, b, x]
+            @tensor tb[a, b] := t3[x, y, a, y, b, x]
             @test ta ≈ tb
         end
         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
@@ -354,50 +354,44 @@ for V in spacelist
                 @tensor dHrA12[a, s1, s2, c] := drhoL[a, a'] * conj(dA1[a', t1, b]) *
                     dA2[b, t2, c'] * drhoR[c', c] *
                     dH[s1, s2, t1, t2]
-                @tensor hHrA12[a, s1, s2, c] := TensorKit.to_cpu(drhoL)[a, a'] * conj(TensorKit.to_cpu(dA1)[a', t1, b]) *
-                    TensorKit.to_cpu(dA2)[b, t2, c'] * TensorKit.to_cpu(drhoR)[c', c] *
-                    TensorKit.to_cpu(dH)[s1, s2, t1, t2]
-                @test TensorKit.to_cpu(dHrA12) ≈ hHrA12
+                @tensor hHrA12[a, s1, s2, c] := adapt(Array, drhoL)[a, a'] * conj(adapt(Array, dA1)[a', t1, b]) *
+                    adapt(Array, dA2)[b, t2, c'] * adapt(Array, drhoR)[c', c] *
+                    adapt(Array, dH)[s1, s2, t1, t2]
+                @test adapt(Array, dHrA12) ≈ hHrA12
             end
         end
-        BraidingStyle(I) isa HasBraiding && @timedtestset "Index flipping: test flipping inverse" begin
+        hasbraiding && @timedtestset "Index flipping: test flipping inverse" begin
             t = cuRAND.rand(ComplexF64, V1 ⊗ V2 ⊗ V3 ← (V4 ⊗ V5)')
             for i in 1:5
-                CUDA.@allowscalar begin
-                    @test t ≈ flip(flip(t, i), i; inv = true)
-                    @test t ≈ flip(flip(t, i; inv = true), i)
-                end
+                @test t ≈ flip(flip(t, i), i; inv = true)
+                @test t ≈ flip(flip(t, i; inv = true), i)
             end
         end
-        #=@timedtestset "Index flipping: test via explicit flip" begin
+        symmetricbraiding && @timedtestset "Index flipping: test via explicit flip" begin
             t = cuRAND.rand(ComplexF64, V1 ⊗ V1' ← V1' ⊗ V1)
-            F1 = unitary(flip(V1), V1)
+            F1 = adapt(CuArray{ComplexF64}, unitary(flip(V1), V1))
 
-            CUDA.@allowscalar begin
-                @tensor tf[a, b; c, d] := F1[a, a'] * t[a', b; c, d]
-                @test flip(t, 1) ≈ tf
-                @tensor tf[a, b; c, d] := conj(F1[b, b']) * t[a, b'; c, d]
-                @test twist!(flip(t, 2), 2) ≈ tf
-                @tensor tf[a, b; c, d] := F1[c, c'] * t[a, b; c', d]
-                @test flip(t, 3) ≈ tf
-                @tensor tf[a, b; c, d] := conj(F1[d, d']) * t[a, b; c, d']
-                @test twist!(flip(t, 4), 4) ≈ tf
-            end
+            @tensor tf[a, b; c, d] := F1[a, a'] * t[a', b; c, d]
+            @test flip(t, 1) ≈ tf
+            @tensor tf[a, b; c, d] := conj(F1[b, b']) * t[a, b'; c, d]
+            @test twist!(flip(t, 2), 2) ≈ tf
+            @tensor tf[a, b; c, d] := F1[c, c'] * t[a, b; c', d]
+            @test flip(t, 3) ≈ tf
+            @tensor tf[a, b; c, d] := conj(F1[d, d']) * t[a, b; c, d']
+            @test twist!(flip(t, 4), 4) ≈ tf
         end
-        @timedtestset "Index flipping: test via contraction" begin
+        symmetricbraiding && @timedtestset "Index flipping: test via contraction" begin
             t1 = cuRAND.rand(ComplexF64, V1 ⊗ V2 ⊗ V3 ← V4)
             t2 = cuRAND.rand(ComplexF64, V2' ⊗ V5 ← V4' ⊗ V1)
-            CUDA.@allowscalar begin
-                @tensor ta[a, b] := t1[x, y, a, z] * t2[y, b, z, x]
-                @tensor tb[a, b] := flip(t1, 1)[x, y, a, z] * flip(t2, 4)[y, b, z, x]
-                @test ta ≈ tb
-                @tensor tb[a, b] := flip(t1, (2, 4))[x, y, a, z] * flip(t2, (1, 3))[y, b, z, x]
-                @test ta ≈ tb
-                @tensor tb[a, b] := flip(t1, (1, 2, 4))[x, y, a, z] * flip(t2, (1, 3, 4))[y, b, z, x]
-                @tensor tb[a, b] := flip(t1, (1, 3))[x, y, a, z] * flip(t2, (2, 4))[y, b, z, x]
-                @test flip(ta, (1, 2)) ≈ tb
-            end
-        end=# # TODO
+            @tensor ta[a, b] := t1[x, y, a, z] * t2[y, b, z, x]
+            @tensor tb[a, b] := flip(t1, 1)[x, y, a, z] * flip(t2, 4)[y, b, z, x]
+            @test ta ≈ tb
+            @tensor tb[a, b] := flip(t1, (2, 4))[x, y, a, z] * flip(t2, (1, 3))[y, b, z, x]
+            @test ta ≈ tb
+            @tensor tb[a, b] := flip(t1, (1, 2, 4))[x, y, a, z] * flip(t2, (1, 3, 4))[y, b, z, x]
+            @tensor tb[a, b] := flip(t1, (1, 3))[x, y, a, z] * flip(t2, (2, 4))[y, b, z, x]
+            @test flip(ta, (1, 2)) ≈ tb
+        end
         @timedtestset "Multiplication of isometries: test properties" begin
             W1 = V1 ⊗ V2 ⊗ V3
             W2 = (V4 ⊗ V5)'
@@ -435,30 +429,30 @@ for V in spacelist
                 t1 = cuRAND.rand(T, W1, W1)
                 t2 = cuRAND.rand(T, W2, W2)
                 t = cuRAND.rand(T, W1, W2)
-                ht1 = TensorKit.to_cpu(t1)
-                ht2 = TensorKit.to_cpu(t2)
-                ht = TensorKit.to_cpu(t)
-                @test TensorKit.to_cpu(t1 * t) ≈ ht1 * ht
-                @test TensorKit.to_cpu(t1' * t) ≈ ht1' * ht
-                @test TensorKit.to_cpu(t2 * t') ≈ ht2 * ht'
-                @test TensorKit.to_cpu(t2' * t') ≈ ht2' * ht'
+                ht1 = adapt(Array, t1)
+                ht2 = adapt(Array, t2)
+                ht = adapt(Array, t)
+                @test adapt(Array, t1 * t) ≈ ht1 * ht
+                @test adapt(Array, t1' * t) ≈ ht1' * ht
+                @test adapt(Array, t2 * t') ≈ ht2 * ht'
+                @test adapt(Array, t2' * t') ≈ ht2' * ht'
 
-                @test TensorKit.to_cpu(inv(t1)) ≈ inv(ht1)
-                @test TensorKit.to_cpu(pinv(t)) ≈ pinv(ht)
+                @test adapt(Array, inv(t1)) ≈ inv(ht1)
+                @test adapt(Array, pinv(t)) ≈ pinv(ht)
 
                 if T == Float32 || T == ComplexF32
                     continue
                 end
 
-                @test TensorKit.to_cpu(t1 \ t) ≈ ht1 \ ht
-                @test TensorKit.to_cpu(t1' \ t) ≈ ht1' \ ht
-                @test TensorKit.to_cpu(t2 \ t') ≈ ht2 \ ht'
-                @test TensorKit.to_cpu(t2' \ t') ≈ ht2' \ ht'
+                @test adapt(Array, t1 \ t) ≈ ht1 \ ht
+                @test adapt(Array, t1' \ t) ≈ ht1' \ ht
+                @test adapt(Array, t2 \ t') ≈ ht2 \ ht'
+                @test adapt(Array, t2' \ t') ≈ ht2' \ ht'
 
-                @test TensorKit.to_cpu(t2 / t) ≈ ht2 / ht
-                @test TensorKit.to_cpu(t2' / t) ≈ ht2' / ht
-                @test TensorKit.to_cpu(t1 / t') ≈ ht1 / ht'
-                @test TensorKit.to_cpu(t1' / t') ≈ ht1' / ht'
+                @test adapt(Array, t2 / t) ≈ ht2 / ht
+                @test adapt(Array, t2' / t) ≈ ht2' / ht
+                @test adapt(Array, t1 / t') ≈ ht1 / ht'
+                @test adapt(Array, t1' / t') ≈ ht1' / ht'
             end
         end
         symmetricbraiding && @timedtestset "Tensor functions" begin
@@ -467,14 +461,14 @@ for V in spacelist
                 t = project_hermitian!(cuRAND.randn(T, W, W))
                 s = dim(W)
                 #@test (@constinferred sqrt(t))^2 ≈ t
-                #@test TensorKit.to_cpu(sqrt(t)) ≈ sqrt(TensorKit.to_cpu(t))
+                #@test adapt(Array, sqrt(t)) ≈ sqrt(adapt(Array, t))
 
                 expt = @constinferred exp(t)
-                @test TensorKit.to_cpu(expt) ≈ exp(TensorKit.to_cpu(t))
+                @test adapt(Array, expt) ≈ exp(adapt(Array, t))
 
                 # log doesn't work on CUDA yet (scalar indexing)
                 #@test exp(@constinferred log(project_hermitian!(expt))) ≈ expt
-                #@test TensorKit.to_cpu(log(project_hermitian!(expt))) ≈ log(TensorKit.to_cpu(expt))
+                #@test adapt(Array, log(project_hermitian!(expt))) ≈ log(adapt(Array, expt))
 
                 #=@test (@constinferred cos(t))^2 + (@constinferred sin(t))^2 ≈
                           id(storagetype(t), W)
@@ -551,10 +545,8 @@ for V in spacelist
                 t1 = cuRAND.rand(T, V1, V5')
                 t2 = cuRAND.rand(T, V2 ⊗ V3, V4')
                 t = @constinferred (t1 ⊗ t2)
-                CUDA.@allowscalar begin
-                    @tensor t′[1 2 3; 4 5] := t1[1; 4] * t2[2 3; 5]
-                end
-                @test t ≈ t′ # This should really not be broken
+                @tensor t′[1 2 3; 4 5] := t1[1; 4] * t2[2 3; 5]
+                @test t ≈ t′
             end
         end
     end
@@ -567,17 +559,17 @@ end
         V1, V2, V3, V4, V5 = Vlist1
         W1, W2, W3, W4, W5 = Vlist2
         for T in (Float32, ComplexF64)
-            t1 = rand(T, V2 ⊗ V3, (V4 ⊗ V5)')
-            t2 = rand(T, W2, (W3 ⊗ W4)')
+            t1 = CUDA.rand(T, V2 ⊗ V3, (V4 ⊗ V5)')
+            t2 = CUDA.rand(T, W2, (W3 ⊗ W4)')
             t = @constinferred (t1 ⊠ t2)
             d1 = dim(codomain(t1))
             d2 = dim(codomain(t2))
             d3 = dim(domain(t1))
             d4 = dim(domain(t2))
-            At = convert(Array, t)
+            At = convert(Array, adapt(Vector{T}, t))
             @test reshape(At, (d1, d2, d3, d4)) ≈
-                reshape(convert(Array, t1), (d1, 1, d3, 1)) .*
-                reshape(convert(Array, t2), (1, d2, 1, d4))
+                reshape(convert(Array, adapt(Vector{T}, t1)), (d1, 1, d3, 1)) .*
+                reshape(convert(Array, adapt(Vector{T}, t2)), (1, d2, 1, d4))
         end
     end
 end
