@@ -56,6 +56,12 @@ function MatrixAlgebraKit.findtruncated_svd(values::CuSectorVector, strategy::Ma
     return CUDA.CUDACore.Adapt.adapt(Vector, MatrixAlgebraKit.findtruncated(values, strategy))
 end
 
+function MatrixAlgebraKit.findtruncated_svd(values::CuSectorVector, strategy::TensorKit.Factorizations.TruncationSpace)
+    # returning a CuSectorVector wrecks things in truncate_{co}domain
+    # because of scalar indexing
+    return CUDA.CUDACore.Adapt.adapt(Vector, MatrixAlgebraKit.findtruncated(values, strategy))
+end
+
 function MatrixAlgebraKit.findtruncated_svd(values::CuSectorVector, strategy::MatrixAlgebraKit.TruncationByValue)
     atol = TensorKit.Factorizations.rtol_to_atol(values, strategy.p, strategy.atol, strategy.rtol)
     strategy′ = trunctol(; atol, strategy.by, strategy.keep_below)
