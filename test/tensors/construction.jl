@@ -1,9 +1,12 @@
-using Test, TestExtras
 using TensorKit
-using TensorKit: type_repr
-
+using TensorKit: type_repr, sectortype
+using CUDA, CUDA.cuRAND, cuTENSOR, AMDGPU
+using TestExtras
 
 spacelist = default_spacelist(fast_tests)
+
+@isdefined(TestSuite) || include("../testsuite/TestSuite.jl")
+using .TestSuite
 
 for V in spacelist
     I = sectortype(first(V))
@@ -16,43 +19,32 @@ for V in spacelist
         @timedtestset "Basic tensor properties" begin
             W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
             for T in (fast_tests ? (Float64, ComplexF64) : (Int, Float32, Float64, ComplexF32, ComplexF64, BigFloat))
-                t = @constinferred zeros(T, W)
-                @test @constinferred(hash(t)) == hash(deepcopy(t))
-                @test scalartype(t) == T
-                @test norm(t) == 0
-                @test codomain(t) == W
-                @test space(t) == (W ← one(W))
-                @test domain(t) == one(W)
-                @test typeof(t) == TensorMap{T, spacetype(t), 5, 0, Vector{T}}
-                # Array type input
-                t = @constinferred zeros(Vector{T}, W)
-                @test @constinferred(hash(t)) == hash(deepcopy(t))
-                @test scalartype(t) == T
-                @test norm(t) == 0
-                @test codomain(t) == W
-                @test space(t) == (W ← one(W))
-                @test domain(t) == one(W)
-                @test typeof(t) == TensorMap{T, spacetype(t), 5, 0, Vector{T}}
-                # blocks
-                bs = @constinferred blocks(t)
-                if !isempty(blocksectors(t)) # multifusion space ending on module gives empty data
-                    (c, b1), state = @constinferred Nothing iterate(bs)
-                    @test c == first(blocksectors(W))
-                    next = @constinferred Nothing iterate(bs, state)
-                    b2 = @constinferred block(t, first(blocksectors(t)))
-                    @test b1 == b2
-                    @test eltype(bs) === Pair{typeof(c), typeof(b1)}
-                    @test typeof(b1) === TensorKit.blocktype(t)
-                    @test typeof(c) === sectortype(t)
+                ATs = [Vector{T}]
+                if T ∈ TestSuite.BLASFloats
+                    CUDA.functional() && push!(ATs, CuVector{T, CUDA.DeviceMemory})
+                    AMDGPU.functional() && push!(ATs, ROCVector{T, AMDGPU.Mem.HIPBuffer})
+                end
+                for AT in ATs
+                    t = @constinferred zero_f(AT)(T, W)
+                    TestSuite.basic_tensor_properties(t, W, T, AT)
+                    t = @constinferred zeros(AT, W)
+                    TestSuite.basic_tensor_properties(t, W, T, AT)
+                    if !isempty(blocksectors(t)) # multifusion space ending on module gives empty data
+                        TestSuite.basic_blocks_properties(t, W)
+                    end
                 end
             end
         end
         @timedtestset "Tensor Dict conversion" begin
             W = V1 ⊗ V2 ← (V3 ⊗ V4 ⊗ V5)'
             for T in (Int, Float32, ComplexF64)
-                t = @constinferred rand(T, W)
-                d = convert(Dict, t)
-                @test t == convert(TensorMap, d)
+                ATs = [Vector{T}]
+                CUDA.functional() && push!(ATs, CuVector{T, CUDA.DeviceMemory})
+                AMDGPU.functional() && push!(ATs, ROCVector{T, AMDGPU.Mem.HIPBuffer})
+                for AT in ATs
+                    t = @constinferred rand_f(AT)(T, W)
+                    TestSuite.tensor_dict_conversion(t)
+                end
             end
         end
         if hasfusiontensor(I) || I == Trivial
@@ -65,61 +57,60 @@ for V in spacelist
                 W6 = V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5
                 for W in (W1, W2, W3, W4, W5, W6)
                     for T in (Int, Float32, ComplexF64)
-                        if T == Int
-                            t = TensorMap{T}(undef, W)
-                            for (_, b) in blocks(t)
-                                rand!(b, -20:20)
-                            end
-                        else
-                            t = @constinferred randn(T, W)
+                        ATs = [Vector{T}]
+                        if T ∈ TestSuite.BLASFloats
+                            CUDA.functional() && push!(ATs, CuVector{T, CUDA.DeviceMemory})
+                            AMDGPU.functional() && push!(ATs, ROCVector{T, AMDGPU.Mem.HIPBuffer})
                         end
-                        a = @constinferred convert(Array, t)
-                        b = reshape(a, dim(codomain(W)), dim(domain(W)))
-                        @test t ≈ @constinferred TensorMap(a, W)
-                        @test t ≈ @constinferred TensorMap(b, W)
-                        @test t === @constinferred TensorMap(t.data, W)
+                        for AT in ATs
+                            if T == Int
+                                t = TensorKit.TensorMapWithStorage{T, AT}(undef, W)
+                                for (_, b) in blocks(t)
+                                    rand!(b, -20:20)
+                                end
+                            else
+                                t = @constinferred randn_f(AT)(T, W)
+                            end
+                            TestSuite.tensor_array_conversion(t, W)
+                        end
                     end
                 end
                 for T in (Int, Float32, ComplexF64)
-                    t = randn(T, V1 ⊗ V2 ← zerospace(V1))
-                    a = convert(Array, t)
-                    @test norm(a) == 0
+                    ATs = [Vector{T}]
+                    CUDA.functional() && push!(ATs, CuVector{T, CUDA.DeviceMemory})
+                    AMDGPU.functional() && push!(ATs, ROCVector{T, AMDGPU.Mem.HIPBuffer})
+                    for AT in ATs
+                        t = randn_f(AT)(T, V1 ⊗ V2 ← zerospace(V1))
+                        TestSuite.empty_tensor_array_conversion(t, AT)
+                    end
                 end
             end
         end
         if hasfusiontensor(I)
             @timedtestset "Real and imaginary parts" begin
-                W = V1 ⊗ V2
                 for T in (Float64, ComplexF64, ComplexF32)
-                    t = @constinferred randn(T, W, W)
-
-                    tr = @constinferred real(t)
-                    @test scalartype(tr) <: Real
-                    @test real(convert(Array, t)) == convert(Array, tr)
-
-                    ti = @constinferred imag(t)
-                    @test scalartype(ti) <: Real
-                    @test imag(convert(Array, t)) == convert(Array, ti)
-
-                    tc = @inferred complex(t)
-                    @test scalartype(tc) <: Complex
-                    @test complex(convert(Array, t)) == convert(Array, tc)
-
-                    tc2 = @inferred complex(tr, ti)
-                    @test tc2 ≈ tc
+                    ATs = [Vector{T}]
+                    CUDA.functional() && push!(ATs, CuVector{T, CUDA.DeviceMemory})
+                    AMDGPU.functional() && push!(ATs, ROCVector{T, AMDGPU.Mem.HIPBuffer})
+                    for AT in ATs
+                        W = V1 ⊗ V2
+                        t = @constinferred randn_f(AT)(T, W, W)
+                        TestSuite.real_and_imaginary_parts(t)
+                    end
                 end
             end
         end
         @timedtestset "Tensor conversion" begin
-            W = V1 ⊗ V2
-            t = @constinferred randn(W ← W)
-            @test typeof(convert(TensorMap, t')) == typeof(t)
-            tc = complex(t)
-            @test convert(typeof(tc), t) == tc
-            @test typeof(convert(typeof(tc), t)) == typeof(tc)
-            @test typeof(convert(typeof(tc), t')) == typeof(tc)
-            @test Base.promote_typeof(t, tc) == typeof(tc)
-            @test Base.promote_typeof(tc, t) == typeof(tc + t)
+            for T in (Float64, ComplexF64, ComplexF32)
+                ATs = [Vector{T}]
+                CUDA.functional() && push!(ATs, CuVector{T, CUDA.DeviceMemory})
+                AMDGPU.functional() && push!(ATs, ROCVector{T, AMDGPU.Mem.HIPBuffer})
+                for AT in ATs
+                    W = V1 ⊗ V2
+                    t = @constinferred randn_f(AT)(W ← W)
+                    TestSuite.tensor_conversion(t)
+                end
+            end
         end
     end
     TensorKit.empty_globalcaches!()

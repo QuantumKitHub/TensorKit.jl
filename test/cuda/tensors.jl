@@ -53,28 +53,6 @@ for V in spacelist
                 @test domain(t) == one(W)
                 @test typeof(t) == TensorMap{Float64, spacetype(t), 5, 0, CuVector{Float64, CUDA.DeviceMemory}}
             end
-            for T in (Int, Float32, Float64, ComplexF32, ComplexF64)
-                t = @constinferred CUDA.zeros(T, W)
-                CUDA.@allowscalar begin
-                    @test @constinferred(hash(t)) == hash(deepcopy(t))
-                end
-                @test scalartype(t) == T
-                @test norm(t) == 0
-                @test codomain(t) == W
-                @test space(t) == (W ← one(W))
-                @test domain(t) == one(W)
-                @test typeof(t) == TensorMap{T, spacetype(t), 5, 0, CuVector{T, CUDA.DeviceMemory}}
-                # blocks
-                bs = @constinferred blocks(t)
-                (c, b1), state = @constinferred Nothing iterate(bs)
-                @test c == first(blocksectors(W))
-                next = @constinferred Nothing iterate(bs, state)
-                b2 = @constinferred block(t, first(blocksectors(t)))
-                @test b1 == b2
-                @test eltype(bs) === Pair{typeof(c), typeof(b1)}
-                @test typeof(b1) === TensorKit.blocktype(t)
-                @test typeof(c) === sectortype(t)
-            end
         end
         @timedtestset "Conversion to/from host" begin
             W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
@@ -108,64 +86,6 @@ for V in spacelist
                 t_cpu = @constinferred adapt(Array, t_gpu)
                 @test t_cpu == t
                 @test storagetype(t_cpu) <: Array{T}
-            end
-        end
-        @timedtestset "Tensor Dict conversion" begin
-            W = V1 ⊗ V2 ← (V3 ⊗ V4 ⊗ V5)'
-            for T in (Int, Float32, ComplexF64)
-                t = @constinferred cuRAND.rand(T, W)
-                d = convert(Dict, t)
-                @test convert(Dict, TensorKit.to_cpu(t)) == d
-            end
-        end
-        symmetricbraiding && @timedtestset "Basic linear algebra" begin
-            W = V1 ⊗ V2 ← (V3 ⊗ V4 ⊗ V5)'
-            for T in (Float32, ComplexF64)
-                t = @constinferred cuRAND.rand(T, W)
-                @test scalartype(t) == T
-                @test space(t) == W
-                @test space(t') == W'
-                @test dim(t) == dim(space(t))
-                @test codomain(t) == codomain(W)
-                @test domain(t) == domain(W)
-                # blocks for adjoint
-                bs = @constinferred blocks(t')
-                (c, b1), state = @constinferred Nothing iterate(bs)
-                @test c == first(blocksectors(W'))
-                next = @constinferred Nothing iterate(bs, state)
-                b2 = @constinferred block(t', first(blocksectors(t')))
-                @test b1 == b2
-                @test eltype(bs) === Pair{typeof(c), typeof(b1)}
-                @test typeof(b1) === TensorKit.blocktype(t')
-                @test typeof(c) === sectortype(t)
-                # linear algebra
-                @test isa(@constinferred(norm(t)), real(T))
-                @test norm(t)^2 ≈ dot(t, t)
-                α = rand(T)
-                @test norm(α * t) ≈ abs(α) * norm(t)
-                @test norm(t + t, 2) ≈ 2 * norm(t, 2)
-                @test norm(t + t, 1) ≈ 2 * norm(t, 1)
-                @test norm(t + t, Inf) ≈ 2 * norm(t, Inf)
-                p = 3 * rand(Float64)
-                @test norm(t + t, p) ≈ 2 * norm(t, p)
-                @test norm(t) ≈ norm(t')
-
-                t2 = @constinferred rand!(similar(t))
-                β = rand(T)
-                #@test @constinferred(dot(β * t2, α * t)) ≈ conj(β) * α * conj(dot(t, t2)) # broken for Irrep[CU₁]
-                @test dot(β * t2, α * t) ≈ conj(β) * α * conj(dot(t, t2))
-                @test dot(t2, t) ≈ conj(dot(t, t2))
-                @test dot(t2, t) ≈ conj(dot(t2', t'))
-                @test dot(t2, t) ≈ dot(t', t2')
-
-                i1 = @constinferred(isomorphism(CuVector{T, CUDA.DeviceMemory}, V1 ⊗ V2, V2 ⊗ V1))
-                i2 = @constinferred(isomorphism(CuVector{T, CUDA.DeviceMemory}, V2 ⊗ V1, V1 ⊗ V2))
-                @test i1 * i2 == @constinferred(id(CuVector{T, CUDA.DeviceMemory}, V1 ⊗ V2))
-                @test i2 * i1 == @constinferred(id(CuVector{T, CUDA.DeviceMemory}, V2 ⊗ V1))
-                w = @constinferred(isometry(CuVector{T, CUDA.DeviceMemory}, V1 ⊗ (oneunit(V1) ⊕ oneunit(V1)), V1))
-                @test dim(w) == 2 * dim(V1 ← V1)
-                @test w' * w == id(CuVector{T, CUDA.DeviceMemory}, V1)
-                @test w * w' == (w * w')^2
             end
         end
         @timedtestset "Trivial space insertion and removal" begin
@@ -213,53 +133,7 @@ for V in spacelist
                     @test TensorKit.to_cpu(t + t) ≈ 2 * TensorKit.to_cpu(t)
                 end
             end
-            @timedtestset "Real and imaginary parts" begin
-                W = V1 ⊗ V2
-                for T in (Float64, ComplexF64, ComplexF32)
-                    t = @constinferred cuRAND.randn(T, W, W)
-
-                    tr = @constinferred real(t)
-                    @test scalartype(tr) <: Real
-                    @test real(TensorKit.to_cpu(t)) == TensorKit.to_cpu(tr)
-                    @test storagetype(tr) == CuVector{real(T), CUDA.DeviceMemory}
-
-                    ti = @constinferred imag(t)
-                    @test scalartype(ti) <: Real
-                    @test imag(TensorKit.to_cpu(t)) == TensorKit.to_cpu(ti)
-                    @test storagetype(ti) == CuVector{real(T), CUDA.DeviceMemory}
-
-                    tc = @inferred complex(t)
-                    @test scalartype(tc) <: Complex
-                    @test complex(TensorKit.to_cpu(t)) == TensorKit.to_cpu(tc)
-                    @test storagetype(tc) == CuVector{complex(T), CUDA.DeviceMemory}
-
-                    tc2 = @inferred complex(tr, ti)
-                    @test tc2 ≈ tc
-                    @test storagetype(tc2) == CuVector{complex(T), CUDA.DeviceMemory}
-                end
-            end
         end
-        @timedtestset "Tensor conversion" begin
-            W = V1 ⊗ V2
-            t = @constinferred cuRAND.randn(W ← W)
-            @test typeof(convert(typeof(t), t')) == typeof(t)
-            @test typeof(TensorKit.to_cpu(t')) == typeof(TensorKit.to_cpu(t)')
-            tc = complex(t)
-            @test convert(typeof(tc), t) == tc
-            @test typeof(convert(typeof(tc), t)) == typeof(tc)
-            @test typeof(convert(typeof(tc), t')) == typeof(tc)
-            @test Base.promote_typeof(t, tc) == typeof(tc)
-            @test Base.promote_typeof(tc, t) == typeof(tc + t)
-        end
-        #=@timedtestset "diag/diagm" begin
-            W = V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5
-            t = cuRAND.randn(ComplexF64, W)
-            d = LinearAlgebra.diag(t)
-            # TODO find a way to use CUDA here
-            D = LinearAlgebra.diagm(codomain(t), domain(t), d)
-            @test LinearAlgebra.isdiag(D)
-            @test LinearAlgebra.diag(D) == d
-        end=#
         symmetricbraiding && @timedtestset "Permutations: test via inner product invariance" begin
             W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
             t = cuRAND.rand(ComplexF64, W)
@@ -398,133 +272,6 @@ for V in spacelist
                 @test flip(ta, (1, 2)) ≈ tb
             end
         end=# # TODO
-        @timedtestset "Multiplication of isometries: test properties" begin
-            W1 = V1 ⊗ V2 ⊗ V3
-            W2 = (V4 ⊗ V5)'
-            for T in (Float64, ComplexF64)
-                t1 = randisometry(CuMatrix{T}, W1, W2)
-                t2 = randisometry(CuMatrix{T}, W2 ← W2)
-                @test isisometric(t1)
-                @test isunitary(t2)
-                P = t1 * t1'
-                @test P * P ≈ P
-            end
-        end
-        @timedtestset "Multiplication and inverse: test compatibility" begin
-            W1 = V1 ⊗ V2 ⊗ V3
-            W2 = (V4 ⊗ V5)'
-            for T in (Float64, ComplexF64)
-                t1 = cuRAND.rand(T, W1, W1)
-                t2 = cuRAND.rand(T, W2, W2)
-                t = cuRAND.rand(T, W1, W2)
-                @test t1 * (t1 \ t) ≈ t
-                @test (t / t2) * t2 ≈ t
-                @test t1 \ one(t1) ≈ inv(t1)
-                @test one(t1) / t1 ≈ pinv(t1)
-                @test_throws SpaceMismatch inv(t)
-                @test_throws SpaceMismatch t2 \ t
-                @test_throws SpaceMismatch t / t1
-                tp = pinv(t) * t
-                @test tp ≈ tp * tp
-            end
-        end
-        @timedtestset "Multiplication and inverse: test via CPU" begin
-            W1 = V1 ⊗ V2 ⊗ V3
-            W2 = (V4 ⊗ V5)'
-            for T in (Float32, Float64, ComplexF32, ComplexF64)
-                t1 = cuRAND.rand(T, W1, W1)
-                t2 = cuRAND.rand(T, W2, W2)
-                t = cuRAND.rand(T, W1, W2)
-                ht1 = TensorKit.to_cpu(t1)
-                ht2 = TensorKit.to_cpu(t2)
-                ht = TensorKit.to_cpu(t)
-                @test TensorKit.to_cpu(t1 * t) ≈ ht1 * ht
-                @test TensorKit.to_cpu(t1' * t) ≈ ht1' * ht
-                @test TensorKit.to_cpu(t2 * t') ≈ ht2 * ht'
-                @test TensorKit.to_cpu(t2' * t') ≈ ht2' * ht'
-
-                @test TensorKit.to_cpu(inv(t1)) ≈ inv(ht1)
-                @test TensorKit.to_cpu(pinv(t)) ≈ pinv(ht)
-
-                if T == Float32 || T == ComplexF32
-                    continue
-                end
-
-                @test TensorKit.to_cpu(t1 \ t) ≈ ht1 \ ht
-                @test TensorKit.to_cpu(t1' \ t) ≈ ht1' \ ht
-                @test TensorKit.to_cpu(t2 \ t') ≈ ht2 \ ht'
-                @test TensorKit.to_cpu(t2' \ t') ≈ ht2' \ ht'
-
-                @test TensorKit.to_cpu(t2 / t) ≈ ht2 / ht
-                @test TensorKit.to_cpu(t2' / t) ≈ ht2' / ht
-                @test TensorKit.to_cpu(t1 / t') ≈ ht1 / ht'
-                @test TensorKit.to_cpu(t1' / t') ≈ ht1' / ht'
-            end
-        end
-        symmetricbraiding && @timedtestset "Tensor functions" begin
-            W = V1 ⊗ V2
-            for T in (Float64, ComplexF64)
-                t = project_hermitian!(cuRAND.randn(T, W, W))
-                s = dim(W)
-                #@test (@constinferred sqrt(t))^2 ≈ t
-                #@test TensorKit.to_cpu(sqrt(t)) ≈ sqrt(TensorKit.to_cpu(t))
-
-                expt = @constinferred exp(t)
-                @test TensorKit.to_cpu(expt) ≈ exp(TensorKit.to_cpu(t))
-
-                # log doesn't work on CUDA yet (scalar indexing)
-                #@test exp(@constinferred log(project_hermitian!(expt))) ≈ expt
-                #@test TensorKit.to_cpu(log(project_hermitian!(expt))) ≈ log(TensorKit.to_cpu(expt))
-
-                #=@test (@constinferred cos(t))^2 + (@constinferred sin(t))^2 ≈
-                          id(storagetype(t), W)
-                    @test (@constinferred tan(t)) ≈ sin(t) / cos(t)
-                    @test (@constinferred cot(t)) ≈ cos(t) / sin(t)
-                    @test (@constinferred cosh(t))^2 - (@constinferred sinh(t))^2 ≈
-                          id(storagetype(t), W)
-                    @test (@constinferred tanh(t)) ≈ sinh(t) / cosh(t)
-                    @test (@constinferred coth(t)) ≈ cosh(t) / sinh(t)=# # TODO in CUDA
-
-                #=t1 = sin(t)
-                    @test sin(@constinferred asin(t1)) ≈ t1
-                    t2 = cos(t)
-                    @test cos(@constinferred acos(t2)) ≈ t2
-                    t3 = sinh(t)
-                    @test sinh(@constinferred asinh(t3)) ≈ t3
-                    t4 = cosh(t)
-                    @test cosh(@constinferred acosh(t4)) ≈ t4
-                    t5 = tan(t)
-                    @test tan(@constinferred atan(t5)) ≈ t5
-                    t6 = cot(t)
-                    @test cot(@constinferred acot(t6)) ≈ t6
-                    t7 = tanh(t)
-                    @test tanh(@constinferred atanh(t7)) ≈ t7
-                    t8 = coth(t)
-                    @test coth(@constinferred acoth(t8)) ≈ t8=#
-                # TODO in CUDA
-            end
-        end
-        # Sylvester not defined for CUDA
-        # @timedtestset "Sylvester equation" begin
-        #     for T in (Float32, ComplexF64)
-        #         tA = cuRAND.rand(T, V1 ⊗ V3, V1 ⊗ V3)
-        #         tB = cuRAND.rand(T, V2 ⊗ V4, V2 ⊗ V4)
-        #         tA = 3 // 2 * leftorth(tA; alg=Polar())[1]
-        #         tB = 1 // 5 * leftorth(tB; alg=Polar())[1]
-        #         tC = cuRAND.rand(T, V1 ⊗ V3, V2 ⊗ V4)
-        #         t = @constinferred sylvester(tA, tB, tC)
-        #         @test codomain(t) == V1 ⊗ V3
-        #         @test domain(t) == V2 ⊗ V4
-        #         @test norm(tA * t + t * tB + tC) <
-        #               (norm(tA) + norm(tB) + norm(tC)) * eps(real(T))^(2 / 3)
-        #         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
-        #             matrix(x) = reshape(convert(Array, x), dim(codomain(x)), dim(domain(x)))
-        #             @test matrix(t) ≈ sylvester(matrix(tA), matrix(tB), matrix(tC))
-        #         end
-        #     end
-        # end
-        #
-        # TODO
         @timedtestset "Tensor product: test via norm preservation" begin
             for T in (ComplexF64,) # Float32 case broken because of cuTENSOR
                 t1 = cuRAND.rand(T, V1, V5')

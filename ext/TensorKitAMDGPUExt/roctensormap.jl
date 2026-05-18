@@ -162,3 +162,20 @@ for f in (:sqrt, :log, :asin, :acos, :acosh, :atanh, :acoth)
         return tf
     end
 end
+
+# lu dispatches to the LAPACK wrapper, which is not what we need
+function Base.inv(t::ROCTensorMap)
+    cod = codomain(t)
+    dom = domain(t)
+    cod ≅ dom ||
+        throw(SpaceMismatch("codomain $cod and domain $dom are not isomorphic: no inverse"))
+    T = float(scalartype(t))
+    tinv = similar(t, T, dom ← cod)
+    for (c, b) in blocks(t)
+        binv = one!(block(tinv, c))
+        lpt = rocSOLVER.getrf!(copy(b))
+        lub = LinearAlgebra.LU(lpt[1], lpt[2], Int(lpt[3]))
+        ldiv!(lub, binv)
+    end
+    return tinv
+end

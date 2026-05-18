@@ -3,6 +3,9 @@ using TensorKit
 
 testsuite = ParallelTestRunner.find_tests(@__DIR__)
 
+# remove testsuite
+filter!(!(startswith("testsuite") ∘ first), testsuite)
+
 # Exclude non-test files
 delete!(testsuite, "setup")          # shared setup module
 
