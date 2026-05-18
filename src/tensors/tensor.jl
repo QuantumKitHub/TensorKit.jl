@@ -33,8 +33,6 @@ struct TensorMap{T, S <: IndexSpace, N₁, N₂, A <: DenseVector{T}} <: Abstrac
         return new{T, S, N₁, N₂, A}(data, space)
     end
 end
-# constructors from another TensorMap -- no-op
-TensorMap{T, S, N₁, N₂, A}(t::TensorMap{T, S, N₁, N₂, A}) where {T, S <: IndexSpace, N₁, N₂, A <: DenseVector{T}} = t
 TensorMap{T, S, N₁, N₂, A}(t::TensorMap{T, S, N₁, N₂}) where {T, S <: IndexSpace, N₁, N₂, A <: DenseVector{T}} = TensorMap(A(t.data), space(t))
 
 """
