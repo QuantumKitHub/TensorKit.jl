@@ -5,8 +5,6 @@ using VectorInterface: One, Zero
 using Mooncake
 using Random
 
-
-mode = Mooncake.ReverseMode
 rng = Random.default_rng()
 
 spacelist = ad_spacelist(fast_tests)
@@ -53,32 +51,32 @@ eltypes = (Float64, ComplexF64)
                 rng, TensorKit.blas_contract!,
                 C, A, pA, B, pB, pAB, One(), Zero(),
                 TensorOperations.DefaultBackend(), TensorOperations.DefaultAllocator();
-                atol, rtol, mode
+                atol, rtol
             )
             Mooncake.TestUtils.test_rule(
                 rng, TensorKit.blas_contract!,
                 C, A, pA, B, pB, pAB, α, β,
                 TensorOperations.DefaultBackend(), TensorOperations.DefaultAllocator();
-                atol, rtol, mode
+                atol, rtol
             )
             if !(T <: Real)
                 Mooncake.TestUtils.test_rule(
                     rng, TensorKit.blas_contract!,
                     C, A, pA, B, pB, pAB, real(α), real(β),
                     TensorOperations.DefaultBackend(), TensorOperations.DefaultAllocator();
-                    atol, rtol, mode
+                    atol, rtol
                 )
                 Mooncake.TestUtils.test_rule(
                     rng, TensorKit.blas_contract!,
                     C, real(A), pA, B, pB, pAB, real(α), real(β),
                     TensorOperations.DefaultBackend(), TensorOperations.DefaultAllocator();
-                    atol, rtol, mode
+                    atol, rtol
                 )
                 Mooncake.TestUtils.test_rule(
                     rng, TensorKit.blas_contract!,
                     C, A, pA, real(B), pB, pAB, real(α), real(β),
                     TensorOperations.DefaultBackend(), TensorOperations.DefaultAllocator();
-                    atol, rtol, mode
+                    atol, rtol
                 )
             end
         end
@@ -102,7 +100,7 @@ eltypes = (Float64, ComplexF64)
             C = randn!(TensorOperations.tensoralloc_add(T, A, p, false, Val(false)))
             Mooncake.TestUtils.test_rule(
                 rng, TensorKit.trace_permute!, C, A, p, q, α, β, TensorOperations.DefaultBackend();
-                atol, rtol, mode
+                atol, rtol
             )
         end
     end
