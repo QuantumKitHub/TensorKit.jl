@@ -1,15 +1,25 @@
 # Arrayify is needed to make MatrixAlgebraKit function properly -
 # it turns coduals into argument types that MAK knows how to handle.
 Mooncake.arrayify(A_dA::CoDual{<:TensorMap}) = arrayify(primal(A_dA), tangent(A_dA))
+Mooncake.arrayify(A_dA::Dual{<:TensorMap}) = arrayify(primal(A_dA), tangent(A_dA))
 Mooncake.arrayify(A::TensorMap, dA::TensorMap) = (A, dA)
 
 Mooncake.arrayify(A_dA::CoDual{<:DiagonalTensorMap}) = arrayify(primal(A_dA), tangent(A_dA))
+Mooncake.arrayify(A_dA::Dual{<:DiagonalTensorMap}) = arrayify(primal(A_dA), tangent(A_dA))
 Mooncake.arrayify(A::DiagonalTensorMap, dA::DiagonalTensorMap) = (A, dA)
 
 function Mooncake.arrayify(Aᴴ_ΔAᴴ::CoDual{<:TK.AdjointTensorMap})
     Aᴴ = Mooncake.primal(Aᴴ_ΔAᴴ)
     ΔAᴴ = Mooncake.tangent(Aᴴ_ΔAᴴ)
     A_ΔA = CoDual(Aᴴ', ΔAᴴ.data.parent)
+    A, ΔA = arrayify(A_ΔA)
+    return A', ΔA'
+end
+
+function Mooncake.arrayify(Aᴴ_ΔAᴴ::Dual{<:TK.AdjointTensorMap})
+    Aᴴ = Mooncake.primal(Aᴴ_ΔAᴴ)
+    ΔAᴴ = Mooncake.tangent(Aᴴ_ΔAᴴ)
+    A_ΔA = Dual(Aᴴ', ΔAᴴ.fields.parent)
     A, ΔA = arrayify(A_ΔA)
     return A', ΔA'
 end

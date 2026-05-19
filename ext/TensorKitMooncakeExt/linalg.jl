@@ -3,7 +3,7 @@
 pullback_dC!(ΔC, β) = (scale!(ΔC, conj(β)); return NoRData())
 pullback_dβ(ΔC, C, β) = _needs_tangent(β) ? project_scalar(β, inner(C, ΔC)) : NoRData()
 
-@is_primitive DefaultCtx ReverseMode Tuple{typeof(mul!), AbstractTensorMap, AbstractTensorMap, AbstractTensorMap, Number, Number}
+@is_primitive DefaultCtx Tuple{typeof(mul!), AbstractTensorMap, AbstractTensorMap, AbstractTensorMap, Number, Number}
 
 function Mooncake.rrule!!(
         ::CoDual{typeof(mul!)},
@@ -40,9 +40,29 @@ function Mooncake.rrule!!(
 
     return C_ΔC, mul_pullback
 end
+function Mooncake.frule!!(
+        ::Dual{typeof(mul!)},
+        C_ΔC::Dual{<:AbstractTensorMap}, A_ΔA::Dual{<:AbstractTensorMap}, B_ΔB::Dual{<:AbstractTensorMap},
+        α_Δα::Dual{<:Number}, β_Δβ::Dual{<:Number}
+    )
+    (C, ΔC), (A, ΔA), (B, ΔB) = arrayify.((C_ΔC, A_ΔA, B_ΔB))
+    α, Δα = Mooncake.extract(α_Δα)
+    β, Δβ = Mooncake.extract(β_Δβ)
+    # ΔC′ = ΔC*β + C*Δβ + A*B*Δα + ΔA*B*α + A*ΔB*α
+    scale!(ΔC, β)
+    if !isa(Δβ, Mooncake.NoTangent)
+        add!(ΔC, C, Δβ)
+    end
+    if !isa(Δα, Mooncake.NoTangent)
+        project_mul!(ΔC, A, B, Δα)
+    end
+    project_mul!(ΔC, ΔA, B, α)
+    project_mul!(ΔC, A, ΔB, α)
+    mul!(C, A, B, α, β)
+    return C_ΔC
+end
 
-@is_primitive DefaultCtx ReverseMode Tuple{typeof(norm), AbstractTensorMap, Real}
-
+@is_primitive DefaultCtx Tuple{typeof(norm), AbstractTensorMap, Real}
 function Mooncake.rrule!!(::CoDual{typeof(norm)}, tΔt::CoDual{<:AbstractTensorMap}, pdp::CoDual{<:Real})
     t, Δt = arrayify(tΔt)
     p = primal(pdp)
@@ -55,9 +75,16 @@ function Mooncake.rrule!!(::CoDual{typeof(norm)}, tΔt::CoDual{<:AbstractTensorM
     end
     return CoDual(n, Mooncake.NoFData()), norm_pullback
 end
+function Mooncake.frule!!(::Dual{typeof(norm)}, tΔt::Dual{<:AbstractTensorMap}, pdp::Dual{<:Real})
+    t, Δt = arrayify(tΔt)
+    p, Δp = Mooncake.extract(pdp)
+    p == 2 || error("currently only implemented for p = 2")
+    n = norm(t, p)
+    Δn = real(dot(t, Δt)) * pinv(n)
+    return Dual(n, Δn)
+end
 
-@is_primitive DefaultCtx ReverseMode Tuple{typeof(tr), AbstractTensorMap}
-
+@is_primitive DefaultCtx Tuple{typeof(tr), AbstractTensorMap}
 function Mooncake.rrule!!(::CoDual{typeof(tr)}, A_ΔA::CoDual{<:AbstractTensorMap})
     A, ΔA = arrayify(A_ΔA)
     trace = tr(A)
@@ -71,8 +98,12 @@ function Mooncake.rrule!!(::CoDual{typeof(tr)}, A_ΔA::CoDual{<:AbstractTensorMa
 
     return CoDual(trace, Mooncake.NoFData()), tr_pullback
 end
+function Mooncake.frule!!(::Dual{typeof(tr)}, A_ΔA::Dual{<:AbstractTensorMap})
+    A, ΔA = arrayify(A_ΔA)
+    return Dual(tr(A), tr(ΔA))
+end
 
-@is_primitive DefaultCtx ReverseMode Tuple{typeof(inv), AbstractTensorMap}
+@is_primitive DefaultCtx Tuple{typeof(inv), AbstractTensorMap}
 
 function Mooncake.rrule!!(::CoDual{typeof(inv)}, A_ΔA::CoDual{<:AbstractTensorMap})
     A, ΔA = arrayify(A_ΔA)
@@ -86,6 +117,12 @@ function Mooncake.rrule!!(::CoDual{typeof(inv)}, A_ΔA::CoDual{<:AbstractTensorM
 
     return Ainv_ΔAinv, inv_pullback
 end
+function Mooncake.frule!!(::Dual{typeof(inv)}, A_ΔA::Dual{<:AbstractTensorMap})
+    A, ΔA = arrayify(A_ΔA)
+    Ainv = inv(A)
+    ΔAinv = -Ainv * ΔA * Ainv
+    return Dual(Ainv, ΔAinv)
+end
 
 # single-output projections: project_hermitian!, project_antihermitian!
 for (f!, f, adj) in (
@@ -93,6 +130,8 @@ for (f!, f, adj) in (
         (:project_antihermitian!, :project_antihermitian, :project_antihermitian_adjoint),
     )
     @eval begin
+        @is_primitive DefaultCtx Tuple{typeof($f!), AbstractTensorMap, AbstractTensorMap, MatrixAlgebraKit.AbstractAlgorithm}
+        @is_primitive DefaultCtx Tuple{typeof($f), AbstractTensorMap, MatrixAlgebraKit.AbstractAlgorithm}
         function Mooncake.rrule!!(f_df::CoDual{typeof($f!)}, A_dA::CoDual{<:AbstractTensorMap}, arg_darg::CoDual, alg_dalg::CoDual{<:MatrixAlgebraKit.AbstractAlgorithm})
             A, dA = arrayify(A_dA)
             arg, darg = A_dA === arg_darg ? (A, dA) : arrayify(arg_darg)
@@ -113,7 +152,13 @@ for (f!, f, adj) in (
 
             return arg_darg, $adj
         end
-
+        function Mooncake.frule!!(f_df::Dual{typeof($f!)}, A_dA::Dual{<:AbstractTensorMap}, arg_darg::Dual, alg_dalg::Dual{<:MatrixAlgebraKit.AbstractAlgorithm})
+            A, dA = arrayify(A_dA)
+            arg, darg = A_dA === arg_darg ? (A, dA) : arrayify(arg_darg)
+            arg = $f!(A, arg, Mooncake.primal(alg_dalg))
+            $f!(dA, darg, Mooncake.primal(alg_dalg))
+            return arg_darg
+        end
         function Mooncake.rrule!!(f_df::CoDual{typeof($f)}, A_dA::CoDual{<:AbstractTensorMap}, alg_dalg::CoDual{<:MatrixAlgebraKit.AbstractAlgorithm})
             A, dA = arrayify(A_dA)
             output = $f(A, Mooncake.primal(alg_dalg))
@@ -128,6 +173,12 @@ for (f!, f, adj) in (
             end
 
             return output_doutput, $adj
+        end
+        function Mooncake.frule!!(f_df::Dual{typeof($f)}, A_dA::Dual{<:AbstractTensorMap}, alg_dalg::Dual{<:MatrixAlgebraKit.AbstractAlgorithm})
+            A, dA = arrayify(A_dA)
+            output = $f(A, Mooncake.primal(alg_dalg))
+            doutput = $f(dA, Mooncake.primal(alg_dalg))
+            return Dual(output, doutput)
         end
     end
 end
