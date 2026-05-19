@@ -68,9 +68,6 @@ function twist!(t::AbstractTensorMap, inds; inv::Bool = false)
         throw(ArgumentError("Can't in-place twist a real tensor with complex sector type"))
     has_shared_twist(t, inds) && return t
 
-    (scalartype(t) <: Real && !(sectorscalartype(sectortype(t)) <: Real)) &&
-        throw(ArgumentError("No in-place `twist!` for a real tensor with complex sector type"))
-
     N₁ = numout(t)
     for (f₁, f₂) in fusiontrees(t)
         θ = prod(i -> i <= N₁ ? twist(f₁.uncoupled[i]) : twist(f₂.uncoupled[i - N₁]), inds)
