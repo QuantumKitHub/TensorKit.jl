@@ -252,7 +252,64 @@ exp(t) ≈ exp_via_mul(t, 10)
 
 ## Anyonic tensor contractions
 
-TODO
+When `BraidingStyle(I) == Anyonic()`, the situation is more restrictive still.
+The relevant group describing the exchange of two lines is no longer the permutation group but the full braid group, so even a double crossing is non-trivial and there is no preferred way to reorder lines in a diagram.
+As a consequence, the implicit reordering that `@tensor` performs is no longer well-defined, and attempting an anyonic contraction with `@tensor` raises a `SectorMismatch` error.
+
+```@example anyoncontraction
+using TensorKit # hide
+V = Vect[FibonacciAnyon](:I => 1, :τ => 1)
+A = randn(ComplexF64, V ← V ⊗ V)
+B = randn(ComplexF64, V ⊗ V ← V)
+try
+    @tensor C[i; j] := A[i; k l] * B[k l; j]
+catch err
+    err
+end
+```
+
+The way out is to write the contraction as a literal *planar* diagram, in which every required crossing is made explicit through a braiding tensor.
+This is what the `@planar` macro provides.
+
+### The `@planar` macro
+
+The surface syntax of `@planar` is identical to that of `@tensor`, but with a number of additional restrictions.
+
+A diagram is *planar* in this context when it can be drawn on a sheet of paper without any of its lines crossing, and additionally with all open legs ending on the exterior of the diagram.
+The second condition rules out arrangements in which an open leg is enclosed by contracted ones, even if the resulting diagram itself contains no crossings.
+
+For the macro to recognise this layout unambiguously, the codomain–domain separator `;` must be present in every index list.
+It fixes which legs sit on the top (codomain) and which on the bottom (domain) of each tensor box, and changing the partition can change whether a given index pattern is planar.
+
+Planarity is moreover enforced for each binary contraction, not only for the overall expression.
+The pairwise contraction order can therefore matter: an expression whose final layout is planar may still be rejected when an intermediate contraction produces a non-planar subdiagram.
+Manually controlling the order, for instance via parentheses, NCON-style numbering, or the `order=...` keyword, is still supported, but must be done with care.
+
+Finally, the name `τ` is reserved for the braiding tensor: every literal crossing must be written out as a `τ[a b; c d]` factor, with its adjoint `τ'[a b; c d]` representing the inverse (under-)crossing.
+The `BraidingTensor` itself does not need to be constructed by the user; the macro figures out the appropriate spaces from the surrounding contraction.
+Any layout the macro cannot identify as planar is rejected at parse time with `ArgumentError("not a planar diagram expression: ...")`.
+
+To make this concrete, consider the contraction `A * B` for two anyonic tensors, written in a manifestly planar fashion:
+
+```@example anyoncontraction
+@planar C1[i; j] := A[i; k l] * B[k l; j]
+```
+
+Inserting an explicit braiding tensor on the contracted legs gives a genuinely different result, reflecting the non-trivial R-symbols of the anyon braiding:
+
+```@example anyoncontraction
+@planar C2[i; j] := A[i; k l] * τ[k l; m n] * B[m n; j]
+C1 ≈ C2
+```
+
+Both expressions correspond to valid, but distinct, tensor network diagrams, and the choice between them must be made explicit by the user.
+
+### The `@plansor` macro
+
+For code that should work uniformly across braiding styles, TensorKit provides the `@plansor` macro.
+It inspects the `BraidingStyle` of the first non-braiding tensor in the expression and dispatches to `@tensor` for `Bosonic` sectors, and to `@planar` otherwise.
+Any explicit `τ` factors that appear in the expression are silently removed in the bosonic case, where braidings are trivial, and faithfully evaluated otherwise.
+This makes `@plansor` the natural choice for generic library code that wishes to remain correct regardless of the underlying symmetry.
 
 
 [^Mortier]:      Mortier, Q., Devos, L., Burgelman, L., et al. (2025). Fermionic Tensor Network Methods. SciPost Physics 18, no. 1. [10.21468/SciPostPhys.18.1.012](https://doi.org/10.21468/SciPostPhys.18.1.012).
