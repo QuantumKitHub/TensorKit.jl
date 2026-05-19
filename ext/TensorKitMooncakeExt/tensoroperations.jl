@@ -219,7 +219,7 @@ function Mooncake.frule!!(
     α, Δα = Mooncake.extract(α_Δα)
     β, Δβ = Mooncake.extract(β_Δβ)
     backend = primal(backend_Δbackend)
-    
+
     # dD = dα * tr(A) + α * tr(dA) + dβ * C + β * dC
     # dC1 = dβ * C + β * dC
     scale!(ΔC, β)
