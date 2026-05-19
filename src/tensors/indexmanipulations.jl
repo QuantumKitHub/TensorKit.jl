@@ -542,6 +542,8 @@ Base.@deprecate(
     transpose!(tdst, tsrc, p, α, β, backend...)
 )
 
+# Kernel implementation
+# ---------------------
 @propagate_inbounds function add_transform!(
         tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, transformer,
         α::Number, β::Number, backend, allocator
@@ -590,11 +592,8 @@ function add_transform_kernel!(
     end
     cp = TO.allocator_checkpoint!(allocator)
 
-    # buffers have to be created without race condition: err on the side of caution
-    buffersz = 2 * length(space(tdst))
-    generate_buffer = let lock = Threads.ReentrantLock(), allocator = allocator
-        () -> @lock lock TO.tensoralloc(storagetype(tdst), buffersz, Val(true), allocator)
-    end
+    # buffers have to be created without race condition: err on the side of caution with a lock
+    buffer_lock = Threads.ReentrantLock()
 
     OhMyThreads.@tasks for src in fusionblocks(tsrc)
         # setup
@@ -608,10 +607,10 @@ function add_transform_kernel!(
                 tdst[f₁′, f₂′], tsrc[f₁, f₂], p, false, α * only(U), β, backend, allocator
             )
         else # Multi-tree block: pack → recoupling matmul → unpack.
-            OhMyThreads.@local buffer = generate_buffer()
             rows, cols = size(U)
             sz_src = size(tsrc[first(fusiontrees(src))...])
             blocksize = prod(sz_src)
+            buffer = @lock buffer_lock TO.tensoralloc(storagetype(tdst), blocksize * (rows + cols), Val(true), allocator)
             ptriv = (ntuple(identity, length(sz_src)), ())
             buffer_dst = StridedView(buffer, (blocksize, rows), (1, blocksize), 0)
             buffer_src = StridedView(buffer, (blocksize, cols), (1, blocksize), blocksize * rows)
@@ -638,7 +637,7 @@ function add_transform_kernel!(
                     p, false, α, β, backend, allocator
                 )
             end
-            TO.tensorfree!(buffer, allocator)
+            @lock buffer_lock TO.tensorfree!(buffer, allocator)
         end
     end
     TO.allocator_reset!(allocator, cp)
@@ -665,11 +664,8 @@ function add_transform_kernel!(
     )
     cp = TO.allocator_checkpoint!(allocator)
 
-    # buffers have to be created without race condition: err on the side of caution
-    buffersz = 2 * buffersize(transformer)
-    generate_buffer = let lock = Threads.ReentrantLock(), allocator = allocator
-        () -> @lock lock TO.tensoralloc(typeof(data_dst), buffersz, Val(true), allocator)
-    end
+    # buffers have to be created without race condition: err on the side of caution with a lock
+    buffer_lock = Threads.ReentrantLock()
 
     OhMyThreads.@tasks for subtransformer in transformer.data
         # setup
@@ -684,9 +680,9 @@ function add_transform_kernel!(
                 p, false, α * coeff, β, backend, allocator
             )
         else # Multi-tree block: pack → recoupling matmul → unpack.
-            OhMyThreads.@local buffer = generate_buffer()
             rows, cols = size(U)
             blocksize = prod(sz_src)
+            buffer = @lock buffer_lock TO.tensoralloc(typeof(data_dst), blocksize * (rows + cols), Val(true), allocator)
             ptriv = (ntuple(identity, length(sz_src)), ())
             buffer_dst = StridedView(buffer, (blocksize, rows), (1, blocksize), 0)
             buffer_src = StridedView(buffer, (blocksize, cols), (1, blocksize), blocksize * rows)
@@ -713,7 +709,7 @@ function add_transform_kernel!(
                     p, false, α, β, backend, allocator
                 )
             end
-            TO.tensorfree!(buffer, allocator)
+            @lock buffer_lock TO.tensorfree!(buffer, allocator)
         end
     end
     TO.allocator_reset!(allocator, cp)
