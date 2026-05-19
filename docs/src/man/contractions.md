@@ -99,8 +99,160 @@ For e.g. an instance `A::TensorMap{T, S, 3, 2}`, the following two syntaxes have
 
 ## Fermionic tensor contractions
 
-TODO
+Whenever `BraidingStyle(i) == Fermionic()`, some complications come up.
+The most important distinction from the `Bosonic()` case is that twists are no longer trivial, such that we must be careful about how we can manipulate network diagrams.
+
+To illustrate these complications, we take a look at a concrete example first, and study the following tensor network:
+
+```@raw html
+<img src="../img/tensor-fermioniccontraction.svg" alt="fermionic contraction example" class="color-invertible"/>
+```
+
+```@example fermioncontraction
+using TensorKit # hide
+V₁ = Vect[FermionParity](0 => 1, 1 => 1)
+V₂ = Vect[FermionParity](0 => 2, 1 => 2)
+A = rand(V₁ ← V₁ ⊗ V₂)
+X = rand(V₁ ← V₁)
+B = rand(V₁ ⊗ V₂ ← V₁)
+```
+
+We can expand this into binary contractions, by first contracting `X` with `A`, and then contracting the result with `B`:
+
+```@example fermioncontraction
+AX = repartition(A, 2, 1) * X
+AXB = repartition(AX, 1, 2) * B
+```
+
+Alternatively, we could decide that we first wish to contract `A` with `B`, and only then contract the result with `X`:
+
+```@example fermioncontraction
+AB = permute(A, ((1, 2), (3,))) * permute(B, ((2,), (1, 3)))
+ABX = repartition(permute(AB, ((1, 4), (2, 3))) * repartition(X, 2, 0), 1, 1)
+```
+
+This is where the issue becomes clearer, as the results are no longer equal:
+
+```@example fermioncontraction
+AXB ≈ ABX
+```
+
+### Trivializing the twist
+
+So what happened?
+If we carefully inspect what we actually computed here, we can show that in order to deform one diagram into the other, we have to introduce a self-crossing, which then altered the result.
+While the example here is still simple to follow, in general we would like that the result of `@tensor` expressions does not depend on the input order of the tensors.
+This is especially true for larger expressions where we wish to dynamically compute the optimal contraction order, as this would alter the order in a very non-transparent manner.
+
+The way out of this effectively consists of absorbing this twist in the coevaluation map ``η``.
+This modified map ``̃η := η ∘ θ`` where ``θ`` represents the twist ensures that the result no longer depends on the order of evaluation.
+In particular, one can show that any time two tensors would swap places, we would simultaneously exchange one evaluation map ``ϵ`` for a coevaluation ``̃η``, while also incurring a twist ``θ`` such that both cancel out.
+To make this concrete, we show how our previous example now leads to a unique result:
+
+```@example fermioncontraction
+function fermion_mul(A, B)
+    return A * twist(B, findall(isdual, codomain(B).spaces))
+end
+
+# order I:
+AX = fermion_mul(repartition(A, 2, 1),  X)
+AXB = fermion_mul(repartition(AX, 1, 2) , B)
+
+# order II:
+AB = fermion_mul(permute(A, ((1, 2), (3,))), permute(B, ((2,), (1, 3))))
+ABX = repartition(fermion_mul(permute(AB, ((1, 4), (2, 3))), repartition(X, 2, 0)), 1, 1)
+
+AXB ≈ ABX
+```
+
+This is the so-called **supertrace** formalism, and is effectively what `@tensor` ends up implementing for fermionic contractions.
+For more details about this formalism, we refer to [^Mortier].
+
+```@example fermioncontraction
+# @tensor
+@tensor result[-1; -2] := A[-1; 1 2] * X[1; 3] * B[3 2; -2]
+
+AXB ≈ result
+```
+
+### (Non)-unitarity
+
+While this modified ``̃η`` solves the issues related to contractions, it does come at a cost.
+The main issue is that this map does not constitute a positive definite map, and in particular is at odds with a positive inner product.
+Such a positive inner product is however required to properly define (orthogonal) factorizations, non-negative norms, etc.
+
+Therefore, we reserve the supertrace formalism exclusively for tensor contractions.
+For matrix-like operations such as factorizations, matrix functions, norms, etc, we retain the positive definite inner product.
+It is also always possible to manually emulate one or the other, by inserting appropriate calls to `twist`.
+In what follows, we simply showcase some noteworthy differences between the two formalisms, as these can be a common source of errors.
+Throughout, we use the following simple fermionic tensor as a running example:
+
+```@example fermionnorm
+using TensorKit # hide
+V = Vect[FermionParity](0 => 1, 1 => 1)
+t = ones(V' ← V')
+```
+
+- Computing a norm via a contraction:
+  the squared norm of `t`, computed via the supertrace contraction, no longer agrees with `norm(t)^2`.
+  In particular, the `@tensor` self-contraction can even vanish for a manifestly non-zero tensor:
+
+```@example fermionnorm
+norm(t)^2, @tensor conj(t[a; b]) * t[a; b]
+```
+
+Inserting a `twist` on the contracted codomain index cancels the twist that `@tensor` automatically introduces, and recovers the trace-formalism result:
+
+```@example fermionnorm
+norm(t)^2 ≈ @tensor conj(t[a; b]) * twist(t, 1)[a; b]
+```
+
+- Using unitarity to simplify `U * U' ≈ I`:
+  the factor `U` returned by `svd_compact` is left-isometric in the *trace* sense, i.e. `U' * U ≈ id(domain(U))` as a matrix product, but this identity no longer holds when the same product is written as a tensor contraction:
+
+```@example fermionnorm
+U, S, Vᴴ = svd_compact(t)
+@tensor UdU[i; j] := conj(U[k; i]) * U[k; j]
+U' * U ≈ id(domain(U)), UdU ≈ id(domain(U))
+```
+
+The matrix-mul version satisfies orthogonality, but the `@tensor` version differs by the fermionic twist on the contracted index.
+This is a common pitfall whenever an isometry obtained from a factorization is fed straight into an `@tensor` expression.
+
+- Computing a matrix function through a manual Taylor expansion:
+  matrix functions such as `exp`, `log`, `sqrt` are defined through the matrix product (trace formalism) and therefore have no immediate counterpart in terms of `@tensor` expressions.
+  In particular, replacing each matrix power by an `@tensor` self-contraction yields a different result, even at low order:
+
+```@example fermionnorm
+function exp_via_tensor(t, order)
+    out = id(domain(t))
+    tn = id(domain(t))
+    for n in 1:order
+        @tensor next[a; b] := tn[a; c] * t[c; b]
+        tn = next
+        out += tn / factorial(n)
+    end
+    return out
+end
+exp(t) ≈ exp_via_tensor(t, 10)
+```
+
+The same Taylor expansion written with the matrix product instead does reproduce `exp(t)`, confirming that the discrepancy is in the contraction step rather than the truncation order:
+
+```@example fermionnorm
+exp_via_mul(t, order) = sum(t^n / factorial(n) for n in 0:order)
+exp(t) ≈ exp_via_mul(t, 10)
+```
+
+!!! note
+    Both the supertrace and the trace formalism constitute valid, consistent frameworks, each with their own advantages and disadvantages.
+    For practical applications, it can be convenient to select one or the other, and to take special care when trying to use properties of one framework in the other.
+    In general, each case must be carefully evaluated to check which framework is correct, but a good rule of thumb is to be careful when using properties of orthogonality in combination with `@tensor` expressions.
+
 
 ## Anyonic tensor contractions
 
 TODO
+
+
+[^Mortier]:      Mortier, Q., Devos, L., Burgelman, L., et al. (2025). Fermionic Tensor Network Methods. SciPost Physics 18, no. 1. [10.21468/SciPostPhys.18.1.012](https://doi.org/10.21468/SciPostPhys.18.1.012).
