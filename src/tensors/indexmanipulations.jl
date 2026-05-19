@@ -607,7 +607,7 @@ function add_transform_kernel!(
     # buffers have to be created without race condition: err on the side of caution
     buffersz = 2 * length(space(tdst))
     generate_buffer = let lock = Threads.ReentrantLock(), allocator = allocator
-        () -> @lock lock TO.tensoralloc(typeof(data_dst), buffersz, Val(true), allocator)
+        () -> @lock lock TO.tensoralloc(storagetype(tdst), buffersz, Val(true), allocator)
     end
 
     OhMyThreads.@tasks for src in fusionblocks(tsrc)
