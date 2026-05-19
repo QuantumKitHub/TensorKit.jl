@@ -50,16 +50,12 @@ function MatrixAlgebraKit.findtruncated_svd(values::CuSectorVector, strategy::S)
     return CUDA.CUDACore.Adapt.adapt(Vector, MatrixAlgebraKit.findtruncated(values, strategy))
 end
 
-function MatrixAlgebraKit.findtruncated_svd(values::CuSectorVector, strategy::MatrixAlgebraKit.TruncationByOrder)
-    # returning a CuSectorVector wrecks things in truncate_{co}domain
-    # because of scalar indexing
-    return CUDA.CUDACore.Adapt.adapt(Vector, MatrixAlgebraKit.findtruncated(values, strategy))
-end
-
-function MatrixAlgebraKit.findtruncated_svd(values::CuSectorVector, strategy::TensorKit.Factorizations.TruncationSpace)
-    # returning a CuSectorVector wrecks things in truncate_{co}domain
-    # because of scalar indexing
-    return CUDA.CUDACore.Adapt.adapt(Vector, MatrixAlgebraKit.findtruncated(values, strategy))
+for strat in (:(MatrixAlgebraKit.TruncationByOrder), :(MatrixAlgebraKit.TruncationByError), :(MatrixAlgebraKit.TruncationIntersection), :(TensorKit.Factorizations.TruncationSpace))
+    @eval function MatrixAlgebraKit.findtruncated_svd(values::CuSectorVector, strategy::$strat)
+        # returning a CuSectorVector wrecks things in truncate_{co}domain
+        # because of scalar indexing
+        return CUDA.CUDACore.Adapt.adapt(Vector, MatrixAlgebraKit.findtruncated(values, strategy))
+    end
 end
 
 function MatrixAlgebraKit.findtruncated_svd(values::CuSectorVector, strategy::MatrixAlgebraKit.TruncationByValue)
