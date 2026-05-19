@@ -67,10 +67,3 @@ function MatrixAlgebraKit.findtruncated_svd(values::CuSectorVector, strategy::Ma
     strategy′ = trunctol(; atol, strategy.by, strategy.keep_below)
     return SectorDict(c => CUDA.CUDACore.Adapt.adapt(Vector, MatrixAlgebraKit.findtruncated_svd(d, strategy′)) for (c, d) in pairs(values))
 end
-
-# Needed until MatrixAlgebraKit patch hits...
-function MatrixAlgebraKit._ind_intersect(A::CuVector{Bool}, B::CuVector{Int})
-    result = fill!(similar(A), false)
-    result[B] .= @view A[B]
-    return result
-end
