@@ -7,6 +7,8 @@ import CUDA.cuRAND: rand as curand, rand! as curand!, randn as curandn, randn! a
 using Strided: StridedViews
 using CUDA.CUDACore.KernelAbstractions: @kernel, @index, get_backend
 
+using Adapt: Adapt
+
 using TensorKit
 using TensorKit.Factorizations
 using TensorKit.Strided

@@ -53,6 +53,14 @@ function BraidingTensor{T}(V::HomSpace, adjoint::Bool = false) where {T}
     return BraidingTensor{T}(V[2], V[1], adjoint)
 end
 
+function Adapt.adapt_structure(::Type{T}, x::BraidingTensor{T′, S, A}) where {T <: Number, T′, S, A}
+    A′ = TensorKit.similarstoragetype(A, T)
+    return BraidingTensor{T, S, A′}(space(x), x.adjoint)
+end
+function Adapt.adapt_structure(::Type{TA}, x::BraidingTensor{T, S, A}) where {T′, TA <: DenseArray{T′}, T, S, A}
+    return BraidingTensor{T′, S, TA}(space(x), x.adjoint)
+end
+
 function Base.adjoint(b::BraidingTensor{T, S, A}) where {T, S, A}
     return BraidingTensor{T, S, A}(b.V1, b.V2, !b.adjoint)
 end

@@ -50,6 +50,8 @@ Base.@propagate_inbounds function subblock(t::AdjointTensorMap, (f₁, f₂)::Tu
     return permutedims(conj(data), (domainind(tp)..., codomainind(tp)...))
 end
 
+Adapt.adapt_structure(to, x::AdjointTensorMap) = adjoint(Adapt.adapt(to, parent(x)))
+
 # Show
 #------
 function Base.showarg(io::IO, t::AdjointTensorMap, toplevel::Bool)

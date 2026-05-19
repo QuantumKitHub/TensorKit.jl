@@ -149,6 +149,8 @@ import Base.Meta
 
 using Random: Random, rand!, randn!
 
+using Adapt: Adapt
+
 # Auxiliary files
 #-----------------
 include("auxiliary/auxiliary.jl")

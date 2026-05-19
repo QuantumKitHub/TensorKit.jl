@@ -51,19 +51,19 @@ end
 function MatrixAlgebraKit.findtruncated_svd(values::CuSectorVector, strategy::S) where {S <: MatrixAlgebraKit.TruncationStrategy}
     # returning a CuSectorVector wrecks things in truncate_{co}domain
     # because of scalar indexing
-    return CUDA.CUDACore.Adapt.adapt(Vector, MatrixAlgebraKit.findtruncated(values, strategy))
+    return Adapt.adapt(Vector, MatrixAlgebraKit.findtruncated(values, strategy))
 end
 
 for strat in (:(MatrixAlgebraKit.TruncationByOrder), :(MatrixAlgebraKit.TruncationByError), :(MatrixAlgebraKit.TruncationIntersection), :(TensorKit.Factorizations.TruncationSpace))
     @eval function MatrixAlgebraKit.findtruncated_svd(values::CuSectorVector, strategy::$strat)
         # returning a CuSectorVector wrecks things in truncate_{co}domain
         # because of scalar indexing
-        return CUDA.CUDACore.Adapt.adapt(Vector, MatrixAlgebraKit.findtruncated(values, strategy))
+        return Adapt.adapt(Vector, MatrixAlgebraKit.findtruncated(values, strategy))
     end
 end
 
 function MatrixAlgebraKit.findtruncated_svd(values::CuSectorVector, strategy::MatrixAlgebraKit.TruncationByValue)
     atol = TensorKit.Factorizations.rtol_to_atol(values, strategy.p, strategy.atol, strategy.rtol)
     strategy′ = trunctol(; atol, strategy.by, strategy.keep_below)
-    return SectorDict(c => CUDA.CUDACore.Adapt.adapt(Vector, MatrixAlgebraKit.findtruncated_svd(d, strategy′)) for (c, d) in pairs(values))
+    return SectorDict(c => Adapt.adapt(Vector, MatrixAlgebraKit.findtruncated_svd(d, strategy′)) for (c, d) in pairs(values))
 end
