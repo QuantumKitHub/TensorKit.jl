@@ -683,6 +683,7 @@ function Base.isapprox(
         t1::AbstractTensorMap, t2::AbstractTensorMap;
         atol::Real = 0, rtol::Real = Base.rtoldefault(scalartype(t1), scalartype(t2), atol)
     )
+    (codomain(t1) == codomain(t2) && domain(t1) == domain(t2)) || return false
     d = norm(t1 - t2)
     if isfinite(d)
         return d <= max(atol, rtol * max(norm(t1), norm(t2)))
