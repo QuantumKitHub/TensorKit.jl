@@ -191,7 +191,7 @@ _field_symbol(t, ::Val{F}) where {F} = _field_symbol(t, F)
 
 # frules
 _frule_getfield_common(t_dt::Dual{<:DiagOrTensorMap}, field_sym::Symbol) =
-    Dual(getfield(primal(t), field_sym), field_sym === :data ? tangent(t).data : NoFData())
+    Dual(getfield(primal(t_dt), field_sym), field_sym === :data ? tangent(t_dt).data : NoFData())
 
 Mooncake.frule!!(::Dual{typeof(Mooncake.lgetfield)}, t_dt::Dual{<:DiagOrTensorMap}, f_df::Dual) =
     _frule_getfield_common(t_dt, _field_symbol(primal(t_dt), primal(f_df)))
