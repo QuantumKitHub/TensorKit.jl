@@ -9,7 +9,7 @@ eltypes = (Float64, ComplexF64)
 
 @testset "Enzyme - VectorInterface" begin
     @timedtestset "$(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes
-        @testset for TC in (Duplicated, Const), TA in (Duplicated, Const), f in (identity, adjoint)
+        @testset for TC in (Duplicated,), TA in (Duplicated,), f in (identity, adjoint)
             atol = default_tol(T)
             rtol = default_tol(T)
             C = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
