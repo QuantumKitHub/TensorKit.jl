@@ -120,7 +120,7 @@ end
 function Mooncake.frule!!(::Dual{typeof(inv)}, A_ΔA::Dual{<:AbstractTensorMap})
     A, ΔA = arrayify(A_ΔA)
     Ainv = inv(A)
-    ΔAinv = -Ainv * ΔA * Ainv
+    ΔAinv = scale!(Ainv * ΔA * Ainv, -1)
     return Dual(Ainv, ΔAinv)
 end
 
