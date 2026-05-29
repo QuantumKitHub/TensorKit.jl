@@ -223,9 +223,10 @@ function Mooncake.frule!!(
 
     # dD = dα * tr(A) + α * tr(dA) + dβ * C + β * dC
     # dC1 = dβ * C + β * dC
-    scale!(ΔC, β)
-    if !isa(Δβ, Mooncake.NoTangent)
-        add!(ΔC, C, Δβ)
+    if isa(Δβ, Mooncake.NoTangent)
+        scale!(ΔC, β)
+    else
+        add!(ΔC, C, Δβ, β)
     end
     if !isa(Δα, Mooncake.NoTangent)
         TensorKit.trace_permute!(ΔC, A, p, q, Δα, One(), backend)
