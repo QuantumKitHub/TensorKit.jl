@@ -85,9 +85,10 @@ function Mooncake.frule!!(
     β, Δβ = Mooncake.extract(β_Δβ)
     backend, allocator = primal.((backend_Δbackend, allocator_Δallocator))
     # ΔC′ = ΔC*β + C*Δβ + A*B*Δα + ΔA*B*α + A*ΔB*α
-    scale!(ΔC, β)
-    if !isa(Δβ, Mooncake.NoTangent)
-        add!(ΔC, C, Δβ)
+    if isa(Δβ, Mooncake.NoTangent)
+        scale!(ΔC, β)
+    else
+        add!(ΔC, C, Δβ, β)
     end
     if !isa(Δα, Mooncake.NoTangent)
         TensorKit.blas_contract!(ΔC, A, pA, B, pB, pAB, Δα, One(), backend, allocator)
