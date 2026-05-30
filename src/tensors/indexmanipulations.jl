@@ -6,7 +6,7 @@
 # flip
 # ------
 """
-    flip(t::AbstractTensorMap, I) -> t′::AbstractTensorMap
+    flip(t::AbstractTensorMap, I; inv::Bool = false) -> t′::AbstractTensorMap
 
 Return a new tensor that is isomorphic to `t` but where the arrows on the indices `i` that satisfy
 `i ∈ I` are flipped, i.e. `space(t′, i) = flip(space(t, i))`.
