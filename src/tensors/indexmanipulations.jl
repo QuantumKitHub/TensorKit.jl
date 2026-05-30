@@ -619,7 +619,7 @@ function add_transform_kernel!(
             #    using a trivial permutation so the layout is canonical before the matmul.
             @inbounds for (i, (f₁, f₂)) in enumerate(fusiontrees(src))
                 TO.tensoradd!(
-                    sreshape(buffer_src[:, i], sz_src), tsrc[f₁, f₂],
+                    sreshape(view(buffer_src, :, i), sz_src), tsrc[f₁, f₂],
                     ptriv, false, One(), Zero(), backend, allocator
                 )
             end
@@ -633,7 +633,7 @@ function add_transform_kernel!(
             #    actual index permutation p in the same tensoradd! call.
             @inbounds for (i, (f₃, f₄)) in enumerate(fusiontrees(dst))
                 TO.tensoradd!(
-                    tdst[f₃, f₄], sreshape(buffer_dst[:, i], sz_src),
+                    tdst[f₃, f₄], sreshape(view(buffer_dst, :, i), sz_src),
                     p, false, α, β, backend, allocator
                 )
             end
@@ -691,7 +691,7 @@ function add_transform_kernel!(
             #    using a trivial permutation so the layout is canonical before the matmul.
             @inbounds for (i, struct_src_i) in enumerate(structs_src)
                 TO.tensoradd!(
-                    sreshape(buffer_src[:, i], sz_src), StridedView(data_src, sz_src, struct_src_i...),
+                    sreshape(view(buffer_src, :, i), sz_src), StridedView(data_src, sz_src, struct_src_i...),
                     ptriv, false, One(), Zero(), backend, allocator
                 )
             end
@@ -705,7 +705,7 @@ function add_transform_kernel!(
             #    actual index permutation p in the same tensoradd! call.
             @inbounds for (i, struct_dst_i) in enumerate(structs_dst)
                 TO.tensoradd!(
-                    StridedView(data_dst, sz_dst, struct_dst_i...), sreshape(buffer_dst[:, i], sz_src),
+                    StridedView(data_dst, sz_dst, struct_dst_i...), sreshape(view(buffer_dst, :, i), sz_src),
                     p, false, α, β, backend, allocator
                 )
             end
