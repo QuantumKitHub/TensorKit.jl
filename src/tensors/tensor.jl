@@ -554,3 +554,8 @@ function Base.promote_rule(
     A = promote_storagetype(VectorInterface.promote_add(scalartype(TT₁), scalartype(TT₂)), TT₁, TT₂)
     return tensormaptype(S, N₁, N₂, A)
 end
+
+function Adapt.adapt_structure(to, x::TensorMap)
+    data = Adapt.adapt(to, x.data)
+    return TensorMap{eltype(data)}(data, space(x))
+end

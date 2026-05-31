@@ -91,8 +91,7 @@ export left_orth, right_orth, left_null, right_null,
     isisometric, isunitary, project_isometric, project_isometric!,
     isposdef, isposdef!, sylvester, rank, cond
 
-export braid, braid!, permute, permute!, transpose, transpose!, twist, twist!, repartition,
-    repartition!
+export braid, braid!, permute, permute!, transpose, transpose!, twist, twist!, repartition, repartition!
 export catdomain, catcodomain, absorb, absorb!
 
 # tensor operations
@@ -149,6 +148,8 @@ using LinearAlgebra: norm, dot, normalize, normalize!, tr,
 import Base.Meta
 
 using Random: Random, rand!, randn!
+
+using Adapt: Adapt
 
 # Auxiliary files
 #-----------------

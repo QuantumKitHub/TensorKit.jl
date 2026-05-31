@@ -53,6 +53,14 @@ function BraidingTensor{T}(V::HomSpace, adjoint::Bool = false) where {T}
     return BraidingTensor{T}(V[2], V[1], adjoint)
 end
 
+function Adapt.adapt_structure(::Type{T}, x::BraidingTensor{T′, S, A}) where {T <: Number, T′, S, A}
+    A′ = TensorKit.similarstoragetype(A, T)
+    return BraidingTensor{T, S, A′}(space(x), x.adjoint)
+end
+function Adapt.adapt_structure(::Type{TA}, x::BraidingTensor{T, S, A}) where {T′, TA <: DenseArray{T′}, T, S, A}
+    return BraidingTensor{T′, S, TA}(space(x), x.adjoint)
+end
+
 function Base.adjoint(b::BraidingTensor{T, S, A}) where {T, S, A}
     return BraidingTensor{T, S, A}(b.V1, b.V2, !b.adjoint)
 end
@@ -221,11 +229,11 @@ function planarcontract!(
 
     I = sectortype(C)
     BraidingStyle(I) isa Bosonic &&
-        return add_permute!(C, B, (reverse(cindB), oindB), α, β, backend)
+        return permute!(C, B, (reverse(cindB), oindB), α, β, backend, allocator)
 
     # Non-bosonic case: factor into a cyclic transpose (no crossings) + a single Artin braid
     # that swaps the two contracted legs, producing the R-symbol that A encodes. Naively
-    # using a single `add_braid!` is wrong: it would resolve cyclic moves as crossings and
+    # using a single `braid!` is wrong: it would resolve cyclic moves as crossings and
     # pick up spurious R-symbol factors.
     B_in_layout = (cindB == codB && oindB == domB)
     if B_in_layout
@@ -234,7 +242,7 @@ function planarcontract!(
         B′ = TO.tensoralloc_add(
             scalartype(B), B, (cindB, oindB), false, Val(true), allocator
         )
-        add_transpose!(B′, B, (cindB, oindB), One(), Zero(), backend)
+        transpose!(B′, B, (cindB, oindB), One(), Zero(), backend, allocator)
     end
 
     levelsA = A.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
@@ -244,9 +252,9 @@ function planarcontract!(
         ntuple(Returns(3), N - 2)...,
     )
 
-    add_braid!(
+    braid!(
         C, B′, ((2, 1), ntuple(i -> i + 2, N - 2)),
-        levels, α, β, backend,
+        levels, α, β, backend, allocator
     )
 
     B_in_layout || TO.tensorfree!(B′, allocator)
@@ -274,11 +282,11 @@ function planarcontract!(
 
     I = sectortype(C)
     BraidingStyle(I) isa Bosonic &&
-        return add_permute!(C, A, (oindA, reverse(cindA)), α, β, backend)
+        return permute!(C, A, (oindA, reverse(cindA)), α, β, backend, allocator)
 
     # Non-bosonic case: cyclic transpose A → (oindA, cindA) (no crossings), then a single
     # Artin braid swaps A′'s last two indices, producing the R-symbol that B encodes. Naively
-    # using a single `add_braid!` is wrong: it would resolve cyclic moves as crossings and
+    # using a single `braid!` is wrong: it would resolve cyclic moves as crossings and
     # pick up spurious R-symbol factors.
 
     A_in_layout = (oindA == codA && cindA == domA)
@@ -288,7 +296,7 @@ function planarcontract!(
         A′ = TO.tensoralloc_add(
             scalartype(A), A, (oindA, cindA), false, Val(true), allocator
         )
-        add_transpose!(A′, A, (oindA, cindA), One(), Zero(), backend)
+        transpose!(A′, A, (oindA, cindA), One(), Zero(), backend, allocator)
     end
 
     levelsB = B.adjoint ? (1, 2, 2, 1) : (2, 1, 1, 2)
@@ -299,9 +307,9 @@ function planarcontract!(
         levelsB[cindB[1]], levelsB[cindB[2]],
     )
 
-    add_braid!(
+    braid!(
         C, A′, (ntuple(identity, M), (N, N - 1)),
-        levels, α, β, backend,
+        levels, α, β, backend, allocator
     )
 
     A_in_layout || TO.tensorfree!(A′, allocator)

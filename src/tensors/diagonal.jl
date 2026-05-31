@@ -133,6 +133,11 @@ function Base.convert(::Type{DiagonalTensorMap}, d::Dict{Symbol, Any})
     return convert(DiagonalTensorMap, convert(TensorMap, d))
 end
 
+function Adapt.adapt_structure(to, x::DiagonalTensorMap)
+    data′ = Adapt.adapt(to, x.data)
+    return DiagonalTensorMap(data′, x.domain)
+end
+
 # Complex, real and imaginary parts
 #-----------------------------------
 for f in (:real, :imag, :complex)
