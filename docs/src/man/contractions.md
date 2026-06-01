@@ -40,7 +40,7 @@ A number of remarks are in order.
 TensorOperations.jl accepts both integers and any valid variable name as dummy label for indices, and everything in between `[ ]` is not resolved in the current context but interpreted as a dummy label.
 Here, we label the indices of a `TensorMap`, like `A::TensorMap{T, S, N₁, N₂}`, in a linear fashion, where the first position corresponds to the first space in `codomain(A)`, and so forth, up to position `N₁`.
 Index `N₁ + 1` then corresponds to the first space in `domain(A)`.
-However, because we have applied the coevaluation ``η``, it actually corresponds to the corresponding dual space, in accordance with the interface of [`space(A, i)`](@ref) that we introduced [above](@ref ss_tensor_properties), and as indiated by the dotted box around ``A`` in the above picture.
+However, because we have applied the coevaluation ``η``, it actually corresponds to the corresponding dual space, in accordance with the interface of [`space(A, i)`](@ref), and as indicated by the dotted box around ``A`` in the above picture.
 The same holds for the other tensor maps.
 Note that our convention also requires that we braid indices that we brought from the domain to the codomain, and so this is only unambiguous for a symmetric braiding, where there is a unique way to permute the indices.
 
@@ -68,7 +68,7 @@ and none of those will or can change the partition of the indices of `E` into it
 Two final remarks are in order.
 Firstly, the order of the tensors appearing on the right hand side is irrelevant, as we can reorder them by using the allowed moves of the Penrose graphical calculus, which yields some crossings and a twist.
 As the latter is trivial, it can be omitted, and we just use the same rules to evaluate the newly ordered tensor network.
-For the particular case of matrix-matrix multiplication, which also captures more general settings by appropriotely combining spaces into a single line, we indeed find
+For the particular case of matrix-matrix multiplication, which also captures more general settings by appropriately combining spaces into a single line, we indeed find
 
 ```@raw html
 <img src="../img/tensor-contractionreorder.svg" alt="tensor contraction reorder" class="color-invertible"/>
@@ -145,7 +145,7 @@ While the example here is still simple to follow, in general we would like that 
 This is especially true for larger expressions where we wish to dynamically compute the optimal contraction order, as this would alter the order in a very non-transparent manner.
 
 The way out of this effectively consists of absorbing this twist in the coevaluation map ``η``.
-This modified map ``̃η := η ∘ θ`` where ``θ`` represents the twist ensures that the result no longer depends on the order of evaluation.
+This modified map ``η′ := η ∘ θ`` where ``θ`` represents the twist ensures that the result no longer depends on the order of evaluation.
 In particular, one can show that any time two tensors would swap places, we would simultaneously exchange one evaluation map ``ϵ`` for a coevaluation ``̃η``, while also incurring a twist ``θ`` such that both cancel out.
 To make this concrete, we show how our previous example now leads to a unique result:
 
