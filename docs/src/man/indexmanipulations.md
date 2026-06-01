@@ -104,5 +104,23 @@ For a plain tensor (`sectortype(t) == Trivial`), applying this particular `unita
 
 Fusing index `i` and `j = i+1` of a tensor `t` is then accomplished as
 
+```@repl indexmanip
+t = randn(ℂ^2 ⊗ ℂ^3 ⊗ ℂ^4);
+F = unitary(fuse(space(t, 2) ⊗ space(t, 3)), space(t, 2) ⊗ space(t, 3));
+@tensor t_fused[a, c] := F[c, b₁, b₂] * t[a, b₁, b₂]
+```
 
-The resulting `unitary` is a dense `TensorMap`, and this fusion and splitting approach is not optimized for maximal performance. However, because many tensor operations including tensor factorizations (SVD, QR, etc.) can be applied without needing any fusion, we do not expect fusion and splitting to be an essential part of performance critical parts of typical tensor algorithms. 
+The fusion is undone by contracting with the adjoint fuser, which is its inverse:
+
+```@repl indexmanip
+@tensor t_split[a, b₁, b₂] := t_fused[a, c] * conj(F[c, b₁, b₂]);
+t_split ≈ t
+```
+
+The resulting `unitary` is a dense `TensorMap`, and this fusion and splitting approach is not optimized for maximal performance.
+However, because most tensor operations including tensor factorizations (SVD, QR, etc.) can be applied without needing any fusion, we do not expect fusion and splitting to be an essential part of performance critical parts of typical tensor algorithms.
+
+!!! warning
+    For `BraidingStyle(I) == Fermionic()`, special care has to be taken with these operations.
+    The definition of `unitary` is such that `F * F' ≈ I`, which may differ from the equivalent `@tensor` call depending on the duality of the spaces.
+    See also the section on [Fermionic tensor contractions](@ref).
