@@ -74,3 +74,10 @@ function MatrixAlgebraKit._ind_intersect(A::CuVector{Bool}, B::CuVector{Int})
     result[B] .= @view A[B]
     return result
 end
+
+function MatrixAlgebraKit.truncation_error!(values::CuSectorVector, ind)
+    for (c, ind_c) in pairs(ind)
+        @. values[c] *= !ind_c
+    end
+    return norm(values)
+end
