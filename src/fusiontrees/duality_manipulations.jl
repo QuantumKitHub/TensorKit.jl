@@ -272,7 +272,7 @@ function foldright(src::FusionTreeBlock)
                 Asymbol(a, b, c)
             end
             f₂′s, coeffs₂ = get!(cache₂, (b, f₂)) do
-                multi_Fmove_inv(dual(a), b, f₂)
+                multi_Fmove_inv(dual(a), b, f₂, !isduala)
             end
             coeff₀ = sqrtdim(c) * invsqrtdim(b)
             for (f₂′, coeff₂) in zip(f₂′s, coeffs₂)
