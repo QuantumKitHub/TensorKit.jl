@@ -57,7 +57,7 @@ scalarAA = dot(A, A)
 normA² = norm(A)^2
 ```
 
-More generally, our tensor objects implement the full interface layed out in [VectorInterface.jl](https://github.com/Jutho/VectorInterface.jl).
+More generally, our tensor objects implement the full interface laid out in [VectorInterface.jl](https://github.com/Jutho/VectorInterface.jl).
 
 If two tensors live on different spaces, these operations have no meaning and are thus not allowed
 
@@ -100,7 +100,7 @@ U
 ```
 
 Note that the `svd_compact` routine returns the decomposition of the linear map as three factors, `U`, `S` and `Vd`, each of them a `TensorMap`, such that `Vd` is already what is commonly called `V'`.
-Furthermore, observe that `U` is printed differently then `A`, i.e. as a `TensorMap((ℝ^3 ⊗ ℝ^4) ← ProductSpace(ℝ^2))`.
+Furthermore, observe that `U` is printed differently than `A`, i.e. as a `TensorMap((ℝ^3 ⊗ ℝ^4) ← ProductSpace(ℝ^2))`.
 What this means is that tensors (or more appropriately, `TensorMap` instances) in TensorKit.jl are always considered to be linear maps between two `ProductSpace` instances, with
 
 ```@repl tutorial
@@ -363,5 +363,5 @@ Instead, recoupling relations are used to symbolically manipulate the basis of f
 In fact, this formalism extends beyond the case of group representations on vector spaces, and can also deal with super vector spaces (to describe fermions) and more general (unitary) fusion categories.
 Support for all of these generalizations is present in TensorKit.jl.
 Indeed, all of these concepts will be explained throughout the remainder of this manual, including several details regarding their implementation.
-However, to just use tensors and their manipulations (contractions, factorizations, ...) in higher level algorithms (e.g. tensoer network algorithms), one does not need to know or understand most of these details, and one can immediately refer to the general interface of the `TensorMap` type, discussed on the [last page](@ref s_tensors).
+However, to just use tensors and their manipulations (contractions, factorizations, ...) in higher level algorithms (e.g. tensor network algorithms), one does not need to know or understand most of these details, and one can immediately refer to the general interface of the `TensorMap` type, discussed on the [last page](@ref s_tensors).
 Adhering to this interface should yield code and algorithms that are oblivious to the underlying symmetries and can thus work with arbitrary symmetric tensors.

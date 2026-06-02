@@ -53,7 +53,7 @@ We refer to the appendix on [categories](@ref s_categories), and in particular t
 Let the different irreps or sectors be labeled as ``a``, ``b``, ``c``, …
 First and foremost, we need to specify the *fusion rules* ``a ⊗ b = ⨁ N^{ab}_{c} c`` with ``N^{ab}_{c}`` some non-negative integers.
 The meaning of the fusion rules is that the space of covariant maps ``R_a ⊗ R_b → R_c`` (or vice versa ``R_c → R_a ⊗ R_b``) has dimension ``N^{ab}_c``.
-In particular, there should always exists a unique trivial sector ``u`` (called the identity object ``I`` or ``1`` in the language of categories) such that ``a ⊗ u = a = u ⊗ a`` for every other sector ``a``.
+In particular, there should always exist a unique trivial sector ``u`` (called the identity object ``I`` or ``1`` in the language of categories) such that ``a ⊗ u = a = u ⊗ a`` for every other sector ``a``.
 Furthermore, with respect to every sector ``a`` there should exist a unique sector ``\bar{a}`` such that ``N^{a\bar{a}}_{u} = 1``, whereas for all ``b \neq \bar{a}``, ``N^{ab}_{u} = 0``.
 For irreps of groups, ``\bar{a}`` corresponds to the complex conjugate of the representation ``a``, or some representation isomorphic to it.
 For example, for the representations of ``\mathsf{SU}_2``, the trivial sector corresponds to spin zero and all irreps are self-dual (i.e. ``a = \bar{a}``), meaning that the conjugate representation is isomorphic to the non-conjugated one (they are however not equal but related by a similarity transform).

@@ -7,7 +7,7 @@ using LinearAlgebra
 
 `AbstractTensorMap` instances `t` represent linear maps, i.e. homomorphisms in a `𝕜`-linear category, just like matrices.
 To a large extent, they follow the interface of `Matrix` in Julia's `LinearAlgebra` standard library.
-Many methods from `LinearAlgebra` are (re)exported by TensorKit.jl, and can then us be used without `using LinearAlgebra` explicitly.
+Many methods from `LinearAlgebra` are (re)exported by TensorKit.jl, and can then be used without `using LinearAlgebra` explicitly.
 In all of the following methods, the implementation acts directly on the underlying matrix blocks (typically using the same method) and never needs to perform any basis transforms.
 
 In particular, `AbstractTensorMap` instances can be composed, provided the domain of the first object coincides with the codomain of the second.
@@ -47,7 +47,7 @@ Finally, there are a number of operations that also belong in this paragraph bec
 The tensor product of two `TensorMap` instances `t1` and `t2` is obtained as `t1 ⊗ t2` and results in a new `TensorMap` with `codomain(t1 ⊗ t2) = codomain(t1) ⊗ codomain(t2)` and `domain(t1 ⊗ t2) = domain(t1) ⊗ domain(t2)`.
 If we have two `TensorMap{T, S, N, 1}` instances `t1` and `t2` with the same codomain, we can combine them in a way that is analogous to `hcat`, i.e. we stack them such that the new tensor `catdomain(t1, t2)` has also the same codomain, but has a domain which is `domain(t1) ⊕ domain(t2)`.
 Similarly, if `t1` and `t2` are of type `TensorMap{T, S, 1, N}` and have the same domain, the operation `catcodomain(t1, t2)` results in a new tensor with the same domain and a codomain given by `codomain(t1) ⊕ codomain(t2)`, which is the analogy of `vcat`.
-Note that direct sum only makes sense between `ElementarySpace` objects, i.e. there is no way to give a tensor product meaning to a direct sum of tensor product spaces.
+Note that the direct sum only makes sense between `ElementarySpace` objects, i.e. there is no way to give a tensor product meaning to a direct sum of tensor product spaces.
 
 Time for some more examples:
 ```@repl tensors

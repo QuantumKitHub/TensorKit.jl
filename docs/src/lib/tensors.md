@@ -147,17 +147,17 @@ Random.randexp!
 
 The operations that can be performed on an `AbstractTensorMap` can be organized into the following categories:
 
-*   *vector operations*: these do not change the `space` or index structure of a tensor and can be straightforwardly implemented on on the full data.
+*   *vector operations*: these do not change the `space` or index structure of a tensor and can be straightforwardly implemented on the full data.
     All the methods described in [VectorInterface.jl](https://github.com/Jutho/VectorInterface.jl) are supported.
     For compatibility reasons, we also provide implementations for equivalent methods from LinearAlgebra.jl, such as `axpy!`, `axpby!`.
 
-*   *index manipulations*: these change (permute) the index structure of a tensor, which affects the data in a way that is fully determined by the categorical data of the `sectortype` of the tensor .
+*   *index manipulations*: these change (permute) the index structure of a tensor, which affects the data in a way that is fully determined by the categorical data of the `sectortype` of the tensor.
 
 *   *(planar) contractions* and *(planar) traces* (i.e., contractions with identity tensors).
     Tensor contractions correspond to a combination of some index manipulations followed by a composition or multiplication of the tensors in their role as linear maps.
     Tensor contractions are however of such importance and frequency that they require a dedicated implementation.
 
-*   *tensor factorizations*, which relies on their identification of tensors with linear maps between tensor spaces.
+*   *tensor factorizations*, which rely on their identification of tensors with linear maps between tensor spaces.
     The factorizations are applied as ordinary matrix factorizations to the matrix blocks associated with the coupled charges.
 
 ### Index manipulations

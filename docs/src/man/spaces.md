@@ -94,7 +94,7 @@ to denote for a vector space `V` whether it has an inner product and thus a cano
 This mapping is provided by the metric, but no further support for working with vector spaces with general metrics is currently implemented.
 
 A number of concrete elementary spaces are implemented in TensorKit.jl.
-There is concrete type `GeneralSpace` which is completely characterized by its field `𝔽`, its dimension and whether its the dual and/or complex conjugate of $𝔽^d$.
+There is a concrete type `GeneralSpace` which is completely characterized by its field `𝔽`, its dimension and whether it's the dual and/or complex conjugate of $𝔽^d$.
 
 ```@docs; canonical=false
 GeneralSpace
@@ -138,7 +138,7 @@ InnerProductStyle(ℂ^5)
     This means that even for `ℂ^n`, arrows matter in the diagrammatic notation for categories or for tensors, and in particular that a contraction between two tensor indices will check that one is living in the space and the other in the dual space.
     This is in contrast with several other software packages, especially in the context of tensor networks, where arrows are only introduced when discussing symmetries.
     We believe that our more puristic approach can be useful to detect errors (e.g. unintended contractions).
-    Only with `ℝ^n` will their be no distinction between a space and its dual.
+    Only with `ℝ^n` will there be no distinction between a space and its dual.
     When creating tensors with indices in `ℝ^n` that have complex data, a one-time warning will be printed, but most operations should continue to work nonetheless.
 
 One more important concrete implementation of `ElementarySpace` with a `EuclideanInnerProduct()` is the [`GradedSpace`](@ref) type, which is used to represent a graded complex vector space, where the grading is provided by the irreducible representations of a group, or more generally, the simple objects of a unitary fusion category.
@@ -253,7 +253,7 @@ Other scientific fields, like general relativity, might also benefit from tensor
 Vector spaces of the same `spacetype` can be given a partial order, based on whether there exist injective morphisms (a.k.a *monomorphisms*) or surjective morphisms (a.k.a.  *epimorphisms*) between them.
 In particular, we define `ismonomorphic(V1, V2)`, with Unicode synonym `V1 ≾ V2` (obtained as `\precsim+TAB`), to express whether there exist monomorphisms in `V1 → V2`.
 Similarly, we define `isepimorphic(V1, V2)`, with Unicode synonym `V1 ≿ V2` (obtained as `\succsim+TAB`), to express whether there exist epimorphisms in `V1 → V2`.
-Finally, we define `isisomorphic(V1, V2)`, with Unicode alternative `V1 ≅ V2` (obtained as `\cong+TAB`), to express whether there exist isomorphism in `V1 → V2`.
+Finally, we define `isisomorphic(V1, V2)`, with Unicode alternative `V1 ≅ V2` (obtained as `\cong+TAB`), to express whether there exists an isomorphism in `V1 → V2`.
 In particular `V1 ≅ V2` if and only if `V1 ≾ V2 && V1 ≿ V2`.
 
 For completeness, we also export the strict comparison operators `≺` and `≻` (`\prec+TAB` and `\succ+TAB`), with definitions
@@ -263,7 +263,7 @@ For completeness, we also export the strict comparison operators `≺` and `≻`
 ```
 However, as we expect these to be less commonly used, no ASCII alternative is provided.
 
-In the context of `InnerProductStyle(V) <: EuclideanInnerProduct`, `V1 ≾ V2` implies that there exists isometries ``W : V1 → V2`` such that ``W^† ∘ W = \mathrm{id}_{V1}``, while `V1 ≅ V2` implies that there exist unitaries ``U : V1 → V2`` such that ``U^† ∘ U = \mathrm{id}_{V1}`` and ``U ∘ U^† = \mathrm{id}_{V2}``.
+In the context of `InnerProductStyle(V) <: EuclideanInnerProduct`, `V1 ≾ V2` implies that there exist isometries ``W : V1 → V2`` such that ``W^† ∘ W = \mathrm{id}_{V1}``, while `V1 ≅ V2` implies that there exist unitaries ``U : V1 → V2`` such that ``U^† ∘ U = \mathrm{id}_{V1}`` and ``U ∘ U^† = \mathrm{id}_{V2}``.
 
 Note that spaces that are isomorphic are not necessarily equal.
 One can be a dual space, and the other a normal space, or one can be an instance of `ProductSpace`, while the other is an `ElementarySpace`.

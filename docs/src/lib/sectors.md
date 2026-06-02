@@ -127,7 +127,7 @@ Because we sometimes want to customize the string representation of our sector t
 TensorKitSectors.type_repr
 ```
 
-Finally, we provide functionality to compile all revelant methods for a sector:
+Finally, we provide functionality to compile all relevant methods for a sector:
 
 ```@docs
 TensorKitSectors.precompile_sector

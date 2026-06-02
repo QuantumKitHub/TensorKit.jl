@@ -18,7 +18,7 @@ To start, a **category** ``C`` consists of
 *   composition of morphisms ``f:W→V`` and ``g:X→W`` into ``(f ∘ g):X→V`` that is associative, such that for ``h:Y→X`` we have ``f ∘ (g ∘ h) = (f ∘ g) ∘ h``
 *   for each object ``V``, an identity morphism ``\mathrm{id}_V:V→V`` such that ``f ∘ \mathrm{id}_W = f = \mathrm{id}_V ∘ f``.
 
-The morphisms in ``\mathrm{Hom}_C(V,V)`` are known as endomorphism and this set is also denoted as ``End_C(V)``.
+The morphisms in ``\mathrm{Hom}_C(V,V)`` are known as endomorphisms and this set is also denoted as ``End_C(V)``.
 When the category ``C`` is clear, we can drop the subscript in ``\mathrm{Hom}(W,V)``.
 A morphism ``f:W→V`` is an isomorphism if there exists a morphism ``f^{-1}:V→W`` called its inverse, such that ``f^{-1} ∘ f = \mathrm{id}_W`` and ``f ∘ f^{-1} = \mathrm{id}_V``.
 
@@ -182,7 +182,7 @@ We come back to this point below.
 A left (or right) duality in a (monoidal) category is now defined as an association of a left (or right) dual with every object of the category, with corresponding exact pairings, and a category admitting such a duality is a left (or right) **rigid category** (or left or right autonomous category).
 Given that left (or right) morphism transposition satisfies ``{}^{∨}(f ∘ g)= {}^{∨}g ∘ {}^{∨}f= {}^{∨}f ∘^{\mathrm{op}} {}^{∨}g`` and recalling ``{}^{∨}(V ⊗ W) = {}^{∨}W ⊗ {}^{∨}V`` (and similar for right duality), we can define duality in a functorial way.
 A (left or right) rigid category ``\mathcal{C}`` is a category which admits a (left or right) duality functor, i.e. a functor from ``\mathcal{C}`` to ``\mathcal{C}^{\mathrm{rev}}`` that maps objects to its (left or right) dual, and morphisms to its (left or right) transpose.
-In particular, the snake rules can now be read as the functioral requirement that ``{}^{∨}(\mathrm{id}_V) = \mathrm{id}_{{}^{∨}V}``.
+In particular, the snake rules can now be read as the functorial requirement that ``{}^{∨}(\mathrm{id}_V) = \mathrm{id}_{{}^{∨}V}``.
 
 In all of this, left and right duality can be completely distinct.
 Equivalently, the left dual of the left dual of an object ``V``, i.e. ``{}^{∨∨}V`` is not necessarily ``V`` itself, nor do the exact pairings enable us to construct an isomorphism between ``{}^{∨∨}V`` and ``V``.
@@ -257,7 +257,7 @@ In order for there to be a unique map from ``V_1 ⊗ V_2 ⁠⊗ … V_N`` to any
 The resulting category is then referred to as a **symmetric tensor category**.
 In a graphical representation, it means that there is no distinction between over- and under- crossings and, as such, lines can just cross, where the crossing represents the action of ``τ_{V,W} = τ_{W,V}^{-1}``.
 
-In the case of the category ``\mathbf{Vect}`` a valid braiding consists of just flipping the the objects/morphisms involved, e.g. for a simple cartesian tensor, permuting the tensor indices is equivalent to applying Julia's function `permutedims` on the underlying data.
+In the case of the category ``\mathbf{Vect}`` a valid braiding consists of just flipping the objects/morphisms involved, e.g. for a simple cartesian tensor, permuting the tensor indices is equivalent to applying Julia's function `permutedims` on the underlying data.
 Less trivial braiding implementations arise in the context of tensors with symmetries (where the fusion tree needs to be reordered, as discussed in [Sectors, representation spaces and fusion trees](@ref s_sectorsrepfusion)) or in the case of ``\mathbf{SVect}``, which will again be studied in detail at the end of this section.
 
 The braiding of a space and a dual space also follows naturally, it is given by ``τ_{V^*,W} = λ_{W ⊗ V^*} ∘ (ϵ_V ⊗ \mathrm{id}_{W ⊗ V^*}) ∘ (\mathrm{id}_{V^*} ⊗ τ_{V,W}^{-1} ⊗ \mathrm{id}_{V^*}) ∘ (\mathrm{id}_{V^*⊗ W} ⊗ η_V) ∘ ρ_{V^* ⊗ W}^{-1}``, i.e.
@@ -321,7 +321,7 @@ This construction of the pivotal structure can than be used to define the trace,
 ```
 
 Note finally, that a ribbon category where the braiding is symmetric, is known as a **compact closed category**.
-For a symmetric braiding, the trivial twist ``θ_V = \mathrm{id}_V`` is always a valid choice, but it might not be the choice that one necessarily want to use.
+For a symmetric braiding, the trivial twist ``θ_V = \mathrm{id}_V`` is always a valid choice, but it might not be the choice that one necessarily wants to use.
 Let us study the case of ``\mathbf{SVect}`` again.
 Reinvoking our basis ``|m⟩ ∈ V`` and ``|n⟩ ∈ W``, the braiding ``τ_{V,W}`` is given by the Koszul sign rule, i.e. ``τ_{V,W}:|m⟩ ⊗_\mathrm{g} |n⟩ ↦ (-1)^{|m| |n|} |n⟩ ⊗_\mathrm{g} |m⟩``.
 Hence, braiding amounts to flipping the two spaces, but picks up an additional minus sign if both ``|m⟩ ∈ V_1`` and ``|n⟩ ∈ W_1``.
@@ -356,7 +356,7 @@ In the graphical representation, the dagger of a morphism can be represented by 
 
 where for completeness we have also depicted the graphical representation of the transpose, which is a very different operation.
 In particular, the dagger does not reverse the order of the tensor product.
-Note that, for readibility, we have not mirrored or rotated the label in the box, but this implies that we need to use a type of box for which the action of mirroring or rotating can be observed.
+Note that, for readability, we have not mirrored or rotated the label in the box, but this implies that we need to use a type of box for which the action of mirroring or rotating can be observed.
 
 A dagger monoidal category is one in which the associator and left and right unitor are unitary morphisms.
 Similarly, a dagger braided category also has a unitary braiding, and a dagger balanced category in addition has a unitary twist.
@@ -391,7 +391,7 @@ The bosonic version is obtained by restricting to the subcategory ``\mathbf{Vect
 
 ## [Direct sums, simple objects and fusion categories](@id ss_fusion)
 
-These last two section on fusion categories is also applicable, in a straightforward manner, to ``\mathbf{Vect}`` and ``\mathbf{SVect}``, but is rather meant to provide the background of working with symmetries.
+These last two sections on fusion categories are also applicable, in a straightforward manner, to ``\mathbf{Vect}`` and ``\mathbf{SVect}``, but are rather meant to provide the background of working with symmetries.
 We first need two new concepts:
 
 *   An object ``W ∈ \mathrm{Ob}(C)`` is a **direct sum** of objects ``V_1, V_2, …, V_k ∈ \mathrm{Ob}(C)`` if there exists a family morphisms ``x_α ∈ \mathrm{Hom}(V_α,W)`` and ``y^α ∈ \mathrm{Hom}(W,V_α)`` such that ``\mathrm{id}_W = ∑_{α=1}^{k} x_α ∘ y^α`` and ``y^α ∘ x_β = δ^α_β \mathrm{id}_{V_α}``.
@@ -415,7 +415,7 @@ This property is always satisfied for a **pre-fusion category** ``C``, i.e. a mo
 *   every object ``V ∈ \mathrm{Ob}(C)`` can be written as a direct sum of a finite family of elements from ``\mathcal{S}``.
 
 Note that in the direct sum decomposition of an object ``V``, a particular simple object ``V_i`` might appear multiple times.
-This number is known as the multiplicity index ``N^V_i``, and equal to the rank of ``\mathrm{Hom}(V,V_i)`` or, equivalently, of ``\mathrm{Hom}(V_i,V)``.
+This number is known as the multiplicity index ``N^V_i``, and is equal to the rank of ``\mathrm{Hom}(V,V_i)`` or, equivalently, of ``\mathrm{Hom}(V_i,V)``.
 Hence, we can choose inclusion and projection maps ``x_{i,μ}:V_i→V`` and ``y^{i,μ}:V→V_i`` for ``μ = 1,\ldots, N^V_i``, such that ``\mathrm{id}_V = \sum_{i}\sum_{μ=1}^{N_V^i} x_{i,μ} ∘ y^{i,μ}`` and ``y^{i,μ} ∘ x_{j,ν} = δ^i_j δ^μ_ν``.
 In particular, for a simple object ``V``, it either appears in ``\mathcal{S}`` or is isomorphic to an object ``S``.
 We thus have ``N^V_i = 1`` for one particular object ``V_i`` and ``N^V_j= 0`` for all other ``j``, with ``x_{i}`` and ``y^i = (x_i)^{-1}`` representing the isomorphism between ``V`` and ``V_i``.
@@ -436,8 +436,7 @@ Before continuing, let us use some examples to sketch the relevance of the conce
 As mentioned, the categories ``\mathbf{Vect}_𝕜`` and ``\mathbf{SVect}_𝕜`` have ``I ≂ 𝕜`` as simple object.
 For ``\mathbf{Vect}``, this is the only simple object, i.e. any other vector space ``V`` over ``𝕜`` can be thought of as a direct sum over ``N^V_I = \mathrm{dim}(V)`` multiple copies of ``𝕜``.
 In ``\mathbf{SVect}``, the object ``J = 0 ⊕ 𝕜`` with ``J_0=0`` the zero dimensional space and ``J_1 ≂ 𝕜`` is another simple object.
-Clearly, there are no non-zero grading preserving morphisms between ``I`` and ``J``, i.
-. ``\mathrm{Hom}(I,J) = 0``, whereas ``\mathrm{Hom}(J,J) ≂ 𝕜``. Any other super vector space ``V=V_0 ⊕ V_1`` can be written as a direct sum over ``N^V_I = \mathrm{dim}(V_0)`` copies of ``I`` and ``N^V_J = \mathrm{dim}(V_1)`` copies of ``J``.
+Clearly, there are no non-zero grading preserving morphisms between ``I`` and ``J``, i.e. ``\mathrm{Hom}(I,J) = 0``, whereas ``\mathrm{Hom}(J,J) ≂ 𝕜``. Any other super vector space ``V=V_0 ⊕ V_1`` can be written as a direct sum over ``N^V_I = \mathrm{dim}(V_0)`` copies of ``I`` and ``N^V_J = \mathrm{dim}(V_1)`` copies of ``J``.
 
 A more representative example is that of the category ``C = \mathbf{Rep}_{\mathsf{G}}``, the category of representations of a group ``\mathsf{G}``.
 Colloquially, this could be thought of as a subcategory of ``\mathbf{Vect}`` containing as objects vector spaces ``V`` on which a representation of ``\mathsf{G}`` is defined, denoted as ``u_V(g)`` for ``g ∈ \mathsf{G}``, and as morphisms the equivariant transformations, i.e. intertwiners between the representations on the source and target:
@@ -460,7 +459,7 @@ A braided pivotal fusion category is spherical if and only if it is a ribbon cat
 
 ## [Topological data of a unitary pivotal fusion category](@id ss_topologicalfusion)
 
-More explicitly, the different structures (monoidal structure, duals and pivotal structure, braiding and twists) in a fusion category can be characterized in terms of the simple objects, which we will henceforth denoted with just ``a`` instead of ``V_a``.
+More explicitly, the different structures (monoidal structure, duals and pivotal structure, braiding and twists) in a fusion category can be characterized in terms of the simple objects, which we will henceforth denote with just ``a`` instead of ``V_a``.
 This gives rise to what is known as the *topological data* of a unitary pivotal fusion category, most importantly the ``N``, ``F`` and ``R`` symbols, which are introduced in this final section.
 
 ### Monoidal structure
@@ -531,7 +530,7 @@ In a strict category, or in the graphical notation, the associator ``α`` is omi
 The matrix ``F^{abc}_d`` is thus a unitary matrix.
 The pentagon coherence equation can also be rewritten in terms of these matrix elements, and as such yields the celebrated pentagon equation for the F-symbols.
 In a similar fashion, the unitors result in ``N^{a1}_{b} = N^{1a}_b = δ^{a}_b`` (where we have now written ``1`` instead of ``I`` for the unit object) and the triangle equation leads to additional relations between the F- symbols involving the unit object.
-In particular, if we identify ``X^{1a}_{a,1}:a→(1⊗a)`` with ``λ_a^†`` and ``X^{a1}_{a,1}:a→(a⊗1)`` with ``ρ_a^†``, the triangle equation and its collaries imply that ``[F^{1ab}_{c}]_{(11μ)}^{(cν1)} = δ^{ν}_{μ}``, and similar relations for ``F^{a1b}_c`` and ``F^{ab1}_c``, which are graphically represented as
+In particular, if we identify ``X^{1a}_{a,1}:a→(1⊗a)`` with ``λ_a^†`` and ``X^{a1}_{a,1}:a→(a⊗1)`` with ``ρ_a^†``, the triangle equation and its corollaries imply that ``[F^{1ab}_{c}]_{(11μ)}^{(cν1)} = δ^{ν}_{μ}``, and similar relations for ``F^{a1b}_c`` and ``F^{ab1}_c``, which are graphically represented as
 
 ```@raw html
 <img src="../img/diagram-Fmove1.svg" alt="Fmove1" class="color-invertible"/>
@@ -556,7 +555,7 @@ In the context of tensors in quantum physics, we would like to be able to repres
 This means that ``\mathrm{Hom}(a^*,\bar{a})`` is isomorphic to ``𝕜`` and contains a single linearly independent element, ``Z_a``, which is a unitary isomorphism such that ``Z_a^\dagger ∘ Z_a = \mathrm{id}_{a^*}`` and ``Z_a ∘ Z_a^\dagger = \mathrm{id}_{\bar{a}}``.
 Using the transpose, we obtain ``Z_a^* ∈ \mathrm{Hom}(\bar{a}^*,a)``, and thus it is proportional to ``Z_{\bar{a}}``, i.e. ``Z_a^* = χ_a Z_{\bar{a}}`` with ``χ_a`` a complex phase (assuming ``𝕜 = ℂ``).
 Another transpose results in ``Z_{\bar{a}}^* = χ_{\bar{a}} Z_a`` with ``χ_{\bar{a}} = \overline{χ_{a}}``, where bar of a scalar quantity denotes its complex conjugate to avoid confusion with the transpose functor.
-If ``a``and ``\bar{a}`` are distinct, we can essentially choose ``Z_{\bar{a}}`` such that ``χ_a`` is ``1``.
+If ``a`` and ``\bar{a}`` are distinct, we can essentially choose ``Z_{\bar{a}}`` such that ``χ_a`` is ``1``.
 However, for ``a=\bar{a}``, the value of ``χ_a`` cannot be changed, but must satisfy ``χ_a^2 = 1``, or thus ``χ_a = ±1``.
 This value is a topological invariant known as the *Frobenius-Schur indicator*. Graphically, we represent this isomorphism and its relations as
 
@@ -576,7 +575,7 @@ Here, we have denoted ``d_a = \mathrm{dim}(a) = \mathrm{tr}(\mathrm{id}_a)`` for
 With this information, we can then compute ``[F^{a\bar{a}a}_a]``, which has a single element (it's a ``1 × 1`` matrix), and find ``[F^{a\bar{a}a}_a] = \frac{χ_a}{d_a}``, where we've used ``\tilde{η}_a = ϵ_a^†`` and the snake rules.
 Hence, both the quantum dimensions and the Frobenius-Schur indicator are encoded in the F-symbol.
 Hence, they do not represent new independent data.
-Again, the graphical representation is more enlightning:
+Again, the graphical representation is more enlightening:
 
 ```@raw html
 <img src="../img/diagram-ZtoF.svg" alt="ZtoF" class="color-invertible"/>
@@ -673,7 +672,7 @@ If ``a = \bar{a}``, we can furthermore relate the twist, the braiding and the Fr
 For the recurring example of ``\mathbf{Rep}_{\mathsf{G}}``, the braiding acts simply as the swap of the two vector spaces on which the representations are acting and is thus symmetric, i.e. ``τ_{b,a} ∘ τ_{a,b} = \mathrm{id}_{a⊗b}``.
 All the twists are simply ``θ_a = 1``.
 For an irrep that is self-dual, i.e. ``\bar{a}=a``, the final expression simplifies to ``R^{aa}_1 = χ_a`` and thus states that the fusion from ``a ⊗ a`` to the trivial sector is either symmetric under swaps if ``χ_a=1`` or antisymmetric if ``χ_a=-1``.
-For the case of ``\mathsf{SU}_2``, the coupling of two spin ``j`` states to a singlet it symmetric for integer ``j`` and odd for half-integer ``j``.
+For the case of ``\mathsf{SU}_2``, the coupling of two spin ``j`` states to a singlet is symmetric for integer ``j`` and odd for half-integer ``j``.
 
 With this, we conclude our exposition of unitary fusion categories.
 There are many fusion categories that do not originate from the representation theory of groups, but are related to quantum groups and the representation theory of quasi-triangular Hopf algebras.

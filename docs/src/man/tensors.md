@@ -13,7 +13,7 @@ As mentioned, all tensors in TensorKit.jl are interpreted as linear maps (morphi
 The overall type for all such tensor maps is `AbstractTensorMap{T, S, N₁, N₂}`.
 Note that we place information about the codomain before that of the domain.
 Indeed, we have already encountered the constructor for the concrete parametric type `TensorMap` in the form `TensorMap(..., codomain, domain)`.
-This convention is opposite to the mathematical notation, e.g. ``\mathrm{Hom}(W, V)`` or ``f : W → V``, but originates from the fact that a normal matrix is also denoted as having size `m × n` or is constructed in Julia as `Array(..., (m, n))`, where the first integer `m` refers to the codomain being `m`- dimensional, and the seond integer `n` to the domain being `n`-dimensional.
+This convention is opposite to the mathematical notation, e.g. ``\mathrm{Hom}(W, V)`` or ``f : W → V``, but originates from the fact that a normal matrix is also denoted as having size `m × n` or is constructed in Julia as `Array(..., (m, n))`, where the first integer `m` refers to the codomain being `m`- dimensional, and the second integer `n` to the domain being `n`-dimensional.
 This also explains why we have consistently used the symbol ``W`` for spaces in the domain and ``V`` for spaces in the codomain.
 A tensor map ``t : (W_1 ⊗ … ⊗ W_{N_2}) → (V_1 ⊗ … ⊗ V_{N_1})`` will be created in Julia as `TensorMap(..., V1 ⊗ ... ⊗ VN₁, W1 ⊗ ... ⊗ WN₂)`.
 
@@ -22,12 +22,12 @@ Furthermore, the abstract type `AbstractTensor{T, S, N}` is just a synonym for `
 Currently, `AbstractTensorMap` has three subtypes.
 `TensorMap` provides the actual implementation, where the data of the tensor is stored in a `DenseArray` (more specifically a `DenseMatrix` as will be explained below).
 `AdjointTensorMap` is a simple wrapper type to denote the adjoint of an existing `TensorMap` object.
-`DiagonalTensorMap` provides an efficient representations of diagonal tensor maps.
+`DiagonalTensorMap` provides an efficient representation of diagonal tensor maps.
 In the future, additional types could be defined, to deal with sparse data, static data, etc...
 
 ## [Storage of tensor data](@id ss_tensor_storage)
 
-Before discussion how to construct and initalize a `TensorMap`, let us discuss what is meant by 'tensor data' and how it can efficiently and compactly be stored.
+Before discussing how to construct and initialize a `TensorMap`, let us discuss what is meant by 'tensor data' and how it can efficiently and compactly be stored.
 Let us first discuss the case `sectortype(S) == Trivial` sector, i.e. the case of no symmetries.
 In that case the data of a tensor `t = TensorMap(..., V1 ⊗ ... ⊗ VN₁, W₁ ⊗ ... ⊗ WN₂)` can just be represented as a multidimensional array of size
 
@@ -35,7 +35,7 @@ In that case the data of a tensor `t = TensorMap(..., V1 ⊗ ... ⊗ VN₁, W₁
 (dim(V1), dim(V2), …, dim(VN₁), dim(W1), …, dim(WN₂))
 ```
 
-which can also be reshaped into matrix of size
+which can also be reshaped into a matrix of size
 
 ```julia
 (dim(V1) * dim(V2) * … * dim(VN₁), dim(W1) * dim(W2) * … * dim(WN₂))
@@ -46,12 +46,12 @@ In particular, given a second tensor `t2` whose domain matches with the codomain
 Similarly, tensor factorizations such as the singular value decomposition, which we discuss below, can act directly on this matrix representation.
 
 !!! note
-    One might wonder if it would not have been more natural to represent the tensor data as `(dim(V1), dim(V2), …, dim(VN₁), dim(WN₂), …, dim(W1))` given how employing the duality naturally reverses the tensor product, as encountered with the interface of [`repartition`](@ref) for [fusion trees](@ref ss_fusiontrees).
+    One might wonder if it would not have been more natural to represent the tensor data as `(dim(V1), dim(V2), …, dim(VN₁), dim(WN₂), …, dim(W1))` given how employing the duality naturally reverses the tensor product, as encountered with the interface of [`repartition`](@ref) for [fusion trees](@ref s_fusiontrees).
     However, such a representation, when plainly `reshape`d to a matrix, would not have the above properties and would thus not constitute the matrix representation of the tensor in a compatible basis.
 
 Now consider the case where `sectortype(S) == I` for some `I` which has `FusionStyle(I) == UniqueFusion()`, i.e. the representations of an Abelian group, e.g. `I == Irrep[ℤ₂]` or `I == Irrep[U₁]`.
 In this case, the tensor data is associated with sectors `(a1, a2, …, aN₁) ∈ sectors(V1 ⊗ V2 ⊗ … ⊗ VN₁)` and `(b1, …, bN₂) ∈ sectors(W1 ⊗ … ⊗ WN₂)` such that they fuse to a same common charge, i.e.  `(c = first(⊗(a1, …, aN₁))) == first(⊗(b1, …, bN₂))`.
-The data associated with this takes the form of a multidimensional array with size `(dim(V1, a1), …, dim(VN₁, aN₁), dim(W1, b1), …, dim(WN₂, bN₂))`, or equivalently, a matrix of with row size `dim(V1, a1) * … * dim(VN₁, aN₁) == dim(codomain, (a1, …, aN₁))` and column size `dim(W1, b1) * … * dim(WN₂, aN₂) == dim(domain, (b1, …, bN₂))`.
+The data associated with this takes the form of a multidimensional array with size `(dim(V1, a1), …, dim(VN₁, aN₁), dim(W1, b1), …, dim(WN₂, bN₂))`, or equivalently, a matrix with row size `dim(V1, a1) * … * dim(VN₁, aN₁) == dim(codomain, (a1, …, aN₁))` and column size `dim(W1, b1) * … * dim(WN₂, aN₂) == dim(domain, (b1, …, bN₂))`.
 
 However, there are multiple combinations of `(a1, …, aN₁)` giving rise to the same `c`, and so there is data associated with all of these, as well as all possible combinations of `(b1, …, bN₂)`.
 Stacking all matrices for different `(a1, …)` and a fixed value of `(b1, …)` underneath each other, and for fixed value of `(a1, …)` and different values of `(b1, …)` next to each other, gives rise to a larger block matrix of all data associated with the central sector `c`.
@@ -63,13 +63,13 @@ For example, composing two tensor maps amounts to multiplying the matrices corre
 We directly concatenate these blocks as consecutive entries in a single larger `DenseVector`, together with metadata to retrieve a block by using the corresponding coupled sector `c` as key.
 For a given tensor `t`, we can access a specific block as `block(t, c)`, whereas `blocks(t)` yields an iterator over pairs `c => block(t, c)`.
 
-The subblocks corresponding to a particular combination of sectors then correspond to a particular view for some range of the rows and some range of the colums, i.e. `view(block(t, c), m₁:m₂, n₁:n₂)` where the ranges `m₁:m₂` associated with `(a1, …, aN₁)` and `n₁:n₂` associated with `(b₁, …, bN₂)` are stored within the fields of the instance `t` of type `TensorMap`.
+The subblocks corresponding to a particular combination of sectors then correspond to a particular view for some range of the rows and some range of the columns, i.e. `view(block(t, c), m₁:m₂, n₁:n₂)` where the ranges `m₁:m₂` associated with `(a1, …, aN₁)` and `n₁:n₂` associated with `(b₁, …, bN₂)` are stored within the fields of the instance `t` of type `TensorMap`.
 This `view` can then lazily be reshaped to a multidimensional array, for which we rely on the package [Strided.jl](https://github.com/Jutho/Strided.jl).
 Indeed, the data in this `view` is not contiguous, because the stride between the different columns is larger than the length of the columns.
 Nonetheless, this does not pose a problem and even as multidimensional array there is still a definite stride associated with each dimension.
 
 When `FusionStyle(I) isa MultipleFusion`, things become slightly more complicated.
-Not only do `(a1, …, aN₁)` give rise to different coupled sectors `c`, there can be multiply ways in which they fuse to `c`.
+Not only do `(a1, …, aN₁)` give rise to different coupled sectors `c`, there can be multiple ways in which they fuse to `c`.
 These different possibilities are enumerated by the iterator `fusiontrees((a1, …, aN₁), c)` and `fusiontrees((b1, …, bN₂), c)`, and with each of those, there is tensor data that takes the form of a multidimensional array, or, after reshaping, a matrix of size `(dim(codomain, (a1, …, aN₁)), dim(domain, (b1, …, bN₂))))`.
 Again, we can stack all such matrices with the same value of `f₁ ∈ fusiontrees((a1, …, aN₁), c)` horizontally (as they all have the same number of rows), and with the same value of `f₂ ∈ fusiontrees((b1, …, bN₂), c)` vertically (as they have the same number of columns).
 What emerges is a large matrix of size `(blockdim(codomain, c), blockdim(domain, c))` containing all the tensor data associated with the coupled sector `c`, where `blockdim(P, c) = sum(dim(P, s) * length(fusiontrees(s, c)) for s in sectors(P))` for some instance `P` of `ProductSpace`.
@@ -81,7 +81,7 @@ Schur's lemma now tells that there is a unitary basis transform which makes this
 The reason for this extra identity is that the group representation is recoupled to act as ``⨁_{c} 𝟙 ⊗ u_c(g)`` for all ``g ∈ \mathsf{I}``, with ``u_c(g)`` the matrix representation of group element ``g`` according to the irrep ``c``.
 In the abelian case, `dim(c) == 1`, i.e. all irreducible representations are one-dimensional and Schur's lemma only dictates that all off-diagonal blocks are zero.
 However, in this case the basis transform to the block diagonal representation is not simply a permutation matrix, but a more general unitary matrix composed of the different fusion trees.
-Indeed, let us denote the fusion trees `f₁ ∈ fusiontrees((a1, …, aN₁), c)` as ``X^{a_1, …, a_{N₁}}_{c,α}`` where ``α = (e_1, …, e_{N_1-2}; μ₁, …, μ_{N_1-1})`` is a collective label for the internal sectors `e` and the vertex degeneracy labels `μ` of a generic fusion tree, as discussed in the [corresponding section](@ref ss_fusiontrees).
+Indeed, let us denote the fusion trees `f₁ ∈ fusiontrees((a1, …, aN₁), c)` as ``X^{a_1, …, a_{N₁}}_{c,α}`` where ``α = (e_1, …, e_{N_1-2}; μ₁, …, μ_{N_1-1})`` is a collective label for the internal sectors `e` and the vertex degeneracy labels `μ` of a generic fusion tree, as discussed in the [corresponding section](@ref s_fusiontrees).
 The tensor is then represented as
 
 ```@raw html
@@ -119,7 +119,7 @@ The thick vertical line represents the separation between the two different coup
 Dashed vertical lines represent different ways of reaching the coupled sector, corresponding to different `α`.
 In this example, the first sector ``(a…)`` has one fusion tree to ``c``, labeled by ``c,α``, and two fusion trees to ``c'``, labeled by ``c',α`` and ``c',α'``.
 The second sector has only a fusion tree to ``c``, labeled by ``c,α'``.
-The third sector only has a fusion tree to ``c'``, labeld by ``c', α''``.
+The third sector only has a fusion tree to ``c'``, labeled by ``c', α''``.
 Finally then, because the fusion trees do not act on the spaces ``ℂ^{n_{a_1} × … n_{a_{N_1}}}``, the dotted lines which represent the different ``n_{(a…)} = n_{a_1} × … n_{a_{N_1}}`` dimensions are also drawn vertically.
 In particular, for a given sector ``(a…)`` and a specific fusion tree ``X^{(a…)}_{c,α} : R_{(a…)}→R_c``, the action is ``X^{(a…)}_{c,α} ⊗ 𝟙_{n_{(a…)}}``, which corresponds to the diagonal green blocks in this drawing where the same matrix ``X^{(a…)}_{c,α}`` (the fusion tree) is repeated along the diagonal.
 Note that the fusion tree is not a vector or single column, but a matrix with number of rows equal to ``\mathrm{dim}(R_{(a\ldots)}) = d_{a_1} d_{a_2} … d_{a_{N_1}} `` and number of columns equal to ``d_c``.
@@ -155,7 +155,7 @@ Tensor{eltype::Type{<:Number}}(undef, codomain)
 ```
 Here, `f` is any of the typical functions from Base that normally create arrays, namely `zeros`, `ones`, `rand`, `randn` and `Random.randexp`.
 Remember that `one(codomain)` is the empty `ProductSpace{S, 0}()`.
-The third and fourth calling syntax use the `UndefInitializer` from Julia Base and generates a `TensorMap` with unitialized data, which can thus contain `NaN`s.
+The third and fourth calling syntax use the `UndefInitializer` from Julia Base and generates a `TensorMap` with uninitialized data, which can thus contain `NaN`s.
 
 In all of these constructors, the last two arguments can be replaced by `domain → codomain` or `codomain ← domain`, where the arrows are obtained as `\rightarrow+TAB` and `\leftarrow+TAB` and create a `HomSpace` as explained in the section on [Spaces of morphisms](@ref ss_homspaces).
 Some examples are perhaps in order
@@ -259,7 +259,7 @@ for (c, b) in blocks(t4)
     println()
 end
 ```
-While this indeed does not require considering the internal structure of the representation spaces, it still requires knowing the precise row and column indices corresponding to each set of uncoupled sectors in the codmain and domain respectively to correctly assign the nonzero entries in each block.
+While this indeed does not require considering the internal structure of the representation spaces, it still requires knowing the precise row and column indices corresponding to each set of uncoupled sectors in the codomain and domain respectively to correctly assign the nonzero entries in each block.
 
 Perhaps the most natural way of constructing a particular `TensorMap` is to directly assign the data slices for each splitting - fusion tree pair using the `fusiontrees(::TensorMap)` method.
 This returns an iterator over all tuples `(f₁, f₂)` of splitting - fusion tree pairs corresponding to all ways in which the set of domain uncoupled sectors can fuse to a coupled sector and split back into the set of codomain uncoupled sectors.

@@ -95,7 +95,7 @@ Representing these operators as `TensorMap`s, the invariance of ``H`` under a gl
 <center><img src="../img/symmetric_tutorial/ZZX_symm.svg" alt="ZZX_symm" class="color-invertible" style="zoom: 170%"/></center>
 ```
 
-These identitities precisely mean that these local tensors transform trivially under a tensor product representation of ``\mathbb{Z}_2``.
+These identities precisely mean that these local tensors transform trivially under a tensor product representation of ``\mathbb{Z}_2``.
 This implies that, recalling [the introduction on symmetries](@ref ss_symmetries), in an appropriate basis for the local physical vector space, our local tensors would become block-diagonal where each so-called *matrix block* is labeled by a ``\mathbb{Z}_2`` irrep.
 The appropriate local basis transformation is precisely the one that brings the local representation ``X`` into block-diagonal form.
 Clearly, this transformation is nothing more than the Hadamard transformation which maps the computational basis of ``Z`` eigenstates ``\{\ket{\uparrow}, \ket{\downarrow}\}`` to that of the ``X`` eigenstates ``\{\ket{+}, \ket{-}\}`` defined as ``\ket{+} = \frac{\ket{\uparrow} + \ket{\downarrow}}{\sqrt{2}}`` and ``\ket{-} = \frac{\ket{\uparrow} - \ket{\downarrow}}{\sqrt{2}}``.
@@ -130,7 +130,7 @@ We will return to the implications of irreps with *non-Abelian* fusion rules [la
 !!! note
     Within TensorKit.jl, the nature of the fusion rules for charges of a given symmetry are represented by the [`FusionStyle`](@ref) of the corresponding `Sector` subtype.
     What we refer to as "Abelian" fusion rules in this tutorial corresponds to `UniqueFusion <: FusionStyle`.
-    We will also consider [examples](@ref ss_non_abelian) of two different kinds of non-Abelian" fusion rules, corresponding to `MultipleFusion <: FusionStyle` styles.
+    We will also consider [examples](@ref ss_non_abelian) of two different kinds of non-Abelian fusion rules, corresponding to `MultipleFusion <: FusionStyle` styles.
 
 For the case of the ``\mathbb{Z}_2`` irreps, the fusion rules are Abelian, and are given by addition modulo 2,
 ```math
@@ -167,7 +167,7 @@ In TensorKit.jl, these reduced tensor elements corresponding to the fusion trees
 
 This view of the underlying symmetry structure in terms of fusion trees of irreps and corresponding reduced tensor elements is a very convenient way of working with the `TensorMap` type.
 In fact, this symmetry structure is inherently ingrained in a `TensorMap`, and goes beyond the group-like symmetries we have considered until now.
-In this more general setting, we will refer to the labels that appear on this fusion trees as *charges* or *sectors*.
+In this more general setting, we will refer to the labels that appear on these fusion trees as *charges* or *sectors*.
 These can be thought of as generalization of group irreps, and appear in the context of TensorKit.jl as instances of the [`Sector`](@ref) type.
 
 Consider a generic fusion tree of the form
@@ -190,7 +190,7 @@ You will find such a `FusionTree` has the following properties encoded into its 
 - `vertices::NTuple{L,T}`: list of fusion vertex labels of type `T` and length `L = N - 1`
 
 For our current application only `uncoupled` and `coupled` are relevant, since ``\mathbb{Z}_2`` irreps are self-dual and have Abelian fusion rules, so that irreps on the inner lines of a fusion tree are completely determined by the uncoupled irreps.
-We will come back to these other properties when discussion more involved applications.
+We will come back to these other properties when discussing more involved applications.
 Given some `TensorMap`, the method [`fusiontrees`](@ref) returns an iterator over all pairs of splitting and fusion trees that label the subblocks of `t`.
 
 ### Constructing a ``\mathbb{Z}_2``-symmetric `TensorMap`
@@ -247,7 +247,7 @@ To assess the underlying structure of a symmetric tensor, it is often useful to 
 subblocks(ZZ)
 ``` 
 While all entries are zero, we see that all eight valid fusion trees with two incoming irreps and two outgoing irreps [of the type above](fusiontree) are listed with their corresponding subblock data.
-Each of these subblocks is an array of shape ``(1, 1, 1, 1)`` since each irrep occuring in the space ``V`` has degeneracy 1.
+Each of these subblocks is an array of shape ``(1, 1, 1, 1)`` since each irrep occurring in the space ``V`` has degeneracy 1.
 Using the [`fusiontrees`](@ref) method and the fact that we can index a `TensorMap` using a splitting/fusion tree pair, we can now fill in the nonzero subblocks of the operator by observing that the ``ZZ`` operator flips the irreps of the uncoupled charges in the domain with respect to the codomain, as shown in the diagrams above.
 Flipping a given `Z2Irrep` in the codomain can be implemented by fusing them with the sign irrep `Z2Irrep(1)`, giving:
 
@@ -322,7 +322,7 @@ This Hamiltonian is invariant under conjugation by the global particle number op
 U = \sum_i N_i
 ```
 This invariance corresponds to a ``\mathsf{U}_1`` particle number symmetry, which can again be manifestly imposed when constructing the Hamiltonian terms as `TensorMap`s.
-From the representation theory of ``\mathsf{U}_1``, we know that its irreps are all one-dimensional and can be labeled by integers ``n`` where the tensor product of two irreps is corresponds to addition of these labels, giving the Abelian fusion rules
+From the representation theory of ``\mathsf{U}_1``, we know that its irreps are all one-dimensional and can be labeled by integers ``n`` where the tensor product of two irreps corresponds to addition of these labels, giving the Abelian fusion rules
 
 ```math
 n_1 \otimes n_2 \cong (n_1 + n_2).
@@ -401,8 +401,8 @@ However, it is possible to construct them as `TensorMap`s using an *auxiliary ve
 The creation operator ``a^+`` violates particle number conservation by mapping the occupation number ``n`` to ``n + 1``.
 From the point of view of representation theory, this process can be thought of as the *fusion* of an `U1Irrep(n)` with an `U1Irrep(1)`, naturally giving the fusion product `U1Irrep(n + 1)`.
 This means we can represent ``a^+`` as a `TensorMap(..., V ← V ⊗ A)`, where the auxiliary vector space `A` contains the ``+1`` irrep with degeneracy 1, `A = U1Space(1 => 1)`.
-Similarly, the decrease in occupation number when acting with ``a^-`` can be thought of as the *splitting* of an `U1Irrep(n)` into an `U1Irrep(n - 1)` and an `U1Irrep(1)`, leading to a representation in terms of a `TensorMap(.
-., A ⊗ V ← V)`. Based on these observations, we can represent the matrix elements \eqref{eq:bosonopmatel} as subblocks labeled by the ``\mathsf{U}_1`` fusion trees
+Similarly, the decrease in occupation number when acting with ``a^-`` can be thought of as the *splitting* of an `U1Irrep(n)` into an `U1Irrep(n - 1)` and an `U1Irrep(1)`, leading to a representation in terms of a `TensorMap(..., A ⊗ V ← V)`.
+Based on these observations, we can represent the matrix elements \eqref{eq:bosonopmatel} as subblocks labeled by the ``\mathsf{U}_1`` fusion trees.
 
 ```@raw html
 <center><img src="../img/symmetric_tutorial/bosonops.svg" alt="bosonops" class="color-invertible" style="zoom: 170%"/></center>
@@ -457,7 +457,7 @@ It is then simple to check that this is indeed what we expect.
 !!! note
     From the construction of the Hamiltonian operators [in terms of creation and annihilation operators](bosonham) we clearly see that they are invariant under a transformation ``a^\pm \to e^{\pm i\theta} a^\pm``.
     More generally, for a two-site operator that is defined as the contraction of two one-site operators across an auxiliary space, modifying the one-site operators by applying transformations ``Q`` and ``Q^{-1}`` on their respective auxiliary spaces for any invertible ``Q`` leaves the resulting contraction unchanged.
-    This ambiguity in the definition clearly shows that one should really always think in terms of the fully symmetric procucts of ``a^+`` and ``a^-`` rather than in terms of these operators themselves.
+    This ambiguity in the definition clearly shows that one should really always think in terms of the fully symmetric products of ``a^+`` and ``a^-`` rather than in terms of these operators themselves.
     In particular, one can always decompose such a symmetric product into the [form above](bosonham) by means of an SVD.
 
 
@@ -502,7 +502,7 @@ The fusion rules of these irreps are the same as for ``\mathbb{Z}_2``.
 Similar to the previous case, the local symmetry operator ``Q_i`` is already diagonal, so the occupation number basis coincides with the irrep basis and we don't need an additional basis transform.
 The important difference with a regular ``\mathbb{Z}_2`` symmetry is that the irreps of ``f\mathbb{Z}_2`` have fermionic braiding statistics, in the sense that exchanging two odd irreps gives rise to a minus sign.
 
-In TensorKit.jl, an ``f\mathbb{Z}_2``-graded vector spaces is represented as a `Vect[FermionParity]` space, where a given ``f\mathbb{Z}_2`` irrep can be represented as a [`FermionParity`](@ref FermionParity) sector instance.
+In TensorKit.jl, an ``f\mathbb{Z}_2``-graded vector space is represented as a `Vect[FermionParity]` space, where a given ``f\mathbb{Z}_2`` irrep can be represented as a [`FermionParity`](@ref FermionParity) sector instance.
 Using the simplest instance of a vector space containing a single even and odd irrep, we can already demonstrate the corresponding fermionic braiding behavior by [performing a permutation](@ref TensorKit.permute) on a simple `TensorMap`.
 
 ```@example symmetric_tutorial
@@ -523,7 +523,7 @@ In other words, when exchanging the two domain vector spaces, the reduced tensor
 We can directly construct the Hamiltonian terms as symmetric `TensorMap`s using the same procedure as before starting from their matrix elements in the occupation number basis.
 However, in this case we should be a bit more careful about the precise definition of the basis states in composite systems.
 Indeed, the tensor product structure of fermionic systems is inherently tricky to deal with, and should ideally be treated in the context of [*super vector spaces*](https://en.wikipedia.org/wiki/Super_vector_space).
-For two sites, we can define the following basis states on top of the fermionic vacuuum ``\ket{00}``:
+For two sites, we can define the following basis states on top of the fermionic vacuum ``\ket{00}``:
 ```math
 \begin{align*}
 \ket{01} &= c_2^+ \ket{00}, \\
@@ -611,7 +611,7 @@ end
 subblocks(N)
 ```
 
-We can easily all the reduced tensor elements are indeed correct.
+We can easily check that all the reduced tensor elements are indeed correct.
 
 !!! note
     Working with fermionic systems is inherently tricky, as can already be seen from something as simple as computing matrix elements of fermionic operators.
@@ -634,7 +634,7 @@ In particular, this means that the conversion of an operator, given its matrix e
 Therefore, we require some more discussion before we can actually move on to an example.
 
 We'll start by discussing the general structure of a `TensorMap` which is symmetric under a non-Abelian group symmetry.
-We then given an example based on ``\mathsf{SU}_2``, where we construct the Heisenberg Hamiltonian using two different approaches.
+We then give an example based on ``\mathsf{SU}_2``, where we construct the Heisenberg Hamiltonian using two different approaches.
 Finally, we show how the more intuitive approach can be used to obtain an elegant generalization to the ``\mathsf{SU}_N``-symmetric case.
 
 
@@ -736,8 +736,7 @@ This procedure works for any group symmetry, and all we need are matrix elements
 In the following, we demonstrate this explicit procedure for the particular example of ``G = \mathsf{SU}_2``.
 However, it should be noted that, for other non-Abelian groups, the Clebsch-Gordan coefficients may not be as easy to compute (generically, no closed formulas exist).
 In addition, the procedure for manually projecting out the reduced tensor elements requires being particularly careful about the correspondence between the basis states used to define the original matrix elements and those implied by the Clebsch-Gordan coefficients.
-Finally, for some symmetries supported in TensorKit.
-l, there are simply no Clebsch-Gordan coefficients.
+Finally, for some symmetries supported in TensorKit.jl, there are simply no Clebsch-Gordan coefficients.
 Therefore, it is often easier and sometimes simply necessary to directly construct the symmetric tensor and then fill in its reduced tensor elements based on some representation theory.
 We will cover some examples of this below.
 
@@ -752,8 +751,8 @@ f = fusiontensor(SU2Irrep(1//2), SU2Irrep(1//2), SU2Irrep(1))
 ```
 
 We see that this fusion tensor has a size `2×2×3×1`, which contains an additional trailing `1` to what we might expect.
-In the general case, `fusiontensor` returns a four-dimensional array, where the size of the first three dimensions corresponds to the dimensions of the irrep spaces under consideration, and the last index lables the different fusion channels, where its dimension corresponds to the number of distinct ways the irreps ``l_1`` and ``l_2`` can fuse to irrep ``k``.
-This is precicely the extra label of the Clebsch-Gordan coefficients that is required in the the presence of fusion multiplicities.
+In the general case, `fusiontensor` returns a four-dimensional array, where the size of the first three dimensions corresponds to the dimensions of the irrep spaces under consideration, and the last index labels the different fusion channels, where its dimension corresponds to the number of distinct ways the irreps ``l_1`` and ``l_2`` can fuse to irrep ``k``.
+This is precisely the extra label of the Clebsch-Gordan coefficients that is required in the presence of fusion multiplicities.
 Since ``\mathsf{SU}_2`` is multiplicity-free, we can just discard this last index here.
 
 We can now explicitly verify that this `fusiontensor` indeed does what we expect it to do:
@@ -873,7 +872,7 @@ First, we rewrite the exchange interaction in the following way:
 \vec{S}_i \cdot \vec{S}_j = \frac{1}{2} \left( \left( \vec{S}_i + \vec{S}_j \right)^2 - \vec{S}_i^2 - \vec{S}_j^2 \right)
 \end{equation}
 ```
-Here, ``\vec{S}_i`` and ``\vec{S}_j`` are spin operators on the physical irrep, while total spin operator ``\vec{S}_i + \vec{S}_j`` can be decomposed onto the different coupled irreps ``k``.
+Here, ``\vec{S}_i`` and ``\vec{S}_j`` are spin operators on the physical irrep, while the total spin operator ``\vec{S}_i + \vec{S}_j`` can be decomposed onto the different coupled irreps ``k``.
 It is a well known fact that the quadratic sum of the generators of ``\mathsf{SU}_2``, often refered to as the [*quadratic Casimir*](https://en.wikipedia.org/wiki/Representation_theory_of_SU(2)#The_Casimir_element), commutes with all generators.
 By [Schur's lemma](https://en.wikipedia.org/wiki/Schur%27s_lemma), it must then act proportionally to the identity on every irrep, where the corresponding eigenvalue is determined by the spin irrep label.
 In particular, we have for each irrep ``l``
@@ -909,7 +908,7 @@ We end this subsection with some comments on the generalization of the above dis
 As foreshadowed above, the irreps of ``\mathsf{SU}_N`` in general have an even more complicated structure.
 In particular, they can admit so-called *fusion multiplicities*, where the fusion of two irreps can have not only multiple distinct outcomes, but they can even fuse to a given irrep in multiple inequivalent ways.
 We can demonstrate this behavior for the adjoint representation of ``\mathsf{SU}_3``.
-For this we can use the the [SUNRepresentations.jl](https://github.com/QuantumKitHub/SUNRepresentations.jl) package which provides an interface for working with irreps of ``\mathsf{SU}_N`` and their Clebsch-Gordan coefficients.
+For this we can use the [SUNRepresentations.jl](https://github.com/QuantumKitHub/SUNRepresentations.jl) package which provides an interface for working with irreps of ``\mathsf{SU}_N`` and their Clebsch-Gordan coefficients.
 A particular representation is represented by an `SUNIrrep{N}` which can be used with TensorKit.jl.
 The eight-dimensional adjoint representation of ``\mathsf{SU}_3`` is given by
 ```@setup symmetric_tutorial
@@ -947,7 +946,7 @@ For any ``N``, the [quadratic Casimir](https://en.wikipedia.org/wiki/Casimir_ele
 \Omega = \sum_k T^k T^k
 ```
 commutes with all ``\mathsf{SU}_N`` generators, meaning it has a well defined eigenvalue in each irrep.
-This observation then immediately given the reduced tensor elements of the exchange interaction as
+This observation then immediately gives the reduced tensor elements of the exchange interaction as
 ```@raw html
 <center><img src="../img/symmetric_tutorial/SUN_fusiontrees.svg" alt="SUN_fusiontrees" class="color-invertible" style="zoom: 170%"/></center>
 ```
@@ -981,7 +980,7 @@ f.vertices
 ```
 
 !!! note
-    While we have given an explicit example using ``\mathsf{SU}_3`` with the adoint irrep on the physical level, the same construction holds for the general ``\mathsf{SU}_N`` with arbitrary physical irreps.
+    While we have given an explicit example using ``\mathsf{SU}_3`` with the adjoint irrep on the physical level, the same construction holds for the general ``\mathsf{SU}_N`` with arbitrary physical irreps.
     All we require is the expression for the eigenvalues of the quadratic Casimir in each irrep.
 
 

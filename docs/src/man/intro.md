@@ -58,8 +58,8 @@ This simple example introduces two new concepts.
     The implementation of all of this is discussed in [Vector spaces](@ref s_spaces).
 
 2.  In the generic case, the identification between maps ``W → V`` and tensors in ``V ⊗ W^*`` is not an equivalence but an isomorphism, which needs to be defined.
-    Similarly, there is an isomorphism between between ``V ⊗ W`` and ``W ⊗ V`` that can be non-trivial (e.g. in the case of fermions / super vector spaces).
-    The correct formalism here is provided by theory of monoidal categories, the details of which are explained in the appendix.
+    Similarly, there is an isomorphism between ``V ⊗ W`` and ``W ⊗ V`` that can be non-trivial (e.g. in the case of fermions / super vector spaces).
+    The correct formalism here is provided by the theory of monoidal categories, the details of which are explained in the appendix.
     Nonetheless, we try to hide these canonical isomorphisms from the user wherever possible, and one does not need to know category theory to be able to use this package.
 
 This brings us to our final (yet formal) definition

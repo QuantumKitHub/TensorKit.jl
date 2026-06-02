@@ -5,7 +5,7 @@ using TensorKit
 using LinearAlgebra
 ```
 
-As tensors are linear maps, they suport various kinds of factorizations.
+As tensors are linear maps, they support various kinds of factorizations.
 These functions all interpret the provided `AbstractTensorMap` instances as a map from `domain` to `codomain`, which can be thought of as reshaping the tensor into a matrix according to the current bipartition of the indices.
 
 TensorKit's factorizations are provided by [MatrixAlgebraKit.jl](https://github.com/QuantumKitHub/MatrixAlgebraKit.jl), which is used to supply both the interface, as well as the implementation of the various operations on the blocks of data.

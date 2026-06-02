@@ -33,10 +33,9 @@ The minimal data to completely specify a type of sector closely matches the [top
 *   If the category is braided (see below), the R-symbol ``R^{ab}_c``; implemented as the function [`Rsymbol(a, b, c)`](@ref).
 
 Furthermore, sectors should provide information about the structure of their fusion rules.
-For irreps of Abelian groups, we have that for every ``a`` and ``b``, there exists a unique ``c`` such that ``a ⊗ b = c``, i.
-. there is only a single fusion channel.
+For irreps of Abelian groups, we have that for every ``a`` and ``b``, there exists a unique ``c`` such that ``a ⊗ b = c``, i.e. there is only a single fusion channel.
 This follows simply from the fact that all irreps are one-dimensional.
-In all other cases, there is at least one pair of (``a``, ``b``) exists such that ``a ⊗ b`` has multiple fusion outputs.
+In all other cases, there is at least one pair of (``a``, ``b``) such that ``a ⊗ b`` has multiple fusion outputs.
 This is often referred to as non-abelian fusion, and is the case for the irreps of a non-abelian group or some more general fusion category.
 We however still distinguish between the case where all entries of ``N^{ab}_c ≦ 1``, i.e. they are zero or one.
 In that case, ``[F^{abc}_{d}]^f_e`` and ``R^{ab}_c`` are scalars.
@@ -114,7 +113,7 @@ Hereto, the following methods are defined:
 *   `findindex(::SectorValues{I}, c::I)`: reverse mapping that associates an index `i::Integer ∈ 1:length(values(I))` to a given sector `c::I`.
     The fallback implementation simply searches linearly through the `values(I)` iterator.
 
-Note that `findindex` acts similar to `Base.indexin`, but with the order of the arguments reversed (so that is more similar to `getindex`), and returns an `Int` rather than an `Array{0, Union{Int, Nothing}}`.
+Note that `findindex` acts similar to `Base.indexin`, but with the order of the arguments reversed (so that it is more similar to `getindex`), and returns an `Int` rather than an `Array{Union{Int, Nothing}}`.
 
 Secondly, it is often useful to know the scalar type in which the topological data in the F- and R-symbols are expressed.
 For this, the method [`sectorscalartype(I::Type{<:Sector})`](@ref) is provided, which has a default implementation that uses type inference on the return values of `Fsymbol` and `Rsymbol`.
@@ -229,7 +228,7 @@ BraidingStyle(::Type{<:AbstractIrrep}) = Bosonic()
 
 We will need different data structures to represent irreps of different groups, but it would be convenient to easily obtain the relevant structure for a given group `G` in a uniform manner.
 Hereto, we define a singleton type `IrrepTable` with an associated exported constant `Irrep = IrrepTable()` as the only instance.
-When a concrete type for representing the the irreps of a certain group `G` is iplemented, this type can the be "discovered" or obtained as `Irrep[G]`, provided it was registered by defining `Base.getindex(::IrrepTable, ::Type{G})` to return the concrete type.
+When a concrete type for representing the irreps of a certain group `G` is implemented, this type can then be "discovered" or obtained as `Irrep[G]`, provided it was registered by defining `Base.getindex(::IrrepTable, ::Type{G})` to return the concrete type.
 
 Furthermore, we combine the more common functionality for irreps of abelian groups
 ```julia
@@ -323,7 +322,7 @@ end
 Base.getindex(::IrrepTable, ::Type{ℤ{N}}) where {N} = N ≤ SMALL_ZN_CUTOFF ? ZNIrrep{N} : LargeZNIrrep{N}
 ...
 ```
-and continues along simular lines of the `U1Irrep` implementation above, by replacing the arithmetic with modulo `N` arithmetic.
+and continues along similar lines of the `U1Irrep` implementation above, by replacing the arithmetic with modulo `N` arithmetic.
 
 The storage benefits for small `N` are not only due to a smaller integer type in the sector itself, but emerges as a result of the following distinction in the iterator size:
 ```julia
@@ -460,9 +459,9 @@ FusionStyle(::Type{CU1Irrep}) = SimpleFusion()
 ...
 ```
 The rest of the implementation can be read in the source code, but is rather long due to all the different cases for the arguments of `Fsymbol`.
-For the dihedrial groups ``\mathsf{D}_N``, which can be intepreted as the semidirect product ``\mathbb{Z}_N ⋉ ℤ_2``, the representation theory is obtained quite similarly, and is implmented as the type [`DNIrrep{N}`](@ref).
+For the dihedral groups ``\mathsf{D}_N``, which can be interpreted as the semidirect product ``\mathbb{Z}_N ⋉ ℤ_2``, the representation theory is obtained quite similarly, and is implemented as the type [`DNIrrep{N}`](@ref).
 
-Of the aforementioned groups, only ``\mathsf{A}_4`` has a representation theory for which `FusionStyle(I) == GenericFusion()`, i.e. where fusion mulitplicities are required.
+Of the aforementioned groups, only ``\mathsf{A}_4`` has a representation theory for which `FusionStyle(I) == GenericFusion()`, i.e. where fusion multiplicities are required.
 Another example where this does appear is for the irreps of `SU{N}` for ``N > 2``.
 Such sectors are supported through [SUNRepresentations.jl](https://github.com/QuantumKitHub/SUNRepresentations.jl), which implements numerical routines to compute the topological data of the representation theory of these groups, as no general analytic formula is available.
 
@@ -541,7 +540,7 @@ TensorKit.BraidingStyle(::Type{I}) = ... # NoBraiding(), Bosonic(), Fermionic(),
 TensorKit.Rsymbol(a::I, b::I, c::I) = ... # only if BraidingStyle(I) != NoBraiding()
 
 Base.iterate(::TensorKit.SectorValues{I}[, state]) = ...
-Base.IteratorSize(::Type{TensorKit.SectorValues{I}}) = ... # HasLenght() or IsInfinite()
+Base.IteratorSize(::Type{TensorKit.SectorValues{I}}) = ... # HasLength() or IsInfinite()
 # if previous function returns HasLength():
 Base.length(::TensorKit.SectorValues{I}) = ...
 # optional, but recommended if IteratorSize returns HasLength():
@@ -649,14 +648,14 @@ Note in particular how the `Rsymbol` values have opposite signs to the bosonic c
 ## Anyons
 
 Both `Bosonic` and `Fermionic` braiding styles are `SymmetricBraiding` styles, which means that exchanging two sectors twice is equivalent to the identity operation.
-In tensor network diagrams, this implies that lines that cross twice are equivalent to them not crossing at all, or also, that there is no distinction betweeen a line crossing "above" or "below" another line.
+In tensor network diagrams, this implies that lines that cross twice are equivalent to them not crossing at all, or also, that there is no distinction between a line crossing "above" or "below" another line.
 More technically, the relevant group describing the exchange processes is the permutation group, whereas in more general cases it would be the braid group.
 
 This more general case is denoted as the `Anyonic` braiding style in TensorKit.jl, because examples of this behaviour appear in the context of anyons in topological phases of matter.
 
-There are currently two well-known sector types with `Anyonic` braiding style implemented in TensorKitSectors.
-l, namely [`FibonacciAnyon`](@ref) and [`IsingAnyon`](@ref). Their values represent the (equivalence classes of) simple objects of the well-known Fibonicci and Ising fusion categories.
-As an example, we illustrate below the Fibonacci anyons, which has only two distinct sectors, namely the unit sector `𝟙` and one non-trivial sector denoted as `τ`.
+There are currently two well-known sector types with `Anyonic` braiding style implemented in TensorKitSectors.jl, namely [`FibonacciAnyon`](@ref) and [`IsingAnyon`](@ref).
+Their values represent the (equivalence classes of) simple objects of the well-known Fibonacci and Ising fusion categories.
+As an example, we illustrate below the Fibonacci anyons, which have only two distinct sectors, namely the unit sector `𝟙` and one non-trivial sector denoted as `τ`.
 The fusion rules are given by `τ ⊗ τ = 𝟙 ⊕ τ`, and the topological data is summarized by the following code
 
 ```@repl sectors

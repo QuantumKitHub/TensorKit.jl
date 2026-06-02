@@ -1,8 +1,8 @@
 # [Tensor contractions and tensor networks](@id ss_tensor_contraction)
 
-One of the most important operation with tensor maps is to compose them, more generally known as contracting them.
-As mentioned in the section on [category theory](@ref s_categories), a typical composition of maps in a ribbon category can graphically be represented as a planar arrangement of the morphisms (i.e. tensor maps, boxes with lines eminating from top and bottom, corresponding to source and target, i.e. domain and codomain), where the lines connecting the source and targets of the different morphisms should be thought of as ribbons, that can braid over or underneath each other, and that can twist.
-Technically, we can embed this diagram in ``ℝ × [0,1]`` and attach all the unconnected line endings corresponding objects in the source at some position ``(x,0)`` for ``x∈ℝ``, and all line endings corresponding to objects in the target at some position ``(x,1)``.
+One of the most important operations with tensor maps is to compose them, more generally known as contracting them.
+As mentioned in the section on [category theory](@ref s_categories), a typical composition of maps in a ribbon category can graphically be represented as a planar arrangement of the morphisms (i.e. tensor maps, boxes with lines emanating from top and bottom, corresponding to source and target, i.e. domain and codomain), where the lines connecting the source and targets of the different morphisms should be thought of as ribbons, that can braid over or underneath each other, and that can twist.
+Technically, we can embed this diagram in ``ℝ × [0,1]`` and attach all the unconnected line endings corresponding to objects in the source at some position ``(x,0)`` for ``x∈ℝ``, and all line endings corresponding to objects in the target at some position ``(x,1)``.
 The resulting morphism is then invariant under what is known as *framed three-dimensional isotopy*, i.e. three-dimensional rearrangements of the morphism that respect the rules of boxes connected by ribbons whose open endings are kept fixed.
 Such a two-dimensional diagram cannot easily be encoded in a single line of code.
 
@@ -11,10 +11,10 @@ This amounts to `BraidingStyle(I) == Bosonic()` in the language of TensorKit.jl,
 The case of ``\mathbf{SVect}`` and its subcategories, and more general categories, are discussed below.
 
 In the case of trivial twists, we can deform the diagram such that we first combine every morphism with a number of coevaluations ``η`` so as to represent it as a tensor, i.e. with a trivial domain.
-We can then rearrange the morphism to be all ligned up horizontally, where the original morphism compositions are now being performed by evaluations ``ϵ``.
+We can then rearrange the morphism to be all lined up horizontally, where the original morphism compositions are now being performed by evaluations ``ϵ``.
 This process will generate a number of crossings and twists, where the latter can be omitted because they act trivially.
 Similarly, double crossings can also be omitted.
-As a consequence, the diagram, or the morphism it represents, is completely specified by the tensors it is composed of, and which indices between the different tensors are connect, via the evaluation ``ϵ``, and which indices make up the source and target of the resulting morphism.
+As a consequence, the diagram, or the morphism it represents, is completely specified by the tensors it is composed of, and which indices between the different tensors are connected, via the evaluation ``ϵ``, and which indices make up the source and target of the resulting morphism.
 If we also compose the resulting morphisms with coevaluations so that it has a trivial domain, we just have one type of unconnected lines, henceforth called open indices.
 We sketch such a rearrangement in the following picture
 
@@ -22,7 +22,7 @@ We sketch such a rearrangement in the following picture
 <img src="../img/tensor-bosoniccontraction.svg" alt="tensor unitary" class="color-invertible"/>
 ```
 
-Hence, we can now specify such a tensor diagram, henceforth called a tensor contraction or also tensor network, using a one-dimensional syntax that mimicks [abstract index notation](https://en.wikipedia.org/wiki/Abstract_index_notation) and specifies which indices are connected by the evaluation map using Einstein's summation conventation.
+Hence, we can now specify such a tensor diagram, henceforth called a tensor contraction or also tensor network, using a one-dimensional syntax that mimics [abstract index notation](https://en.wikipedia.org/wiki/Abstract_index_notation) and specifies which indices are connected by the evaluation map using Einstein's summation convention.
 Indeed, for `BraidingStyle(I) == Bosonic()`, such a tensor contraction can take the same format as if all tensors were just multi-dimensional arrays.
 For this, we rely on the interface provided by the package [TensorOperations.jl](https://github.com/QuantumKitHub/TensorOperations.jl).
 
@@ -56,7 +56,7 @@ or
 ```
 where the latter syntax can also be used when the codomain is empty.
 When using the assignment operator `=`, the `TensorMap` `E` is assumed to exist and the contents will be written to the currently allocated memory.
-Note that for existing tensors, both on the left hand side and right hand side, trying to specify the indices in the domain and the codomain seperately using the above syntax, has no effect, as the bipartition of indices are already fixed by the existing object.
+Note that for existing tensors, both on the left hand side and right hand side, trying to specify the indices in the domain and the codomain separately using the above syntax, has no effect, as the bipartition of indices is already fixed by the existing object.
 Hence, if `E` has been created by the previous line of code, all of the following lines are now equivalent
 ```julia
 @tensor E[(a, b, c);(d, e)] = A[v, w, d, x] * B[y, z, c, x] * C[v, e, y, b] * D[a, w, z]
@@ -81,7 +81,7 @@ or thus, the following two lines of code yield the same result
 ```
 Reordering of tensors can be used internally by the `@tensor` macro to evaluate the contraction in a more efficient manner.
 In particular, the NCON-style of specifying the contraction gives the user control over the order, and there are other macros, such as `@tensoropt`, that try to automate this process.
-There is also an `@ncon` macro and `ncon` function, an we recommend reading the [manual of TensorOperations.jl](https://quantumkithub.github.io/TensorOperations.jl/stable/) to learn more about the possibilities and how they work.
+There is also an `@ncon` macro and `ncon` function, and we recommend reading the [manual of TensorOperations.jl](https://quantumkithub.github.io/TensorOperations.jl/stable/) to learn more about the possibilities and how they work.
 
 A final remark involves the use of adjoints of tensors.
 The current framework is such that the user should not be too worried about the actual bipartition into codomain and domain of a given `TensorMap` instance.

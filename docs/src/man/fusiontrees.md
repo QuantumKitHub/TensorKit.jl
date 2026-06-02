@@ -210,7 +210,7 @@ The main ingredient that we need is summarized in
 ```
 
 We will only need the B-symbol and not the A-symbol.
-Applying the left evaluation on the second sector of a splitting tensor thus yields a linear combination of fusion tensors (when `FusionStyle(I) == GenericFusion()`, or just a scalar times the corresponding fusion tensor otherwise), with corresponding ``Z`` ismorphism.
+Applying the left evaluation on the second sector of a splitting tensor thus yields a linear combination of fusion tensors (when `FusionStyle(I) == GenericFusion()`, or just a scalar times the corresponding fusion tensor otherwise), with corresponding ``Z`` isomorphism.
 Taking the adjoint of this relation yields the required relation to transform a fusion tensor into a splitting tensor with an added ``Z^†`` isomorphism.
 
 However, we have to be careful if we bend a line on which a ``Z`` isomorphism (or its adjoint) is already present.
