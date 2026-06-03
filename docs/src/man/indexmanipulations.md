@@ -48,11 +48,11 @@ flip(t::AbstractTensorMap, I)
 ## Inserting and removing unit spaces
 
 The next set of functions add or remove a trivial tensor product factor at a specified index position, without affecting any other indices.
-We distinguish between [`insertleftunit`](@ref), which inserts a unit index before index `i` (the unit index becoming index `i`),
-and [`insertrightunit`](@ref), which inserts after index `i` (the unit index becoming index `i + 1`);
+We distinguish between [`insertleftunit`](@ref), which inserts a unit space before index `i` (the unit space becoming index `i`),
+and [`insertrightunit`](@ref), which inserts after index `i` (the unit space becoming index `i + 1`);
 [`removeunit`](@ref) undoes either insertion.
 
-For tensors `t` with `UnitStyle(sectortype(t)) = SimpleUnit()`, the only relevant difference between `insertleftunit(t, i + 1)` and `insertrightunit(t, i)` is that `insertleftunit(t, numout(t) + 1)` inserts the unit index as first index in the domain, whereas `insertrightunit(t, numout(t))` will insert the unit index as last index in the codomain. 
+For tensors `t` with `UnitStyle(sectortype(t)) = SimpleUnit()`, the only relevant difference between `insertleftunit(t, i + 1)` and `insertrightunit(t, i)` is that `insertleftunit(t, numout(t) + 1)` inserts the unit space as first index in the domain, whereas `insertrightunit(t, numout(t))` will insert the unit space as last index in the codomain. 
 
 Passing `Val(i)` instead of an integer `i` for the position may improve type stability.
 

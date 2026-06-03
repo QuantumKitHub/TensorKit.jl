@@ -14,7 +14,7 @@ For specific details on the provided functionality, we refer to its [documentati
 Finally, note that each of the factorizations takes the current partition of `domain` and `codomain` as the *axis* along which to matricize and perform the factorization.
 In order to obtain factorizations according to a different bipartition of the indices, we can use any of the previously mentioned [index manipulations](@ref s_indexmanipulations) before the factorization.
 
-Some examples to conclude this section
+Some examples to conclude this section:
 ```@repl tensors
 V1 = SU₂Space(0 => 2, 1/2 => 1)
 V2 = SU₂Space(0 => 1, 1/2 => 1, 1 => 1)

@@ -16,7 +16,7 @@ This process will generate a number of crossings and twists, where the latter ca
 Similarly, double crossings can also be omitted.
 As a consequence, the diagram, or the morphism it represents, is completely specified by the tensors it is composed of, and which indices between the different tensors are connected, via the evaluation ``ϵ``, and which indices make up the source and target of the resulting morphism.
 If we also compose the resulting morphisms with coevaluations so that it has a trivial domain, we just have one type of unconnected lines, henceforth called open indices.
-We sketch such a rearrangement in the following picture
+We sketch such a rearrangement in the following picture:
 
 ```@raw html
 <img src="../img/tensor-bosoniccontraction.svg" alt="tensor unitary" class="color-invertible"/>
@@ -146,7 +146,7 @@ This is especially true for larger expressions where we wish to dynamically comp
 
 The way out of this effectively consists of absorbing this twist in the coevaluation map ``η``.
 This modified map ``η′ := η ∘ θ`` where ``θ`` represents the twist ensures that the result no longer depends on the order of evaluation.
-In particular, one can show that any time two tensors would swap places, we would simultaneously exchange one evaluation map ``ϵ`` for a coevaluation ``̃η``, while also incurring a twist ``θ`` such that both cancel out.
+In particular, one can show that any time two tensor legs would swap places, we would simultaneously exchange one evaluation map ``ϵ`` for a coevaluation ``η′``, while also incurring a twist ``θ`` such that both cancel out.
 To make this concrete, we show how our previous example now leads to a unique result:
 
 ```@example fermioncontraction
@@ -177,7 +177,7 @@ AXB ≈ result
 
 ### (Non)-unitarity
 
-While this modified ``̃η`` solves the issues related to contractions, it does come at a cost.
+While this modified ``η′`` solves the issues related to contractions, it does come at a cost.
 The main issue is that this map does not constitute a positive definite map, and in particular is at odds with a positive inner product.
 Such a positive inner product is however required to properly define (orthogonal) factorizations, non-negative norms, etc.
 
