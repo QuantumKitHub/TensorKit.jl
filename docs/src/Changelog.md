@@ -18,7 +18,7 @@ When making changes to this project, please update the "Unreleased" section with
 
 When releasing a new version, move the "Unreleased" changes to a new version section with the release date.
 
-## [Unreleased](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.16.4...HEAD)
+## [Unreleased](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.0...HEAD)
 
 ### Added
 
@@ -31,6 +31,38 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 ### Fixed
 
 ### Performance
+
+## [0.17.0](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.16.5...v0.17.0) - 2026-06-03
+
+### Added
+
+- Allow `BraidingTensor` to have a custom storage type ([#393](https://github.com/QuantumKitHub/TensorKit.jl/pull/393))
+- `remove_gauge_dependence!` overloads ([#419](https://github.com/QuantumKitHub/TensorKit.jl/pull/419))
+- Mooncake forward rules for linear algebra functions ([#434](https://github.com/QuantumKitHub/TensorKit.jl/pull/434))
+- Support for broadcasting and mapping over `HomSpace` and `ProductSpace`, where broadcasting over `ProductSpace` now returns a tuple ([#430](https://github.com/QuantumKitHub/TensorKit.jl/pull/430), [#431](https://github.com/QuantumKitHub/TensorKit.jl/pull/431))
+
+### Changed
+
+- Reworked the index manipulation API, adding backend and allocator support while uniformizing the API ([#416](https://github.com/QuantumKitHub/TensorKit.jl/pull/416))
+- Bumped minimum version of CUDA and cuTENSOR ([#404](https://github.com/QuantumKitHub/TensorKit.jl/pull/404))
+
+### Fixed
+
+- Correct Artin braid image ([#441](https://github.com/QuantumKitHub/TensorKit.jl/pull/441))
+- Fix cache miss due to ignored dual flag in `foldright` ([#442](https://github.com/QuantumKitHub/TensorKit.jl/pull/442))
+- Improvements to bypass scalar indexing and improve GPU support ([#375](https://github.com/QuantumKitHub/TensorKit.jl/pull/375))
+- Compatibility with SUNRepresentations v0.4 type parameter change ([#426](https://github.com/QuantumKitHub/TensorKit.jl/pull/426))
+
+## [0.16.5](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.16.4...v0.16.5) - 2026-05-01
+
+### Added
+
+- Implement `DefaultAlgorithm` support ([#422](https://github.com/QuantumKitHub/TensorKit.jl/pull/422))
+
+### Fixed
+
+- `BraidingTensor` `planarcontract!` fixes ([#418](https://github.com/QuantumKitHub/TensorKit.jl/pull/418))
+- Fix `checksquare` error message ([#417](https://github.com/QuantumKitHub/TensorKit.jl/pull/417))
 
 ## [0.16.4](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.16.3...v0.16.4) - 2026-04-23
 
