@@ -43,7 +43,7 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 ### Changed
 
-- Reworked the index manipulation API, adding backend and allocator support while uniformizing the API ([#416](https://github.com/QuantumKitHub/TensorKit.jl/pull/416))
+- Reworked the index manipulation API, adding backend and allocator support while uniformizing the API, with accompanying documentation ([#416](https://github.com/QuantumKitHub/TensorKit.jl/pull/416), [#438](https://github.com/QuantumKitHub/TensorKit.jl/pull/438))
 - Bumped minimum version of CUDA and cuTENSOR ([#404](https://github.com/QuantumKitHub/TensorKit.jl/pull/404))
 
 ### Fixed
