@@ -12,7 +12,6 @@ using Random: AbstractRNG
 
 include("utility.jl")
 include("linalg.jl")
-include("vectorinterface.jl")
 include("tensoroperations.jl")
 include("factorizations.jl")
 include("indexmanipulations.jl")
