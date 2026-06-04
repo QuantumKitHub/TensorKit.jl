@@ -26,7 +26,7 @@ for f in (:project_hermitian, :project_antihermitian)
                 arg::Annotation{<:AbstractTensorMap},
                 alg::Const,
             ) where {RT}
-            if !isa(A, Const)
+            if !isa(A, Const) && !isa(arg, Const)
                 $f!(arg.dval, arg.dval, alg.val)
                 if A.dval !== arg.dval
                     A.dval .+= arg.dval

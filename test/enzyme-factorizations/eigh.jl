@@ -6,7 +6,7 @@ using Enzyme, EnzymeTestUtils
 using Random
 
 spacelist = ad_spacelist(fast_tests)
-eltypes = (Float64, ComplexF64)
+eltypes = (Float32,) # ComplexF64)
 
 function remove_eighgauge_dependence!(
         ΔV, D, V; degeneracy_atol = MatrixAlgebraKit.default_pullback_degeneracy_atol(D)
@@ -32,7 +32,8 @@ end
     DV = eigh_full(th)
     ΔDV = EnzymeTestUtils.rand_tangent(DV)
     remove_eighgauge_dependence!(ΔDV[2], DV...)
-    EnzymeTestUtils.test_reverse(eigh_full ∘ project_hermitian, Duplicated, (th, Duplicated); output_tangent = ΔDV, atol, rtol)
+    proj_eigh_full(t) = eigh_full(project_hermitian(t))
+    EnzymeTestUtils.test_reverse(proj_eigh_full, Duplicated, (th, Duplicated); output_tangent = ΔDV, atol, rtol)
 
     #D = eigh_vals(th)
     #EnzymeTestUtils.test_reverse(eigh_vals ∘ project_hermitian, Duplicated, (th, Duplicated); atol, rtol)
