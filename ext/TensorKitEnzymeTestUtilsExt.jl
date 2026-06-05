@@ -57,4 +57,10 @@ function EnzymeTestUtils.rand_tangent(rng, t::DiagonalTensorMap)
     return DiagonalTensorMap(EnzymeTestUtils.rand_tangent(rng, t.data), space(t, 1))
 end
 
+function EnzymeTestUtils.map_fields_recursive(f::typeof(Base.copyto!), y::TensorKit.SortedVectorDict{K, V}, x::TensorKit.SortedVectorDict{K, V}) where {K, V}
+    copyto!(y.keys, x.keys)
+    copyto!(y.values, x.values)
+    return y
+end
+
 end

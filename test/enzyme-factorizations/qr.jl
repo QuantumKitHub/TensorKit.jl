@@ -21,7 +21,7 @@ function remove_qrgauge_dependence!(ΔQ, t, Q)
     return ΔQ
 end
 
-@timedtestset "Enzyme - Factorizations (QR): $(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes, A in (randn(T, V[1] ⊗ V[2] ← V[1] ⊗ V[2]), randn(T, V[1] ⊗ V[2] ← V[1]))
+@timedtestset "Enzyme - Factorizations (QR): $(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes, A in (randn(T, V[1] ⊗ V[2] ← V[1] ⊗ V[2]), randn(T, V[1] ⊗ V[2] ⊗ V[3] ← (V[4] ⊗ V[5])'))
     atol = default_tol(T)
     rtol = default_tol(T)
 
