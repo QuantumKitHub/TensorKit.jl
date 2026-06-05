@@ -228,7 +228,7 @@ for V in spacelist
             tc = complex(t)
             @test convert(typeof(tc), t) == tc
             @test typeof(convert(typeof(tc), t)) == typeof(tc)
-             @test typeof(convert(typeof(tc), t')) == typeof(tc)
+            @test typeof(convert(typeof(tc), t')) == typeof(tc)
             @test Base.promote_typeof(t, tc) == typeof(tc)
             @test Base.promote_typeof(tc, t) == typeof(tc + t)
         end
