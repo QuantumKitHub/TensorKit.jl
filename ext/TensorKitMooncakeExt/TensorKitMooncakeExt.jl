@@ -3,7 +3,7 @@ module TensorKitMooncakeExt
 using Mooncake
 using Mooncake: @zero_derivative, @is_primitive,
     DefaultCtx, MinimalCtx, ReverseMode, NoFData, NoRData, NoTangent,
-    CoDual, Dual, arrayify, primal, tangent, zero_fcodual
+    CoDual, Dual, arrayify, primal, tangent, zero_fcodual, extract
 using TensorKit
 import TensorKit as TK
 using VectorInterface

@@ -81,16 +81,16 @@ function Mooncake.frule!!(
     # prepare arguments
     (C, ΔC), (A, ΔA), (B, ΔB) = arrayify.((C_ΔC, A_ΔA, B_ΔB))
     pA, pB, pAB = primal.((pA_ΔpA, pB_ΔpB, pAB_ΔpAB))
-    α, Δα = Mooncake.extract(α_Δα)
-    β, Δβ = Mooncake.extract(β_Δβ)
+    α, Δα = extract(α_Δα)
+    β, Δβ = extract(β_Δβ)
     backend, allocator = primal.((backend_Δbackend, allocator_Δallocator))
     # ΔC′ = ΔC*β + C*Δβ + A*B*Δα + ΔA*B*α + A*ΔB*α
-    if isa(Δβ, Mooncake.NoTangent)
+    if isa(Δβ, NoTangent)
         scale!(ΔC, β)
     else
         add!(ΔC, C, Δβ, β)
     end
-    if !isa(Δα, Mooncake.NoTangent)
+    if !isa(Δα, NoTangent)
         TensorKit.blas_contract!(ΔC, A, pA, B, pB, pAB, Δα, One(), backend, allocator)
     end
     TensorKit.blas_contract!(ΔC, ΔA, pA, B, pB, pAB, α, One(), backend, allocator)
@@ -217,18 +217,18 @@ function Mooncake.frule!!(
     A, ΔA = arrayify(A_ΔA)
     p = primal(p_Δp)
     q = primal(q_Δq)
-    α, Δα = Mooncake.extract(α_Δα)
-    β, Δβ = Mooncake.extract(β_Δβ)
+    α, Δα = extract(α_Δα)
+    β, Δβ = extract(β_Δβ)
     backend = primal(backend_Δbackend)
 
     # dD = dα * tr(A) + α * tr(dA) + dβ * C + β * dC
     # dC1 = dβ * C + β * dC
-    if isa(Δβ, Mooncake.NoTangent)
+    if isa(Δβ, NoTangent)
         scale!(ΔC, β)
     else
         add!(ΔC, C, Δβ, β)
     end
-    if !isa(Δα, Mooncake.NoTangent)
+    if !isa(Δα, NoTangent)
         TensorKit.trace_permute!(ΔC, A, p, q, Δα, One(), backend)
     end
     TensorKit.trace_permute!(ΔC, ΔA, p, q, α, One(), backend)
