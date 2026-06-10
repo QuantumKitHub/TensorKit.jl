@@ -66,7 +66,7 @@ function Mooncake.rrule!!(
         alg_dalg::CoDual{<:MatrixAlgebraKit.TruncatedAlgorithm}
     )
     A, dA = arrayify(A_dA)
-    Ac = copy(A)
+    Ac = deepcopy(A)
     alg = primal(alg_dalg)
 
     USVᴴ = primal(USVᴴ_dUSVᴴ)
@@ -86,10 +86,13 @@ function Mooncake.rrule!!(
     function svd_trunc_pullback((_, _, _, dϵ)::Tuple{NoRData, NoRData, NoRData, Real})
         abs(dϵ) ≤ MatrixAlgebraKit.defaulttol(dϵ) ||
             @warn "Gradient for `svd_trunc` ignores non-zero tangents for truncation error"
-        MatrixAlgebraKit.svd_pullback!(dA, A, USVᴴ, dUSVᴴtrunc, ind)
+        MatrixAlgebraKit.svd_pullback!(dA, Ac, USVᴴ, dUSVᴴtrunc, ind)
         # restore state
         copy!(A, Ac)
         copy!.(USVᴴ, USVᴴc)
+        MatrixAlgebraKit.zero!(dU)
+        MatrixAlgebraKit.zero!(dS)
+        MatrixAlgebraKit.zero!(dVᴴ)
         return NoRData(), NoRData(), NoRData(), NoRData()
     end
 
