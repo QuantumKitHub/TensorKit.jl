@@ -250,3 +250,20 @@ function trace_permute_pullback_ΔA!(
     )
     return NoRData()
 end
+
+@is_primitive(
+    DefaultCtx,
+    Tuple{
+        typeof(TensorKit.scalar),
+        AbstractTensorMap,
+    }
+)
+function Mooncake.rrule!!(::CoDual{typeof(TensorKit.scalar)}, t_dt::CoDual{<:AbstractTensorMap})
+    t, dt = arrayify(t_dt)
+    val = scalar(t)
+    function scalar_pullback(Δval)
+        first(blocks(dt))[2][1] = Δval
+        return NoRData(), NoRData()
+    end
+    return Mooncake.zero_fcodual(val), scalar_pullback
+end

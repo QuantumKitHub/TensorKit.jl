@@ -1,3 +1,6 @@
+# needed for the ising bimodule case
+@zero_derivative DefaultCtx Tuple{typeof(MatrixAlgebraKit.initialize_output), Any, AbstractTensorMap, MatrixAlgebraKit.AbstractAlgorithm}
+
 for f in (:svd_compact, :svd_full)
     f_pullback = Symbol(f, :_pullback)
     @eval begin
@@ -58,6 +61,43 @@ function Mooncake.rrule!!(
     return USVᴴtrunc_dUSVᴴtrunc, svd_trunc_pullback
 end
 
-@is_primitive DefaultCtx ReverseMode Tuple{typeof(svd_trunc!), AbstractTensorMap, Any, MatrixAlgebraKit.AbstractAlgorithm}
-Mooncake.rrule!!(::CoDual{typeof(svd_trunc!)}, A_dA::CoDual{<:AbstractTensorMap}, USVᴴ_dUSVᴴ::CoDual, alg_dalg::CoDual) =
-    Mooncake.rrule!!(Mooncake.zero_fcodual(svd_trunc), A_dA, alg_dalg)
+@is_primitive DefaultCtx ReverseMode Tuple{typeof(svd_trunc!), AbstractTensorMap, Any, MatrixAlgebraKit.TruncatedAlgorithm}
+function Mooncake.rrule!!(
+        ::CoDual{typeof(svd_trunc!)},
+        A_dA::CoDual{<:AbstractTensorMap},
+        USVᴴ_dUSVᴴ::CoDual,
+        alg_dalg::CoDual{<:MatrixAlgebraKit.TruncatedAlgorithm}
+    )
+    A, dA = arrayify(A_dA)
+    Ac = deepcopy(A)
+    alg = primal(alg_dalg)
+
+    USVᴴ = primal(USVᴴ_dUSVᴴ)
+    dUSVᴴ = tangent(USVᴴ_dUSVᴴ)
+    U, dU = arrayify(USVᴴ[1], dUSVᴴ[1])
+    S, dS = arrayify(USVᴴ[2], dUSVᴴ[2])
+    Vᴴ, dVᴴ = arrayify(USVᴴ[3], dUSVᴴ[3])
+    USVᴴc = copy.(USVᴴ)
+
+    USVᴴ = svd_compact!(A, USVᴴ, alg.alg)
+    USVᴴtrunc, ind = MatrixAlgebraKit.truncate(svd_trunc!, USVᴴ, alg.trunc)
+    ϵ = MatrixAlgebraKit.truncation_error(diagview(USVᴴ[2]), ind)
+
+    USVᴴtrunc_dUSVᴴtrunc = Mooncake.zero_fcodual((USVᴴtrunc..., ϵ))
+    dUSVᴴtrunc = last.(arrayify.(USVᴴtrunc, Base.front(tangent(USVᴴtrunc_dUSVᴴtrunc))))
+
+    function svd_trunc_pullback((_, _, _, dϵ)::Tuple{NoRData, NoRData, NoRData, Real})
+        abs(dϵ) ≤ MatrixAlgebraKit.defaulttol(dϵ) ||
+            @warn "Gradient for `svd_trunc` ignores non-zero tangents for truncation error"
+        MatrixAlgebraKit.svd_pullback!(dA, Ac, USVᴴ, dUSVᴴtrunc, ind)
+        # restore state
+        copy!(A, Ac)
+        copy!.(USVᴴ, USVᴴc)
+        MatrixAlgebraKit.zero!(dU)
+        MatrixAlgebraKit.zero!(dS)
+        MatrixAlgebraKit.zero!(dVᴴ)
+        return NoRData(), NoRData(), NoRData(), NoRData()
+    end
+
+    return USVᴴtrunc_dUSVᴴtrunc, svd_trunc_pullback
+end
