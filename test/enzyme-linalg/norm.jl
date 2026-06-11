@@ -15,7 +15,7 @@ fRTs = is_ci ? (Duplicated,) : (Const, Duplicated)
         atol = default_tol(T)
         rtol = default_tol(T)
         C = randn(T, V[1] ⊗ V[2] ← V[5])
-        for RT in rRTs 
+        for RT in rRTs
             EnzymeTestUtils.test_reverse(norm, RT, (C, TC), (2, Const); atol, rtol)
             EnzymeTestUtils.test_reverse(norm, RT, (C', TC), (2, Const); atol, rtol)
         end
