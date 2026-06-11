@@ -1,3 +1,6 @@
+# needed for the ising bimodule case
+@zero_derivative DefaultCtx Tuple{typeof(MatrixAlgebraKit.initialize_output), Any, AbstractTensorMap, MatrixAlgebraKit.AbstractAlgorithm}
+
 for f in (:svd_compact, :svd_full)
     f_pullback = Symbol(f, :_pullback)
     @eval begin
