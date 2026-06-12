@@ -48,19 +48,19 @@ function Mooncake.rrule!!(
     function blas_contract_pullback(::NoRData)
         copy!(C, C_cache)
 
-        ΔAr = blas_contract_pullback_ΔA!(
+        ΔAr = TensorKit.blas_contract_pullback_ΔA!(
             ΔA, ΔC, A, pA, B, pB, pAB, α, backend, allocator
         ) # this typically returns NoRData()
-        ΔBr = blas_contract_pullback_ΔB!(
+        ΔBr = TensorKit.blas_contract_pullback_ΔB!(
             ΔB, ΔC, A, pA, B, pB, pAB, α, backend, allocator
         ) # this typically returns NoRData()
         Δαr = pullback_dα(α, ΔC, AB)
         Δβr = pullback_dβ(β, ΔC, C)
         ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
 
-        return NoRData(), ΔCr,
-            ΔAr, NoRData(),
-            ΔBr, NoRData(),
+        return NoRData(), NoRData(),
+            NoRData(), NoRData(),
+            NoRData(), NoRData(),
             NoRData(),
             Δαr, Δβr,
             NoRData(), NoRData()
@@ -97,56 +97,6 @@ function Mooncake.frule!!(
     TensorKit.blas_contract!(ΔC, A, pA, ΔB, pB, pAB, α, One(), backend, allocator)
     TensorKit.blas_contract!(C, A, pA, B, pB, pAB, α, β, backend, allocator)
     return C_ΔC
-end
-
-function blas_contract_pullback_ΔA!(
-        ΔA, ΔC, A, pA, B, pB, pAB, α, backend, allocator
-    )
-    ipAB = invperm(linearize(pAB))
-    pΔC = TO.repartition(ipAB, pA)
-    ipA = TO.repartition(invperm(linearize(pA)), numout(A))
-
-    tB = twist(
-        B,
-        TupleTools.vcat(
-            filter(x -> !isdual(space(B, x)), pB[1]),
-            filter(x -> isdual(space(B, x)), pB[2])
-        ); copy = false
-    )
-
-    TK.project_contract!(
-        ΔA,
-        ΔC, pΔC, false,
-        tB, reverse(pB), true,
-        ipA, conj(α), backend, allocator
-    )
-
-    return NoRData()
-end
-
-function blas_contract_pullback_ΔB!(
-        ΔB, ΔC, A, pA, B, pB, pAB, α, backend, allocator
-    )
-    ipAB = invperm(linearize(pAB))
-    pΔC = TO.repartition(ipAB, pA)
-    ipB = TO.repartition(invperm(linearize(pB)), numout(B))
-
-    tA = twist(
-        A,
-        TupleTools.vcat(
-            filter(x -> isdual(space(A, x)), pA[1]),
-            filter(x -> !isdual(space(A, x)), pA[2])
-        ); copy = false
-    )
-
-    TK.project_contract!(
-        ΔB,
-        tA, reverse(pA), true,
-        ΔC, pΔC, false,
-        ipB, conj(α), backend, allocator
-    )
-
-    return NoRData()
 end
 
 # tensortrace!
@@ -191,14 +141,14 @@ function Mooncake.rrule!!(
     function trace_permute_pullback(::NoRData)
         copy!(C, C_cache)
 
-        ΔAr = trace_permute_pullback_ΔA!(ΔA, ΔC, A, p, q, α, backend) # this typically returns NoRData()
+        ΔAr = TensorKit.trace_permute_pullback_ΔA!(ΔA, ΔC, A, p, q, α, backend) # this typically returns NoRData()
 
         Δαr = pullback_dα(α, ΔC, At)
         Δβr = pullback_dβ(β, ΔC, C)
         ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
 
         return NoRData(),
-            ΔCr, ΔAr, NoRData(), NoRData(),
+            NoRData(), NoRData(), NoRData(), NoRData(),
             Δαr, Δβr, NoRData()
     end
 
@@ -234,21 +184,6 @@ function Mooncake.frule!!(
     TensorKit.trace_permute!(ΔC, ΔA, p, q, α, One(), backend)
     TensorKit.trace_permute!(C, A, p, q, α, β, backend)
     return C_ΔC
-end
-
-function trace_permute_pullback_ΔA!(
-        ΔA, ΔC, A, p, q, α, backend
-    )
-    ip = invperm((linearize(p)..., q[1]..., q[2]...))
-    pdA = TO.repartition(ip, numout(A))
-    E = one!(TO.tensoralloc_add(scalartype(A), A, q, false))
-    twist!(E, filter(x -> !isdual(space(E, x)), codomainind(E)))
-    pE = ((), TO.trivialpermutation(TO.numind(q)))
-    pΔC = (TO.trivialpermutation(TO.numind(p)), ())
-    TO.tensorproduct!(
-        ΔA, ΔC, pΔC, false, E, pE, false, pdA, conj(α), One(), backend
-    )
-    return NoRData()
 end
 
 @is_primitive(
