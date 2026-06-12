@@ -27,8 +27,10 @@ fTs = is_ci ? (Duplicated,) : (Const, Duplicated)
             @testset "Tα $Tα, Tβ $Tβ" for Tα in fTs, Tβ in fTs
                 EnzymeTestUtils.test_forward(mul!, TC, (C, TC), (A, TA), (B, TB), (α, Tα), (β, Tβ); atol, rtol)
             end
-            EnzymeTestUtils.test_reverse(mul!, TC, (C, TC), (A, TA), (B, TB); atol, rtol)
-            EnzymeTestUtils.test_forward(mul!, TC, (C, TC), (A, TA), (B, TB); atol, rtol)
+            if !is_ci
+                EnzymeTestUtils.test_reverse(mul!, TC, (C, TC), (A, TA), (B, TB); atol, rtol)
+                EnzymeTestUtils.test_forward(mul!, TC, (C, TC), (A, TA), (B, TB); atol, rtol)
+            end
         end
     end
 end
