@@ -54,7 +54,7 @@ function Mooncake.rrule!!(
         ΔBr = blas_contract_pullback_ΔB!(
             ΔB, ΔC, A, pA, B, pB, pAB, α, backend, allocator
         ) # this typically returns NoRData()
-        Δαr = isnothing(AB) ? NoRData() : project_scalar(α, inner(AB, ΔC))
+        Δαr = isnothing(AB) ? NoRData() : TO.project_scalar(α, inner(AB, ΔC))
         Δβr = pullback_dβ(ΔC, C, β)
         ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
 
@@ -103,8 +103,8 @@ function blas_contract_pullback_ΔA!(
         ΔA, ΔC, A, pA, B, pB, pAB, α, backend, allocator
     )
     ipAB = invperm(linearize(pAB))
-    pΔC = _repartition(ipAB, TO.numout(pA))
-    ipA = _repartition(invperm(linearize(pA)), A)
+    pΔC = TO.repartition(ipAB, pA)
+    ipA = TO.repartition(invperm(linearize(pA)), numout(A))
 
     tB = twist(
         B,
@@ -114,7 +114,7 @@ function blas_contract_pullback_ΔA!(
         ); copy = false
     )
 
-    project_contract!(
+    TK.project_contract!(
         ΔA,
         ΔC, pΔC, false,
         tB, reverse(pB), true,
@@ -128,8 +128,8 @@ function blas_contract_pullback_ΔB!(
         ΔB, ΔC, A, pA, B, pB, pAB, α, backend, allocator
     )
     ipAB = invperm(linearize(pAB))
-    pΔC = _repartition(ipAB, TO.numout(pA))
-    ipB = _repartition(invperm(linearize(pB)), B)
+    pΔC = TO.repartition(ipAB, pA)
+    ipB = TO.repartition(invperm(linearize(pB)), numout(B))
 
     tA = twist(
         A,
@@ -139,7 +139,7 @@ function blas_contract_pullback_ΔB!(
         ); copy = false
     )
 
-    project_contract!(
+    TK.project_contract!(
         ΔB,
         tA, reverse(pA), true,
         ΔC, pΔC, false,
@@ -193,7 +193,7 @@ function Mooncake.rrule!!(
 
         ΔAr = trace_permute_pullback_ΔA!(ΔA, ΔC, A, p, q, α, backend) # this typically returns NoRData()
 
-        Δαr = isnothing(At) ? NoRData() : project_scalar(α, inner(At, ΔC))
+        Δαr = isnothing(At) ? NoRData() : TO.project_scalar(α, inner(At, ΔC))
         Δβr = pullback_dβ(ΔC, C, β)
         ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
 
@@ -240,11 +240,11 @@ function trace_permute_pullback_ΔA!(
         ΔA, ΔC, A, p, q, α, backend
     )
     ip = invperm((linearize(p)..., q[1]..., q[2]...))
-    pdA = _repartition(ip, A)
+    pdA = TO.repartition(ip, numout(A))
     E = one!(TO.tensoralloc_add(scalartype(A), A, q, false))
     twist!(E, filter(x -> !isdual(space(E, x)), codomainind(E)))
-    pE = ((), trivtuple(TO.numind(q)))
-    pΔC = (trivtuple(TO.numind(p)), ())
+    pE = ((), TO.trivialpermutation(TO.numind(q)))
+    pΔC = (TO.trivialpermutation(TO.numind(p)), ())
     TO.tensorproduct!(
         ΔA, ΔC, pΔC, false, E, pE, false, pdA, conj(α), One(), backend
     )
