@@ -2,7 +2,7 @@ using Test, TestExtras
 using TensorKit
 using Mooncake
 using Random
-using AllocCheck
+using JET, AllocCheck
 
 mode = Mooncake.ReverseMode
 rng = Random.default_rng()
