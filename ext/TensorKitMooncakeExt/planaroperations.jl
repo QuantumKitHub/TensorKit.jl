@@ -59,17 +59,17 @@
 #     )
 #     if length(q[1]) == 0
 #         ip = invperm(linearize(p))
-#         pΔA = _repartition(ip, A)
+#         pΔA = TK._repartition(ip, A)
 #         TK.transpose!(ΔA, ΔC, pΔA, conj(α), One(), backend, allocator)
 #         return NoRData()
 #     end
 #     # if length(q[1]) == 1
 #     #     ip = invperm((p[1]..., q[2]..., p[2]..., q[1]...))
-#     #     pdA = _repartition(ip, A)
+#     #     pdA = TK._repartition(ip, A)
 #     #     E = one!(TO.tensoralloc_add(scalartype(A), A, q, false))
 #     #     twist!(E, filter(x -> !isdual(space(E, x)), codomainind(E)))
-#     #     # pE = ((), trivtuple(TO.numind(q)))
-#     #     # pΔC = (trivtuple(TO.numind(p)), ())
+#     #     # pE = ((), TK.trivtuple(TO.numind(q)))
+#     #     # pΔC = (TK.trivtuple(TO.numind(p)), ())
 #     #     TensorKit.planaradd!(ΔA, ΔC ⊗ E, pdA, conj(α), One(), backend, allocator)
 #     #     return NoRData()
 #     # end

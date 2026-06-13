@@ -280,4 +280,9 @@ include("planar/macros.jl")
 @specialize
 include("planar/planaroperations.jl")
 
+# include some AD specific things at the end
+# once all types have been declared
+# ------------------------
+include("auxiliary/ad.jl")
+
 end
