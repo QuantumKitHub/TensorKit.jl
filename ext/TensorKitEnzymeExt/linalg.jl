@@ -49,8 +49,8 @@ function EnzymeRules.reverse(
     Aval = something(cacheA, A.val)
     Bval = something(cacheB, B.val)
 
-    !isa(A, Const) && !isa(C, Const) && project_mul!(A.dval, C.dval, Bval', conj(α.val))
-    !isa(B, Const) && !isa(C, Const) && project_mul!(B.dval, Aval', C.dval, conj(α.val))
+    !isa(A, Const) && !isa(C, Const) && TK.project_mul!(A.dval, C.dval, Bval', conj(α.val), One())
+    !isa(B, Const) && !isa(C, Const) && TK.project_mul!(B.dval, Aval', C.dval, conj(α.val), One())
     Δαr = pullback_dα(α, C, AB)
     Δβr = pullback_dβ(β, C, Cval)
     !isa(C, Const) && pullback_dC!(C.dval, β.val)
@@ -72,9 +72,9 @@ function EnzymeRules.forward(
     if !isa(C, Const)
         scale!(C.dval, β.val)
         !isa(β, Const) && add!(C.dval, C.val, β.dval)
-        !isa(α, Const) && project_mul!(C.dval, A.val, B.val, α.dval)
-        !isa(A, Const) && project_mul!(C.dval, A.dval, B.val, α.val)
-        !isa(B, Const) && project_mul!(C.dval, A.val, B.dval, α.val)
+        !isa(α, Const) && TK.project_mul!(C.dval, A.val, B.val, α.dval, One())
+        !isa(A, Const) && TK.project_mul!(C.dval, A.dval, B.val, α.val, One())
+        !isa(B, Const) && TK.project_mul!(C.dval, A.val, B.dval, α.val, One())
     end
     mul!(C.val, A.val, B.val, α.val, β.val)
     if EnzymeRules.needs_primal(config) && EnzymeRules.needs_shadow(config)
