@@ -1,7 +1,7 @@
 # Shared
 # ------
 pullback_dC!(ΔC, β) = (scale!(ΔC, conj(β)); return NoRData())
-pullback_dβ(ΔC, C, β) = _needs_tangent(β) ? project_scalar(β, inner(C, ΔC)) : NoRData()
+pullback_dβ(ΔC, C, β) = _needs_tangent(β) ? TO.project_scalar(β, inner(C, ΔC)) : NoRData()
 
 @is_primitive DefaultCtx Tuple{typeof(mul!), AbstractTensorMap, AbstractTensorMap, AbstractTensorMap, Number, Number}
 
@@ -27,11 +27,11 @@ function Mooncake.rrule!!(
     function mul_pullback(::NoRData)
         copy!(C, C_cache)
 
-        project_mul!(ΔA, ΔC, B', conj(α))
-        project_mul!(ΔB, A', ΔC, conj(α))
+        TK.project_mul!(ΔA, ΔC, B', conj(α), One())
+        TK.project_mul!(ΔB, A', ΔC, conj(α), One())
         ΔAr = NoRData()
         ΔBr = NoRData()
-        Δαr = isnothing(AB) ? NoRData() : project_scalar(α, inner(AB, ΔC))
+        Δαr = isnothing(AB) ? NoRData() : TO.project_scalar(α, inner(AB, ΔC))
         Δβr = pullback_dβ(ΔC, C, β)
         ΔCr = pullback_dC!(ΔC, β)
 
@@ -54,10 +54,10 @@ function Mooncake.frule!!(
         add!(ΔC, C, Δβ)
     end
     if !isa(Δα, Mooncake.NoTangent)
-        project_mul!(ΔC, A, B, Δα)
+        TK.project_mul!(ΔC, A, B, Δα, One())
     end
-    project_mul!(ΔC, ΔA, B, α)
-    project_mul!(ΔC, A, ΔB, α)
+    TK.project_mul!(ΔC, ΔA, B, α, One())
+    TK.project_mul!(ΔC, A, ΔB, α, One())
     mul!(C, A, B, α, β)
     return C_ΔC
 end
