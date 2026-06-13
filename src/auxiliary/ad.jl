@@ -1,11 +1,11 @@
 # in-place multiplication and accumulation which might project to (real)
 # TODO: this could probably be done without allocating
-function project_mul!(C, A, B, α)
+function project_mul!(C, A, B, α, β = One())
     TC = TO.promote_contract(scalartype(A), scalartype(B), scalartype(α))
     return if !(TC <: Real) && scalartype(C) <: Real
         add!(C, real(mul!(zerovector(C, TC), A, B, α)))
     else
-        mul!(C, A, B, α, One())
+        mul!(C, A, B, α, β)
     end
 end
 function project_contract!(C, A, pA, conjA, B, pB, conjB, pAB, α, backend, allocator)

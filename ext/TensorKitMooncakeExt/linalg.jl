@@ -27,8 +27,8 @@ function Mooncake.rrule!!(
     function mul_pullback(::NoRData)
         copy!(C, C_cache)
 
-        TK.project_mul!(ΔA, ΔC, B', conj(α))
-        TK.project_mul!(ΔB, A', ΔC, conj(α))
+        TK.project_mul!(ΔA, ΔC, B', conj(α), One())
+        TK.project_mul!(ΔB, A', ΔC, conj(α), One())
         ΔAr = NoRData()
         ΔBr = NoRData()
         Δαr = isnothing(AB) ? NoRData() : TO.project_scalar(α, inner(AB, ΔC))
@@ -54,10 +54,10 @@ function Mooncake.frule!!(
         add!(ΔC, C, Δβ)
     end
     if !isa(Δα, Mooncake.NoTangent)
-        TK.project_mul!(ΔC, A, B, Δα)
+        TK.project_mul!(ΔC, A, B, Δα, One())
     end
-    TK.project_mul!(ΔC, ΔA, B, α)
-    TK.project_mul!(ΔC, A, ΔB, α)
+    TK.project_mul!(ΔC, ΔA, B, α, One())
+    TK.project_mul!(ΔC, A, ΔB, α, One())
     mul!(C, A, B, α, β)
     return C_ΔC
 end
