@@ -187,7 +187,7 @@ function EnzymeRules.reverse(
     p.val == 2 || error("currently only implemented for p = 2")
     Aval = something(cacheA, A.val)
     if !isa(A, Const)
-        x = real(Δn) / hypot(n, eps(one(n)))
+        x = real(Δn) * pinv(n)
         add!(A.dval, A.val, x)
     end
     return (nothing, nothing)
@@ -210,20 +210,20 @@ function EnzymeRules.forward(
         p::Const{<:Real},
     ) where {RT}
     p.val == 2 || error("currently only implemented for p = 2")
-    y = norm(A.val, p.val)
-    Δy = if EnzymeRules.needs_shadow(config) && !isa(A, Const)
-        real(dot(A.val, A.dval)) * pinv(y)
+    n = norm(A.val, p.val)
+    Δn = if EnzymeRules.needs_shadow(config) && !isa(A, Const)
+        real(dot(A.val, A.dval)) * pinv(n)
     elseif EnzymeRules.needs_shadow(config)
         zero(eltype(A.dval))
     else
         nothing
     end
     if EnzymeRules.needs_primal(config) && EnzymeRules.needs_shadow(config)
-        return Duplicated(y, Δy)
+        return Duplicated(n, Δn)
     elseif EnzymeRules.needs_primal(config)
-        return y
+        return n 
     elseif EnzymeRules.needs_shadow(config)
-        return Δy
+        return Δn
     else
         return nothing
     end
