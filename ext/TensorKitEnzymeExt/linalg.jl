@@ -72,11 +72,22 @@ function EnzymeRules.forward(
     if !isa(C, Const)
         scale!(C.dval, β.val)
         !isa(β, Const) && add!(C.dval, C.val, β.dval)
-        !isa(α, Const) && TK.project_mul!(C.dval, A.val, B.val, α.dval, One())
-        !isa(A, Const) && TK.project_mul!(C.dval, A.dval, B.val, α.val, One())
-        !isa(B, Const) && TK.project_mul!(C.dval, A.val, B.dval, α.val, One())
+        !isa(A, Const) && mul!(C.dval, A.dval, B.val, α.val, One())
+        !isa(B, Const) && mul!(C.dval, A.val, B.dval, α.val, One())
     end
-    mul!(C.val, A.val, B.val, α.val, β.val)
+    if !isa(α, Const) && !isa(C, Const)
+        if iszero(β.val) && !iszero(α.val)
+            # this is probably quite a common case, so maybe worth specializing
+            mul!(C.val, A.val, B.val, α.val, β.val)
+            add!(C.dval, C.val, α.dval / α.val)
+        else
+            AB = A.val * B.val
+            add!(C.val, AB, α.val, β.val)
+            add!(C.dval, AB, α.dval)
+        end
+    else
+        mul!(C.val, A.val, B.val, α.val, β.val)
+    end
     if EnzymeRules.needs_primal(config) && EnzymeRules.needs_shadow(config)
         return C
     elseif EnzymeRules.needs_primal(config)
