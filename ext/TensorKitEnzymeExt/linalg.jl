@@ -221,7 +221,7 @@ function EnzymeRules.forward(
     if EnzymeRules.needs_primal(config) && EnzymeRules.needs_shadow(config)
         return Duplicated(n, Δn)
     elseif EnzymeRules.needs_primal(config)
-        return n 
+        return n
     elseif EnzymeRules.needs_shadow(config)
         return Δn
     else
