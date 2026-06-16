@@ -167,7 +167,6 @@ function EnzymeRules.augmented_primal(
         A::Annotation{<:AbstractTensorMap},
         p::Const{<:Real},
     ) where {RT}
-    p.val == 2 || error("currently only implemented for p = 2")
     ret = func.val(A.val, p.val)
     primal = EnzymeRules.needs_primal(config) ? ret : nothing
     shadow = EnzymeRules.needs_shadow(config) ? zero(ret) : nothing
@@ -188,7 +187,7 @@ function EnzymeRules.reverse(
     p.val == 2 || error("currently only implemented for p = 2")
     Aval = something(cacheA, A.val)
     if !isa(A, Const)
-        x = (Δn' + Δn) / 2 / hypot(n, eps(one(n)))
+        x = real(Δn) / hypot(n, eps(one(n)))
         add!(A.dval, A.val, x)
     end
     return (nothing, nothing)
@@ -210,6 +209,7 @@ function EnzymeRules.forward(
         A::Annotation{<:AbstractTensorMap},
         p::Const{<:Real},
     ) where {RT}
+    p.val == 2 || error("currently only implemented for p = 2")
     y = norm(A.val, p.val)
     Δy = if EnzymeRules.needs_shadow(config) && !isa(A, Const)
         real(dot(A.val, A.dval)) * pinv(y)
