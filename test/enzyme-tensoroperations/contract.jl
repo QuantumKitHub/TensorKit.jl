@@ -1,0 +1,95 @@
+using Test, TestExtras
+using TensorKit
+using TensorOperations
+using VectorInterface: One, Zero
+using Enzyme, EnzymeTestUtils
+
+is_ci = get(ENV, "CI", "false") == "true"
+
+spacelist = ad_spacelist(fast_tests)
+eltypes = (Float64, ComplexF64)
+
+@timedtestset "Enzyme - TensorOperations" begin
+    @timedtestset verbose = true "$(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes
+        atol = default_tol(T)
+        rtol = default_tol(T)
+        symmetricbraiding = BraidingStyle(sectortype(eltype(V))) isa SymmetricBraiding
+        symmetricbraiding && @timedtestset "tensorcontract!" begin
+            d = 0
+            local V1, V2, V3
+            # retry a couple times to make sure there are at least some nonzero elements
+            for _ in 1:10
+                k1 = rand(0:3)
+                k2 = rand(0:2)
+                k3 = rand(0:2)
+                V1 = prod(v -> rand(Bool) ? v' : v, rand(V, k1); init = one(V[1]))
+                V2 = prod(v -> rand(Bool) ? v' : v, rand(V, k2); init = one(V[1]))
+                V3 = prod(v -> rand(Bool) ? v' : v, rand(V, k3); init = one(V[1]))
+                d = min(dim(V1 ← V2), dim(V1' ← V2), dim(V2 ← V3), dim(V2' ← V3))
+                d > 0 && break
+            end
+            ipA = randindextuple(length(V1) + length(V2))
+            pA = _repartition(invperm(linearize(ipA)), length(V1))
+            ipB = randindextuple(length(V2) + length(V3))
+            pB = _repartition(invperm(linearize(ipB)), length(V2))
+            pAB = randindextuple(length(V1) + length(V3))
+
+            α = randn(T)
+            β = randn(T)
+            V2_conj = prod(conj, V2; init = one(V[1]))
+            A = randn(T, permute(V1 ← V2, ipA))
+            B = randn(T, permute(V2 ← V3, ipB))
+            C = randn!(
+                TensorOperations.tensoralloc_contract(
+                    T, A, pA, false, B, pB, false, pAB, Val(false)
+                )
+            )
+
+            αβs = is_ci ? (((α, Active), (β, Active)),) : Iterators.product(((One(), Const), (α, Const), (α, Active)), ((Zero(), Const), (β, Const), (β, Active)))
+            for (α_, β_) in αβs
+                EnzymeTestUtils.test_reverse(
+                    TensorKit.blas_contract!, Duplicated,
+                    (copy(C), Duplicated), (A, Duplicated), (pA, Const),
+                    (B, Duplicated), (pB, Const), (pAB, Const),
+                    α_, β_,
+                    (TensorOperations.DefaultBackend(), Const),
+                    (TensorOperations.DefaultAllocator(), Const);
+                    atol, rtol,
+                    testset_name = "blas_contract! α $α_ β $β_",
+                )
+            end
+            if !(T <: Real) && !is_ci
+                EnzymeTestUtils.test_reverse(
+                    TensorKit.blas_contract!, Duplicated,
+                    (copy(C), Duplicated), (A, Duplicated), (pA, Const),
+                    (B, Duplicated), (pB, Const), (pAB, Const),
+                    (real(α), Active), (real(β), Active),
+                    (TensorOperations.DefaultBackend(), Const),
+                    (TensorOperations.DefaultAllocator(), Const);
+                    atol, rtol,
+                    testset_name = "blas_contract! real(α) real(β)",
+                )
+                EnzymeTestUtils.test_reverse(
+                    TensorKit.blas_contract!, Duplicated,
+                    (copy(C), Duplicated), (real(A), Duplicated), (pA, Const),
+                    (B, Duplicated), (pB, Const), (pAB, Const),
+                    (real(α), Active), (real(β), Active),
+                    (TensorOperations.DefaultBackend(), Const),
+                    (TensorOperations.DefaultAllocator(), Const);
+                    atol, rtol,
+                    testset_name = "blas_contract! real(A) real(α) real(β)",
+                )
+                EnzymeTestUtils.test_reverse(
+                    TensorKit.blas_contract!, Duplicated,
+                    (copy(C), Duplicated), (A, Duplicated), (pA, Const),
+                    (real(B), Duplicated), (pB, Const), (pAB, Const),
+                    (real(α), Active), (real(β), Active),
+                    (TensorOperations.DefaultBackend(), Const),
+                    (TensorOperations.DefaultAllocator(), Const);
+                    atol, rtol,
+                    testset_name = "blas_contract! real(B) real(α) real(β)",
+                )
+            end
+        end
+    end
+end

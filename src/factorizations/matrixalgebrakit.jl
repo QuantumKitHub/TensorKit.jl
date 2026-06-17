@@ -44,6 +44,20 @@ for f! in (
     end
 end
 
+for f! in (:qr_compact!, :qr_full!, :lq_compact!, :lq_full!)
+    @eval function MAK.$f!(t::AbstractTensorMap, F, alg::MAK.Algorithm{:Householder})
+        foreachblock(t, F...) do _, (tblock, Fblocks...)
+            Fblocks′ = $f!(tblock, Fblocks, alg)
+            # deal with the case where the output is not in-place
+            for (b′, b) in zip(Fblocks′, Fblocks)
+                b === b′ || copy!(b, b′)
+            end
+            return nothing
+        end
+        return F
+    end
+end
+
 # Handle these separately because single output instead of tuple
 for f! in (
         :qr_null!, :lq_null!,
