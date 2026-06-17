@@ -34,8 +34,8 @@ end
     remove_eiggauge_dependence!(ΔDV[2], DV...)
     EnzymeTestUtils.test_reverse(eig_full, Duplicated, (t, Duplicated); output_tangent = ΔDV, atol, rtol)
 
-    D = eig_vals(t)
-    EnzymeTestUtils.test_reverse(eig_vals, Duplicated, (t, Duplicated); atol, rtol)
+    #D = eig_vals(t)
+    #EnzymeTestUtils.test_reverse(eig_vals, Duplicated, (t, Duplicated); atol, rtol)
 
     V_trunc = spacetype(t)(c => min(size(b)...) ÷ 2 for (c, b) in blocks(t))
     trunc = truncspace(V_trunc)

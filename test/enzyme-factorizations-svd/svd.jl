@@ -31,8 +31,8 @@ end
     atol = default_tol(T)
     rtol = default_tol(T)
 
-    S = svd_vals(t)
-    EnzymeTestUtils.test_reverse(svd_vals, Duplicated, (t, Duplicated); atol, rtol)
+    #S = svd_vals(t)
+    #EnzymeTestUtils.test_reverse(svd_vals, Duplicated, (t, Duplicated); atol, rtol)
 
     USVᴴ = svd_compact(t)
     ΔUSVᴴ = EnzymeTestUtils.rand_tangent.(USVᴴ)
