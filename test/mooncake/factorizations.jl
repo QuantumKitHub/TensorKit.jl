@@ -88,7 +88,7 @@ eltypes = (Float64, ComplexF64)
 
     @timedtestset "Singular value decomposition" begin
         for t in (randn(T, V[1] ← V[1]), randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])'))
-            #=USVᴴ = svd_compact(t)
+            USVᴴ = svd_compact(t)
             ΔUSVᴴ = Mooncake.randn_tangent(rng, USVᴴ)
             remove_svd_gauge_dependence!(ΔUSVᴴ[1], ΔUSVᴴ[3], USVᴴ...)
             Mooncake.TestUtils.test_rule(rng, svd_compact, t; output_tangent = ΔUSVᴴ, atol, rtol, mode, is_primitive = false)
@@ -97,7 +97,7 @@ eltypes = (Float64, ComplexF64)
             ΔUSVᴴ = Mooncake.randn_tangent(rng, USVᴴ)
             remove_svd_gauge_dependence!(ΔUSVᴴ[1], ΔUSVᴴ[3], USVᴴ...)
             Mooncake.TestUtils.test_rule(rng, svd_full, t; output_tangent = ΔUSVᴴ, atol, rtol, mode, is_primitive = false)
-            =#
+
             V_trunc = spacetype(t)(c => min(size(b)...) ÷ 2 for (c, b) in blocks(t))
             trunc = truncspace(V_trunc)
             alg = MatrixAlgebraKit.select_algorithm(svd_trunc, t, nothing; trunc)
