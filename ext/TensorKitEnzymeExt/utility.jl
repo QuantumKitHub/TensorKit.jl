@@ -71,7 +71,6 @@ end
 @inline EnzymeRules.inactive_type(::Type{<:TensorKit.VectorSpace}) = true
 
 # needed for the ising bimodule case
-@inline EnzymeRules.inactive(::typeof(MatrixAlgebraKit.initialize_output), ::Any, ::AbstractTensorMap, ::MatrixAlgebraKit.AbstractAlgorithm) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.sectorstructure), ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.degeneracystructure), ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.select), s::HomSpace, i::Index2Tuple) = nothing
