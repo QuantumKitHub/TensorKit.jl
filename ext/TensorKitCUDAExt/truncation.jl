@@ -67,3 +67,11 @@ function MatrixAlgebraKit.findtruncated_svd(values::CuSectorVector, strategy::Ma
     strategy′ = trunctol(; atol, strategy.by, strategy.keep_below)
     return SectorDict(c => Adapt.adapt(Vector, MatrixAlgebraKit.findtruncated_svd(d, strategy′)) for (c, d) in pairs(values))
 end
+
+function MatrixAlgebraKit.truncation_error!(values::CuSectorVector, ind::AbstractVector{Bool})
+    for (c, ind_c) in pairs(ind)
+        sector_vals = values[c]
+        @. sector_vals *= !ind_c
+    end
+    return norm(values)
+end
