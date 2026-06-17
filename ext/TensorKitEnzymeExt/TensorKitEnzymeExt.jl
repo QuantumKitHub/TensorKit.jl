@@ -11,5 +11,6 @@ using TupleTools
 using Random: AbstractRNG
 
 include("utility.jl")
+include("factorizations.jl")
 
 end
