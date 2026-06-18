@@ -66,12 +66,12 @@ function EnzymeRules.reverse(
     Δβ = pullback_dβ(β, C, Cval)
 
     if !isa(A, Const)
-        blas_contract_pullback_ΔA!(
+        TensorKit.blas_contract_pullback_ΔA!(
             A.dval, C.dval, Aval, pA.val, Bval, pB.val, pAB.val, α.val, backend.val, allocator.val
         ) # this typically returns nothing
     end
     if !isa(B, Const)
-        blas_contract_pullback_ΔB!(
+        TensorKit.blas_contract_pullback_ΔB!(
             B.dval, C.dval, Aval, pA.val, Bval, pB.val, pAB.val, α.val, backend.val, allocator.val
         ) # this typically returns nothing
     end
@@ -116,57 +116,6 @@ function EnzymeRules.forward(
         return nothing
     end
 end
-
-function blas_contract_pullback_ΔA!(
-        ΔA, ΔC, A, pA, B, pB, pAB, α, backend, allocator
-    )
-    ipAB = invperm(linearize(pAB))
-    pΔC = _repartition(ipAB, TO.numout(pA))
-    ipA = _repartition(invperm(linearize(pA)), A)
-
-    tB = twist(
-        B,
-        TupleTools.vcat(
-            filter(x -> !isdual(space(B, x)), pB[1]),
-            filter(x -> isdual(space(B, x)), pB[2])
-        ); copy = false
-    )
-
-    project_contract!(
-        ΔA,
-        ΔC, pΔC, false,
-        tB, reverse(pB), true,
-        ipA, conj(α), backend, allocator
-    )
-
-    return nothing
-end
-
-function blas_contract_pullback_ΔB!(
-        ΔB, ΔC, A, pA, B, pB, pAB, α, backend, allocator
-    )
-    ipAB = invperm(linearize(pAB))
-    pΔC = _repartition(ipAB, TO.numout(pA))
-    ipB = _repartition(invperm(linearize(pB)), B)
-
-    tA = twist(
-        A,
-        TupleTools.vcat(
-            filter(x -> isdual(space(A, x)), pA[1]),
-            filter(x -> !isdual(space(A, x)), pA[2])
-        ); copy = false
-    )
-
-    project_contract!(
-        ΔB,
-        tA, reverse(pA), true,
-        ΔC, pΔC, false,
-        ipB, conj(α), backend, allocator
-    )
-
-    return nothing
-end
-
 
 # tensortrace!
 # ------------
@@ -216,26 +165,11 @@ function EnzymeRules.reverse(
     C_cache, A_cache, At = cache
     Aval = something(A_cache, A.val)
     Cval = something(C_cache, C.val)
-    !isa(A, Const) && !isa(C, Const) && trace_permute_pullback_ΔA!(A.dval, C.dval, Aval, p.val, q.val, α.val, backend.val)
+    !isa(A, Const) && !isa(C, Const) && TensorKit.trace_permute_pullback_ΔA!(A.dval, C.dval, Aval, p.val, q.val, α.val, backend.val)
     Δαr = pullback_dα(α, C, At)
     Δβr = pullback_dβ(β, C, Cval)
     !isa(C, Const) && pullback_dC!(C.dval, β.val)
     return nothing, nothing, nothing, nothing, Δαr, Δβr, nothing
-end
-
-function trace_permute_pullback_ΔA!(
-        ΔA, ΔC, A, p, q, α, backend
-    )
-    ip = invperm((linearize(p)..., q[1]..., q[2]...))
-    pdA = _repartition(ip, A)
-    E = one!(TO.tensoralloc_add(scalartype(A), A, q, false))
-    twist!(E, filter(x -> !isdual(space(E, x)), codomainind(E)))
-    pE = ((), trivtuple(TO.numind(q)))
-    pΔC = (trivtuple(TO.numind(p)), ())
-    TO.tensorproduct!(
-        ΔA, ΔC, pΔC, false, E, pE, false, pdA, conj(α), One(), backend
-    )
-    return nothing
 end
 
 function EnzymeRules.forward(
