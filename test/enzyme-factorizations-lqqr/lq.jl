@@ -2,23 +2,12 @@ using Test, TestExtras
 using TensorKit
 using TensorOperations
 using MatrixAlgebraKit
+using MatrixAlgebraKit: remove_lq_gauge_dependence!
 using Enzyme, EnzymeTestUtils
 using Random
 
 spacelist = ad_spacelist(fast_tests)
 eltypes = (Float64, ComplexF64)
-
-function remove_lqgauge_dependence!(ΔQ, t, Q)
-    for (c, b) in blocks(ΔQ)
-        m, n = size(block(t, c))
-        minmn = min(m, n)
-        Qc = block(Q, c)
-        Q1 = view(Qc, 1:minmn, 1:n)
-        ΔQ2 = view(b, (minmn + 1):n, :)
-        mul!(ΔQ2, ΔQ2 * Q1', Q1)
-    end
-    return ΔQ
-end
 
 function remove_lq_null_gauge_dependence!(ΔNᴴ, Q)
     for (c, b) in blocks(ΔNᴴ)
@@ -37,7 +26,7 @@ end
     # lq_full/lq_null requires being careful with gauges
     LQ = lq_full(A)
     ΔLQ = EnzymeTestUtils.rand_tangent(LQ)
-    remove_lqgauge_dependence!(ΔLQ[2], A, LQ[2])
+    remove_lq_gauge_dependence!(ΔLQ[1], ΔLQ[2], A, LQ[1], LQ[2])
     EnzymeTestUtils.test_reverse(lq_full, Duplicated, (A, Duplicated); output_tangent = ΔLQ, atol, rtol)
 
     Nᴴ = lq_null(A)

@@ -3,23 +3,12 @@ using TensorKit
 using TensorOperations
 using VectorInterface: Zero, One
 using MatrixAlgebraKit
+using MatrixAlgebraKit: remove_qr_gauge_dependence!
 using Enzyme, EnzymeTestUtils
 using Random
 
 spacelist = ad_spacelist(fast_tests)
 eltypes = (Float64, ComplexF64)
-
-function remove_qrgauge_dependence!(ΔQ, t, Q)
-    for (c, b) in blocks(ΔQ)
-        m, n = size(block(t, c))
-        minmn = min(m, n)
-        Qc = block(Q, c)
-        Q1 = view(Qc, 1:m, 1:minmn)
-        ΔQ2 = view(b, :, (minmn + 1):m)
-        mul!(ΔQ2, Q1, Q1' * ΔQ2)
-    end
-    return ΔQ
-end
 
 @timedtestset "Enzyme - Factorizations (QR): $(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes, A in (randn(T, V[1] ⊗ V[2] ← V[1] ⊗ V[2]), randn(T, V[1] ⊗ V[2] ⊗ V[3] ← (V[4] ⊗ V[5])'))
     atol = default_tol(T)
@@ -30,7 +19,7 @@ end
     # qr_full/qr_null requires being careful with gauges
     QR = qr_full(A)
     ΔQR = EnzymeTestUtils.rand_tangent(QR)
-    remove_qrgauge_dependence!(ΔQR[1], A, QR[1])
+    remove_qr_gauge_dependence!(ΔQR[1], ΔQR[2], A, QR[1], QR[2])
     EnzymeTestUtils.test_reverse(qr_full, Duplicated, (A, Duplicated); output_tangent = ΔQR, atol, rtol)
     #EnzymeTestUtils.test_reverse(qr_null, Duplicated, (A, Duplicated); atol, rtol)
 end
