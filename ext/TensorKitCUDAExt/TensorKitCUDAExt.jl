@@ -2,7 +2,6 @@ module TensorKitCUDAExt
 
 using CUDA, CUDA.cuBLAS, CUDA.cuSOLVER, CUDA.cuRAND, LinearAlgebra
 using CUDA: @allowscalar
-using cuTENSOR: cuTENSOR
 import CUDA.cuRAND: rand as curand, rand! as curand!, randn as curandn, randn! as curandn!
 using Strided: StridedViews
 using CUDA.CUDACore.KernelAbstractions: @kernel, @index, get_backend
