@@ -29,7 +29,7 @@ struct TensorMap{T, S <: IndexSpace, N₁, N₂, A <: DenseVector{T}} <: Abstrac
         I = sectortype(S)
         T <: Real && !(sectorscalartype(I) <: Real) &&
             @warn("Tensors with real data might be incompatible with sector type $I", maxlog = 1)
-        length(data) == dim(space) || throw(DimensionMismatch("invalid length of data"))
+        length(data) == dim(space) || throw(DimensionMismatch(lazy"length of data ($(length(data))) does not match dimension of space ($(dim(space)))"))
         return new{T, S, N₁, N₂, A}(data, space)
     end
 end
