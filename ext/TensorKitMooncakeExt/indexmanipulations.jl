@@ -57,8 +57,8 @@ for transform in (:permute, :transpose)
             end
             ΔAr = NoRData()
 
-            Δαr = isnothing(Ap) ? NoRData() : TO.project_scalar(α, inner(Ap, ΔC))
-            Δβr = pullback_dβ(ΔC, C, β)
+            Δαr = pullback_dα(α, ΔC, Ap)
+            Δβr = pullback_dβ(β, ΔC, C)
             ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
 
             return NoRData(), ΔCr, ΔAr, NoRData(), Δαr, Δβr, map(Returns(NoRData()), ba)...
@@ -125,8 +125,8 @@ function Mooncake.rrule!!(
         end
         ΔAr = NoRData()
 
-        Δαr = isnothing(Ap) ? NoRData() : TO.project_scalar(α, inner(Ap, ΔC))
-        Δβr = pullback_dβ(ΔC, C, β)
+        Δαr = pullback_dα(α, ΔC, Ap)
+        Δβr = pullback_dβ(β, ΔC, C)
         ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
 
         return NoRData(), ΔCr, ΔAr, NoRData(), NoRData(), Δαr, Δβr, map(Returns(NoRData()), ba)...

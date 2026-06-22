@@ -54,8 +54,8 @@ function Mooncake.rrule!!(
         ΔBr = blas_contract_pullback_ΔB!(
             ΔB, ΔC, A, pA, B, pB, pAB, α, backend, allocator
         ) # this typically returns NoRData()
-        Δαr = isnothing(AB) ? NoRData() : TO.project_scalar(α, inner(AB, ΔC))
-        Δβr = pullback_dβ(ΔC, C, β)
+        Δαr = pullback_dα(α, ΔC, AB)
+        Δβr = pullback_dβ(β, ΔC, C)
         ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
 
         return NoRData(), ΔCr,
@@ -193,8 +193,8 @@ function Mooncake.rrule!!(
 
         ΔAr = trace_permute_pullback_ΔA!(ΔA, ΔC, A, p, q, α, backend) # this typically returns NoRData()
 
-        Δαr = isnothing(At) ? NoRData() : TO.project_scalar(α, inner(At, ΔC))
-        Δβr = pullback_dβ(ΔC, C, β)
+        Δαr = pullback_dα(α, ΔC, At)
+        Δβr = pullback_dβ(β, ΔC, C)
         ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
 
         return NoRData(),

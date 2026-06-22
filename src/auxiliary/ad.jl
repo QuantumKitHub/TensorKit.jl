@@ -19,3 +19,6 @@ function project_contract!(C, A, pA, conjA, B, pB, conjB, pAB, α, backend, allo
         TO.tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, One(), backend, allocator)
     end
 end
+
+_pullback_dα(α, ΔC, A) = TO.project_scalar(α, inner(A, ΔC))
+_pullback_dβ(β, ΔC, C) = TO.project_scalar(β, inner(C, ΔC))

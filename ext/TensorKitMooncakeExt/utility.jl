@@ -2,6 +2,9 @@ _needs_tangent(x) = _needs_tangent(typeof(x))
 _needs_tangent(::Type{T}) where {T <: Number} =
     Mooncake.rdata_type(Mooncake.tangent_type(T)) !== NoRData
 
+pullback_dα(α, ΔC, A) = _needs_tangent(α) ? TK._pullback_dα(α, ΔC, A) : NoRData()
+pullback_dβ(β, ΔC, C) = _needs_tangent(β) ? TK._pullback_dβ(β, ΔC, C) : NoRData()
+
 # Ignore derivatives
 # ------------------
 
