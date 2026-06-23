@@ -15,21 +15,26 @@ fTs = is_ci ? (Duplicated,) : (Const, Duplicated)
         atol = default_tol(T)
         rtol = default_tol(T)
 
-        C = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
+        # see https://github.com/QuantumKitHub/TensorKit.jl/issues/457
+        @static if VERSION < v"1.11.0-rc"
+            C = randn(T, V[1] ⊗ V[2] ← (V[4] ⊗ V[5])')
+        else
+            C = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
+        end
         A = randn(T, codomain(C) ← V[5]' ⊗ V[4]')
         B = randn(T, domain(A) ← domain(C))
         α = randn(T)
         β = randn(T)
-        @testset "mul: TC $TC, TA $TA, TB $TB" for TC in (Duplicated,), TA in (Duplicated,), TB in (Duplicated,)
-            @testset "Tα $Tα, Tβ $Tβ" for Tα in rTs, Tβ in rTs
-                EnzymeTestUtils.test_reverse(mul!, TC, (C, TC), (A, TA), (B, TB), (α, Tα), (β, Tβ); atol, rtol)
+        for TC in (Duplicated,), TA in (Duplicated,), TB in (Duplicated,)
+            for Tα in rTs, Tβ in rTs
+                EnzymeTestUtils.test_reverse(mul!, TC, (C, TC), (A, TA), (B, TB), (α, Tα), (β, Tβ); atol, rtol, testset_name = "mul! reverse Tα $Tα, Tβ $Tβ")
             end
-            @testset "Tα $Tα, Tβ $Tβ" for Tα in fTs, Tβ in fTs
-                EnzymeTestUtils.test_forward(mul!, TC, (C, TC), (A, TA), (B, TB), (α, Tα), (β, Tβ); atol, rtol)
+            for Tα in fTs, Tβ in fTs
+                EnzymeTestUtils.test_forward(mul!, TC, (C, TC), (A, TA), (B, TB), (α, Tα), (β, Tβ); atol, rtol, testset_name = "mul! forward Tα $Tα, Tβ $Tβ")
             end
             if !is_ci
-                EnzymeTestUtils.test_reverse(mul!, TC, (C, TC), (A, TA), (B, TB); atol, rtol)
-                EnzymeTestUtils.test_forward(mul!, TC, (C, TC), (A, TA), (B, TB); atol, rtol)
+                EnzymeTestUtils.test_reverse(mul!, TC, (C, TC), (A, TA), (B, TB); atol, rtol, testset_name = "mul! reverse no α no β")
+                EnzymeTestUtils.test_forward(mul!, TC, (C, TC), (A, TA), (B, TB); atol, rtol, testset_name = "mul! forward no α no β")
             end
         end
     end
