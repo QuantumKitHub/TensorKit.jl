@@ -22,12 +22,18 @@ TDs = is_ci ? (Duplicated,) : (Const, Duplicated)
         @testset "tr reverse: RT $RT, TD $TD" for RT in rRTs, TD in TDs
             EnzymeTestUtils.test_reverse(tr, RT, (D1, TD); atol, rtol)
             EnzymeTestUtils.test_reverse(tr, RT, (D2, TD); atol, rtol)
-            EnzymeTestUtils.test_reverse(tr, RT, (D3, TD); atol, rtol)
+            # see https://github.com/QuantumKitHub/TensorKit.jl/issues/457
+            @static if VERSION ≥ v"1.11.0-rc"
+                EnzymeTestUtils.test_reverse(tr, RT, (D3, TD); atol, rtol)
+            end
         end
         @testset "tr forward: RT $RT, TD $TD" for RT in fRTs, TD in TDs
             EnzymeTestUtils.test_forward(tr, RT, (D1, TD); atol, rtol)
             EnzymeTestUtils.test_forward(tr, RT, (D2, TD); atol, rtol)
-            EnzymeTestUtils.test_forward(tr, RT, (D3, TD); atol, rtol)
+            # see https://github.com/QuantumKitHub/TensorKit.jl/issues/457
+            @static if VERSION ≥ v"1.11.0-rc"
+                EnzymeTestUtils.test_forward(tr, RT, (D3, TD); atol, rtol)
+            end
         end
     end
 end
