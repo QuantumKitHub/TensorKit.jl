@@ -18,6 +18,7 @@ for V in spacelist
     println("---------------------------------------")
     println("AMDGPU Tensors with symmetry: $Istr")
     println("---------------------------------------")
+    hasbraiding = BraidingStyle(I) isa HasBraiding
     symmetricbraiding = BraidingStyle(I) isa SymmetricBraiding
     @timedtestset "Tensors with symmetry: $Istr" verbose = true begin
         V1, V2, V3, V4, V5 = V
@@ -241,44 +242,42 @@ for V in spacelist
             @test LinearAlgebra.isdiag(D)
             @test LinearAlgebra.diag(D) == d
         end=#
-        #=symmetricbraiding && @timedtestset "Permutations: test via CPU" begin
+        symmetricbraiding && @timedtestset "Permutations: test via CPU" begin
             W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
             t = AMDGPU.rand(ComplexF64, W)
             for k in 0:5
                 for p in permutations(1:5)
                     p1 = ntuple(n -> p[n], k)
                     p2 = ntuple(n -> p[k + n], 5 - k)
-                    dt2 = AMDGPU.@allowscalar permute(t, (p1, p2))
+                    dt2 = permute(t, (p1, p2))
                     ht2 = permute(adapt(Array, t), (p1, p2))
                     @test ht2 ≈ adapt(Array, dt2)
                 end
 
-                dt3 = AMDGPU.@allowscalar repartition(t, k)
+                dt3 = repartition(t, k)
                 ht3 = repartition(adapt(Array, t), k)
                 @test ht3 ≈ adapt(Array, dt3)
             end
         end
         symmetricbraiding && @timedtestset "Full trace: test self-consistency" begin
             t = AMDGPU.rand(ComplexF64, V1 ⊗ V2' ⊗ V2 ⊗ V1')
-            AMDGPU.@allowscalar begin
-                t2 = permute(t, ((1, 2), (4, 3)))
-                s = @constinferred tr(t2)
-                @test conj(s) ≈ tr(t2')
-                if !isdual(V1)
-                    t2 = twist!(t2, 1)
-                end
-                if isdual(V2)
-                    t2 = twist!(t2, 2)
-                end
-                ss = tr(t2)
-                @tensor s2 = t[a, b, b, a]
-                @tensor t3[a, b] := t[a, c, c, b]
-                @tensor s3 = t3[a, a]
+            t2 = permute(t, ((1, 2), (4, 3)))
+            s = @constinferred tr(t2)
+            @test conj(s) ≈ tr(t2')
+            if !isdual(V1)
+                t2 = twist!(t2, 1)
             end
+            if isdual(V2)
+                t2 = twist!(t2, 2)
+            end
+            ss = tr(t2)
+            @tensor s2 = t[a, b, b, a]
+            @tensor t3[a, b] := t[a, c, c, b]
+            @tensor s3 = t3[a, a]
             @test ss ≈ s2
             @test ss ≈ s3
-        end=# # TODO read only memory errors
-        #=symmetricbraiding && @timedtestset "Partial trace: test self-consistency" begin
+        end
+        symmetricbraiding && @timedtestset "Partial trace: test self-consistency" begin
             t = AMDGPU.rand(ComplexF64, V1 ⊗ V2' ⊗ V3 ⊗ V2 ⊗ V1' ⊗ V3')
             @tensor t2[a, b] := t[c, d, b, d, c, a]
             @tensor t4[a, b, c, d] := t[d, e, b, e, c, a]
@@ -287,23 +286,19 @@ for V in spacelist
         end
         symmetricbraiding && @timedtestset "Trace: test via conversion" begin
             t = AMDGPU.rand(ComplexF64, V1 ⊗ V2' ⊗ V3 ⊗ V2 ⊗ V1' ⊗ V3')
-            AMDGPU.@allowscalar begin
-                @tensor t2[a, b] := t[c, d, b, d, c, a]
-                @tensor t3[a, b] := ad(t)[c, d, b, d, c, a]
-            end
+            @tensor t2[a, b] := t[c, d, b, d, c, a]
+            @tensor t3[a, b] := ad(t)[c, d, b, d, c, a]
             @test t3 ≈ ad(t2)
         end
         symmetricbraiding && @timedtestset "Trace and contraction" begin
             t1 = AMDGPU.rand(ComplexF64, V1 ⊗ V2 ⊗ V3)
             t2 = AMDGPU.rand(ComplexF64, V2' ⊗ V4 ⊗ V1')
-            AMDGPU.@allowscalar begin
-                t3 = t1 ⊗ t2
-                @tensor ta[a, b] := t1[x, y, a] * t2[y, b, x]
-                @tensor tb[a, b] := t3[x, y, a, y, b, x]
-            end
+            t3 = t1 ⊗ t2
+            @tensor ta[a, b] := t1[x, y, a] * t2[y, b, x]
+            @tensor tb[a, b] := t3[x, y, a, y, b, x]
             @test ta ≈ tb
         end
-        #=if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
+        if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
             @timedtestset "Tensor contraction: test via CPU" begin
                 dA1 = AMDGPU.randn(ComplexF64, V1' * V2', V3')
                 dA2 = AMDGPU.randn(ComplexF64, V3 * V4, V5)
@@ -318,48 +313,42 @@ for V in spacelist
                     adapt(Array, dH)[s1, s2, t1, t2]
                 @test adapt(Array, dHrA12) ≈ hHrA12
             end
-        end=# # doesn't yet work because of AdjointTensor
-        BraidingStyle(I) isa HasBraiding && @timedtestset "Index flipping: test flipping inverse" begin
+        end
+        hasbraiding && @timedtestset "Index flipping: test flipping inverse" begin
             t = AMDGPU.rand(ComplexF64, V1 ⊗ V1' ← V1' ⊗ V1)
             for i in 1:4
-                AMDGPU.@allowscalar begin
-                    @test t ≈ flip(flip(t, i), i; inv = true)
-                    @test t ≈ flip(flip(t, i; inv = true), i)
-                end
+                @test t ≈ flip(flip(t, i), i; inv = true)
+                @test t ≈ flip(flip(t, i; inv = true), i)
             end
         end
-        #=@timedtestset "Index flipping: test via explicit flip" begin
+        symmetricbraiding && @timedtestset "Index flipping: test via explicit flip" begin
             t = AMDGPU.rand(ComplexF64, V1 ⊗ V1' ← V1' ⊗ V1)
-            F1 = unitary(flip(V1), V1)
+            F1 = adapt(ROCArray{ComplexF64}, unitary(flip(V1), V1))
 
-            AMDGPU.@allowscalar begin
-                @tensor tf[a, b; c, d] := F1[a, a'] * t[a', b; c, d]
-                @test flip(t, 1) ≈ tf
-                @tensor tf[a, b; c, d] := conj(F1[b, b']) * t[a, b'; c, d]
-                @test twist!(flip(t, 2), 2) ≈ tf
-                @tensor tf[a, b; c, d] := F1[c, c'] * t[a, b; c', d]
-                @test flip(t, 3) ≈ tf
-                @tensor tf[a, b; c, d] := conj(F1[d, d']) * t[a, b; c, d']
-                @test twist!(flip(t, 4), 4) ≈ tf
-            end
+            @tensor tf[a, b; c, d] := F1[a, a'] * t[a', b; c, d]
+            @test flip(t, 1) ≈ tf
+            @tensor tf[a, b; c, d] := conj(F1[b, b']) * t[a, b'; c, d]
+            @test twist!(flip(t, 2), 2) ≈ tf
+            @tensor tf[a, b; c, d] := F1[c, c'] * t[a, b; c', d]
+            @test flip(t, 3) ≈ tf
+            @tensor tf[a, b; c, d] := conj(F1[d, d']) * t[a, b; c, d']
+            @test twist!(flip(t, 4), 4) ≈ tf
         end
-        @timedtestset "Index flipping: test via contraction" begin
+        symmetricbraiding && @timedtestset "Index flipping: test via contraction" begin
             t1 = AMDGPU.rand(ComplexF64, V1 ⊗ V2 ⊗ V3 ← V4)
             t2 = AMDGPU.rand(ComplexF64, V2' ⊗ V5 ← V4' ⊗ V1)
-            AMDGPU.@allowscalar begin
-                @tensor ta[a, b] := t1[x, y, a, z] * t2[y, b, z, x]
-                @tensor tb[a, b] := flip(t1, 1)[x, y, a, z] * flip(t2, 4)[y, b, z, x]
-                @test ta ≈ tb
-                @tensor tb[a, b] := flip(t1, (2, 4))[x, y, a, z] * flip(t2, (1, 3))[y, b, z, x]
-                @test ta ≈ tb
-                @tensor tb[a, b] := flip(t1, (1, 2, 4))[x, y, a, z] * flip(t2, (1, 3, 4))[y, b, z, x]
-                @tensor tb[a, b] := flip(t1, (1, 3))[x, y, a, z] * flip(t2, (2, 4))[y, b, z, x]
-                @test flip(ta, (1, 2)) ≈ tb
-            end
-        end=# # TODO =# # None of this works due to lack of HIPTensor support
+            @tensor ta[a, b] := t1[x, y, a, z] * t2[y, b, z, x]
+            @tensor tb[a, b] := flip(t1, 1)[x, y, a, z] * flip(t2, 4)[y, b, z, x]
+            @test ta ≈ tb
+            @tensor tb[a, b] := flip(t1, (2, 4))[x, y, a, z] * flip(t2, (1, 3))[y, b, z, x]
+            @test ta ≈ tb
+            @tensor tb[a, b] := flip(t1, (1, 2, 4))[x, y, a, z] * flip(t2, (1, 3, 4))[y, b, z, x]
+            @tensor tb[a, b] := flip(t1, (1, 3))[x, y, a, z] * flip(t2, (2, 4))[y, b, z, x]
+            @test flip(ta, (1, 2)) ≈ tb
+        end
         @timedtestset "Multiplication of isometries: test properties" begin
-            W2 = V4 ⊗ V5
-            W1 = W2 ⊗ (oneunit(V1) ⊕ oneunit(V1))
+            W1 = V1 ⊗ V2 ⊗ V3
+            W2 = (V4 ⊗ V5)'
             for T in (Float64, ComplexF64)
                 t1 = randisometry(ROCMatrix{T, AMDGPU.Mem.HIPBuffer}, W1, W2)
                 t2 = randisometry(ROCMatrix{T, AMDGPU.Mem.HIPBuffer}, W2 ← W2)
@@ -404,24 +393,22 @@ for V in spacelist
                 @test adapt(Array, t2 * t') ≈ ht2 * ht'
                 @test adapt(Array, t2' * t') ≈ ht2' * ht'
 
-                #=AMDGPU.@allowscalar begin
-                    @test adapt(Array, inv(t1)) ≈ inv(ht1)
-                    @test adapt(Array, pinv(t)) ≈ pinv(ht)
+                #@test adapt(Array, inv(t1)) ≈ inv(ht1) # needs getrf
+                #@test adapt(Array, pinv(t)) ≈ pinv(ht)
 
-                    if T == Float32 || T == ComplexF32
-                        continue
-                    end
+                if T == Float32 || T == ComplexF32
+                    continue
+                end
 
-                    @test adapt(Array, t1 \ t) ≈ ht1 \ ht
-                    @test adapt(Array, t1' \ t) ≈ ht1' \ ht
-                    @test adapt(Array, t2 \ t') ≈ ht2 \ ht'
-                    @test adapt(Array, t2' \ t') ≈ ht2' \ ht'
+                @test adapt(Array, t1 \ t) ≈ ht1 \ ht
+                @test adapt(Array, t1' \ t) ≈ ht1' \ ht
+                @test adapt(Array, t2 \ t') ≈ ht2 \ ht'
+                @test adapt(Array, t2' \ t') ≈ ht2' \ ht'
 
-                    @test adapt(Array, t2 / t) ≈ ht2 / ht
-                    @test adapt(Array, t2' / t) ≈ ht2' / ht
-                    @test adapt(Array, t1 / t') ≈ ht1 / ht'
-                    @test adapt(Array, t1' / t') ≈ ht1' / ht'
-                end=#
+                @test adapt(Array, t2 / t) ≈ ht2 / ht
+                @test adapt(Array, t2' / t) ≈ ht2' / ht
+                @test adapt(Array, t1 / t') ≈ ht1 / ht'
+                @test adapt(Array, t1' / t') ≈ ht1' / ht'
             end
         end
         symmetricbraiding && @timedtestset "Tensor functions" begin
@@ -485,66 +472,54 @@ for V in spacelist
         # end
         #
         # TODO
-        #=@timedtestset "Tensor product: test via norm preservation" begin
-            for T in (Float32, ComplexF64)
-                t1 = AMDGPU.rand(T, V2 ⊗ V3 ⊗ V1, V1 ⊗ V2)
-                t2 = AMDGPU.rand(T, V2 ⊗ V1 ⊗ V3, V1 ⊗ V1)
-                AMDGPU.@allowscalar begin
-                    t = @constinferred (t1 ⊗ t2)
-                end
+        @timedtestset "Tensor product: test via norm preservation" begin
+            for T in (ComplexF64,)
+                t1 = AMDGPU.rand(T, V1, V5')
+                t2 = AMDGPU.rand(T, V2 ⊗ V3, V4')
+                t = @constinferred (t1 ⊗ t2)
                 @test norm(t) ≈ norm(t1) * norm(t2)
             end
         end
         symmetricbraiding && @timedtestset "Tensor product: test via conversion" begin
             for T in (Float32, ComplexF64)
-                t1 = AMDGPU.rand(T, V2 ⊗ V3 ⊗ V1, V1)
-                t2 = AMDGPU.rand(T, V2 ⊗ V1 ⊗ V3, V2)
+                t1 = AMDGPU.rand(T, V1, V5')
+                t2 = AMDGPU.rand(T, V2 ⊗ V3, V4')
                 d1 = dim(codomain(t1))
                 d2 = dim(codomain(t2))
                 d3 = dim(domain(t1))
                 d4 = dim(domain(t2))
-                AMDGPU.@allowscalar begin
-                    t = @constinferred (t1 ⊗ t2)
-                    At = ad(t)
-                    @test ad(t) ≈ ad(t1) ⊗ ad(t2)
-                end
+                t = @constinferred (t1 ⊗ t2)
+                At = ad(t)
+                @test ad(t) ≈ ad(t1) ⊗ ad(t2)
             end
-        end=#
-        #=symmetricbraiding && @timedtestset "Tensor product: test via tensor contraction" begin
+        end
+        symmetricbraiding && @timedtestset "Tensor product: test via tensor contraction" begin
             for T in (Float32, ComplexF64)
                 t1 = AMDGPU.rand(T, V2 ⊗ V3 ⊗ V1)
                 t2 = AMDGPU.rand(T, V2 ⊗ V1 ⊗ V3)
-                AMDGPU.@allowscalar begin
-                    t = @constinferred (t1 ⊗ t2)
-                    @tensor t′[1, 2, 3, 4, 5, 6] := t1[1, 2, 3] * t2[4, 5, 6]
-                    # @test t ≈ t′ # TODO broken for symmetry: Irrep[ℤ₃]
-                end
+                t = @constinferred (t1 ⊗ t2)
+                @tensor t′[1, 2, 3, 4, 5, 6] := t1[1, 2, 3] * t2[4, 5, 6]
+                # @test t ≈ t′ # TODO broken for symmetry: Irrep[ℤ₃]
             end
-        end=# # broken due to no HIPTensor
+        end
     end
     TensorKit.empty_globalcaches!()
 end
 
-#=
 @timedtestset "Deligne tensor product: test via conversion" begin
-    Vlists1 = (Vtr,) # VSU₂)
-    Vlists2 = (Vtr,) # Vℤ₂)
-    @testset for Vlist1 in Vlists1, Vlist2 in Vlists2
+    using .TestSetup: Vtr, VRepℤ₂, VRepSU₂, VRepA4
+    @testset for Vlist1 in (Vtr, VRepSU₂), Vlist2 in (VRepℤ₂, VRepA4)
         V1, V2, V3, V4, V5 = Vlist1
         W1, W2, W3, W4, W5 = Vlist2
         for T in (Float32, ComplexF64)
             t1 = AMDGPU.rand(T, V1 ⊗ V2, V3' ⊗ V4)
             t2 = AMDGPU.rand(T, W2, W1 ⊗ W1')
-            AMDGPU.@allowscalar begin
-                t = @constinferred (t1 ⊠ t2)
-            end
+            t = @constinferred (t1 ⊠ t2)
             d1 = dim(codomain(t1))
             d2 = dim(codomain(t2))
             d3 = dim(domain(t1))
             d4 = dim(domain(t2))
-            AMDGPU.@allowscalar begin
-                @test ad(t1) ⊠ ad(t2) ≈ ad(t1 ⊠ t2)
-            end
+            @test ad(t1) ⊠ ad(t2) ≈ ad(t1 ⊠ t2)
         end
     end
-end=#
+end
