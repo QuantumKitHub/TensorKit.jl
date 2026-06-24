@@ -11,7 +11,7 @@ function Mooncake.rrule!!(::CoDual{typeof(scale!)}, C_ΔC::CoDual{<:AbstractTens
 
     function scale_pullback(::NoRData)
         copy!(C, C_cache)
-        Δαr = _needs_tangent(α) ? project_scalar(α, inner(C, ΔC)) : NoRData()
+        Δαr = _needs_tangent(α) ? TO.project_scalar(α, inner(C, ΔC)) : NoRData()
         scale!(ΔC, conj(α))
         return NoRData(), NoRData(), Δαr
     end
@@ -34,7 +34,7 @@ function Mooncake.rrule!!(::CoDual{typeof(scale!)}, C_ΔC::CoDual{<:AbstractTens
     function scale_pullback(::NoRData)
         copy!(C, C_cache)
         add!(ΔA, ΔC, conj(α))
-        Δαr = _needs_tangent(α) ? project_scalar(α, inner(A, ΔC)) : NoRData()
+        Δαr = _needs_tangent(α) ? TO.project_scalar(α, inner(A, ΔC)) : NoRData()
         zerovector!(ΔC)
         return NoRData(), NoRData(), NoRData(), Δαr
     end
@@ -58,8 +58,8 @@ function Mooncake.rrule!!(::CoDual{typeof(add!)}, C_ΔC::CoDual{<:AbstractTensor
     function add_pullback(::NoRData)
         copy!(C, C_cache)
 
-        Δαr = _needs_tangent(α) ? project_scalar(α, inner(A, ΔC)) : NoRData()
-        Δβr = _needs_tangent(β) ? project_scalar(β, inner(C, ΔC)) : NoRData()
+        Δαr = _needs_tangent(α) ? TO.project_scalar(α, inner(A, ΔC)) : NoRData()
+        Δβr = _needs_tangent(β) ? TO.project_scalar(β, inner(C, ΔC)) : NoRData()
         add!(ΔA, ΔC, conj(α))
         scale!(ΔC, conj(β))
 
