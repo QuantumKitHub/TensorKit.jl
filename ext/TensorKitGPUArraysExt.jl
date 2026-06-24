@@ -5,7 +5,7 @@ using GPUArrays: @allowscalar
 using GPUArrays.KernelAbstractions: @kernel, @index, get_backend
 
 using Strided: StridedViews
-using MatrixAlgebraKit
+using MatrixAlgebraKit, Adapt
 using TensorKit
 using TensorKit.Factorizations
 using TensorKit.Factorizations: AbstractAlgorithm
