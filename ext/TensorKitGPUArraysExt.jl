@@ -2,11 +2,12 @@ module TensorKitGPUArraysExt
 
 using GPUArrays
 using GPUArrays: @allowscalar
-using GPUArarys.KernelAbstractions: @kernel, @index, get_backend
+using GPUArrays.KernelAbstractions: @kernel, @index, get_backend
 
+using Strided: StridedViews
+using MatrixAlgebraKit
 using TensorKit
 using TensorKit.Factorizations
-using TensorKit.Strided
 using TensorKit.Factorizations: AbstractAlgorithm
 using TensorKit: SectorDict, tensormaptype, scalar, similarstoragetype, AdjointTensorMap, scalartype, project_symmetric_and_check
 import TensorKit: randisometry, rand, randn, fill_braidingsubblock!
@@ -107,7 +108,7 @@ end
 
 # Scalar implementation
 #-----------------------
-function TensorKit.scalar(t::TensorMap{T, S, 0, 0, <:AnyGPUArra}) where {T, S}
+function TensorKit.scalar(t::TensorMap{T, S, 0, 0, <:AnyGPUArray}) where {T, S}
     inds = findall(!iszero, t.data)
     return isempty(inds) ? zero(scalartype(t)) : @allowscalar @inbounds t.data[only(inds)]
 end
