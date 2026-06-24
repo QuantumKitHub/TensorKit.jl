@@ -45,7 +45,7 @@ for transform in (:permute, :transpose)
 
             # ΔA
             ip = invperm(linearize(p))
-            pΔA = _repartition(ip, A)
+            pΔA = TO.repartition(ip, numout(A))
 
             TC = VectorInterface.promote_scale(ΔC, α)
             if scalartype(ΔA) <: Real && !(TC <: Real)
@@ -57,8 +57,8 @@ for transform in (:permute, :transpose)
             end
             ΔAr = NoRData()
 
-            Δαr = isnothing(Ap) ? NoRData() : project_scalar(α, inner(Ap, ΔC))
-            Δβr = pullback_dβ(ΔC, C, β)
+            Δαr = pullback_dα(α, ΔC, Ap)
+            Δβr = pullback_dβ(β, ΔC, C)
             ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
 
             return NoRData(), ΔCr, ΔAr, NoRData(), Δαr, Δβr, map(Returns(NoRData()), ba)...
@@ -113,7 +113,7 @@ function Mooncake.rrule!!(
 
         # ΔA
         ip = invperm(linearize(p))
-        pΔA = _repartition(ip, A)
+        pΔA = TO.repartition(ip, numout(A))
         ilevels = TupleTools.permute(levels, linearize(p))
         TC = VectorInterface.promote_scale(ΔC, α)
         if scalartype(ΔA) <: Real && !(TC <: Real)
@@ -125,8 +125,8 @@ function Mooncake.rrule!!(
         end
         ΔAr = NoRData()
 
-        Δαr = isnothing(Ap) ? NoRData() : project_scalar(α, inner(Ap, ΔC))
-        Δβr = pullback_dβ(ΔC, C, β)
+        Δαr = pullback_dα(α, ΔC, Ap)
+        Δβr = pullback_dβ(β, ΔC, C)
         ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
 
         return NoRData(), ΔCr, ΔAr, NoRData(), NoRData(), Δαr, Δβr, map(Returns(NoRData()), ba)...

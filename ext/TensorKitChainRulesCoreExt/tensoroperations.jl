@@ -23,7 +23,7 @@ function ChainRulesCore.rrule(
         dC = β === Zero() ? ZeroTangent() : @thunk projectC(scale(ΔC, conj(β)))
         dA = @thunk let
             ipA = invperm(linearize(pA))
-            pdA = _repartition(ipA, A)
+            pdA = TO.repartition(ipA, numout(A))
             TA = promote_add(ΔC, α)
             # TODO: allocator
             _dA = tensoralloc_add(TA, ΔC, pdA, conjA, Val(false))
@@ -40,7 +40,7 @@ function ChainRulesCore.rrule(
                 _dα = tensorscalar(
                     tensorcontract(
                         A, ((), linearize(pA)), !conjA,
-                        tΔC, (trivtuple(TO.numind(pA)), ()), false,
+                        tΔC, (TO.trivialpermutation(TO.numind(pA)), ()), false,
                         ((), ()), One(), ba...
                     )
                 )
@@ -76,11 +76,11 @@ function ChainRulesCore.rrule(
     function pullback(ΔC′)
         ΔC = unthunk(ΔC′)
         ipAB = invperm(linearize(pAB))
-        pΔC = _repartition(ipAB, TO.numout(pA))
+        pΔC = TO.repartition(ipAB, pA)
 
         dC = β === Zero() ? ZeroTangent() : @thunk projectC(scale(ΔC, conj(β)))
         dA = @thunk let
-            ipA = _repartition(invperm(linearize(pA)), A)
+            ipA = TO.repartition(invperm(linearize(pA)), numout(A))
             conjΔC = conjA
             conjB′ = conjA ? conjB : !conjB
             TA = promote_contract(scalartype(ΔC), scalartype(B), scalartype(α))
@@ -105,7 +105,7 @@ function ChainRulesCore.rrule(
             projectA(_dA)
         end
         dB = @thunk let
-            ipB = _repartition(invperm(linearize(pB)), B)
+            ipB = TO.repartition(invperm(linearize(pB)), numout(B))
             conjΔC = conjB
             conjA′ = conjB ? conjA : !conjA
             TB = promote_contract(scalartype(ΔC), scalartype(A), scalartype(α))
@@ -167,11 +167,11 @@ function ChainRulesCore.rrule(
         dC = β === Zero() ? ZeroTangent() : @thunk projectC(scale(ΔC, conj(β)))
         dA = @thunk let
             ip = invperm((linearize(p)..., q[1]..., q[2]...))
-            pdA = _repartition(ip, A)
+            pdA = TO.repartition(ip, numout(A))
             E = one!(TO.tensoralloc_add(scalartype(A), A, q, conjA))
             twist!(E, filter(x -> !isdual(space(E, x)), codomainind(E)))
-            pE = ((), trivtuple(TO.numind(q)))
-            pΔC = (trivtuple(TO.numind(p)), ())
+            pE = ((), TO.trivialpermutation(TO.numind(q)))
+            pΔC = (TO.trivialpermutation(TO.numind(p)), ())
             TA = promote_scale(ΔC, α)
             # TODO: allocator
             _dA = tensoralloc_contract(TA, ΔC, pΔC, conjA, E, pE, conjA, pdA, Val(false))
