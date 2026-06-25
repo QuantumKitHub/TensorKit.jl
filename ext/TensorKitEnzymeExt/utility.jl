@@ -135,6 +135,7 @@ end
 @inline EnzymeRules.inactive(::typeof(TensorKit.insertleftunit), ::HomSpace, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.insertrightunit), ::HomSpace, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.removeunit), ::HomSpace, ::Any) = nothing
+@inline EnzymeRules.inactive(::typeof(TensorKit.infimum), ::Any, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.sectorstructure), ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.degeneracystructure), ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.select), s::HomSpace, i::Index2Tuple) = nothing
