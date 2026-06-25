@@ -1,6 +1,6 @@
 using Test, TestExtras
 using Adapt
-using TensorOperations, AMDGPU 
+using TensorOperations, AMDGPU
 using TensorKit
 using TensorKit: type_repr
 using TensorKit: PlanarTrivial, ℙ
