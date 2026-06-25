@@ -19,6 +19,7 @@ pullback_dC!(ΔC, β::Number) = scale!(ΔC, conj(β))
 @inline EnzymeRules.inactive_type(::Type{<:TensorKit.GenericTreeTransformer}) = true
 @inline EnzymeRules.inactive_type(::Type{<:TensorKit.VectorSpace}) = true
 
+@inline EnzymeRules.inactive(::typeof(TensorKit.infimum), ::Any, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.sectorstructure), ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.degeneracystructure), ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.select), s::HomSpace, i::Index2Tuple) = nothing

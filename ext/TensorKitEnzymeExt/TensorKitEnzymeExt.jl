@@ -13,5 +13,6 @@ using Random: AbstractRNG
 include("utility.jl")
 include("linalg.jl")
 include("indexmanipulations.jl")
+include("factorizations.jl")
 
 end
