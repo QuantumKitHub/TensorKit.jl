@@ -8,7 +8,7 @@ rng = Random.default_rng()
 
 spacelist = ad_spacelist(fast_tests)
 eltypes = (Float64, ComplexF64)
-    
+
 is_ci = get(ENV, "CI", "false") == "true"
 
 @timedtestset "Mooncake - LinearAlgebra: $(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes
