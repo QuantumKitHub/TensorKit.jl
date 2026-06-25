@@ -11,6 +11,16 @@ for pullback! in (
         end
         return Δt
     end
+    @eval function MAK.$pullback!(
+            Δt::AbstractTensorMap, ::Nothing, F, ΔF; kwargs...
+        )
+        foreachblock(Δt) do c, (Δb,)
+            Fc = block.(F, Ref(c))
+            ΔFc = block.(ΔF, Ref(c))
+            return MAK.$pullback!(Δb, nothing, Fc, ΔFc; kwargs...)
+        end
+        return Δt
+    end
 end
 for pullback! in (:qr_null_pullback!, :lq_null_pullback!)
     @eval function MAK.$pullback!(
@@ -40,6 +50,28 @@ for pullback! in (:svd_pullback!, :eig_pullback!, :eigh_pullback!)
             return nothing
         end
         return Δt
+    end
+    @eval function MAK.$pullback!(
+            Δt::AbstractTensorMap, ::Nothing, F, ΔF, inds; kwargs...
+        )
+        foreachblock(Δt) do c, (Δb,)
+            haskey(inds, c) || return nothing
+            ind = inds[c]
+            Fc = block.(F, Ref(c))
+            ΔFc = block.(ΔF, Ref(c))
+            return MAK.$pullback!(Δb, nothing, Fc, ΔFc, ind; kwargs...)
+        end
+        return Δt
+    end
+    @eval function MAK.$pullback!(
+            Δt::AbstractTensorMap, t::AbstractTensorMap, F, ΔF, ::Colon; kwargs...
+        )
+        return MAK.$pullback!(Δt, t, F, ΔF, _notrunc_ind(t); kwargs...)
+    end
+    @eval function MAK.$pullback!(
+            Δt, ::Nothing, F, ΔF; kwargs...
+        )
+        return MAK.$pullback!(Δt, nothing, F, ΔF, _notrunc_ind(Δt); kwargs...)
     end
 end
 
@@ -97,3 +129,7 @@ function MAK.remove_svd_gauge_dependence!(
     end
     return ΔU, ΔVᴴ
 end
+
+MAK.has_equal_storage(A::AbstractTensorMap, B::AbstractTensorMap) = A === B
+MAK.has_equal_storage(A::AbstractTensorMap, B::SectorVector) = false
+MAK.has_equal_storage(A::SectorVector, B::AbstractTensorMap) = false
