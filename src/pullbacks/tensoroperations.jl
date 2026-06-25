@@ -1,15 +1,3 @@
-function project_contract!(C, A, pA, conjA, B, pB, conjB, pAB, α, backend, allocator)
-    TA = promote_permute(A)
-    TB = promote_permute(B)
-    TC = TO.promote_contract(TA, TB, scalartype(α))
-
-    return if scalartype(C) <: Real && !(TC <: Real)
-        add!(C, real(TO.tensorcontract!(zerovector(C, TC), A, pA, conjA, B, pB, conjB, pAB, α, Zero(), backend, allocator)))
-    else
-        TO.tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, One(), backend, allocator)
-    end
-end
-
 function blas_contract_pullback_ΔA!(
         ΔA, ΔC, A, pA, B, pB, pAB, α, backend, allocator
     )
