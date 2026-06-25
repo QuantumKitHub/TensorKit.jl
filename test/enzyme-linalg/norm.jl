@@ -14,7 +14,12 @@ fRTs = is_ci ? (Duplicated,) : (Const, Duplicated)
     @timedtestset "$(TensorKit.type_repr(sectortype(eltype(V)))) ($T), TC $TC" for V in spacelist, T in eltypes, TC in (Const, Duplicated)
         atol = default_tol(T)
         rtol = default_tol(T)
-        C = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
+        # see https://github.com/QuantumKitHub/TensorKit.jl/issues/457
+        @static if VERSION < v"1.11.0-rc"
+            C = randn(T, V[1] ⊗ V[2] ← (V[4] ⊗ V[5])')
+        else
+            C = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
+        end
         for RT in rRTs
             EnzymeTestUtils.test_reverse(norm, RT, (C, TC), (2, Const); atol, rtol)
             EnzymeTestUtils.test_reverse(norm, RT, (C', TC), (2, Const); atol, rtol)
