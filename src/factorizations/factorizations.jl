@@ -32,6 +32,7 @@ include("truncation.jl")
 include("adjoint.jl")
 include("diagonal.jl")
 include("pullbacks.jl")
+include("pushforwards.jl")
 
 TensorKit.one!(A::AbstractMatrix) = MatrixAlgebraKit.one!(A)
 
