@@ -12,26 +12,32 @@ eltypes = (Float64, ComplexF64)
         atol = default_tol(T)
         rtol = default_tol(T)
         α = randn(T)
+        # see https://github.com/QuantumKitHub/TensorKit.jl/issues/457
+        @static if VERSION < v"1.11.0-rc"
+            CV = V[1] ⊗ V[2] ← V[4] ⊗ V[5]
+        else
+            CV = V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5]
+        end
         @testset for TC in (Duplicated,)
             for Tα in (Active, Const)
-                C = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
+                C = randn(T, CV)
                 EnzymeTestUtils.test_reverse(scale!, TC, (C, TC), (α, Tα); atol, rtol)
-                C = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
+                C = randn(T, CV)
                 EnzymeTestUtils.test_reverse(scale!, TC, (C', TC), (α, Tα); atol, rtol)
                 @testset for TA in (Duplicated,), (fc, fa) in ((identity, identity), (adjoint, adjoint))
-                    C = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
-                    A = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
+                    C = randn(T, CV)
+                    A = randn(T, CV)
                     EnzymeTestUtils.test_reverse(scale!, TC, (fc(C), TC), (fa(A), TA), (α, Tα); atol, rtol)
                 end
             end
             for Tα in (Duplicated, Const)
-                C = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
+                C = randn(T, CV)
                 EnzymeTestUtils.test_forward(scale!, TC, (C, TC), (α, Tα); atol, rtol)
-                C = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
+                C = randn(T, CV)
                 EnzymeTestUtils.test_forward(scale!, TC, (C', TC), (α, Tα); atol, rtol)
                 @testset for TA in (Duplicated,), (fc, fa) in ((identity, identity), (adjoint, adjoint))
-                    C = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
-                    A = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
+                    C = randn(T, CV)
+                    A = randn(T, CV)
                     EnzymeTestUtils.test_forward(scale!, TC, (fc(C), TC), (fa(A), TA), (α, Tα); atol, rtol)
                 end
             end

@@ -11,33 +11,39 @@ eltypes = (Float64, ComplexF64)
     atol = default_tol(T)
     rtol = default_tol(T)
 
-    C = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
-    A = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
     α = randn(T)
     β = randn(T)
 
+    # see https://github.com/QuantumKitHub/TensorKit.jl/issues/457
+    @static if VERSION < v"1.11.0-rc"
+        CV = V[1] ⊗ V[2] ← V[4] ⊗ V[5]
+    else
+        CV = V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5]
+    end
+    C = randn(T, CV)
+    A = randn(T, CV)
     for TC in (Duplicated,), TA in (Duplicated,)
-        C = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
-        A = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
+        C = randn(T, CV)
+        A = randn(T, CV)
         EnzymeTestUtils.test_reverse(add!, TC, (C, TC), (A, TA); atol, rtol, testset_name = "add! reverse TC $TC TA $TA no α no β")
         EnzymeTestUtils.test_forward(add!, TC, (C, TC), (A, TA); atol, rtol, testset_name = "add! forward TC $TC TA $TA no α no β")
         for Tα in (Active, Const)
-            C = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
-            A = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
+            C = randn(T, CV)
+            A = randn(T, CV)
             EnzymeTestUtils.test_reverse(add!, TC, (C, TC), (A, TA), (α, Tα); atol, rtol, testset_name = "add! reverse TC $TC TA $TA Tα $Tα no β")
             for Tβ in (Active, Const)
-                C = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
-                A = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
+                C = randn(T, CV)
+                A = randn(T, CV)
                 EnzymeTestUtils.test_reverse(add!, TC, (C, TC), (A, TA), (α, Tα), (β, Tβ); atol, rtol, testset_name = "add! reverse TC $TC TA $TA Tα $Tα Tβ $Tβ")
             end
         end
         for Tα in (Duplicated, Const)
-            C = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
-            A = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
+            C = randn(T, CV)
+            A = randn(T, CV)
             EnzymeTestUtils.test_forward(add!, TC, (C, TC), (A, TA), (α, Tα); atol, rtol, testset_name = "add! forward TC $TC TA $TA Tα $Tα no β")
             for Tβ in (Duplicated, Const)
-                C = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
-                A = randn(T, V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5])
+                C = randn(T, CV)
+                A = randn(T, CV)
                 EnzymeTestUtils.test_forward(add!, TC, (C, TC), (A, TA), (α, Tα), (β, Tβ); atol, rtol, testset_name = "add! forward TC $TC TA $TA Tα $Tα Tβ $Tβ")
             end
         end
