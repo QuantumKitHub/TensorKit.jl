@@ -33,6 +33,12 @@ function _canonicalize(p::IndexTuple, t::AbstractTensorMap)
     return (p₁, p₂)
 end
 
+# Whether a tensor is backed by a single dense block, so that tensor operations can bypass
+# the fusiontree machinery and act directly on the `t[]` array view.
+_has_dense_backing(::AbstractTensorMap) = false
+_has_dense_backing(t::TensorMap) = sectortype(t) === Trivial
+_has_dense_backing(t::AdjointTensorMap) = _has_dense_backing(parent(t))
+
 # tensoradd!
 function TO.tensoradd!(
         C::AbstractTensorMap,
@@ -125,6 +131,10 @@ function TO.tensorcontract!(
     )
     pAB′ = _canonicalize(pAB, C)
     @boundscheck spacecheck_contract(C, A, pA, conjA, B, pB, conjB, pAB′)
+    if _has_dense_backing(C) && _has_dense_backing(A) && _has_dense_backing(B)
+        TO.tensorcontract!(C[], A[], pA, conjA, B[], pB, conjB, pAB′, α, β, backend, allocator)
+        return C
+    end
     if conjA && conjB
         A′ = A'
         pA′ = adjointtensorindices(A, pA)
@@ -219,7 +229,7 @@ function trace_permute!(
                     q₁ = $(q₁), q₂ = $(q₂)"))
     end
 
-    if I === Trivial
+    if _has_dense_backing(tdst) && _has_dense_backing(tsrc)
         TO.tensortrace!(tdst[], tsrc[], (p₁, p₂), (q₁, q₂), false, α, β, backend)
     else
         _trace_permute!(FusionStyle(I), tdst, tsrc, (p₁, p₂), (q₁, q₂), α, β, backend)
