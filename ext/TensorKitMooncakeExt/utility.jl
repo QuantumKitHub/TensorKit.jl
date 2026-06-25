@@ -23,6 +23,7 @@ Mooncake.tangent_type(::Type{<:HomSpace}) = Mooncake.NoTangent
 @zero_derivative DefaultCtx Tuple{typeof(TensorKit.has_shared_permute), AbstractTensorMap, Index2Tuple}
 @zero_derivative DefaultCtx Tuple{typeof(TensorKit.select), HomSpace, Index2Tuple}
 @zero_derivative DefaultCtx Tuple{typeof(TensorKit.flip), HomSpace, Any}
+@zero_derivative DefaultCtx Tuple{typeof(TensorKit.adjoint), HomSpace}
 @zero_derivative DefaultCtx Tuple{typeof(TensorKit.permute), HomSpace, Index2Tuple}
 @zero_derivative DefaultCtx Tuple{typeof(TensorKit.braid), HomSpace, Index2Tuple, IndexTuple}
 @zero_derivative DefaultCtx Tuple{typeof(TensorKit.compose), HomSpace, HomSpace}
