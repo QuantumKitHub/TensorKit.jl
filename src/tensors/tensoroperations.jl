@@ -33,6 +33,13 @@ function _canonicalize(p::IndexTuple, t::AbstractTensorMap)
     return (p₁, p₂)
 end
 
+# Whether a tensor can be viewed as a single contiguous array, such that
+# the fusiontree machinery and act directly on the `t[]` view.
+has_array_view(t) = has_array_view(typeof(t))
+has_array_view(::Type) = false
+has_array_view(::Type{T}) where {T <: TensorMap} = sectortype(T) === Trivial
+has_array_view(::Type{T}) where {T <: AdjointTensorMap} = has_array_view(parenttype(T))
+
 # tensoradd!
 function TO.tensoradd!(
         C::AbstractTensorMap,
@@ -125,6 +132,10 @@ function TO.tensorcontract!(
     )
     pAB′ = _canonicalize(pAB, C)
     @boundscheck spacecheck_contract(C, A, pA, conjA, B, pB, conjB, pAB′)
+    if has_array_view(C) && has_array_view(A) && has_array_view(B)
+        TO.tensorcontract!(C[], A[], pA, conjA, B[], pB, conjB, pAB′, α, β, backend, allocator)
+        return C
+    end
     if conjA && conjB
         A′ = A'
         pA′ = adjointtensorindices(A, pA)
@@ -219,7 +230,7 @@ function trace_permute!(
                     q₁ = $(q₁), q₂ = $(q₂)"))
     end
 
-    if I === Trivial
+    if has_array_view(tdst) && has_array_view(tsrc)
         TO.tensortrace!(tdst[], tsrc[], (p₁, p₂), (q₁, q₂), false, α, β, backend)
     else
         _trace_permute!(FusionStyle(I), tdst, tsrc, (p₁, p₂), (q₁, q₂), α, β, backend)
