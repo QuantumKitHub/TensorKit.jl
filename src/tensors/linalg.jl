@@ -421,7 +421,16 @@ function exp!(t::TensorMap)
     domain(t) == codomain(t) ||
         error("Exponential of a tensor only exist when domain == codomain.")
     for (c, b) in blocks(t)
-        copy!(b, LinearAlgebra.exp!(b))
+        MatrixAlgebraKit.exponential!(b, b)
+    end
+    return t
+end
+
+function exp!((τ, t)::Tuple{Number, TensorMap})
+    domain(t) == codomain(t) ||
+        error("Exponential of a tensor only exist when domain == codomain.")
+    for (c, b) in blocks(t)
+        MatrixAlgebraKit.exponential!((τ, b), b)
     end
     return t
 end
