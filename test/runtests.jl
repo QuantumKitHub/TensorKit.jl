@@ -23,6 +23,7 @@ end
 if (Sys.isapple() && get(ENV, "CI", "false") == "true") || !isempty(VERSION.prerelease)
     filter!(!startswith("chainrules") ∘ first, testsuite)
     filter!(!startswith("mooncake") ∘ first, testsuite)
+    filter!(!startswith("enzyme") ∘ first, testsuite)
 end
 
 args = parse_args(ARGS; custom = ["fast"])
