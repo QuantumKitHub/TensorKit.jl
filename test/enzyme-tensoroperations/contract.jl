@@ -11,6 +11,7 @@ eltypes = (Float64, ComplexF64)
 
 @timedtestset "Enzyme - TensorOperations" begin
     @timedtestset verbose = true "$(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes
+        println(TensorKit.type_repr(sectortype(eltype(V)))) # just some printing for test purposes
         atol = default_tol(T)
         rtol = default_tol(T)
         symmetricbraiding = BraidingStyle(sectortype(eltype(V))) isa SymmetricBraiding
