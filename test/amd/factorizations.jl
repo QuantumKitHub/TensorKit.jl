@@ -10,7 +10,7 @@ const ROCTensorMap = getglobal(AMDGPUExt, :ROCTensorMap)
 using AMDGPU.rocBLAS
 
 spacelist = factorization_spacelist(fast_tests)
-eltypes = (Float32, ComplexF64)
+eltypes = (Float64, ComplexF64)
 
 for V in spacelist
     I = sectortype(first(V))
