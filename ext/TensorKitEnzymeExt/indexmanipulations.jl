@@ -1,5 +1,6 @@
 for transform in (:permute, :transpose)
     transform! = Symbol(transform, :!)
+    transform_pb = Symbol(transform, :_pullback_dA)
     @eval function EnzymeRules.augmented_primal(
             config::EnzymeRules.RevConfigWidth{1},
             func::Const{typeof(TK.$transform!)},
@@ -44,20 +45,11 @@ for transform in (:permute, :transpose)
         ) where {RT}
         C_cache, A_cache, Ap = cache
         Cval = something(C_cache, C.val)
-        Aval = something(A_cache, A.val)
+        bavs = map(a -> a.val, ba)
         # ΔA
         if !isa(A, Const) && !isa(C, Const)
-            ip = invperm(linearize(p.val))
-            pΔA = TO.repartition(ip, numout(Aval))
-            TC = VectorInterface.promote_scale(C.val, α.val)
-            bavs = map(a -> a.val, ba)
-            if scalartype(A.dval) <: Real && !(TC <: Real)
-                ΔAc = TO.tensoralloc_add(TC, C.dval, pΔA, false, Val(false))
-                TK.$transform!(ΔAc, C.dval, pΔA, conj(α.val), Zero(), bavs...)
-                add!(A.dval, real(ΔAc))
-            else
-                TK.$transform!(A.dval, C.dval, pΔA, conj(α.val), One(), bavs...)
-            end
+            Aval = something(A_cache, A.val)
+            TK.$transform_pb(A.dval, Aval, C.dval, C.val, p.val, α.val, bavs...)
         end
         Δα = pullback_dα(α, C, Ap)
         Δβ = pullback_dβ(β, C, Cval)
@@ -113,20 +105,10 @@ function EnzymeRules.reverse(
     C_cache, A_cache, Ap = cache
     Cval = something(C_cache, C.val)
     Aval = something(A_cache, A.val)
+    bavs = map(a -> a.val, ba)
     # ΔA
     if !isa(A, Const) && !isa(C, Const)
-        ip = invperm(linearize(p.val))
-        pΔA = TO.repartition(ip, numout(Aval))
-        ilevels = TupleTools.permute(levels.val, linearize(p.val))
-        TC = VectorInterface.promote_scale(C.dval, α.val)
-        bavs = map(a -> a.val, ba)
-        if scalartype(A.dval) <: Real && !(TC <: Real)
-            ΔAc = TO.tensoralloc_add(TC, C.dval, pΔA, false, Val(false))
-            TK.braid!(ΔAc, C.dval, pΔA, ilevels, conj(α.val), Zero(), bavs...)
-            add!(A.dval, real(ΔAc))
-        else
-            TK.add_braid!(A.dval, C.dval, pΔA, ilevels, conj(α.val), One(), bavs...)
-        end
+        TK.braid_pb(A.dval, Aval, C.dval, C.val, p.val, levels.val, α.val, bavs...)
     end
     Δαr = pullback_dα(α, C, Ap)
     Δβr = pullback_dβ(β, C, Cval)

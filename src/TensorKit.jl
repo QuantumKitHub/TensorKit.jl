@@ -285,4 +285,6 @@ include("planar/planaroperations.jl")
 # ------------------------
 include("auxiliary/ad.jl")
 
+include("pullbacks/indexmanipulations.jl")
+
 end
