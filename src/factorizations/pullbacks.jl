@@ -130,8 +130,6 @@ function MAK.remove_svd_gauge_dependence!(
     return ΔU, ΔVᴴ
 end
 
-#= # uncomment at next MAK release!
 MAK.has_equal_storage(A::AbstractTensorMap, B::AbstractTensorMap) = A === B
 MAK.has_equal_storage(A::AbstractTensorMap, B::SectorVector) = false
 MAK.has_equal_storage(A::SectorVector, B::AbstractTensorMap) = false
-=#
