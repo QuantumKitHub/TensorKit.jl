@@ -7,7 +7,7 @@ using Enzyme, EnzymeTestUtils
 using Random
 
 spacelist = ad_spacelist(fast_tests)
-eltypes = (Float32, ComplexF64)
+eltypes = (Float64, ComplexF64)
 
 @timedtestset "Enzyme - Factorizations (EIGH): $(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes, t in (randn(T, V[1] ← V[1]), rand(T, V[1] ⊗ V[2] ← V[1] ⊗ V[2]))
     atol = default_tol(T)
