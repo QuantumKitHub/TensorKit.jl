@@ -13,7 +13,7 @@ eltypes = (Float64, ComplexF64)
             atol = default_tol(T)
             rtol = default_tol(T)
             # see https://github.com/QuantumKitHub/TensorKit.jl/issues/457
-            @static if VERSION < v"1.11.0-rc"
+            if VERSION < v"1.11.0-rc" && sectortype(eltype(V)) == Trivial
                 CV = V[1] ⊗ V[2] ← V[4] ⊗ V[5]
             else
                 CV = V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5]
