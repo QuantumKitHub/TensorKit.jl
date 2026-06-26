@@ -429,6 +429,13 @@ end
 function exp!((τ, t)::Tuple{Number, TensorMap})
     domain(t) == codomain(t) ||
         error("Exponential of a tensor only exist when domain == codomain.")
+    if eltype(t) <: Real && eltype(τ) <: Complex
+        t_complex = complex(t)
+        for ((cr, br), (cc, bc)) in zip(blocks(t), blocks(t_complex))
+            MatrixAlgebraKit.exponential!((τ, br), bc)
+        end
+        return t_complex
+    end
     for (c, b) in blocks(t)
         MatrixAlgebraKit.exponential!((τ, b), b)
     end
