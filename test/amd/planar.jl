@@ -32,7 +32,6 @@ for V in spacelist
         @test storagetype(t3) == storagetype(t2)
         t4 = @testinferred adapt(scalartype(t2), t1)
         @test storagetype(t3) == storagetype(t2)
-        # allowscalar needed for the StridedView comparison
         @test t3 ≈ t2
 
         W2 = reverse(codomain(W)) ← domain(W)
@@ -129,7 +128,6 @@ end
             @tensor contractcheck = true C3[i j; k l] := A[i j; m] * B2[k l; m]
         end
 
-        #= # TODO NEEDS UPDATES TO planar/preprocessors
         A = AMDGPU.rand(T, V ← V ⊗ V)
         B = AMDGPU.rand(T, V ⊗ V ← V)
         @planar C1[i; j] := A[i; k l] * τ[k l; m n] * B[m n; j]
@@ -137,7 +135,7 @@ end
         @test C1 ≈ C2
         @test_throws SpaceMismatch("incompatible spaces for m: $V ≠ $(V')") begin
             @planar contractcheck = true C3[i; j] := A[i; k l] * τ[k l; m n] * B[n j; m]
-        end=#
+        end
     end
 
     @testset "MPS networks" begin
@@ -187,9 +185,9 @@ end
 
         @tensor ρ2[-1 -2; -3] := GL[1 -2; 3] * x[3 2; -3] * conj(x[1 2; -1])
         @plansor ρ3[-1 -2; -3] := GL[1 2; 4] * x[4 5; -3] * τ[2 3; 5 -2] * conj(x[1 3; -1])
-        #@planar ρ2′[-1 -2; -3] := GL′[1 2; 4] * x′[4 5; -3] * τ[2 3; 5 -2] *
-        #    conj(x′[1 3; -1])
-        #@test force_planar(ρ2) ≈ ρ2′
+        @planar ρ2′[-1 -2; -3] := GL′[1 2; 4] * x′[4 5; -3] * τ[2 3; 5 -2] *
+            conj(x′[1 3; -1])
+        @test force_planar(ρ2) ≈ ρ2′
         @test ρ2 ≈ ρ3
 
         # Periodic boundary conditions
@@ -203,11 +201,11 @@ end
         @plansor O_periodic2[-1 -2; -3 -4] := O[1 2; -3 6] * f1[-1; 1 3 5] *
             conj(f2[-4; 6 7 8]) * τ[2 3; 7 4] *
             τ[4 5; 8 -2]
-        #=@planar O_periodic′[-1 -2; -3 -4] := O′[1 2; -3 6] * f1′[-1; 1 3 5] *
+        @planar O_periodic′[-1 -2; -3 -4] := O′[1 2; -3 6] * f1′[-1; 1 3 5] *
             conj(f2′[-4; 6 7 8]) * τ[2 3; 7 4] *
-            τ[4 5; 8 -2]=#
+            τ[4 5; 8 -2]
         @test O_periodic1 ≈ O_periodic2
-        #@test force_planar(O_periodic1) ≈ O_periodic′
+        @test force_planar(O_periodic1) ≈ O_periodic′
     end
 
     @testset "MERA networks" begin
