@@ -187,7 +187,7 @@ for insertunit in (:insertleftunit, :insertrightunit)
                 kwargs...
             ) where {RT}
             if tsrc.val isa TensorMap && !get(kwargs, :copy, false) && !isa(tsrc, Const)
-                tsrc_cache = copy(tsrc.val)
+                tsrc_cache = tsrc.val
                 tdst = $insertunit(tsrc.val, ival.val; kwargs...)
                 Δtdst = $insertunit(tsrc.dval, ival.val; kwargs...)
             else
@@ -232,7 +232,7 @@ function EnzymeRules.augmented_primal(
     # tdst shares data with tsrc if <:TensorMap & copy=false, in this case we have to deal with correctly
     # sharing address spaces
     if tsrc.val isa TensorMap && !get(kwargs, :copy, false) && !isa(tsrc, Const)
-        tsrc_cache = copy(tsrc.val)
+        tsrc_cache = tsrc.val
         tdst = removeunit(tsrc.val, ival.val; kwargs...)
         Δtdst = removeunit(tsrc.dval, ival.val)
     else
