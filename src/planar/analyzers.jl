@@ -26,7 +26,7 @@ function get_possible_planar_indices(ex)
         return inds[keep]
     elseif isexpr(ex, :call) && ex.args[1] == :*
         length(ex.args) == 3 ||
-            error("unexpected error occured: contraction should have been decomposed into tree by now")
+            error("unexpected error occurred: contraction should have been decomposed into tree by now")
         inds1 = get_possible_planar_indices(ex.args[2])
         inds2 = get_possible_planar_indices(ex.args[3])
         inds = Any[]
