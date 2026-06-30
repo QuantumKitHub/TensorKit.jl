@@ -1,6 +1,7 @@
 for transform in (:permute, :transpose)
     transform! = Symbol(transform, :!)
     transform_pullback = Symbol(transform!, :_pullback)
+    transform_pb = Symbol(transform, :_pullback_dA)
     @eval @is_primitive(
         DefaultCtx,
         ReverseMode,
@@ -44,17 +45,7 @@ for transform in (:permute, :transpose)
             copy!(C, C_cache)
 
             # ΔA
-            ip = invperm(linearize(p))
-            pΔA = TO.repartition(ip, numout(A))
-
-            TC = VectorInterface.promote_scale(ΔC, α)
-            if scalartype(ΔA) <: Real && !(TC <: Real)
-                ΔAc = TO.tensoralloc_add(TC, ΔC, pΔA, false, Val(false))
-                TK.$transform!(ΔAc, ΔC, pΔA, conj(α), Zero(), ba...)
-                add!(ΔA, real(ΔAc))
-            else
-                TK.$transform!(ΔA, ΔC, pΔA, conj(α), One(), ba...)
-            end
+            TK.$transform_pb(ΔA, A, ΔC, C, p, α, ba...)
             ΔAr = NoRData()
 
             Δαr = pullback_dα(α, ΔC, Ap)
@@ -111,18 +102,7 @@ function Mooncake.rrule!!(
     function braid!_pullback(::NoRData)
         copy!(C, C_cache)
 
-        # ΔA
-        ip = invperm(linearize(p))
-        pΔA = TO.repartition(ip, numout(A))
-        ilevels = TupleTools.permute(levels, linearize(p))
-        TC = VectorInterface.promote_scale(ΔC, α)
-        if scalartype(ΔA) <: Real && !(TC <: Real)
-            ΔAc = TO.tensoralloc_add(TC, ΔC, pΔA, false, Val(false))
-            TK.braid!(ΔAc, ΔC, pΔA, ilevels, conj(α), Zero(), ba...)
-            add!(ΔA, real(ΔAc))
-        else
-            TK.braid!(ΔA, ΔC, pΔA, ilevels, conj(α), One(), ba...)
-        end
+        TK.braid_pb(ΔA, A, ΔC, C, p, levels, α, ba...)
         ΔAr = NoRData()
 
         Δαr = pullback_dα(α, ΔC, Ap)
