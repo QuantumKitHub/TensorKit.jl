@@ -18,7 +18,7 @@ Tβs = is_ci ? (Active,) : (Active, Const)
         symmetricbraiding = BraidingStyle(sectortype(eltype(V))) isa SymmetricBraiding
 
         symmetricbraiding && @timedtestset "permute! Tα $Tα, Tβ $Tβ" for Tα in Tαs, Tβ in Tβs
-            A = randn(T, V[1] ⊗ V[2] ← V[4] ⊗ V[5])
+            A = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
             α = randn(T)
             β = randn(T)
             p = randindextuple(numind(A))
