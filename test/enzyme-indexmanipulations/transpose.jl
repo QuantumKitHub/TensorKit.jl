@@ -17,7 +17,7 @@ Tβs = is_ci ? (Active,) : (Active, Const)
     @timedtestset "$(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes
         atol = default_tol(T)
         rtol = default_tol(T)
-        A = randn(T, V[1] ⊗ V[2] ← V[4] ⊗ V[5])
+        A = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
         α = randn(T)
         β = randn(T)
 
