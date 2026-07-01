@@ -393,8 +393,7 @@ function factorization_spacelist(fast_tests::Bool)
 end
 
 function ad_spacelist(fast_tests::Bool)
-    #return fast_tests ? (Vtr, VRepU₁, VfHubbard, VRepA4Twistedℤ₄) : (Vtr, VRepℤ₂, VRepCU₁, VfHubbard, VRepA4Twistedℤ₄, VIBMRepA4)
-    return (Vtr,)
+    return fast_tests ? (Vtr, VRepU₁, VfHubbard, VRepA4Twistedℤ₄) : (Vtr, VRepℤ₂, VRepCU₁, VfHubbard, VRepA4Twistedℤ₄, VIBMRepA4)
 end
 
 
