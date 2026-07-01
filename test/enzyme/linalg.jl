@@ -26,13 +26,9 @@ is_ci = get(ENV, "CI", "false") == "true"
         αβs = !is_ci ? vcat(zero_αβs..., (randn(T), randn(T))) : ((randn(T), randn(T)),)
         for TC in (Duplicated,), TA in (Duplicated,), TB in (Duplicated,)
             for (α, β) in αβs
-                rTαs = if α === Zero()
-                    (Const,)
-                elseif !is_ci
-                    (Active, Const)
-                else
-                    (Active,)
-                end
+                rTαs = []
+                α === Zero() || push!(rTαs, Active)
+                (α === Zero() || !is_ci) && push!(rTαs, Const)
                 rTβs = if β === Zero()
                     (Const,)
                 elseif !is_ci
