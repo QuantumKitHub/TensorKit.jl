@@ -8,6 +8,7 @@ for f in
         :eig_full, :eig_vals, :eigh_full, :eigh_vals,
         :left_polar, :right_polar,
         :project_hermitian, :project_antihermitian, :project_isometric,
+        :exponential,
     ]
     f! = Symbol(f, :!)
     @eval function MAK.default_algorithm(::typeof($f!), ::Type{T}; kwargs...) where {T <: AbstractTensorMap}
@@ -49,6 +50,7 @@ for f! in (
         :qr_null!, :lq_null!,
         :svd_vals!, :eig_vals!, :eigh_vals!,
         :project_hermitian!, :project_antihermitian!, :project_isometric!,
+        :exponential!,
     )
     @eval function MAK.$f!(t::AbstractTensorMap, N, alg::AbstractAlgorithm)
         $(f! in (:eig_vals!, :eigh_vals!, :project_hermitian!, :project_antihermitian!) && :(LinearAlgebra.checksquare(t)))
@@ -60,6 +62,31 @@ for f! in (
         end
         return N
     end
+end
+
+# Exponential with Tuple
+function MAK.exponential!((τ, t)::Tuple{E, T}, N, alg::AbstractAlgorithm) where {E <: Number, T <: AbstractTensorMap}
+    LinearAlgebra.checksquare(t)
+    foreachblock(t, N) do _, (tblock, Nblock)
+        Nblock′ = exponential!((τ, tblock), Nblock, alg)
+        # deal with the case where the output is not the same as the input
+        Nblock === Nblock′ || copy!(Nblock, Nblock′)
+        return nothing
+    end
+    return N
+end
+
+# Default algorithm for exponential with Tuple
+MAK.exponential!((τ, t)::Tuple{E, T}) where {E <: Number, T <: DiagonalTensorMap} = MAK.exponential!((τ, t), DefaultAlgorithm())
+MAK.exponential!(t::Tuple{E, T}, ::DefaultAlgorithm) where {E <: Number, T <: Diagonal} = MAK.exponential!(t, DiagonalAlgorithm())
+MAK.exponential!(t::Tuple{E, T1}, out::T2, ::DefaultAlgorithm) where {E <: Number, T1 <: Diagonal, T2 <: Diagonal} = MAK.exponential!(t, out, DiagonalAlgorithm())
+
+function MAK.default_algorithm(::typeof(exponential!), ::Type{Tuple{E, T}}; kwargs...) where {E <: Number, T}
+    return MAK.default_algorithm(exponential!, blocktype(T); kwargs...)
+end
+
+function MAK.copy_input(::typeof(exponential), (τ, t)::Tuple{E, T}) where {E <: Number, T <: AbstractTensorMap}
+    return (τ, copy_oftype(t, factorisation_scalartype(exponential, t)))
 end
 
 MAK.zero!(t::AbstractTensorMap) = zerovector!(t)
@@ -76,6 +103,7 @@ for f in [
         :left_polar, :right_polar,
         :left_orth, :right_orth, :left_null, :right_null,
         :project_hermitian, :project_antihermitian, :project_isometric,
+        :exponential,
     ]
     f! = Symbol(f, :!)
     @eval MAK.$f!(t::AbstractTensorMap, alg::DefaultAlgorithm) =
@@ -221,3 +249,9 @@ MAK.initialize_output(::typeof(project_antihermitian!), tsrc::AbstractTensorMap,
     tsrc
 MAK.initialize_output(::typeof(project_isometric!), tsrc::AbstractTensorMap, ::AbstractAlgorithm) =
     similar(tsrc)
+
+# Exponential
+# ----------------
+MAK.initialize_output(::typeof(exponential!), t::AbstractTensorMap, ::AbstractAlgorithm) = t
+MAK.initialize_output(::typeof(exponential!), (τ, t)::Tuple{Number, AbstractTensorMap}, ::AbstractAlgorithm) = t
+MAK.initialize_output(::typeof(exponential!), (τ, t)::Tuple{T1, AbstractTensorMap{T2}}, ::AbstractAlgorithm) where {T1 <: Complex, T2 <: Real} = similar(complex(t))
