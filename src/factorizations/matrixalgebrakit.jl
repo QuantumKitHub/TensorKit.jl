@@ -254,4 +254,4 @@ MAK.initialize_output(::typeof(project_isometric!), tsrc::AbstractTensorMap, ::A
 # ----------------
 MAK.initialize_output(::typeof(exponential!), t::AbstractTensorMap, ::AbstractAlgorithm) = t
 MAK.initialize_output(::typeof(exponential!), (τ, t)::Tuple{Number, AbstractTensorMap}, ::AbstractAlgorithm) = t
-MAK.initialize_output(::typeof(exponential!), (τ, t)::Tuple{T1, AbstractTensorMap{T2}}, ::AbstractAlgorithm) where {T1 <: Complex, T2 <: Real} = similar(complex(t))
+MAK.initialize_output(::typeof(exponential!), (τ, t)::Tuple{T1, AbstractTensorMap{T2}}, ::AbstractAlgorithm) where {T1 <: Complex, T2 <: Real} = similar(t, complex(eltype(t)))
