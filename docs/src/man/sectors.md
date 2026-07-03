@@ -9,7 +9,7 @@ using TensorKit
 using TensorKit.TensorKitSectors
 ```
 
-The first ingredient in order to define and construct symmetric tensors, is a framework to define symmetry sectors and their assocated fusion rules and topological data.
+The first ingredient in order to define and construct symmetric tensors, is a framework to define symmetry sectors and their associated fusion rules and topological data.
 [TensorKitSectors.jl](https://github.com/QuantumKitHub/TensorKitSectors.jl) defines an abstract supertype `Sector` that all sectors will be subtypes of
 
 ```@docs; canonical=false

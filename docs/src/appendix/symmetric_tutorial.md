@@ -241,11 +241,11 @@ dim(V, Z2Irrep(1))
 Given this physical space, we can initialize the ``ZZ`` operator as an empty `TensorMap` with the appropriate structure.
 ```@example symmetric_tutorial
 ZZ = zeros(ComplexF64, V ⊗ V ← V ⊗ V)
-``` 
+```
 To assess the underlying structure of a symmetric tensor, it is often useful to inspect its [`subblocks`](@ref subblocks),
 ```@example symmetric_tutorial
 subblocks(ZZ)
-``` 
+```
 While all entries are zero, we see that all eight valid fusion trees with two incoming irreps and two outgoing irreps [of the type above](fusiontree) are listed with their corresponding subblock data.
 Each of these subblocks is an array of shape ``(1, 1, 1, 1)`` since each irrep occurring in the space ``V`` has degeneracy 1.
 Using the [`fusiontrees`](@ref) method and the fact that we can index a `TensorMap` using a splitting/fusion tree pair, we can now fill in the nonzero subblocks of the operator by observing that the ``ZZ`` operator flips the irreps of the uncoupled charges in the domain with respect to the codomain, as shown in the diagrams above.
@@ -652,7 +652,7 @@ For each irrep space ``V^{(l)}`` we can define an orthonormal basis labeled as `
 Since we know that tensors are multilinear maps over tensor product spaces, it is natural to consider the tensor product of representation spaces in more detail.
 
 [From the representation theory of groups](https://en.wikipedia.org/wiki/Tensor_product_of_representations#Clebsch%E2%80%93Gordan_theory), it is known that the product of two irreps can in turn be decomposed into a direct sum of irreps, ``V^{(l_1)} \otimes V^{(l_2)} \cong \bigoplus_{k} V^{(k)}``.
-The precise nature of this decomposition, also refered to as the *Clebsch-Gordan problem*, is given by the so-called *Clebsch-Gordan coefficients*, which we will denote as ``C^{k}_{l_1,l_2}``.
+The precise nature of this decomposition, also referred to as the *Clebsch-Gordan problem*, is given by the so-called *Clebsch-Gordan coefficients*, which we will denote as ``C^{k}_{l_1,l_2}``.
 This set of coefficients, which can be interpreted as a ``\text{dim}\left( V^{(l_1)} \right) \times \text{dim}\left( V^{(l_2)} \right) \times \text{dim}\left( V^{(k)} \right)`` array, encodes how a basis state ``\ket{k,n} \in V^{(k)}`` corresponding to some term in the direct sum can be decomposed into a linear combination of basis vectors ``\ket{l_1,m_1} \otimes \ket{l_2,m_2}`` of the tensor product space:
 ```math
 \begin{equation}
@@ -790,7 +790,7 @@ In our current case of a spin-``1`` physical space, we have ``l_1 = l_2 = l_3 = 
 The reduced tensor element for a given ``k`` can be implemented in the following way:
 ```@example symmetric_tutorial
 function get_reduced_element(k::SU2Irrep)
-    # construct Clebsch-Gordan coefficients for coupling 1 ⊗ 1 to k   
+    # construct Clebsch-Gordan coefficients for coupling 1 ⊗ 1 to k
     f = fusiontensor(SU2Irrep(1), SU2Irrep(1), k)[:, :, :, 1]
     # project out diagonal matrix on coupled irrep space
     @tensor reduced_matrix[-1; -2] := conj(f[1 2; -1]) * SS_arr[1 2; 3 4] * f[3 4; -2]
@@ -873,7 +873,7 @@ First, we rewrite the exchange interaction in the following way:
 \end{equation}
 ```
 Here, ``\vec{S}_i`` and ``\vec{S}_j`` are spin operators on the physical irrep, while the total spin operator ``\vec{S}_i + \vec{S}_j`` can be decomposed onto the different coupled irreps ``k``.
-It is a well known fact that the quadratic sum of the generators of ``\mathsf{SU}_2``, often refered to as the [*quadratic Casimir*](https://en.wikipedia.org/wiki/Representation_theory_of_SU(2)#The_Casimir_element), commutes with all generators.
+It is a well known fact that the quadratic sum of the generators of ``\mathsf{SU}_2``, often referred to as the [*quadratic Casimir*](https://en.wikipedia.org/wiki/Representation_theory_of_SU(2)#The_Casimir_element), commutes with all generators.
 By [Schur's lemma](https://en.wikipedia.org/wiki/Schur%27s_lemma), it must then act proportionally to the identity on every irrep, where the corresponding eigenvalue is determined by the spin irrep label.
 In particular, we have for each irrep ``l``
 ```math
@@ -953,7 +953,7 @@ This observation then immediately gives the reduced tensor elements of the excha
 Using these to directly construct the corresponding symmetric `TensorMap` is much simpler than going through the explicit projection procedure using Clebsch-Gordan coefficients.
 
 For the particular example of ``\mathsf{SU}_3``, the generators are given by ``T^k = \frac{1}{2} \lambda^k`` , where ``\lambda^k`` are the [Gell-Mann matrices](https://en.wikipedia.org/wiki/Clebsch%E2%80%93Gordan_coefficients_for_SU(3)#Generators_of_the_Lie_algebra).
-Each irrep can be labeled as ``l = D(p,q)`` where ``p`` and ``q`` are refered to as the *Dynkin labels*.
+Each irrep can be labeled as ``l = D(p,q)`` where ``p`` and ``q`` are referred to as the *Dynkin labels*.
 The eigenvalue of the quadratic Casimir for a given irrep is given by [Freudenthal's formula](https://en.wikipedia.org/wiki/Weyl_character_formula#Freudenthal's_formula),
 ```math
 \Omega(D(p,q)) = \frac{1}{3} (p^2 + q^2 + 3p + 3q + pq).

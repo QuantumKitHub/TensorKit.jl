@@ -1,14 +1,14 @@
 using Test, TestExtras
 using Adapt
-using TensorOperations, CUDA, cuTENSOR
+using TensorOperations, AMDGPU
 using TensorKit
 using TensorKit: type_repr
 using TensorKit: PlanarTrivial, ℙ
 using TensorKit: planaradd!, planartrace!, planarcontract!
 
-const CUDAExt = Base.get_extension(TensorKit, :TensorKitCUDAExt)
-@assert !isnothing(CUDAExt)
-const CuTensorMap = getglobal(CUDAExt, :CuTensorMap)
+const AMDGPUExt = Base.get_extension(TensorKit, :TensorKitAMDGPUExt)
+@assert !isnothing(AMDGPUExt)
+const ROCTensorMap = getglobal(AMDGPUExt, :ROCTensorMap)
 
 spacelist = default_spacelist(fast_tests)
 
@@ -16,18 +16,18 @@ for V in spacelist
     I = sectortype(first(V))
     Istr = type_repr(I)
     BraidingStyle(I) isa NoBraiding && continue
-    @timedtestset "Braiding tensor + CUDA with symmetry: $Istr" verbose = true begin
+    @timedtestset "Braiding tensor + AMDGPU with symmetry: $Istr" verbose = true begin
         W = V[1] ⊗ V[2] ← V[2] ⊗ V[1]
         T = isreal(sectortype(W)) ? Float64 : ComplexF64
-        t1 = @constinferred BraidingTensor{T, spacetype(V[2]), CuVector{T, CUDA.DeviceMemory}}(W)
+        t1 = @constinferred BraidingTensor{T, spacetype(V[2]), ROCVector{T, AMDGPU.Mem.HIPBuffer}}(W)
         @test space(t1) == W
         @test codomain(t1) == codomain(W)
         @test domain(t1) == domain(W)
         @test scalartype(t1) == (isreal(sectortype(W)) ? Float64 : ComplexF64)
-        @test storagetype(t1) == CuVector{scalartype(t1), CUDA.DeviceMemory}
-        t2 = @constinferred BraidingTensor{ComplexF64, spacetype(V[2]), CuVector{ComplexF64, CUDA.DeviceMemory}}(W)
+        @test storagetype(t1) == ROCVector{scalartype(t1), AMDGPU.Mem.HIPBuffer}
+        t2 = @constinferred BraidingTensor{ComplexF64, spacetype(V[2]), ROCVector{ComplexF64, AMDGPU.Mem.HIPBuffer}}(W)
         @test scalartype(t2) == ComplexF64
-        @test storagetype(t2) == CuVector{ComplexF64, CUDA.DeviceMemory}
+        @test storagetype(t2) == ROCVector{ComplexF64, AMDGPU.Mem.HIPBuffer}
         t3 = @testinferred adapt(storagetype(t2), t1)
         @test storagetype(t3) == storagetype(t2)
         t4 = @testinferred adapt(scalartype(t2), t1)
@@ -42,23 +42,23 @@ for V in spacelist
         @test scalartype(complex(t1)) <: Complex
 
         t3 = @inferred TensorMap(t2)
-        @test storagetype(t3) == CuVector{ComplexF64, CUDA.DeviceMemory}
-        t4 = braid(adapt(CuArray, id(scalartype(t2), domain(t2))), ((2, 1), (3, 4)), (1, 2, 3, 4))
+        @test storagetype(t3) == ROCVector{ComplexF64, AMDGPU.Mem.HIPBuffer}
+        t4 = braid(adapt(ROCArray, id(scalartype(t2), domain(t2))), ((2, 1), (3, 4)), (1, 2, 3, 4))
         @test t1 ≈ t4
         for (c, b) in blocks(t1)
             @test block(t1, c) ≈ b ≈ block(t3, c)
         end
 
-        CUDA.@allowscalar begin
+        AMDGPU.@allowscalar begin
             for (f1, f2) in fusiontrees(t1)
                 @test t1[f1, f2] ≈ t3[f1, f2]
             end
         end
 
         t5 = @inferred TensorMap(t2')
-        @test storagetype(t5) == CuVector{ComplexF64, CUDA.DeviceMemory}
-        t6 = braid(adapt(CuArray, id(scalartype(t2), domain(t2'))), ((2, 1), (3, 4)), (4, 3, 2, 1))
-        CUDA.@allowscalar begin
+        @test storagetype(t5) == ROCVector{ComplexF64, AMDGPU.Mem.HIPBuffer}
+        t6 = braid(adapt(ROCArray, id(scalartype(t2), domain(t2'))), ((2, 1), (3, 4)), (4, 3, 2, 1))
+        AMDGPU.@allowscalar begin
             @test t5 ≈ t6
             for (c, b) in blocks(t1')
                 @test block(t1', c) ≈ b ≈ block(t5, c)
@@ -73,8 +73,8 @@ end
 
 @testset "planar methods" verbose = true begin
     @testset "planaradd" begin
-        A = CUDA.randn(ℂ^2 ⊗ ℂ^3 ← ℂ^6 ⊗ ℂ^5 ⊗ ℂ^4)
-        C = CUDA.randn((ℂ^5)' ⊗ (ℂ^6)' ← ℂ^4 ⊗ (ℂ^3)' ⊗ (ℂ^2)')
+        A = AMDGPU.randn(ℂ^2 ⊗ ℂ^3 ← ℂ^6 ⊗ ℂ^5 ⊗ ℂ^4)
+        C = AMDGPU.randn((ℂ^5)' ⊗ (ℂ^6)' ← ℂ^4 ⊗ (ℂ^3)' ⊗ (ℂ^2)')
         A′ = force_planar(A)
         C′ = force_planar(C)
         p = ((4, 3), (5, 2, 1))
@@ -84,8 +84,8 @@ end
     end
 
     @testset "planartrace" begin
-        A = CUDA.randn(ℂ^2 ⊗ ℂ^3 ← ℂ^2 ⊗ ℂ^5 ⊗ ℂ^4)
-        C = CUDA.randn((ℂ^5)' ⊗ ℂ^3 ← ℂ^4)
+        A = AMDGPU.randn(ℂ^2 ⊗ ℂ^3 ← ℂ^2 ⊗ ℂ^5 ⊗ ℂ^4)
+        C = AMDGPU.randn((ℂ^5)' ⊗ ℂ^3 ← ℂ^4)
         A′ = force_planar(A)
         C′ = force_planar(C)
         p = ((4, 2), (5,))
@@ -96,9 +96,9 @@ end
     end
 
     @testset "planarcontract" begin
-        A = CUDA.randn(ℂ^2 ⊗ ℂ^3 ← ℂ^2 ⊗ ℂ^5 ⊗ ℂ^4)
-        B = CUDA.randn(ℂ^2 ⊗ ℂ^4 ← ℂ^4 ⊗ ℂ^3)
-        C = CUDA.randn((ℂ^5)' ⊗ (ℂ^2)' ⊗ ℂ^2 ← (ℂ^2)' ⊗ ℂ^4)
+        A = AMDGPU.randn(ℂ^2 ⊗ ℂ^3 ← ℂ^2 ⊗ ℂ^5 ⊗ ℂ^4)
+        B = AMDGPU.randn(ℂ^2 ⊗ ℂ^4 ← ℂ^4 ⊗ ℂ^3)
+        C = AMDGPU.randn((ℂ^5)' ⊗ (ℂ^2)' ⊗ ℂ^2 ← (ℂ^2)' ⊗ ℂ^4)
 
         A′ = force_planar(A)
         B′ = force_planar(B)
@@ -118,18 +118,18 @@ end
 
     @testset "contractcheck" begin
         V = ℂ^2
-        A = CUDA.rand(T, V ⊗ V ← V)
-        B = CUDA.rand(T, V ⊗ V ← V')
+        A = AMDGPU.rand(T, V ⊗ V ← V)
+        B = AMDGPU.rand(T, V ⊗ V ← V')
         @tensor C1[i j; k l] := A[i j; m] * B[k l; m]
         @tensor contractcheck = true C2[i j; k l] := A[i j; m] * B[k l; m]
         @test C1 ≈ C2
-        B2 = CUDA.rand(T, V ⊗ V ← V) # wrong duality for third space
+        B2 = AMDGPU.rand(T, V ⊗ V ← V) # wrong duality for third space
         @test_throws SpaceMismatch("incompatible spaces for m: $V ≠ $(V')") begin
             @tensor contractcheck = true C3[i j; k l] := A[i j; m] * B2[k l; m]
         end
 
-        A = CUDA.rand(T, V ← V ⊗ V)
-        B = CUDA.rand(T, V ⊗ V ← V)
+        A = AMDGPU.rand(T, V ← V ⊗ V)
+        B = AMDGPU.rand(T, V ⊗ V ← V)
         @planar C1[i; j] := A[i; k l] * τ[k l; m n] * B[m n; j]
         @planar contractcheck = true C2[i; j] := A[i; k l] * τ[k l; m n] * B[m n; j]
         @test C1 ≈ C2
@@ -145,10 +145,10 @@ end
 
         # ∂AC
         # -------
-        x = CUDA.randn(T, Vmps ⊗ P ← Vmps)
-        O = CUDA.randn(T, Vmpo ⊗ P ← P ⊗ Vmpo)
-        GL = CUDA.randn(T, Vmps ⊗ Vmpo' ← Vmps)
-        GR = CUDA.randn(T, Vmps ⊗ Vmpo ← Vmps)
+        x = AMDGPU.randn(T, Vmps ⊗ P ← Vmps)
+        O = AMDGPU.randn(T, Vmpo ⊗ P ← P ⊗ Vmpo)
+        GL = AMDGPU.randn(T, Vmps ⊗ Vmpo' ← Vmps)
+        GR = AMDGPU.randn(T, Vmps ⊗ Vmpo ← Vmps)
 
         x′ = force_planar(x)
         O′ = force_planar(O)
@@ -166,7 +166,7 @@ end
 
         # ∂AC2
         # -------
-        x2 = CUDA.randn(T, Vmps ⊗ P ← Vmps ⊗ P')
+        x2 = AMDGPU.randn(T, Vmps ⊗ P ← Vmps ⊗ P')
         x2′ = force_planar(x2)
         @tensor contractcheck = true y2[-1 -2; -3 -4] := GL[-1 7; 6] * x2[6 5; 1 3] *
             O[7 -2; 5 4] * O[4 -4; 3 2] *
@@ -177,7 +177,7 @@ end
 
         # transfer matrix
         # ----------------
-        v = CUDA.randn(T, Vmps ← Vmps)
+        v = AMDGPU.randn(T, Vmps ← Vmps)
         v′ = force_planar(v)
         @tensor ρ[-1; -2] := x[-1 2; 1] * conj(x[-2 2; 3]) * v[1; 3]
         @planar ρ′[-1; -2] := x′[-1 2; 1] * conj(x′[-2 2; 3]) * v′[1; 3]
@@ -211,10 +211,10 @@ end
     @testset "MERA networks" begin
         Vmera = ℂ^2
 
-        u = CUDA.randn(T, Vmera ⊗ Vmera ← Vmera ⊗ Vmera)
-        w = CUDA.randn(T, Vmera ⊗ Vmera ← Vmera)
-        ρ = CUDA.randn(T, Vmera ⊗ Vmera ⊗ Vmera ← Vmera ⊗ Vmera ⊗ Vmera)
-        h = CUDA.randn(T, Vmera ⊗ Vmera ⊗ Vmera ← Vmera ⊗ Vmera ⊗ Vmera)
+        u = AMDGPU.randn(T, Vmera ⊗ Vmera ← Vmera ⊗ Vmera)
+        w = AMDGPU.randn(T, Vmera ⊗ Vmera ← Vmera)
+        ρ = AMDGPU.randn(T, Vmera ⊗ Vmera ⊗ Vmera ← Vmera ⊗ Vmera ⊗ Vmera)
+        h = AMDGPU.randn(T, Vmera ⊗ Vmera ⊗ Vmera ← Vmera ⊗ Vmera ⊗ Vmera)
 
         u′ = force_planar(u)
         w′ = force_planar(w)
@@ -265,8 +265,8 @@ end
         T = Float64
         V1 = ℂ^2
         V2 = ℂ^3
-        t1 = CUDA.randn(T, V1 ← V2)
-        t2 = CUDA.randn(T, V2 ← V1)
+        t1 = AMDGPU.randn(T, V1 ← V2)
+        t2 = AMDGPU.randn(T, V2 ← V1)
 
         tr1 = @planar opt = true t1[a; b] * t2[b; a] / 2
         tr2 = @planar opt = true t1[d; a] * t2[b; c] * 1 / 2 * τ[c b; a d]
@@ -290,9 +290,9 @@ end
     end
     @testset "Issue 262" begin
         V = ℂ^2
-        A = CUDA.randn(T, V ← V)
-        B = CUDA.randn(T, V ← V')
-        C = CUDA.randn(T, V' ← V)
+        A = AMDGPU.randn(T, V ← V)
+        B = AMDGPU.randn(T, V ← V')
+        C = AMDGPU.randn(T, V' ← V)
         @planar D1[i; j] := A[i; j] + B[i; k] * C[k; j]
         @planar D2[i; j] := B[i; k] * C[k; j] + A[i; j]
         @test D1 ≈ D2
