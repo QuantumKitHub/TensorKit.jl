@@ -94,7 +94,7 @@ breaking changes:
 3. The constructors for creating tensors with randomly initialised data, of the form
    `TensorMap(randn, T, codomain ← domain)`, are being replaced with
    `randn(T, codomain ← domain)`. Hence, we overload the methods `rand` and `randn` from
-   Base (actually, Random, and also `Random.randexp`) and mimick the `Array` constructors,
+   Base (actually, Random, and also `Random.randexp`) and mimic the `Array` constructors,
    relying on the fact that we use spaces instead of integers to characterise the tensor
    structure. As with integer-based `rand` and `randn`, a custom random number generator
    from the `Random` module can be passed as the first argument, and the scalar type `T` is
@@ -134,7 +134,7 @@ Major non-breaking changes include:
 
 To export `TensorMap` data from TensorKit.jl v0.12.7 or earlier, you should first export the
 data there in a format that is explicit about how tensor data is associated with the
-structural part of the tensor, i.e. the splitting and fusion tree pairs. Therefore, on the 
+structural part of the tensor, i.e. the splitting and fusion tree pairs. Therefore, on the
 older version of TensorKit.jl, use the following code to save the data
 
 ```julia

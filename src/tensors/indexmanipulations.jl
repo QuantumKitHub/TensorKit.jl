@@ -553,8 +553,7 @@ Base.@deprecate(
     if p[1] === codomainind(tsrc) && p[2] === domainind(tsrc)
         add!(tdst, tsrc, α, β)
     else
-        I = sectortype(tdst)
-        if I === Trivial
+        if has_array_view(tdst) && has_array_view(tsrc)
             TO.tensoradd!(tdst[], tsrc[], p, false, α, β, backend, allocator)
         else
             ntasks = use_threaded_transform(tdst, transformer) ? get_num_transformer_threads() : 1
