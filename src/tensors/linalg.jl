@@ -416,31 +416,7 @@ function Base.:(/)(t1::AbstractTensorMap, t2::AbstractTensorMap)
     return t
 end
 
-# TensorMap exponentation:
-function exp!(t::TensorMap)
-    domain(t) == codomain(t) ||
-        error("Exponential of a tensor only exist when domain == codomain.")
-    for (c, b) in blocks(t)
-        MatrixAlgebraKit.exponential!(b, b)
-    end
-    return t
-end
-
-function exp!((τ, t)::Tuple{Number, TensorMap})
-    domain(t) == codomain(t) ||
-        error("Exponential of a tensor only exist when domain == codomain.")
-    if eltype(t) <: Real && eltype(τ) <: Complex
-        t_complex = complex(t)
-        for ((cr, br), (cc, bc)) in zip(blocks(t), blocks(t_complex))
-            MatrixAlgebraKit.exponential!((τ, br), bc)
-        end
-        return t_complex
-    end
-    for (c, b) in blocks(t)
-        MatrixAlgebraKit.exponential!((τ, b), b)
-    end
-    return t
-end
+@deprecate exp!(t) exponential!(t)
 
 # Sylvester equation with TensorMap objects:
 function LinearAlgebra.sylvester(A::AbstractTensorMap, B::AbstractTensorMap, C::AbstractTensorMap)
