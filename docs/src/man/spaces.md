@@ -113,7 +113,7 @@ CartesianSpace
 ComplexSpace
 ```
 
-They represent the Euclidean spaces ``ℝ^d`` or ``C^d`` without further inner structure.
+They represent the Euclidean spaces ``ℝ^d`` or ``ℂ^d`` without further inner structure.
 They can be created using the syntax `CartesianSpace(d) == ℝ^d` and `ComplexSpace(d) == ℂ^d`, or `ComplexSpace(d, true) == ComplexSpace(d; dual = true) == (ℂ^d)'` for the dual space of the latter.
 Note that the brackets are required because of the precedence rules, since `d' == d` for `d::Integer`.
 
