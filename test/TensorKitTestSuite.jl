@@ -21,18 +21,16 @@ TensorKitTestSuite.test_tensors((V1, V2, V3, V4, V5)) # 5 mutually compatible sp
 ```
 
 The three entry points above are independent and may be run selectively.
-
-Additionally, this test suite exports the following convenience testing utilities:
-* [`smallset`](@ref)
-* [`randsector`](@ref)
-* [`random_fusion`](@ref)
-* [`hasfusiontensor`](@ref)
+This module additionally exports:
 * [`force_planar`](@ref)
+
+Sector-level helpers are reused from `TensorKitSectors.SectorTestSuite` internally,
+but deliberately *not* re-exported here.
 """
 module TensorKitTestSuite
 
 export test_fusiontrees, test_spaces, test_tensors
-export smallset, randsector, random_fusion, hasfusiontensor, force_planar
+export force_planar
 
 using Test
 using TestExtras
@@ -43,12 +41,20 @@ using TupleTools
 using Combinatorics: permutations
 using TensorOperations
 using MatrixAlgebraKit: left_polar, isunitary
-using Base.Iterators: take, product
 
 using TensorKit
 using TensorKit: type_repr, FusionTreeBlock, ℙ, PlanarTrivial, hassector, HomSpace
 import TensorKit as TK
 using TensorKitSectors
+
+# Reuse TensorKitSectors's own sector-level test helpers
+sectortestsuite_path = joinpath(
+    dirname(dirname(pathof(TensorKitSectors))), "test", "testsuite.jl"
+)
+include(sectortestsuite_path)
+using .SectorTestSuite: smallset, randsector, hasfusiontensor
+using .SectorTestSuite: can_fuse, F_unitarity_test, R_unitarity_test
+import .SectorTestSuite: random_fusion # TODO: is the method added below needed?
 
 const testgroups = Dict{Symbol, Dict{String, Expr}}(
     :fusiontrees => Dict{String, Expr}(),
@@ -78,7 +84,7 @@ Important: Whatever is passed as `name` becomes part of the generated function t
 In particular, a `safe_name` is made where `name`'s spaces are replaced by underscores, and everything becomes lowercase.
 One then calls `test_<testgroup>_<safe_name>`. This way, individual entries can be invoked without running the whole test group.
 """
-macro testsuite(testgroup, name, ex) #TODO: rename
+macro testsuite(testgroup, name, ex)
     Meta.isexpr(ex, :(->)) || error("@testsuite requires an `arg -> body` expression")
     testgroupsym = testgroup isa QuoteNode ? testgroup.value : testgroup
     safe_name = lowercase(replace(name, r"[^A-Za-z0-9]+" => "_"))
@@ -142,58 +148,16 @@ end
 
 # Sector utilities
 # ----------------
-# TODO: replace with the ones from TensorKitSectors.SectorTestSuite
-smallset(::Type{I}) where {I <: Sector} = take(values(I), 5)
-function smallset(::Type{ProductSector{Tuple{I1, I2}}}) where {I1, I2}
-    iter = product(smallset(I1), smallset(I2))
-    s = collect(i ⊠ j for (i, j) in iter if dim(i) * dim(j) <= 6)
-    return length(s) > 6 ? rand(s, 6) : s
-end
-function smallset(::Type{ProductSector{Tuple{I1, I2, I3}}}) where {I1, I2, I3}
-    iter = product(smallset(I1), smallset(I2), smallset(I3))
-    s = collect(i ⊠ j ⊠ k for (i, j, k) in iter if dim(i) * dim(j) * dim(k) <= 6)
-    return length(s) > 6 ? rand(s, 6) : s
-end
-
-function randsector(::Type{I}) where {I <: Sector}
-    s = collect(smallset(I))
-    a = rand(s)
-    while isunit(a) # don't use trivial label
-        a = rand(s)
-    end
-    return a
-end
-
-function hasfusiontensor(I::Type{<:Sector})
-    try
-        u = first(allunits(I))
-        fusiontensor(u, u, u)
-        return true
-    catch e
-        if e isa MethodError
-            return false
-        else
-            rethrow(e)
-        end
-    end
-end
-
 """
     random_fusion(I::Type{<:Sector}, ::Val{N}) where {N}
 
-Returns an `N`-tuple of sectors of type `I` that can consistently be used as the
-uncoupled sectors of a fusion tree, i.e. consecutive sectors have a non-empty fusion product.
+Returns an `NTuple{N,I}` of sectors that can consistently be used as the uncoupled
+sectors of a fusion tree, i.e. consecutive sectors have a non-empty fusion product.
+Thin wrapper around `SectorTestSuite.random_fusion(I, N::Int)`.
 """
-function random_fusion(I::Type{<:Sector}, ::Val{N}) where {N} #TODO: merge with TKS random_fusion
-    N == 1 && return (randsector(I),)
-    tail = random_fusion(I, Val(N - 1))
-    s = randsector(I)
-    counter = 0
-    while isempty(⊗(s, first(tail))) && counter < 20
-        counter += 1
-        s = (counter < 20) ? randsector(I) : leftunit(first(tail))
-    end
-    return (s, tail...)
+function random_fusion(I::Type{<:Sector}, ::Val{N}) where {N}
+    v = random_fusion(I, N)
+    return ntuple(i -> v[i], Val(N))
 end
 
 """

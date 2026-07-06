@@ -24,7 +24,9 @@ using Zygote: Zygote, rrule_via_ad
 
 include(joinpath(@__DIR__, "TensorKitTestSuite.jl"))
 using .TensorKitTestSuite
+# not exported by TensorKitTestSuite to avoid clash with TensorKitSectors.SectorTestSuite
 using .TensorKitTestSuite: _isunitary, _isone
+using .TensorKitTestSuite: smallset, randsector, hasfusiontensor, random_fusion
 
 Random.seed!(123456)
 
@@ -68,10 +70,6 @@ default_tol(::Type{<:Union{Float64, Complex{Float64}}}) = 1.0e-5
 
 # Sector lists
 # --------------
-
-# TODO: make the changes to make this compatible with also importing TKS's SectorTestSuite
-# there's some overlap in names, and TKS's SectorTestSuite has some of these functions already
-
 uniquefusionsectorlist = (
     Z2Irrep, Z3Irrep, Z4Irrep, Z3Irrep ⊠ Z4Irrep, U1Irrep,
     FermionParity, FermionParity ⊠ FermionParity, FermionNumber, # fermionic
