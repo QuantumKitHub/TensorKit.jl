@@ -23,6 +23,7 @@ TensorKitTestSuite.test_tensors((V1, V2, V3, V4, V5)) # 5 mutually compatible sp
 The three entry points above are independent and may be run selectively.
 This module additionally exports:
 * [`force_planar`](@ref)
+* [`eval_show`](@ref)
 
 Sector-level helpers are reused from `TensorKitSectors.SectorTestSuite` internally,
 but deliberately *not* re-exported here.
@@ -30,7 +31,7 @@ but deliberately *not* re-exported here.
 module TensorKitTestSuite
 
 export test_fusiontrees, test_spaces, test_tensors
-export force_planar
+export force_planar, eval_show
 
 using Test
 using TestExtras
@@ -197,6 +198,17 @@ end
 _isunitary(x::Number; kwargs...) = isapprox(x * x', one(x); kwargs...)
 _isunitary(x; kwargs...) = isunitary(x; kwargs...)
 _isone(x; kwargs...) = isapprox(x, one(x); kwargs...)
+
+"""
+    eval_show(x)
+
+Use `show` to generate a string representation of `x`, then parse and evaluate the resulting expression.
+"""
+function eval_show(x)
+    str = sprint(show, x; context = (:module => @__MODULE__))
+    ex = Meta.parse(str)
+    return eval(ex)
+end
 
 include("testsuite/fusiontrees.jl")
 include("testsuite/spaces.jl")

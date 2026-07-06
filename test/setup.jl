@@ -2,7 +2,7 @@ module TestSetup
 
 export randindextuple, randcircshift, _repartition, trivtuple
 export default_tol
-export smallset, randsector, hasfusiontensor, force_planar
+export smallset, randsector, hasfusiontensor, force_planar, eval_show
 export random_fusion
 export sectorlist, fast_sectorlist
 # export dim_isapprox

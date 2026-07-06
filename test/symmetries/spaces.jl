@@ -5,18 +5,6 @@ using TensorKit: hassector, type_repr, HomSpace, sectorequal, sectorhash
 # TODO: remove this once type_repr works for all included types
 using TensorKitSectors
 
-
-"""
-    eval_show(x)
-
-Use `show` to generate a string representation of `x`, then parse and evaluate the resulting expression.
-"""
-function eval_show(x) #TODO: move this to setup.jl
-    str = sprint(show, x; context = (:module => @__MODULE__))
-    ex = Meta.parse(str)
-    return eval(ex)
-end
-
 @timedtestset "Fields" begin
     @test isa(ℝ, Field)
     @test isa(ℂ, Field)

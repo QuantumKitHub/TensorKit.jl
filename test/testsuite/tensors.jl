@@ -829,8 +829,8 @@ end
     @test W' == (V1 ⊗ V2 → (V3 ⊗ V4 ⊗ V5)')
     @test codomain(W) == V1 ⊗ V2
     @test domain(W)' == V3 ⊗ V4 ⊗ V5
-    @test _eval_show(W) == W
-    @test _eval_show(typeof(W)) == typeof(W)
+    @test eval_show(W) == W
+    @test eval_show(typeof(W)) == typeof(W)
     @test spacetype(W) == typeof(V1)
     @test sectortype(W) == sectortype(V1)
     @test W[1] == V1

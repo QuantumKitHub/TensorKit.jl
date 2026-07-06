@@ -1,17 +1,4 @@
 # GradedSpace
-# ===========
-# Ported from the sector-parametrized part of test/symmetries/spaces.jl.
-
-"""
-    eval_show(x)
-
-Use `show` to generate a string representation of `x`, then parse and evaluate the resulting expression.
-"""
-function eval_show(x) #TODO: move this function to setup so it doesn't repeat
-    str = sprint(show, x; context = (:module => @__MODULE__))
-    ex = Meta.parse(str)
-    return eval(ex)
-end
 
 @testsuite :spaces "graded space" I -> begin
     if Base.IteratorSize(values(I)) === Base.IsInfinite()
