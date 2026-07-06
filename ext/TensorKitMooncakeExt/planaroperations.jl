@@ -41,52 +41,16 @@
 #     function planartrace_pullback(::NoRData)
 #         copy!(C, C_cache)
 #
-#         ΔAr = planartrace_pullback_ΔA!(ΔA, ΔC, A, p, q, α, backend, allocator) # this typically returns NoRData()
-#         Δαr = planartrace_pullback_Δα(ΔC, A, p, q, α, backend, allocator)
+#         ΔAr = TK.planartrace_pullback_ΔA!(ΔA, ΔC, A, p, q, α, backend, allocator) # this typically returns nothing
+#         Δαr = TK.planartrace_pullback_Δα(ΔC, A, p, q, α, backend, allocator)
 #         Δβr = pullback_dβ(ΔC, C, β)
-#         ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
+#         ΔCr = pullback_dC!(ΔC, β) # this typically returns nothing
 #
 #         return NoRData(),
-#             ΔCr, ΔAr, NoRData(), NoRData(),
+#             NoRData(), NoRData(), NoRData(), NoRData(),
 #             Δαr, Δβr, NoRData(), NoRData()
 #     end
 #
 #     return C_ΔC, planartrace_pullback
 # end
 
-# function planartrace_pullback_dA!(
-#         ΔA, ΔC, A, p, q, α, backend, allocator
-#     )
-#     if length(q[1]) == 0
-#         ip = invperm(linearize(p))
-#         pΔA = TK._repartition(ip, A)
-#         TK.transpose!(ΔA, ΔC, pΔA, conj(α), One(), backend, allocator)
-#         return NoRData()
-#     end
-#     # if length(q[1]) == 1
-#     #     ip = invperm((p[1]..., q[2]..., p[2]..., q[1]...))
-#     #     pdA = TK._repartition(ip, A)
-#     #     E = one!(TO.tensoralloc_add(scalartype(A), A, q, false))
-#     #     twist!(E, filter(x -> !isdual(space(E, x)), codomainind(E)))
-#     #     # pE = ((), TK.trivtuple(TO.numind(q)))
-#     #     # pΔC = (TK.trivtuple(TO.numind(p)), ())
-#     #     TensorKit.planaradd!(ΔA, ΔC ⊗ E, pdA, conj(α), One(), backend, allocator)
-#     #     return NoRData()
-#     # end
-#     error("The reverse rule for `planartrace` is not yet implemented")
-# end
-#
-# function planartrace_pullback_dα(
-#         ΔC, A, p, q, α, backend, allocator
-#     )
-#     Tdα = Mooncake.rdata_type(Mooncake.tangent_type(typeof(α)))
-#     Tdα === NoRData && return NoRData()
-#
-#     # TODO: this result might be easier to compute as:
-#     # C′ = βC + α * trace(A) ⟹ At = (C′ - βC) / α
-#     At = TO.tensoralloc_add(scalartype(A), A, p, false, Val(true), allocator)
-#     TensorKit.planartrace!(At, A, p, q, One(), Zero(), backend, allocator)
-#     Δα = project_scalar(α, inner(At, ΔC))
-#     TO.tensorfree!(At, allocator)
-#     return Δα
-# end
