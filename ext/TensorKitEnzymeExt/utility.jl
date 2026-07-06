@@ -15,9 +15,18 @@ pullback_dC!(ΔC, β::Number) = scale!(ΔC, conj(β))
 # Ignore derivatives
 # ------------------
 
+@inline EnzymeRules.inactive_type(::Type{TensorKit.GenericFusion}) = true
+@inline EnzymeRules.inactive_type(::Type{TensorKit.UniqueFusion}) = true
+@inline EnzymeRules.inactive_type(::Type{TensorKit.MultipleFusion}) = true
+@inline EnzymeRules.inactive_type(::Type{TensorKit.SimpleFusion}) = true
+@inline EnzymeRules.inactive_type(::Type{TensorKit.MultiplicityFreeFusion}) = true
 @inline EnzymeRules.inactive_type(::Type{<:TensorKit.FusionTree}) = true
+@inline EnzymeRules.inactive_type(::Type{<:TensorKit.FusionTreeDict}) = true
+@inline EnzymeRules.inactive_type(::Type{<:TensorKit.FusionTreeBlock}) = true
+@inline EnzymeRules.inactive_type(::Type{<:TensorKit.FusionTreePair}) = true
 @inline EnzymeRules.inactive_type(::Type{<:TensorKit.GenericTreeTransformer}) = true
 @inline EnzymeRules.inactive_type(::Type{<:TensorKit.VectorSpace}) = true
+@inline EnzymeRules.inactive_type(::Type{<:TensorKit.LRU}) = true
 
 function EnzymeRules.augmented_primal(
         config::EnzymeRules.RevConfigWidth{1},
@@ -34,7 +43,7 @@ function EnzymeRules.augmented_primal(
     else
         nothing
     end
-    return EnzymeRules.AugmentedReturn(ret, dret, dret)
+    return EnzymeRules.AugmentedReturn(ret, dret, nothing)
 end
 
 function EnzymeRules.reverse(
@@ -129,6 +138,10 @@ function EnzymeRules.forward(
     end
 end
 
+@inline EnzymeRules.inactive(::typeof(TensorKit.planar_trace), ::TensorKit.FusionTreePair, ::TensorKit.Index2Tuple, ::TensorKit.Index2Tuple) = nothing
+@inline EnzymeRules.inactive(::typeof(TensorKit.fusiontrees), ::Any) = nothing
+@inline EnzymeRules.inactive(::typeof(TensorKit.fusiontrees), ::Any, ::Any) = nothing
+@inline EnzymeRules.inactive(::typeof(TensorKit.fusiontrees), ::Any, ::Any, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.fsbraid), ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.fsbraid), ::Any, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.artin_braid), ::Any, ::Any) = nothing
