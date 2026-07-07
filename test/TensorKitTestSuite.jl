@@ -47,6 +47,7 @@ using TensorKit
 using TensorKit: type_repr, FusionTreeBlock, ℙ, PlanarTrivial, hassector, HomSpace
 import TensorKit as TK
 using TensorKitSectors
+using TensorKitSectors: ×
 
 # Reuse TensorKitSectors's own sector-level test helpers
 sectortestsuite_path = joinpath(
