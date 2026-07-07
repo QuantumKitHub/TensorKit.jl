@@ -15,12 +15,13 @@ testsuite_path = joinpath(
 include(testsuite_path)
 using .TensorKitTestSuite
 
-TensorKitTestSuite.test_fusiontrees(MySector)
+TensorKitTestSuite.test_single_fusiontrees(MySector)
+TensorKitTestSuite.test_double_fusiontrees(MySector)
 TensorKitTestSuite.test_spaces(MySector)
 TensorKitTestSuite.test_tensors((V1, V2, V3, V4, V5)) # 5 mutually compatible spaces
 ```
 
-The three entry points above are independent and may be run selectively.
+The four entry points above are independent and may be run selectively.
 This module additionally exports:
 * [`force_planar`](@ref)
 * [`eval_show`](@ref)
@@ -30,7 +31,7 @@ but deliberately *not* re-exported here.
 """
 module TensorKitTestSuite
 
-export test_fusiontrees, test_spaces, test_tensors
+export test_single_fusiontrees, test_double_fusiontrees, test_spaces, test_tensors
 export force_planar, eval_show
 
 using Test
@@ -59,7 +60,8 @@ using .SectorTestSuite: can_fuse, F_unitarity_test, R_unitarity_test
 import .SectorTestSuite: random_fusion # TODO: is the method added below needed?
 
 const testgroups = Dict{Symbol, Dict{String, Expr}}(
-    :fusiontrees => Dict{String, Expr}(),
+    :single_fusiontrees => Dict{String, Expr}(),
+    :double_fusiontrees => Dict{String, Expr}(),
     :spaces => Dict{String, Expr}(),
     :tensors => Dict{String, Expr}(),
 )
@@ -78,9 +80,9 @@ end
         # test code here
     end
 
-Register a testsuite entry under `testgroup` (one of `:fusiontrees`, `:spaces`,`:tensors`).
-The body is executed with a single argument: the concrete `Sector` type
-under test (for `:fusiontrees`/`:spaces`), or a 5-tuple/vector of mutually compatible spaces (for `:tensors`). 
+Register a testsuite entry under `testgroup` (one of `:single_fusiontrees`, `:double_fusiontrees`, `:spaces`,`:tensors`).
+The body is executed with a single argument: the concrete `Sector` type under test
+(for `:single_fusiontrees`, `:double_fusiontrees` and `:spaces`), or a 5-tuple/vector of mutually compatible spaces (for `:tensors`). 
 
 Important: Whatever is passed as `name` becomes part of the generated function that must be called to run that body.
 In particular, a `safe_name` is made where `name`'s spaces are replaced by underscores, and everything becomes lowercase.
@@ -101,14 +103,28 @@ macro testsuite(testgroup, name, ex)
 end
 
 """
-    test_fusiontrees(I::Type{<:Sector})
+    test_single_fusiontrees(I::Type{<:Sector})
 
-Runs the entire fusion-tree manipulation test suite (single and double fusion trees)
-on sector type `I`.
+Runs the single fusion-tree manipulation test suite on sector type `I`.
 """
-function test_fusiontrees(I::Type{<:Sector})
+function test_single_fusiontrees(I::Type{<:Sector})
     return @testset "$(type_repr(I))" begin
-        for (name, lambda) in testgroups[:fusiontrees]
+        for (name, lambda) in testgroups[:single_fusiontrees]
+            @testset "$name" begin
+                _run_testsuite_entry(lambda, I)
+            end
+        end
+    end
+end
+
+"""
+    test_double_fusiontrees(I::Type{<:Sector})
+
+Runs the double fusion-tree manipulation test suite on sector type `I`.
+"""
+function test_double_fusiontrees(I::Type{<:Sector})
+    return @testset "$(type_repr(I))" begin
+        for (name, lambda) in testgroups[:double_fusiontrees]
             @testset "$name" begin
                 _run_testsuite_entry(lambda, I)
             end

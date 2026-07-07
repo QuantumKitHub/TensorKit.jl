@@ -2,7 +2,7 @@
 
 # Single fusion trees
 # -------------------
-@testsuite :fusiontrees "iterate and printing" I -> begin
+@testsuite :single_fusiontrees "iterate and printing" I -> begin
     N = 5
     out = random_fusion(I, Val(N))
     isdual = ntuple(n -> rand(Bool), N)
@@ -23,7 +23,7 @@
     @test eval(Meta.parse(sprint(show, f; context = (:module => @__MODULE__)))) == f
 end
 
-@testsuite :fusiontrees "constructor properties" I -> begin
+@testsuite :single_fusiontrees "constructor properties" I -> begin
     for u in allunits(I)
         @constinferred FusionTree((), u, (), (), ())
         @constinferred FusionTree((u,), u, (false,), (), ())
@@ -73,7 +73,7 @@ end
 end
 
 # Basic associativity manipulations of individual fusion trees
-@testsuite :fusiontrees "split and join" I -> begin
+@testsuite :single_fusiontrees "split and join" I -> begin
     N = 6
     uncoupled = random_fusion(I, Val(N))
     coupled = rand(collect(⊗(uncoupled...)))
@@ -88,7 +88,7 @@ end
     end
 end
 
-@testsuite :fusiontrees "multi Fmove" I -> begin
+@testsuite :single_fusiontrees "multi Fmove" I -> begin
     N = 6
     uncoupled = random_fusion(I, Val(N))
     coupled = rand(collect(⊗(uncoupled...)))
@@ -151,7 +151,7 @@ end
     end
 end
 
-@testsuite :fusiontrees "insertat" I -> begin
+@testsuite :single_fusiontrees "insertat" I -> begin
     # just check some basic consistency properties here
     # correctness should follow from multi_Fmove tests
     N = 4
@@ -191,7 +191,7 @@ end
     end
 end
 
-@testsuite :fusiontrees "merging" I -> begin
+@testsuite :single_fusiontrees "merging" I -> begin
     N = 3
     out1 = random_fusion(I, Val(N))
     out2 = random_fusion(I, Val(N))
@@ -243,7 +243,7 @@ end
 end
 
 # Duality tests
-@testsuite :fusiontrees "elementary planar trace" I -> begin
+@testsuite :single_fusiontrees "elementary planar trace" I -> begin
     N = 5
     uncoupled = random_fusion(I, Val(N))
     coupled = rand(collect(⊗(uncoupled...)))
@@ -346,7 +346,7 @@ function _random_doubletree_setup(I::Type{<:Sector})
     return N, src, A
 end
 
-@testsuite :fusiontrees "bending" I -> begin
+@testsuite :double_fusiontrees "bending" I -> begin
     _, src, A = _random_doubletree_setup(I)
     # single bend
     dst, U = @constinferred TK.bendright(src)
@@ -378,7 +378,7 @@ end
     end
 end
 
-@testsuite :fusiontrees "folding" I -> begin
+@testsuite :double_fusiontrees "folding" I -> begin
     _, src, A = _random_doubletree_setup(I)
     # single bend
     dst, U = @constinferred TK.foldleft(src)
@@ -410,7 +410,7 @@ end
     end
 end
 
-@testsuite :fusiontrees "repartitioning" I -> begin
+@testsuite :double_fusiontrees "repartitioning" I -> begin
     N, src, A = _random_doubletree_setup(I)
     for n in 0:(2 * N)
         dst, U = @constinferred TK.repartition(src, $n)
@@ -436,7 +436,7 @@ end
     end
 end
 
-@testsuite :fusiontrees "transposition" I -> begin
+@testsuite :double_fusiontrees "transposition" I -> begin
     N, src, A = _random_doubletree_setup(I)
     for n in 0:(2N)
         i0 = rand(1:(2N))
@@ -470,7 +470,7 @@ end
     end
 end
 
-@testsuite :fusiontrees "permutation and braiding" I -> begin
+@testsuite :double_fusiontrees "permutation and braiding" I -> begin
     BraidingStyle(I) isa HasBraiding || return nothing
     N, src, A = _random_doubletree_setup(I)
     for n in 0:(2N)
@@ -526,7 +526,7 @@ end
     end
 end
 
-@testsuite :fusiontrees "planar trace" I -> begin
+@testsuite :double_fusiontrees "planar trace" I -> begin
     N, src, A = _random_doubletree_setup(I)
     if FusionStyle(I) isa UniqueFusion
         f1, f1 = src
