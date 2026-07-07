@@ -5,6 +5,10 @@ testsuite = ParallelTestRunner.find_tests(@__DIR__)
 
 # Exclude non-test files
 delete!(testsuite, "setup")          # shared setup module
+delete!(testsuite, "TensorKitTestSuite") # reusable test suite module, not a test file itself
+delete!(testsuite, "testsuite/fusiontrees") # only meant to be `include`d inside TensorKitTestSuite
+delete!(testsuite, "testsuite/spaces")
+delete!(testsuite, "testsuite/tensors")
 
 # CUDA tests: only run if CUDA is functional
 using CUDA: CUDA
