@@ -22,7 +22,7 @@ using ChainRulesCore: NoTangent
 using ChainRulesTestUtils: ChainRulesTestUtils, test_rrule
 using Zygote: Zygote, rrule_via_ad
 
-include(joinpath(@__DIR__, "TensorKitTestSuite.jl"))
+include(joinpath(@__DIR__, "testsuite", "TensorKitTestSuite.jl"))
 using .TensorKitTestSuite
 # not exported by TensorKitTestSuite to avoid clash with TensorKitSectors.SectorTestSuite
 using .TensorKitTestSuite: _isunitary, _isone
