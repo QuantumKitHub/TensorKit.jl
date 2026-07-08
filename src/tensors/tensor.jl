@@ -10,6 +10,13 @@ a tensor category), where the data is stored in a dense vector.
 struct TensorMap{T, S <: IndexSpace, N₁, N₂, A <: DenseVector{T}} <: AbstractTensorMap{T, S, N₁, N₂}
     data::A
     space::TensorMapSpace{S, N₁, N₂}
+
+    # explicit inner constructor to prevent auto-generating TensorMap(data, space)
+    function TensorMap{T, S, N₁, N₂, A}(
+            data::A, space::TensorMapSpace{S, N₁, N₂}
+        ) where {T, S <: IndexSpace, N₁, N₂, A <: DenseVector{T}}
+        return new{T, S, N₁, N₂, A}(data, space)
+    end
 end
 
 """
