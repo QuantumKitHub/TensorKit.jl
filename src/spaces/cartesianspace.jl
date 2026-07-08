@@ -73,3 +73,6 @@ sectors(V::CartesianSpace) = OneOrNoneIterator(dim(V) != 0, Trivial())
 sectortype(::Type{CartesianSpace}) = Trivial
 
 Base.show(io::IO, V::CartesianSpace) = print(io, "ℝ^$(V.d)")
+
+sectorhash(::CartesianSpace, h::UInt) = h
+sectorequal(::CartesianSpace, ::CartesianSpace) = true

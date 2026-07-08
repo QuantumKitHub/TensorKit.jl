@@ -82,3 +82,6 @@ sectors(V::ComplexSpace) = OneOrNoneIterator(dim(V) != 0, Trivial())
 sectortype(::Type{ComplexSpace}) = Trivial
 
 Base.show(io::IO, V::ComplexSpace) = print(io, isdual(V) ? "(ℂ^$(V.d))'" : "ℂ^$(V.d)")
+
+sectorhash(V::ComplexSpace, h::UInt) = hash(isdual(V), h)
+sectorequal(V₁::ComplexSpace, V₂::ComplexSpace) = isdual(V₁) == isdual(V₂)
