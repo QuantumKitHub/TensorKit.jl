@@ -9,6 +9,7 @@ delete!(testsuite, "TensorKitTestSuite") # reusable test suite module, not a tes
 delete!(testsuite, "testsuite/fusiontrees") # only meant to be `include`d inside TensorKitTestSuite
 delete!(testsuite, "testsuite/spaces")
 delete!(testsuite, "testsuite/tensors")
+delete!(testsuite, "testsuite/diagonal")
 
 # CUDA tests: only run if CUDA is functional
 using CUDA: CUDA

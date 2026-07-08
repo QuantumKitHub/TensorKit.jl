@@ -19,9 +19,10 @@ TensorKitTestSuite.test_single_fusiontrees(MySector)
 TensorKitTestSuite.test_double_fusiontrees(MySector)
 TensorKitTestSuite.test_spaces(MySector)
 TensorKitTestSuite.test_tensors((V1, V2, V3, V4, V5)) # 5 mutually compatible spaces
+TensorKitTestSuite.test_diagonal_tensors(V) # 1 space for diagonal tensors
 ```
 
-The four entry points above are independent and may be run selectively.
+The entry points above are independent and may be run selectively.
 This module additionally exports:
 * [`force_planar`](@ref)
 * [`eval_show`](@ref)
@@ -31,7 +32,7 @@ but deliberately *not* re-exported here.
 """
 module TensorKitTestSuite
 
-export test_single_fusiontrees, test_double_fusiontrees, test_spaces, test_tensors
+export test_single_fusiontrees, test_double_fusiontrees, test_spaces, test_tensors, test_diagonal_tensors
 export force_planar, eval_show
 
 using Test
@@ -45,7 +46,7 @@ using TensorOperations
 using MatrixAlgebraKit: left_polar, isunitary
 
 using TensorKit
-using TensorKit: type_repr, FusionTreeBlock, ℙ, PlanarTrivial, hassector, HomSpace
+using TensorKit: type_repr, FusionTreeBlock, ℙ, PlanarTrivial, hassector, HomSpace, check_spacetype
 import TensorKit as TK
 using TensorKitSectors
 using TensorKitSectors: ×
@@ -64,6 +65,7 @@ const testgroups = Dict{Symbol, Dict{String, Expr}}(
     :double_fusiontrees => Dict{String, Expr}(),
     :spaces => Dict{String, Expr}(),
     :tensors => Dict{String, Expr}(),
+    :diagonal_tensors => Dict{String, Expr}(),
 )
 
 # cannot just esc() the body, because that would make it a closure, compile it at a fixed world age and break constprop=true
@@ -80,9 +82,10 @@ end
         # test code here
     end
 
-Register a testsuite entry under `testgroup` (one of `:single_fusiontrees`, `:double_fusiontrees`, `:spaces`,`:tensors`).
+Register a testsuite entry under `testgroup` (one of `:single_fusiontrees`, `:double_fusiontrees`, `:spaces`,`:tensors`, `:diagonal_tensors`).
 The body is executed with a single argument: the concrete `Sector` type under test
-(for `:single_fusiontrees`, `:double_fusiontrees` and `:spaces`), or a 5-tuple/vector of mutually compatible spaces (for `:tensors`). 
+(for `:single_fusiontrees`, `:double_fusiontrees` and `:spaces`), a space (for `:diagonal_tensors`),
+or a 5-tuple/vector of mutually compatible spaces (for `:tensors`). 
 
 Important: Whatever is passed as `name` becomes part of the generated function that must be called to run that body.
 In particular, a `safe_name` is made where `name`'s spaces are replaced by underscores, and everything becomes lowercase.
@@ -148,15 +151,33 @@ function test_spaces(I::Type{<:Sector}) #TODO: change since it's just 1 testsuit
 end
 
 """
-    test_tensors(V)
+    test_tensors(V::NTuple{5, ElementarySpace})
 
 Runs the tensor operation test suite (construction, contractions, linear algebra,
 index manipulations, braiding, `HomSpace`) on `V`, a 5-tuple of mutually
 compatible `ElementarySpace`s. See `setup.jl` for space design considerations.
 """
-function test_tensors(V::NTuple{5, GradedSpace{I, NTuple{N, Int}}}) where {I <: Sector, N}
+function test_tensors(V::NTuple{5, ElementarySpace})
+    I = check_spacetype(V)
     return @testset "$(type_repr(I))" begin
         for (name, lambda) in testgroups[:tensors]
+            @testset "$name" begin
+                _run_testsuite_entry(lambda, V)
+            end
+        end
+    end
+end
+
+"""
+    test_diagonal_tensors(V::ElementarySpace)
+
+Runs the diagonal tensor operation test suite (construction, contractions, linear algebra,
+index manipulations) on an `ElementarySpace` `V`. See `setup.jl` for space design considerations,
+but now applied to just one space, since diagonal tensors are endomorphisms.
+"""
+function test_diagonal_tensors(V::ElementarySpace)
+    return @testset "$(type_repr(sectortype(V)))" begin
+        for (name, lambda) in testgroups[:diagonal_tensors]
             @testset "$name" begin
                 _run_testsuite_entry(lambda, V)
             end
