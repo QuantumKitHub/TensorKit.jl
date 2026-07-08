@@ -9,8 +9,8 @@ function project_mul!(C, A, B, α, β = One())
     end
 end
 function project_contract!(C, A, pA, conjA, B, pB, conjB, pAB, α, backend, allocator)
-    TA = TensorKit.promote_permute(A)
-    TB = TensorKit.promote_permute(B)
+    TA = promote_permute(A)
+    TB = promote_permute(B)
     TC = TO.promote_contract(TA, TB, scalartype(α))
 
     return if scalartype(C) <: Real && !(TC <: Real)
