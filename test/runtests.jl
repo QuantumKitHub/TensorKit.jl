@@ -10,6 +10,7 @@ delete!(testsuite, "testsuite/fusiontrees") # only meant to be `include`d inside
 delete!(testsuite, "testsuite/spaces")
 delete!(testsuite, "testsuite/tensors")
 delete!(testsuite, "testsuite/diagonal")
+delete!(testsuite, "testsuite/factorizations")
 
 # CUDA tests: only run if CUDA is functional
 using CUDA: CUDA

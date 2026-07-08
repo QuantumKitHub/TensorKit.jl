@@ -19,6 +19,7 @@ TensorKitTestSuite.run_testsuite(:single_fusiontrees, "test", MySector)
 TensorKitTestSuite.run_testsuite(:double_fusiontrees, "test", MySector)
 TensorKitTestSuite.run_testsuite(:spaces, "test", MySector)
 TensorKitTestSuite.run_testsuite(:tensors, "test", (V1, V2, V3, V4, V5)) # 5 mutually compatible spaces
+TensorKitTestSuite.run_testsuite(:factorizations, "test", (V1, V2, V3, V4, V5)) # 5 mutually compatible spaces
 TensorKitTestSuite.run_testsuite(:diagonal_tensors, "test", V) # 1 space for diagonal tensors
 ```
 
@@ -67,6 +68,7 @@ const testgroups = Dict{Symbol, Dict{String, Expr}}(
     :spaces => Dict{String, Expr}(),
     :tensors => Dict{String, Expr}(),
     :diagonal_tensors => Dict{String, Expr}(),
+    :factorizations => Dict{String, Expr}(),
 )
 
 # cannot just esc() the body, because that would make it a closure, compile it at a fixed world age and break constprop=true
@@ -86,7 +88,9 @@ end
 Register a testsuite entry under `testgroup` (one of `:single_fusiontrees`, `:double_fusiontrees`, `:spaces`,`:tensors`, `:diagonal_tensors`).
 The body is executed with a single argument: the concrete `Sector` type under test
 (for `:single_fusiontrees`, `:double_fusiontrees` and `:spaces`), a space (for `:diagonal_tensors`),
-or a 5-tuple/vector of mutually compatible spaces (for `:tensors`). 
+or a 5-tuple of mutually compatible spaces (for `:tensors` and `:factorizations`). 
+
+For the test groups involving spaces, see `setup.jl` for the space design considerations.
 
 Run a registered entry via `run_testsuite(testgroup, name, arg)`.
 """
@@ -174,5 +178,7 @@ end
 include("fusiontrees.jl")
 include("spaces.jl")
 include("tensors.jl")
+include("diagonal.jl")
+include("factorizations.jl")
 
 end # module TensorKitTestSuite
