@@ -78,8 +78,6 @@ end
 
 # Default algorithm for exponential with Tuple
 MAK.exponential!((τ, t)::Tuple{E, T}) where {E <: Number, T <: DiagonalTensorMap} = MAK.exponential!((τ, t), DefaultAlgorithm())
-MAK.exponential!(t::Tuple{E, T}, ::DefaultAlgorithm) where {E <: Number, T <: Diagonal} = MAK.exponential!(t, DiagonalAlgorithm())
-MAK.exponential!(t::Tuple{E, T1}, out::T2, ::DefaultAlgorithm) where {E <: Number, T1 <: Diagonal, T2 <: Diagonal} = MAK.exponential!(t, out, DiagonalAlgorithm())
 
 function MAK.default_algorithm(::typeof(exponential!), ::Type{Tuple{E, T}}; kwargs...) where {E <: Number, T}
     return MAK.default_algorithm(exponential!, blocktype(T); kwargs...)
