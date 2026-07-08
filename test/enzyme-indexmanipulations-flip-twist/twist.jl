@@ -1,0 +1,26 @@
+using Test, TestExtras
+using TensorKit
+using TensorOperations
+using VectorInterface: Zero, One
+using Enzyme, EnzymeTestUtils
+using Random
+
+spacelist = ad_spacelist(fast_tests)
+eltypes = (Float64, ComplexF64)
+
+if !Sys.iswindows() && VERSION > v"1.11.0-rc"
+    @timedtestset "Enzyme - Index Manipulations (twist):" begin
+        @timedtestset "$(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes, TA in (Duplicated,)
+            atol = default_tol(T)
+            rtol = default_tol(T)
+            A = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
+            has_braiding = BraidingStyle(sectortype(eltype(V))) isa HasBraiding
+            if has_braiding && !(T <: Real && !(sectorscalartype(sectortype(A)) <: Real))
+                EnzymeTestUtils.test_reverse(twist!, TA, (copy(A), TA), (1, Const); atol, rtol, fkwargs = (inv = false,))
+                EnzymeTestUtils.test_reverse(twist!, TA, (copy(A), TA), ([1, 3], Const); atol, rtol, fkwargs = (inv = true,))
+                EnzymeTestUtils.test_reverse(twist!, TA, (copy(A), TA), (1, Const); atol, rtol)
+                EnzymeTestUtils.test_reverse(twist!, TA, (copy(A), TA), ([1, 3], Const); atol, rtol)
+            end
+        end
+    end
+end
