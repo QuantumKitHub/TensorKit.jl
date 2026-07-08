@@ -12,7 +12,15 @@ for V in spacelist
     println("Tensor contractions with symmetry: $Istr")
     println("---------------------------------------")
     @timedtestset "Tensor contractions with symmetry: $Istr" verbose = true begin
-        TensorKitTestSuite.test_tensors_contractions(V)
+        TensorKitTestSuite.test_tensors_full_trace(V)
+        TensorKitTestSuite.test_tensors_partial_trace(V)
+        TensorKitTestSuite.test_tensors_trace_via_conversion(V)
+        TensorKitTestSuite.test_tensors_trace_and_contraction(V)
+        TensorKitTestSuite.test_tensors_contraction_via_conversion(V)
+        TensorKitTestSuite.test_tensors_tensor_product_norm_preservation(V)
+        TensorKitTestSuite.test_tensors_tensor_product_via_conversion(V)
+        TensorKitTestSuite.test_tensors_tensor_product_via_contraction(V)
+        TensorKitTestSuite.test_tensors_absorption(V)
     end
     TensorKit.empty_globalcaches!()
 end

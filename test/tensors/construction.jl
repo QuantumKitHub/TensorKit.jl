@@ -12,7 +12,11 @@ for V in spacelist
     println("Tensor constructions with symmetry: $Istr")
     println("---------------------------------------")
     @timedtestset "Tensor constructions with symmetry: $Istr" verbose = true begin
-        TensorKitTestSuite.test_tensors_tensor_constructions(V)
+        TensorKitTestSuite.test_tensors_basic_properties(V)
+        TensorKitTestSuite.test_tensors_dict_conversion(V)
+        TensorKitTestSuite.test_tensors_array_conversion(V)
+        TensorKitTestSuite.test_tensors_real_and_imaginary_parts(V)
+        TensorKitTestSuite.test_tensors_tensor_conversion(V)
     end
     TensorKit.empty_globalcaches!()
 end
