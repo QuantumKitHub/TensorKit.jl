@@ -12,14 +12,14 @@ for V in spacelist
     println("BraidingTensor planar contractions with symmetry: $Istr")
     println("---------------------------------------")
     @timedtestset "BraidingTensor planar contractions with symmetry: $Istr" verbose = true begin
-        TensorKitTestSuite.test_tensors_braiding_tensor_planaradd(V)
-        TensorKitTestSuite.test_tensors_braiding_tensor_left_full_contraction(V)
-        TensorKitTestSuite.test_tensors_braiding_tensor_left_partial_contraction(V)
-        TensorKitTestSuite.test_tensors_braiding_tensor_right_full_contraction(V)
-        TensorKitTestSuite.test_tensors_braiding_tensor_full_contraction_output(V)
-        TensorKitTestSuite.test_tensors_braiding_tensor_open_codomain_leg(V)
-        TensorKitTestSuite.test_tensors_braiding_tensor_open_domain_leg(V)
-        TensorKitTestSuite.test_tensors_contraction_between_braiding_tensors(V)
+        TensorKitTestSuite.run_testsuite(:tensors, "braiding tensor planaradd!", V)
+        TensorKitTestSuite.run_testsuite(:tensors, "braiding tensor left full contraction", V)
+        TensorKitTestSuite.run_testsuite(:tensors, "braiding tensor left partial contraction", V)
+        TensorKitTestSuite.run_testsuite(:tensors, "braiding tensor right full contraction", V)
+        TensorKitTestSuite.run_testsuite(:tensors, "braiding tensor full contraction output", V)
+        TensorKitTestSuite.run_testsuite(:tensors, "braiding tensor open codomain leg", V)
+        TensorKitTestSuite.run_testsuite(:tensors, "braiding tensor open domain leg", V)
+        TensorKitTestSuite.run_testsuite(:tensors, "contraction between braiding tensors", V)
     end
     TensorKit.empty_globalcaches!()
 end

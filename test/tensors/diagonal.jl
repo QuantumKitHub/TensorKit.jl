@@ -20,14 +20,15 @@ for V in diagspacelist
     println("DiagonalTensor with domain $V")
     println("---------------------------------------")
     @timedtestset "DiagonalTensor with symmetry: $Istr" verbose = true begin
-        TensorKitTestSuite.test_diagonal_tensors_basic_properties_and_algebra(V)
-        TensorKitTestSuite.test_diagonal_tensors_linear_algebra_conversion(V)
-        TensorKitTestSuite.test_diagonal_tensors_real_and_imaginary_parts(V)
-        TensorKitTestSuite.test_diagonal_tensors_tensor_conversion(V)
-        TensorKitTestSuite.test_diagonal_tensors_permutations(V)
-        TensorKitTestSuite.test_diagonal_tensors_trace_multiplication_and_inverse(V)
-        TensorKitTestSuite.test_diagonal_tensors_contraction(V)
-        TensorKitTestSuite.test_diagonal_tensors_tensor_functions(V)
+        TensorKitTestSuite.run_testsuite(:diagonal_tensors, "basic properties and algebra", V)
+        TensorKitTestSuite.run_testsuite(:diagonal_tensors, "linear algebra conversion", V)
+        TensorKitTestSuite.run_testsuite(:diagonal_tensors, "real and imaginary parts", V)
+
+        TensorKitTestSuite.run_testsuite(:diagonal_tensors, "tensor conversion", V)
+        TensorKitTestSuite.run_testsuite(:diagonal_tensors, "permutations", V)
+        TensorKitTestSuite.run_testsuite(:diagonal_tensors, "trace, multiplication and inverse", V)
+        TensorKitTestSuite.run_testsuite(:diagonal_tensors, "contraction", V)
+        TensorKitTestSuite.run_testsuite(:diagonal_tensors, "tensor functions", V)
     end
     TensorKit.empty_globalcaches!()
 end

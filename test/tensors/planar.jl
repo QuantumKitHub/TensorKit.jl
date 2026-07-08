@@ -13,7 +13,7 @@ for V in spacelist
     Istr = type_repr(I)
     BraidingStyle(I) isa NoBraiding && continue
     @timedtestset "Braiding tensor with symmetry: $Istr" verbose = true begin
-        TensorKitTestSuite.test_tensors_braiding_tensor_properties(V)
+        TensorKitTestSuite.run_testsuite(:tensors, "braiding tensor properties", V)
 
         # adapt tests
         V1, V2, V3, V4, V5 = V

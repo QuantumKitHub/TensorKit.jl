@@ -668,7 +668,7 @@ function _braiding_tensor_setup(V::NTuple{5, GradedSpace{I, NTuple{N, Int}}}) wh
     return hasbraiding, Vspace, t
 end
 
-@testsuite :tensors "braiding tensor planaradd" V -> begin
+@testsuite :tensors "braiding tensor planaradd!" V -> begin
     hasbraiding, Vspace, _ = _braiding_tensor_setup(V)
     hasbraiding || return nothing
     b = BraidingTensor(Vspace, Vspace')

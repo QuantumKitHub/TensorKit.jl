@@ -138,7 +138,7 @@ end
     @test convert(TensorMap, t5) == permute(t_tm, (((), (2, 1))))
 end
 
-@testsuite :diagonal_tensors "trace multiplication and inverse" V -> begin
+@testsuite :diagonal_tensors "trace, multiplication and inverse" V -> begin
     t1 = DiagonalTensorMap(rand(Float64, reduceddim(V)), V)
     t2 = DiagonalTensorMap(rand(ComplexF64, reduceddim(V)), V)
     @test tr(TensorMap(t1)) == @constinferred tr(t1)

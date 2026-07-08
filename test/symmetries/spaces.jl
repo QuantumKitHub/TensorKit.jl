@@ -176,7 +176,7 @@ end
 end
 
 @timedtestset "ElementarySpace: $(type_repr(Vect[I]))" verbose = true for I in sectorlist
-    TensorKitTestSuite.test_spaces_graded_space(I)
+    TensorKitTestSuite.run_testsuite(:spaces, "graded space", I)
 end
 
 @timedtestset "ProductSpace{ℂ}" begin

@@ -6,12 +6,12 @@ import TensorKit as TK
 using TensorKitSectors
 
 @timedtestset "Single fusion trees for $(TensorKit.type_repr(I))" verbose = true for I in (fast_tests ? fast_sectorlist : sectorlist)
-    TensorKitTestSuite.test_single_fusiontrees_iterate_and_printing(I)
-    TensorKitTestSuite.test_single_fusiontrees_constructor_properties(I)
-    TensorKitTestSuite.test_single_fusiontrees_split_and_join(I)
-    TensorKitTestSuite.test_single_fusiontrees_multi_fmove(I)
-    TensorKitTestSuite.test_single_fusiontrees_insertat(I)
-    TensorKitTestSuite.test_single_fusiontrees_merging(I)
-    TensorKitTestSuite.test_single_fusiontrees_elementary_planar_trace(I)
+    TensorKitTestSuite.run_testsuite(:single_fusiontrees, "iterate and printing", I)
+    TensorKitTestSuite.run_testsuite(:single_fusiontrees, "constructor properties", I)
+    TensorKitTestSuite.run_testsuite(:single_fusiontrees, "split and join", I)
+    TensorKitTestSuite.run_testsuite(:single_fusiontrees, "multi fmove", I)
+    TensorKitTestSuite.run_testsuite(:single_fusiontrees, "insertat", I)
+    TensorKitTestSuite.run_testsuite(:single_fusiontrees, "merging", I)
+    TensorKitTestSuite.run_testsuite(:single_fusiontrees, "elementary planar trace", I)
     TK.empty_globalcaches!()
 end

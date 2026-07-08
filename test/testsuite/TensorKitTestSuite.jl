@@ -10,19 +10,20 @@ Downstream packages may include this test suite as follows:
 import TensorKit
 testsuite_path = joinpath(
     dirname(dirname(pathof(TensorKit))), # TensorKit root
-    "test", "TensorKitTestSuite.jl"
+    "test", "testsuite", "TensorKitTestSuite.jl"
 )
 include(testsuite_path)
 using .TensorKitTestSuite
 
-TensorKitTestSuite.test_single_fusiontrees(MySector)
-TensorKitTestSuite.test_double_fusiontrees(MySector)
-TensorKitTestSuite.test_spaces(MySector)
-TensorKitTestSuite.test_tensors((V1, V2, V3, V4, V5)) # 5 mutually compatible spaces
-TensorKitTestSuite.test_diagonal_tensors(V) # 1 space for diagonal tensors
+TensorKitTestSuite.run_testsuite(:single_fusiontrees, "test", MySector)
+TensorKitTestSuite.run_testsuite(:double_fusiontrees, "test", MySector)
+TensorKitTestSuite.run_testsuite(:spaces, "test", MySector)
+TensorKitTestSuite.run_testsuite(:tensors, "test", (V1, V2, V3, V4, V5)) # 5 mutually compatible spaces
+TensorKitTestSuite.run_testsuite(:diagonal_tensors, "test", V) # 1 space for diagonal tensors
 ```
 
-The entry points above are independent and may be run selectively.
+The entry points are denoted by the `Symbol`s above, with "test" being the name of the test suite.
+These are independent and may be run selectively. See [`@testsuite`](@ref) for more information.
 This module additionally exports:
 * [`force_planar`](@ref)
 * [`eval_show`](@ref)
@@ -32,7 +33,7 @@ but deliberately *not* re-exported here.
 """
 module TensorKitTestSuite
 
-export test_single_fusiontrees, test_double_fusiontrees, test_spaces, test_tensors, test_diagonal_tensors
+export run_testsuite
 export force_planar, eval_show
 
 using Test
@@ -87,103 +88,25 @@ The body is executed with a single argument: the concrete `Sector` type under te
 (for `:single_fusiontrees`, `:double_fusiontrees` and `:spaces`), a space (for `:diagonal_tensors`),
 or a 5-tuple/vector of mutually compatible spaces (for `:tensors`). 
 
-Important: Whatever is passed as `name` becomes part of the generated function that must be called to run that body.
-In particular, a `safe_name` is made where `name`'s spaces are replaced by underscores, and everything becomes lowercase.
-One then calls `test_<testgroup>_<safe_name>`. This way, individual entries can be invoked without running the whole test group.
+Run a registered entry via `run_testsuite(testgroup, name, arg)`.
 """
 macro testsuite(testgroup, name, ex)
     Meta.isexpr(ex, :(->)) || error("@testsuite requires an `arg -> body` expression")
     testgroupsym = testgroup isa QuoteNode ? testgroup.value : testgroup
-    safe_name = lowercase(replace(name, r"[^A-Za-z0-9]+" => "_"))
-    fn = Symbol("test_", testgroupsym, "_", safe_name)
     group = QuoteNode(testgroupsym)
     return quote
         @assert !haskey(testgroups[$group], $name) "duplicate testsuite name: $($name) ($($group))"
         testgroups[$group][$name] = $(QuoteNode(ex))
-        $(esc(fn))(arg) = _run_testsuite_entry(testgroups[$group][$name], arg)
         nothing
     end
 end
 
 """
-    test_single_fusiontrees(I::Type{<:Sector})
+    run_testsuite(group::Symbol, name::String, arg)
 
-Runs the single fusion-tree manipulation test suite on sector type `I`.
+Run a single registered testsuite entry by its `group` and `name`.
 """
-function test_single_fusiontrees(I::Type{<:Sector})
-    return @testset "$(type_repr(I))" begin
-        for (name, lambda) in testgroups[:single_fusiontrees]
-            @testset "$name" begin
-                _run_testsuite_entry(lambda, I)
-            end
-        end
-    end
-end
-
-"""
-    test_double_fusiontrees(I::Type{<:Sector})
-
-Runs the double fusion-tree manipulation test suite on sector type `I`.
-"""
-function test_double_fusiontrees(I::Type{<:Sector})
-    return @testset "$(type_repr(I))" begin
-        for (name, lambda) in testgroups[:double_fusiontrees]
-            @testset "$name" begin
-                _run_testsuite_entry(lambda, I)
-            end
-        end
-    end
-end
-
-"""
-    test_spaces(I::Type{<:Sector})
-
-Runs the `GradedSpace` test suite on sector type `I`.
-"""
-function test_spaces(I::Type{<:Sector}) #TODO: change since it's just 1 testsuite, or change to get the hom-space tests in here
-    return @testset "$(type_repr(I))" begin
-        for (name, lambda) in testgroups[:spaces]
-            @testset "$name" begin
-                _run_testsuite_entry(lambda, I)
-            end
-        end
-    end
-end
-
-"""
-    test_tensors(V::NTuple{5, ElementarySpace})
-
-Runs the tensor operation test suite (construction, contractions, linear algebra,
-index manipulations, braiding, `HomSpace`) on `V`, a 5-tuple of mutually
-compatible `ElementarySpace`s. See `setup.jl` for space design considerations.
-"""
-function test_tensors(V::NTuple{5, ElementarySpace})
-    I = check_spacetype(V)
-    return @testset "$(type_repr(I))" begin
-        for (name, lambda) in testgroups[:tensors]
-            @testset "$name" begin
-                _run_testsuite_entry(lambda, V)
-            end
-        end
-    end
-end
-
-"""
-    test_diagonal_tensors(V::ElementarySpace)
-
-Runs the diagonal tensor operation test suite (construction, contractions, linear algebra,
-index manipulations) on an `ElementarySpace` `V`. See `setup.jl` for space design considerations,
-but now applied to just one space, since diagonal tensors are endomorphisms.
-"""
-function test_diagonal_tensors(V::ElementarySpace)
-    return @testset "$(type_repr(sectortype(V)))" begin
-        for (name, lambda) in testgroups[:diagonal_tensors]
-            @testset "$name" begin
-                _run_testsuite_entry(lambda, V)
-            end
-        end
-    end
-end
+run_testsuite(group::Symbol, name::String, arg) = _run_testsuite_entry(testgroups[group][name], arg)
 
 # Sector utilities
 # ----------------
@@ -248,8 +171,8 @@ function eval_show(x)
     return eval(ex)
 end
 
-include("testsuite/fusiontrees.jl")
-include("testsuite/spaces.jl")
-include("testsuite/tensors.jl")
+include("fusiontrees.jl")
+include("spaces.jl")
+include("tensors.jl")
 
 end # module TensorKitTestSuite
