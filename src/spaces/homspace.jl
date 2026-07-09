@@ -211,7 +211,7 @@ according to the permutation `p₁` and `p₂` respectively.
 function permute(W::HomSpace, (p₁, p₂)::Index2Tuple)
     p = (p₁..., p₂...)
     TupleTools.isperm(p) && length(p) == numind(W) ||
-        throw(ArgumentError("$((p₁, p₂)) is not a valid permutation for $(W)"))
+        throw(ArgumentError(lazy"$((p₁, p₂)) is not a valid permutation for $(W)"))
     return select(W, (p₁, p₂))
 end
 
@@ -226,7 +226,7 @@ end
 function braid(W::HomSpace, (p₁, p₂)::Index2Tuple, levels::IndexTuple)
     p = (p₁..., p₂...)
     TupleTools.isperm(p) && length(p) == numind(W) == length(levels) ||
-        throw(ArgumentError("$((p₁, p₂)), $levels is not a valid braiding for $(W)"))
+        throw(ArgumentError(lazy"$((p₁, p₂)), $levels is not a valid braiding for $(W)"))
     return select(W, (p₁, p₂))
 end
 
@@ -265,7 +265,7 @@ Obtain the HomSpace that is obtained from composing the morphisms in `W` and `V`
 to be possible, the domain of `W` must match the codomain of `V`.
 """
 function compose(W::HomSpace{S}, V::HomSpace{S}) where {S}
-    domain(W) == codomain(V) || throw(SpaceMismatch("$(domain(W)) ≠ $(codomain(V))"))
+    domain(W) == codomain(V) || throw(SpaceMismatch(lazy"$(domain(W)) ≠ $(codomain(V))"))
     return HomSpace(codomain(W), domain(V))
 end
 
