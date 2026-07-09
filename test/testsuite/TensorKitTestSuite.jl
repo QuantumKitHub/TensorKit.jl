@@ -46,6 +46,7 @@ using TupleTools
 using Combinatorics: permutations
 using TensorOperations
 using MatrixAlgebraKit
+using MatrixAlgebraKit: diagview, defaulttol, ishermitian
 
 using TensorKit
 using TensorKit: type_repr, FusionTreeBlock, ℙ, PlanarTrivial, hassector, HomSpace, check_spacetype

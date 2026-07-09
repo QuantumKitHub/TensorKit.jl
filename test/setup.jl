@@ -17,7 +17,7 @@ using TensorKit
 using TensorKitSectors
 using TensorOperations: IndexTuple, Index2Tuple
 using TupleTools
-using MatrixAlgebraKit: MatrixAlgebraKit, diagview, DefaultAlgorithm, defaulttol
+using MatrixAlgebraKit: MatrixAlgebraKit
 using ChainRulesCore: NoTangent
 using ChainRulesTestUtils: ChainRulesTestUtils, test_rrule
 using Zygote: Zygote, rrule_via_ad
