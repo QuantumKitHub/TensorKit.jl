@@ -11,29 +11,13 @@ struct TensorMap{T, S <: IndexSpace, N₁, N₂, A <: DenseVector{T}} <: Abstrac
     data::A
     space::TensorMapSpace{S, N₁, N₂}
 
-    # uninitialized constructors
-    function TensorMap{T, S, N₁, N₂, A}(
-            ::UndefInitializer, space::TensorMapSpace{S, N₁, N₂}
-        ) where {T, S <: IndexSpace, N₁, N₂, A <: DenseVector{T}}
-        data = A(undef, dim(space))
-        if !isbitstype(T)
-            zerovector!(data)
-        end
-        return TensorMap{T, S, N₁, N₂, A}(data, space)
-    end
-    # constructors from data
+    # explicit inner constructor to prevent auto-generating TensorMap(data, space)
     function TensorMap{T, S, N₁, N₂, A}(
             data::A, space::TensorMapSpace{S, N₁, N₂}
         ) where {T, S <: IndexSpace, N₁, N₂, A <: DenseVector{T}}
-        T ⊆ field(S) || @warn("scalartype(data) = $T ⊈ $(field(S)))", maxlog = 1)
-        I = sectortype(S)
-        T <: Real && !(sectorscalartype(I) <: Real) &&
-            @warn("Tensors with real data might be incompatible with sector type $I", maxlog = 1)
-        length(data) == dim(space) || throw(DimensionMismatch(lazy"length of data ($(length(data))) does not match dimension of space ($(dim(space)))"))
         return new{T, S, N₁, N₂, A}(data, space)
     end
 end
-TensorMap{T, S, N₁, N₂, A}(t::TensorMap{T, S, N₁, N₂}) where {T, S <: IndexSpace, N₁, N₂, A <: DenseVector{T}} = TensorMap(A(t.data), space(t))
 
 """
     Tensor{T, S, N, A<:DenseVector{T}} = TensorMap{T, S, N, 0, A}
@@ -46,9 +30,25 @@ i.e. a tensor map with only a non-trivial output space.
 """
 const Tensor{T, S, N, A} = TensorMap{T, S, N, 0, A}
 
+# Utility functions:
+# ------------------
 function tensormaptype(::Type{S}, N₁, N₂, ::Type{TorA}) where {S <: IndexSpace, TorA}
     A = similarstoragetype(TorA)
     return TensorMap{scalartype(A), S, N₁, N₂, A}
+end
+
+function _warn_tensormap_compatibility(T, S)
+    T ⊆ field(S) || @warn("scalartype(data) = $T ⊈ $(field(S)))", maxlog = 1)
+    I = sectortype(S)
+    T <: Real && !(sectorscalartype(I) <: Real) &&
+        @warn("Tensors with real data might be incompatible with sector type $I", maxlog = 1)
+    return nothing
+end
+
+function _check_tensormap_length(data, V)
+    d = dim(V)
+    length(data) == d || throw(DimensionMismatch(lazy"length of data ($(length(data))) does not match dimension of space ($d)"))
+    return nothing
 end
 
 # Basic methods for characterising a tensor:
@@ -66,6 +66,8 @@ dim(t::TensorMap) = length(t.data)
 
 # General TensorMap constructors
 # ==============================
+TensorMap{T, S, N₁, N₂, A}(t::TensorMap{T, S, N₁, N₂}) where {T, S <: IndexSpace, N₁, N₂, A <: DenseVector{T}} =
+    TensorMap{T, S, N₁, N₂, A}(A(t.data), space(t))
 
 # INTERNAL: utility type alias that makes constructors also work for type aliases that specify
 # different storage types. (i.e. CuTensorMap = TensorMapWithStorage{T, CuVector{T}, ...})
@@ -89,6 +91,14 @@ TensorMap{T}(::UndefInitializer, V::TensorMapSpace) where {T} =
 TensorMap{T}(::UndefInitializer, codomain::TensorSpace, domain::TensorSpace) where {T} =
     TensorMap{T}(undef, codomain ← domain)
 Tensor{T}(::UndefInitializer, V::TensorSpace) where {T} = TensorMap{T}(undef, V ← one(V))
+function TensorMap{T, S, N₁, N₂, A}(
+        ::UndefInitializer, space::TensorMapSpace{S, N₁, N₂}
+    ) where {T, S <: IndexSpace, N₁, N₂, A <: DenseVector{T}}
+    _warn_tensormap_compatibility(T, S)
+    data = A(undef, dim(space))
+    isbitstype(T) || zerovector!(data) # ensure initialized entries
+    return TensorMap{T, S, N₁, N₂, A}(data, space)
+end
 
 """
     TensorMapWithStorage{T, A}(undef, codomain, domain) where {T, A}
@@ -122,10 +132,13 @@ TensorMap(t::TensorMap) = copy(t)
 Construct a `TensorMap` from the given raw data.
 This constructor takes ownership of the provided vector, and will not make an independent copy.
 """
-TensorMap{T}(data::DenseVector{T}, V::TensorMapSpace) where {T} =
-    tensormaptype(spacetype(V), numout(V), numin(V), typeof(data))(data, V)
 TensorMap{T}(data::DenseVector{T}, codomain::TensorSpace, domain::TensorSpace) where {T} =
     TensorMap{T}(data, codomain ← domain)
+function TensorMap{T}(data::DenseVector{T}, V::TensorMapSpace) where {T}
+    _warn_tensormap_compatibility(T, spacetype(V))
+    _check_tensormap_length(data, V)
+    return tensormaptype(spacetype(V), numout(V), numin(V), typeof(data))(data, V)
+end
 
 """
     TensorMapWithStorage{T, A}(data::A, codomain, domain) where {T, A<:DenseVector{T}}
@@ -136,6 +149,8 @@ Construct a `TensorMap` from the given raw data.
 This constructor takes ownership of the provided vector, and will not make an independent copy.
 """
 function TensorMapWithStorage{T, A}(data::A, V::TensorMapSpace) where {T, A}
+    _warn_tensormap_compatibility(T, spacetype(V))
+    _check_tensormap_length(data, V)
     return tensormaptype(spacetype(V), numout(V), numin(V), typeof(data))(data, V)
 end
 TensorMapWithStorage{T, A}(data::A, codomain::TensorSpace, domain::TensorSpace) where {T, A} =
@@ -213,13 +228,17 @@ end
 function TensorMapWithStorage{T, A}(
         data::AbstractArray, V::TensorMapSpace; tol = sqrt(eps(real(float(eltype(data)))))
     ) where {T, A}
+    _warn_tensormap_compatibility(T, spacetype(V))
+
     # refer to specific raw data constructors if input is a vector of the correct length
     ndims(data) == 1 && length(data) == dim(V) &&
         return tensormaptype(spacetype(V), numout(V), numin(V), A)(data, V)
 
     # special case trivial: refer to same method, but now with vector argument
-    sectortype(V) === Trivial &&
+    if sectortype(V) === Trivial
+        _check_tensormap_length(data, V)
         return tensormaptype(spacetype(V), numout(V), numin(V), A)(reshape(data, length(data)), V)
+    end
 
     return project_symmetric_and_check(T, A, data, V; tol)
 end
