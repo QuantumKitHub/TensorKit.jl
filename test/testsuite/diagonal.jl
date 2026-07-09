@@ -2,7 +2,7 @@
 # =====================
 
 @testsuite :diagonal_tensors "basic properties and algebra" V -> begin
-    for T in (fast_tests ? (Float64, ComplexF64) : (Float32, Float64, ComplexF32, ComplexF64, BigFloat))
+    for T in (fast_tests[] ? (Float64, ComplexF64) : (Float32, Float64, ComplexF32, ComplexF64, BigFloat))
         # constructors
         t = @constinferred DiagonalTensorMap{T}(undef, V)
         t = @constinferred DiagonalTensorMap(rand(T, reduceddim(V)), V)

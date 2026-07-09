@@ -72,6 +72,8 @@ const testgroups = Dict{Symbol, Dict{String, Expr}}(
     :factorizations => Dict{String, Expr}(),
 )
 
+const fast_tests = Ref(false) # mutable constant, test by default thoroughly
+
 # cannot just esc() the body, because that would make it a closure, compile it at a fixed world age and break constprop=true
 # workaround here is to store an unevaluated `Expr` and `Core.eval` it in a fresh `let` block every time
 # this is at the cost of not reusing compiled code
