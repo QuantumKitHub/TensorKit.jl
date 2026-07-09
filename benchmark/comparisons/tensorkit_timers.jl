@@ -4,10 +4,10 @@ module TensorKitTimers
     using ..Timers: Timers
 
     function mpo_timer(f = randn, T = Float64; Vmpo, Vmps, Vphys)
-        A = Tensor(f, T, Vmps ⊗ Vphys ⊗ Vmps')
-        M = Tensor(f, T, Vmpo ⊗ Vphys ⊗ Vphys' ⊗ Vmpo')
-        FL = Tensor(f, T, Vmps ⊗ Vmpo' ⊗ Vmps')
-        FR = Tensor(f, T, Vmps ⊗ Vmpo ⊗ Vmps')
+        A = f(T, Vmps ⊗ Vphys ⊗ Vmps')
+        M = f(T, Vmpo ⊗ Vphys ⊗ Vphys' ⊗ Vmpo')
+        FL = f(T, Vmps ⊗ Vmpo' ⊗ Vmps')
+        FR = f(T, Vmps ⊗ Vmpo ⊗ Vmps')
 
         return Timers.Timer(A, M, FL, FR) do A, M, FL, FR
             @tensor C = FL[4, 2, 1] * A[1, 3, 6] * M[2, 5, 3, 7] * conj(A[4, 5, 8]) *
@@ -17,12 +17,12 @@ module TensorKitTimers
     end
 
     function pepo_timer(f = randn, T = Float64; Vpepo, Vpeps, Venv, Vphys)
-        A = Tensor(f, T, Vpeps ⊗ Vpeps ⊗ Vphys ⊗ Vpeps' ⊗ Vpeps')
-        P = Tensor(f, T, Vpepo ⊗ Vpepo ⊗ Vphys ⊗ Vphys' ⊗ Vpepo' ⊗ Vpepo')
-        FL = Tensor(f, T, Venv ⊗ Vpeps ⊗ Vpepo' ⊗ Vpeps' ⊗ Venv')
-        FD = Tensor(f, T, Venv ⊗ Vpeps ⊗ Vpepo' ⊗ Vpeps' ⊗ Venv')
-        FR = Tensor(f, T, Venv ⊗ Vpeps ⊗ Vpepo ⊗ Vpeps' ⊗ Venv')
-        FU = Tensor(f, T, Venv ⊗ Vpeps ⊗ Vpepo ⊗ Vpeps' ⊗ Venv')
+        A = f(T, Vpeps ⊗ Vpeps ⊗ Vphys ⊗ Vpeps' ⊗ Vpeps')
+        P = f(T, Vpepo ⊗ Vpepo ⊗ Vphys ⊗ Vphys' ⊗ Vpepo' ⊗ Vpepo')
+        FL = f(T, Venv ⊗ Vpeps ⊗ Vpepo' ⊗ Vpeps' ⊗ Venv')
+        FD = f(T, Venv ⊗ Vpeps ⊗ Vpepo' ⊗ Vpeps' ⊗ Venv')
+        FR = f(T, Venv ⊗ Vpeps ⊗ Vpepo ⊗ Vpeps' ⊗ Venv')
+        FU = f(T, Venv ⊗ Vpeps ⊗ Vpepo ⊗ Vpeps' ⊗ Venv')
         return Timers.Timer(A, P, FL, FD, FR, FU) do A, P, FL, FD, FR, FU
             @tensor C = FL[18, 7, 4, 2, 1] * FU[1, 3, 6, 9, 10] *
                 A[2, 17, 5, 3, 11] * P[4, 16, 8, 5, 6, 12] * conj(A[7, 15, 8, 9, 13]) *
@@ -32,10 +32,10 @@ module TensorKitTimers
     end
 
     function mera_timer(f = randn, T = Float64; Vmera)
-        u = Tensor(f, T, Vmera ⊗ Vmera ⊗ Vmera' ⊗ Vmera')
-        w = Tensor(f, T, Vmera ⊗ Vmera ⊗ Vmera')
-        ρ = Tensor(f, T, Vmera ⊗ Vmera ⊗ Vmera ⊗ Vmera' ⊗ Vmera' ⊗ Vmera')
-        h = Tensor(f, T, Vmera ⊗ Vmera ⊗ Vmera ⊗ Vmera' ⊗ Vmera' ⊗ Vmera')
+        u = f(T, Vmera ⊗ Vmera ⊗ Vmera' ⊗ Vmera')
+        w = f(T, Vmera ⊗ Vmera ⊗ Vmera')
+        ρ = f(T, Vmera ⊗ Vmera ⊗ Vmera ⊗ Vmera' ⊗ Vmera' ⊗ Vmera')
+        h = f(T, Vmera ⊗ Vmera ⊗ Vmera ⊗ Vmera' ⊗ Vmera' ⊗ Vmera')
         return Timers.Timer(u, w, ρ, h) do u, w, ρ, h
             @tensor C = (
                 (
