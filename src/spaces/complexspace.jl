@@ -83,5 +83,9 @@ sectortype(::Type{ComplexSpace}) = Trivial
 
 Base.show(io::IO, V::ComplexSpace) = print(io, isdual(V) ? "(ℂ^$(V.d))'" : "ℂ^$(V.d)")
 
-sectorhash(V::ComplexSpace, h::UInt) = hash(isdual(V), h)
-sectorequal(V₁::ComplexSpace, V₂::ComplexSpace) = isdual(V₁) == isdual(V₂)
+function sectorhash(V::ComplexSpace, h::UInt)
+    return hash(dim(V) == 0, hash(isdual(V), h))
+end
+function sectorequal(V₁::ComplexSpace, V₂::ComplexSpace)
+    return isdual(V₁) == isdual(V₂) && iszero(dim(V₁)) == iszero(dim(V₂))
+end
