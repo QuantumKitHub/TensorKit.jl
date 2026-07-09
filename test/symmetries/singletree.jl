@@ -9,7 +9,7 @@ using TensorKitSectors
     TensorKitTestSuite.run_testsuite(:single_fusiontrees, "iterate and printing", I)
     TensorKitTestSuite.run_testsuite(:single_fusiontrees, "constructor properties", I)
     TensorKitTestSuite.run_testsuite(:single_fusiontrees, "split and join", I)
-    TensorKitTestSuite.run_testsuite(:single_fusiontrees, "multi fmove", I)
+    TensorKitTestSuite.run_testsuite(:single_fusiontrees, "multi Fmove", I)
     TensorKitTestSuite.run_testsuite(:single_fusiontrees, "insertat", I)
     TensorKitTestSuite.run_testsuite(:single_fusiontrees, "merging", I)
     TensorKitTestSuite.run_testsuite(:single_fusiontrees, "elementary planar trace", I)

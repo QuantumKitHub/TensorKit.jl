@@ -1,5 +1,6 @@
 using Test, TestExtras
 using TensorKit
+using TensorKit: type_repr
 
 diagspacelist = (
     (ℂ^4)',

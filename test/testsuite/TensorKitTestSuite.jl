@@ -45,7 +45,7 @@ using LinearAlgebra
 using TupleTools
 using Combinatorics: permutations
 using TensorOperations
-using MatrixAlgebraKit: left_polar, isunitary
+using MatrixAlgebraKit
 
 using TensorKit
 using TensorKit: type_repr, FusionTreeBlock, ℙ, PlanarTrivial, hassector, HomSpace, check_spacetype

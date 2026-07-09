@@ -325,7 +325,7 @@ end
 
 @timedtestset "HomSpace" begin
     for V in ad_spacelist(fast_tests)
-        TensorKitTestSuite.test_tensors_hom_space(V)
+        TensorKitTestSuite.run_testsuite(:tensors, "hom space", V)
     end
 end
 

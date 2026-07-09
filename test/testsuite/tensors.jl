@@ -215,6 +215,7 @@ end
 end
 
 @testsuite :tensors "tensor product norm preservation" V -> begin
+    V1, V2, V3, V4, V5 = V
     for T in (Float32, ComplexF64)
         t1 = rand(T, V1, V5')
         t2 = rand(T, V2 ⊗ V3, V4')
@@ -661,8 +662,9 @@ end
 # braiding tensor
 #----------------
 
-function _braiding_tensor_setup(V::NTuple{5, GradedSpace{I, NTuple{N, Int}}}) where {I <: Sector, N}
+function _braiding_tensor_setup(V::NTuple{5, ElementarySpace})
     Vspace = first(V)
+    I = sectortype(Vspace)
     t = randn(ComplexF64, Vspace ⊗ Vspace' ⊗ Vspace' ⊗ Vspace ← Vspace ⊗ Vspace')
     hasbraiding = BraidingStyle(I) isa HasBraiding
     return hasbraiding, Vspace, t
