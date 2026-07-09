@@ -13,10 +13,10 @@ const all_parameters = TOML.parsefile(joinpath(@__DIR__, "benchparams.toml"))
 # mpo contraction
 # ---------------
 function init_mpo_tensors(T, (Vmps, Vmpo, Vphys))
-    A = Tensor(randn, T, Vmps ⊗ Vphys ⊗ Vmps')
-    M = Tensor(randn, T, Vmpo ⊗ Vphys ⊗ Vphys' ⊗ Vmpo')
-    FL = Tensor(randn, T, Vmps ⊗ Vmpo' ⊗ Vmps')
-    FR = Tensor(randn, T, Vmps ⊗ Vmpo ⊗ Vmps')
+    A = randn(T, Vmps ⊗ Vphys ⊗ Vmps')
+    M = randn(T, Vmpo ⊗ Vphys ⊗ Vphys' ⊗ Vmpo')
+    FL = randn(T, Vmps ⊗ Vmpo' ⊗ Vmps')
+    FR = randn(T, Vmps ⊗ Vmpo ⊗ Vmps')
     return A, M, FL, FR
 end
 
@@ -53,12 +53,12 @@ end
 # pepo contraction
 # ----------------
 function init_pepo_tensors(T, (Vpeps, Vpepo, Vphys, Venv))
-    A = Tensor(randn, T, Vpeps ⊗ Vpeps ⊗ Vphys ⊗ Vpeps' ⊗ Vpeps')
-    P = Tensor(randn, T, Vpepo ⊗ Vpepo ⊗ Vphys ⊗ Vphys' ⊗ Vpepo' ⊗ Vpepo')
-    FL = Tensor(randn, T, Venv ⊗ Vpeps ⊗ Vpepo' ⊗ Vpeps' ⊗ Venv')
-    FD = Tensor(randn, T, Venv ⊗ Vpeps ⊗ Vpepo' ⊗ Vpeps' ⊗ Venv')
-    FR = Tensor(randn, T, Venv ⊗ Vpeps ⊗ Vpepo ⊗ Vpeps' ⊗ Venv')
-    FU = Tensor(randn, T, Venv ⊗ Vpeps ⊗ Vpepo ⊗ Vpeps' ⊗ Venv')
+    A = randn(T, Vpeps ⊗ Vpeps ⊗ Vphys ⊗ Vpeps' ⊗ Vpeps')
+    P = randn(T, Vpepo ⊗ Vpepo ⊗ Vphys ⊗ Vphys' ⊗ Vpepo' ⊗ Vpepo')
+    FL = randn(T, Venv ⊗ Vpeps ⊗ Vpepo' ⊗ Vpeps' ⊗ Venv')
+    FD = randn(T, Venv ⊗ Vpeps ⊗ Vpepo' ⊗ Vpeps' ⊗ Venv')
+    FR = randn(T, Venv ⊗ Vpeps ⊗ Vpepo ⊗ Vpeps' ⊗ Venv')
+    FU = randn(T, Venv ⊗ Vpeps ⊗ Vpepo ⊗ Vpeps' ⊗ Venv')
     return A, P, FL, FD, FR, FU
 end
 
@@ -97,10 +97,10 @@ end
 # mera contraction
 # ----------------
 function init_mera_tensors(T, V)
-    u = Tensor(randn, T, V ⊗ V ⊗ V' ⊗ V')
-    w = Tensor(randn, T, V ⊗ V ⊗ V')
-    ρ = Tensor(randn, T, V ⊗ V ⊗ V ⊗ V' ⊗ V' ⊗ V')
-    h = Tensor(randn, T, V ⊗ V ⊗ V ⊗ V' ⊗ V' ⊗ V')
+    u = randn(T, V ⊗ V ⊗ V' ⊗ V')
+    w = randn(T, V ⊗ V ⊗ V')
+    ρ = randn(T, V ⊗ V ⊗ V ⊗ V' ⊗ V' ⊗ V')
+    h = randn(T, V ⊗ V ⊗ V ⊗ V' ⊗ V' ⊗ V')
     return u, w, ρ, h
 end
 
