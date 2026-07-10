@@ -67,7 +67,7 @@ function benchmark_svd!(bench; sigmas = nothing, T = "Float64", I = "Trivial", d
     I_ = parse_type(I)
     Vs = generate_space.(I_, dims, sigmas)
     init() = init_svd_tensor(T_, Vs)
-    bench[T, I, dims, sigmas] = @benchmarkable tsvd!(A) setup = (A = $init())
+    bench[T, I, dims, sigmas] = @benchmarkable svd_compact!(A) setup = (A = $init())
     return nothing
 end
 

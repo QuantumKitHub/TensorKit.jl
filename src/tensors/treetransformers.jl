@@ -36,7 +36,7 @@ function AbelianTreeTransformer(transform, p, Vdst, Vsrc)
 
     Δt = Base.time() - t₀
 
-    @debug("Treetransformer for $Vsrc to $Vdst via $p", nblocks = L, Δt)
+    @debug(lazy"Treetransformer for $Vsrc to $Vdst via $p", nblocks = L, Δt)
 
     return transformer
 end
@@ -81,7 +81,7 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
                     data[local_counter] = U, (sz_dst, newstructs_dst), (sz_src, newstructs_src)
 
                     @debug(
-                        "Created recoupling block for uncoupled: $(fs_src.uncoupled)",
+                        lazy"Created recoupling block for uncoupled: $(fs_src.uncoupled)",
                         sz = size(U), sparsity = count(!iszero, U) / length(U)
                     )
                 end
@@ -96,7 +96,7 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
             data[i] = U, (sz_dst, newstructs_dst), (sz_src, newstructs_src)
 
             @debug(
-                "Created recoupling block for uncoupled: $(fs_src.uncoupled)",
+                lazy"Created recoupling block for uncoupled: $(fs_src.uncoupled)",
                 sz = size(U), sparsity = count(!iszero, U) / length(U)
             )
         end
@@ -109,7 +109,7 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
     Δt = Base.time() - t₀
 
     @debug(
-        "TreeTransformer for $Vsrc to $Vdst via $p",
+        lazy"TreeTransformer for $Vsrc to $Vdst via $p",
         nblocks = length(transformer.data),
         sz_median = size(transformer.data[cld(end, 2)][1], 1),
         sz_max = size(transformer.data[1][1], 1),

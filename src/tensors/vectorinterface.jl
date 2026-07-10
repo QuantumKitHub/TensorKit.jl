@@ -41,14 +41,14 @@ function VectorInterface.scale!!(t::AbstractTensorMap, α::Number)
     return T <: scalartype(t) ? scale!(t, α) : scale(t, α)
 end
 function VectorInterface.scale!(ty::AbstractTensorMap, tx::AbstractTensorMap, α::Number)
-    space(ty) == space(tx) || throw(SpaceMismatch("$(space(ty)) ≠ $(space(tx))"))
+    space(ty) == space(tx) || throw(SpaceMismatch(lazy"$(space(ty)) ≠ $(space(tx))"))
     for ((cy, by), (cx, bx)) in zip(blocks(ty), blocks(tx))
         scale!(by, bx, α)
     end
     return ty
 end
 function VectorInterface.scale!(ty::TensorMap, tx::TensorMap, α::Number)
-    space(ty) == space(tx) || throw(SpaceMismatch("$(space(ty)) ≠ $(space(tx))"))
+    space(ty) == space(tx) || throw(SpaceMismatch(lazy"$(space(ty)) ≠ $(space(tx))"))
     scale!(ty.data, tx.data, α)
     return ty
 end
@@ -66,7 +66,7 @@ end
 # TODO: remove VectorInterface from calls to `add!` when `TensorKit.add!` is renamed
 function VectorInterface.add(ty::AbstractTensorMap, tx::AbstractTensorMap, α::Number, β::Number)
     S = check_spacetype(ty, tx)
-    space(ty) == space(tx) || throw(SpaceMismatch("$(space(ty)) ≠ $(space(tx))"))
+    space(ty) == space(tx) || throw(SpaceMismatch(lazy"$(space(ty)) ≠ $(space(tx))"))
 
     # result type defaults to TensorMap if the types don't match to avoid assymmetric
     # implementation via zerovector(ty, T) vs zerovector(tx, T)
@@ -84,7 +84,7 @@ end
 function VectorInterface.add!(
         ty::AbstractTensorMap, tx::AbstractTensorMap, α::Number, β::Number
     )
-    space(ty) == space(tx) || throw(SpaceMismatch("$(space(ty)) ≠ $(space(tx))"))
+    space(ty) == space(tx) || throw(SpaceMismatch(lazy"$(space(ty)) ≠ $(space(tx))"))
     for ((cy, by), (cx, bx)) in zip(blocks(ty), blocks(tx))
         add!(by, bx, α, β)
     end
@@ -93,7 +93,7 @@ end
 function VectorInterface.add!(
         ty::TensorMap, tx::TensorMap, α::Number, β::Number
     )
-    space(ty) == space(tx) || throw(SpaceMismatch("$(space(ty)) ≠ $(space(tx))"))
+    space(ty) == space(tx) || throw(SpaceMismatch(lazy"$(space(ty)) ≠ $(space(tx))"))
     add!(ty.data, tx.data, α, β)
     return ty
 end
@@ -112,7 +112,7 @@ end
 # inner
 #-------
 function VectorInterface.inner(tx::AbstractTensorMap, ty::AbstractTensorMap)
-    space(tx) == space(ty) || throw(SpaceMismatch("$(space(tx)) ≠ $(space(ty))"))
+    space(tx) == space(ty) || throw(SpaceMismatch(lazy"$(space(tx)) ≠ $(space(ty))"))
     InnerProductStyle(tx) === EuclideanInnerProduct() || throw_invalid_innerproduct(:inner)
     T = VectorInterface.promote_inner(tx, ty)
     s = zero(T)
@@ -122,7 +122,7 @@ function VectorInterface.inner(tx::AbstractTensorMap, ty::AbstractTensorMap)
     return s
 end
 function VectorInterface.inner(tx::TensorMap, ty::TensorMap)
-    space(tx) == space(ty) || throw(SpaceMismatch("$(space(tx)) ≠ $(space(ty))"))
+    space(tx) == space(ty) || throw(SpaceMismatch(lazy"$(space(tx)) ≠ $(space(ty))"))
     InnerProductStyle(tx) === EuclideanInnerProduct() || throw_invalid_innerproduct(:inner)
     if FusionStyle(sectortype(tx)) isa UniqueFusion # all quantum dimensions are one
         return inner(tx.data, ty.data)
