@@ -27,7 +27,6 @@ using .TensorKitTestSuite
 # not exported by TensorKitTestSuite to avoid clash with TensorKitSectors.SectorTestSuite
 using .TensorKitTestSuite: _isunitary, _isone
 using .TensorKitTestSuite: smallset, randsector, hasfusiontensor, random_fusion
-TensorKitTestSuite.fast_tests[] = fast_tests # inject fast_tests into TensorKitTestSuite
 
 Random.seed!(123456)
 

@@ -5,7 +5,7 @@ testsuite = ParallelTestRunner.find_tests(@__DIR__)
 
 # Exclude non-test files
 delete!(testsuite, "setup")          # shared setup module
-delete!(testsuite, "TensorKitTestSuite") # reusable test suite module, not a test file itself
+delete!(testsuite, "testsuite/TensorKitTestSuite") # reusable test suite module, not a test file itself
 delete!(testsuite, "testsuite/fusiontrees") # only meant to be `include`d inside TensorKitTestSuite
 delete!(testsuite, "testsuite/spaces")
 delete!(testsuite, "testsuite/tensors")
@@ -41,6 +41,7 @@ const init_worker_code = quote
     const fast_tests = $fast
     include($setup_path)
     using .TestSetup
+    TensorKitTestSuite.fast_tests[] = fast_tests # inject fast_tests into TensorKitTestSuite's scope
 end
 const init_code = quote
     using ..TestSetup
