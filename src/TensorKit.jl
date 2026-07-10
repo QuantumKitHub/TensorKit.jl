@@ -284,6 +284,7 @@ include("planar/planaroperations.jl")
 # once all types have been declared
 # ------------------------
 include("auxiliary/ad.jl")
+include("pullbacks/tensoroperations.jl")
 
 include("pullbacks/indexmanipulations.jl")
 
