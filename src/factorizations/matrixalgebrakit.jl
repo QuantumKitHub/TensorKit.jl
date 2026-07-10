@@ -19,6 +19,11 @@ for f in
     end
 end
 
+MAK.default_algorithm(::typeof(exponential!), ::Type{Tuple{E, T}}; kwargs...) where {E <: Number, T <: AbstractTensorMap} =
+    MAK.default_algorithm(exponential!, blocktype(T); kwargs...)
+MAK.copy_input(::typeof(exponential), (τ, t)::Tuple{E, T}) where {E <: Number, T <: AbstractTensorMap} =
+    (τ, copy_oftype(t, factorisation_scalartype(exponential, t)))
+
 _select_truncation(f, ::AbstractTensorMap, trunc::TruncationStrategy) = trunc
 function _select_truncation(::typeof(left_null!), ::AbstractTensorMap, trunc::NamedTuple)
     return MAK.null_truncation_strategy(; trunc...)
@@ -53,7 +58,7 @@ for f! in (
         :exponential!,
     )
     @eval function MAK.$f!(t::AbstractTensorMap, N, alg::AbstractAlgorithm)
-        $(f! in (:eig_vals!, :eigh_vals!, :project_hermitian!, :project_antihermitian!) && :(LinearAlgebra.checksquare(t)))
+        $(f! in (:eig_vals!, :eigh_vals!, :project_hermitian!, :project_antihermitian!, :exponential!) && :(LinearAlgebra.checksquare(t)))
         foreachblock(t, N) do _, (tblock, Nblock)
             Nblock′ = $f!(tblock, Nblock, alg)
             # deal with the case where the output is not the same as the input
@@ -76,16 +81,6 @@ function MAK.exponential!((τ, t)::Tuple{E, T}, N, alg::AbstractAlgorithm) where
     return N
 end
 
-# Default algorithm for exponential with Tuple
-MAK.exponential!((τ, t)::Tuple{E, T}) where {E <: Number, T <: DiagonalTensorMap} = MAK.exponential!((τ, t), DefaultAlgorithm())
-
-function MAK.default_algorithm(::typeof(exponential!), ::Type{Tuple{E, T}}; kwargs...) where {E <: Number, T}
-    return MAK.default_algorithm(exponential!, blocktype(T); kwargs...)
-end
-
-function MAK.copy_input(::typeof(exponential), (τ, t)::Tuple{E, T}) where {E <: Number, T <: AbstractTensorMap}
-    return (τ, copy_oftype(t, factorisation_scalartype(exponential, t)))
-end
 
 MAK.zero!(t::AbstractTensorMap) = zerovector!(t)
 
@@ -120,6 +115,12 @@ for f in [
     @eval MAK.$f!(t::DiagonalTensorMap, out, alg::DefaultAlgorithm) =
         MAK.$f!(t, out, MAK.select_algorithm(MAK.$f!, t, nothing; alg.kwargs...))
 end
+
+# resolve `DefaultAlgorithm` for the tuple form at the tensor level, mirroring the loop below
+MAK.exponential!((τ, t)::Tuple{E, T}, alg::DefaultAlgorithm) where {E <: Number, T <: AbstractTensorMap} =
+    MAK.exponential!((τ, t), MAK.select_algorithm(exponential!, t, nothing; alg.kwargs...))
+MAK.exponential!((τ, t)::Tuple{E, T}, out, alg::DefaultAlgorithm) where {E <: Number, T <: AbstractTensorMap} =
+    MAK.exponential!((τ, t), out, MAK.select_algorithm(exponential!, t, nothing; alg.kwargs...))
 
 
 # Singular value decomposition

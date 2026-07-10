@@ -2,8 +2,8 @@ using Test, TestExtras
 using TensorKit, MatrixAlgebraKit
 using Random
 
-spaces = [ℂ^4] #, Vect[U1Irrep](0 => 1, 1 => 2), Vect[SU2Irrep](0 => 1, 1 // 2 => 1)]
-scalartypes = [Float64, ComplexF32] #, ComplexF64]
+spaces = [ℂ^4, Vect[U1Irrep](0 => 1, 1 => 2), Vect[SU2Irrep](0 => 1, 1 // 2 => 1)]
+scalartypes = [Float64, ComplexF32, ComplexF64]
 algorithms = [MatrixFunctionViaLA(), MatrixFunctionViaEig(DefaultAlgorithm()), MatrixFunctionViaEigh(DefaultAlgorithm())]
 
 @timedtestset "exponential for Hermitian matrices with $space, scalartype(A) = $st1, scalartype(τ) = $st2" for space in spaces, st1 in scalartypes, st2 in scalartypes
