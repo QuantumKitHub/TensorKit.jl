@@ -47,6 +47,10 @@ function TO.tensoradd!(
         α::Number, β::Number,
         backend, allocator
     )
+    if has_array_view(C) && has_array_view(A)
+        TO.tensoradd!(C[], A[], pA, conjA, α, β, backend, allocator)
+        return C
+    end
     if conjA
         A′ = adjoint(A)
         pA′ = adjointtensorindices(A, _canonicalize(pA, C))
