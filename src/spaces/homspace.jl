@@ -91,7 +91,8 @@ sector structure of `W` (ignoring degeneracy dimensions).
 
 See also [`hasblock`](@ref), [`blockstructure`](@ref).
 """
-blocksectors(W::HomSpace) = sectorstructure(W).blocksectors
+blocksectors(W::HomSpace) =
+    sectortype(W) === Trivial ? _blocksectors(W) : sectorstructure(W).blocksectors
 
 function _blocksectors(W::HomSpace)
     sectortype(W) === Trivial &&
@@ -130,7 +131,7 @@ hasblock(W::HomSpace, c::Sector) = c in blocksectors(W)
 Return the total dimension of a `HomSpace`, i.e. the number of linearly independent
 morphisms that can be constructed within this space.
 """
-dim(W::HomSpace) = degeneracystructure(W).totaldim
+dim(W::HomSpace) = sectortype(W) === Trivial ? prod(dims(W)) : degeneracystructure(W).totaldim
 
 dims(W::HomSpace) = (dims(codomain(W))..., dims(domain(W))...)
 
