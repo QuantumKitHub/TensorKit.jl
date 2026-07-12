@@ -104,6 +104,9 @@ export notrunc, truncrank, trunctol, truncfilter, truncspace, truncerror
 # cache management
 export empty_globalcaches!
 
+# precompilation
+export precompile_contract
+
 # Imports
 #---------
 using TupleTools
@@ -287,5 +290,7 @@ include("auxiliary/ad.jl")
 include("pullbacks/tensoroperations.jl")
 
 include("pullbacks/indexmanipulations.jl")
+
+include("precompile.jl")
 
 end
