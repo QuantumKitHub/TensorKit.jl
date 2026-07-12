@@ -324,31 +324,22 @@ function contract!(
     )
     length(pA[2]) == length(pB[1]) ||
         throw(IndexError("number of contracted indices does not match"))
-    N₁, N₂ = length(pA[1]), length(pB[2])
 
     # find optimal contraction scheme by checking the following options:
     # - sorting the contracted inds of A or B to avoid permutations
     # - contracting B with A instead to avoid permutations
+    pA′, pB′, pA″, pB″, pAB′ = _contract_candidates(pA, pB, pAB)
 
-    qA = TupleTools.sortperm(pA[2])
-    pA′ = Base.setindex(pA, TupleTools.getindices(pA[2], qA), 2)
-    pB′ = Base.setindex(pB, TupleTools.getindices(pB[1], qA), 1)
-
-    qB = TupleTools.sortperm(pB[1])
-    pA″ = Base.setindex(pA, TupleTools.getindices(pA[2], qB), 2)
-    pB″ = Base.setindex(pB, TupleTools.getindices(pB[1], qB), 1)
+    # dims are permutation-invariant, so compute them once here rather than in every memcost call
+    dA, dB, dC = dim(A), dim(B), dim(C)
 
     # keep order A en B, check possibilities for cind
-    memcost1 = TO.contract_memcost(C, A, pA′, B, pB′, pAB)
-    memcost2 = TO.contract_memcost(C, A, pA″, B, pB″, pAB)
+    memcost1 = _contract_memcost(dA, dB, dC, C, A, pA′, B, pB′, pAB)
+    memcost2 = _contract_memcost(dA, dB, dC, C, A, pA″, B, pB″, pAB)
 
     # reverse order A en B, check possibilities for cind
-    pAB′ = (
-        map(n -> ifelse(n > N₁, n - N₁, n + N₂), pAB[1]),
-        map(n -> ifelse(n > N₁, n - N₁, n + N₂), pAB[2]),
-    )
-    memcost3 = TO.contract_memcost(C, B, reverse(pB′), A, reverse(pA′), pAB′)
-    memcost4 = TO.contract_memcost(C, B, reverse(pB″), A, reverse(pA″), pAB′)
+    memcost3 = _contract_memcost(dB, dA, dC, C, B, reverse(pB′), A, reverse(pA′), pAB′)
+    memcost4 = _contract_memcost(dB, dA, dC, C, B, reverse(pB″), A, reverse(pA″), pAB′)
 
     return if min(memcost1, memcost2) <= min(memcost3, memcost4)
         if memcost1 <= memcost2
@@ -363,6 +354,32 @@ function contract!(
             return blas_contract!(C, B, reverse(pB″), A, reverse(pA″), pAB′, α, β, backend, allocator)
         end
     end
+end
+
+# @noinline to avoid specialization
+@noinline function _contract_candidates(pA::Index2Tuple, pB::Index2Tuple, pAB::Index2Tuple)
+    N₁, N₂ = length(pA[1]), length(pB[2])
+
+    qA = TupleTools.sortperm(pA[2])
+    pA′ = Base.setindex(pA, TupleTools.getindices(pA[2], qA), 2)
+    pB′ = Base.setindex(pB, TupleTools.getindices(pB[1], qA), 1)
+
+    qB = TupleTools.sortperm(pB[1])
+    pA″ = Base.setindex(pA, TupleTools.getindices(pA[2], qB), 2)
+    pB″ = Base.setindex(pB, TupleTools.getindices(pB[1], qB), 1)
+
+    pAB′ = (
+        map(n -> ifelse(n > N₁, n - N₁, n + N₂), pAB[1]),
+        map(n -> ifelse(n > N₁, n - N₁, n + N₂), pAB[2]),
+    )
+    return pA′, pB′, pA″, pB″, pAB′
+end
+
+function _contract_memcost(dimA, dimB, dimC, C, A, pA, B, pB, pAB)
+    ipAB = TO.oindABinC(pAB, pA, pB)
+    return dimA * (!TO.isblascontractable(A, pA) || eltype(A) !== eltype(C)) +
+        dimB * (!TO.isblascontractable(B, pB) || eltype(B) !== eltype(C)) +
+        dimC * !TO.isblasdestination(C, ipAB)
 end
 
 function TO.contract_memcost(
