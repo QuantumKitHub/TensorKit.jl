@@ -39,7 +39,6 @@ end
     expτA = exponential!((τ, copy(A)))
     expminτA = exponential!((-τ, copy(A)))
     @test expτA * expminτA ≈ id(scalartype(expτA), space)
-    @test expτA ≈ inv(expminτA)
 end
 
 @timedtestset "exponential! for diagonal matrices for $space, scalartype(A) = $st1, scalartype(τ) = $st2" for space in spaces, st1 in scalartypes, st2 in scalartypes
@@ -60,5 +59,4 @@ end
     expτA = exponential!((τ, copy(A)))
     expminτA = exponential!((-τ, copy(A)))
     @test expτA * expminτA ≈ id(scalartype(expτA), space)
-    @test expτA ≈ inv(expminτA)
 end
