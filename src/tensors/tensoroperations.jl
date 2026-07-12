@@ -377,8 +377,8 @@ end
 
 function _contract_memcost(dimA, dimB, dimC, C, A, pA, B, pB, pAB)
     ipAB = TO.oindABinC(pAB, pA, pB)
-    return dimA * (!TO.isblascontractable(A, pA) || eltype(A) !== eltype(C)) +
-        dimB * (!TO.isblascontractable(B, pB) || eltype(B) !== eltype(C)) +
+    return dimA * (!TO.isblascontractable(A, pA) || scalartype(A) !== scalartype(C)) +
+        dimB * (!TO.isblascontractable(B, pB) || scalartype(B) !== scalartype(C)) +
         dimC * !TO.isblasdestination(C, ipAB)
 end
 
@@ -389,16 +389,16 @@ function TO.contract_memcost(
         pAB::Index2Tuple
     )
     ipAB = TO.oindABinC(pAB, pA, pB)
-    return dim(A) * (!TO.isblascontractable(A, pA) || eltype(A) !== eltype(C)) +
-        dim(B) * (!TO.isblascontractable(B, pB) || eltype(B) !== eltype(C)) +
+    return dim(A) * (!TO.isblascontractable(A, pA) || scalartype(A) !== scalartype(C)) +
+        dim(B) * (!TO.isblascontractable(B, pB) || scalartype(B) !== scalartype(C)) +
         dim(C) * !TO.isblasdestination(C, ipAB)
 end
 
 function TO.isblascontractable(A::AbstractTensorMap, pA::Index2Tuple)
-    return eltype(A) <: LinearAlgebra.BlasFloat && has_shared_permute(A, pA)
+    return scalartype(A) <: LinearAlgebra.BlasFloat && has_shared_permute(A, pA)
 end
 function TO.isblasdestination(A::AbstractTensorMap, ipAB::Index2Tuple)
-    return eltype(A) <: LinearAlgebra.BlasFloat && has_shared_permute(A, ipAB)
+    return scalartype(A) <: LinearAlgebra.BlasFloat && has_shared_permute(A, ipAB)
 end
 
 function blas_contract!(
