@@ -1,62 +1,90 @@
 using Test, TestExtras
-using TensorKit, MatrixAlgebraKit
+using TensorKit
+using MatrixAlgebraKit: DefaultAlgorithm, MatrixFunctionViaLA, MatrixFunctionViaEig,
+    MatrixFunctionViaEigh, MatrixFunctionViaTaylor
 using Random
 
-spaces = [ℂ^4, Vect[U1Irrep](0 => 1, 1 => 2), Vect[SU2Irrep](0 => 1, 1 // 2 => 1)]
-scalartypes = [Float64, ComplexF32, ComplexF64]
-algorithms = [MatrixFunctionViaLA(), MatrixFunctionViaEig(DefaultAlgorithm()), MatrixFunctionViaEigh(DefaultAlgorithm())]
+spacelist = default_spacelist(fast_tests)
+scalartypes = (Float32, Float64, ComplexF64)
 
-@timedtestset "exponential for Hermitian matrices with $space, scalartype(A) = $st1, scalartype(τ) = $st2" for space in spaces, st1 in scalartypes, st2 in scalartypes
-    A = randn(st1, space, space)
-    A = project_hermitian!(A)
-    τ = rand(st2)
+# algorithms that agree on Hermitian input
+hermitian_algs = (
+    MatrixFunctionViaLA(), MatrixFunctionViaEig(DefaultAlgorithm()),
+    MatrixFunctionViaEigh(DefaultAlgorithm()), MatrixFunctionViaTaylor(),
+)
+# algorithms valid for general (non-Hermitian) input
+general_algs = (
+    MatrixFunctionViaLA(), MatrixFunctionViaEig(DefaultAlgorithm()),
+    MatrixFunctionViaTaylor(),
+)
 
-    expA = @constinferred exponential(A)
-    expτA = @constinferred exponential((τ, A))
+for V in spacelist
+    I = sectortype(first(V))
+    Istr = TensorKit.type_repr(I)
+    println("---------------------------------------")
+    println("Matrix exponentials with symmetry: $Istr")
+    println("---------------------------------------")
+    @timedtestset "Matrix exponentials with symmetry: $Istr" verbose = true begin
+        V1, V2, V3, V4, V5 = V
+        W = V1 ⊗ V2 ⊗ V3
+        Vd = fuse(V1 ⊗ V2)
 
-    for alg in algorithms
-        expA2 = @constinferred exponential(A, alg)
-        expτA2 = @constinferred exponential((τ, A), alg)
+        # explicit (non-diagonal) algorithms only apply to dense endomorphisms;
+        # `DiagonalTensorMap` inputs are exercised through the default algorithm below
+        @testset "exponential for Hermitian matrices" begin
+            for T1 in scalartypes, T2 in scalartypes,
+                    A in (randn(T1, V1, V1), randn(T1, W, W))
 
-        @test expA ≈ expA2
-        @test expτA ≈ expτA2
+                A = project_hermitian!(A)
+                τ = rand(T2)
+
+                expA = @constinferred exponential(A)
+                expτA = @constinferred exponential((τ, A))
+
+                for alg in hermitian_algs
+                    @test expA ≈ @constinferred exponential(A, alg)
+                    @test expτA ≈ @constinferred exponential((τ, A), alg)
+                end
+            end
+        end
+
+        @testset "exponential! for general matrices" begin
+            for T1 in scalartypes, T2 in scalartypes,
+                    A in (
+                        randn(T1, V1, V1), randn(T1, W, W),
+                        DiagonalTensorMap(randn(T1, reduceddim(Vd)), Vd),
+                    )
+
+                τ = rand(T2)
+
+                expA = @constinferred exponential(A)
+                if !(A isa DiagonalTensorMap) # diagonal only supports the default algorithm == DiagonalAlgorithm
+                    for alg in general_algs
+                        @test expA ≈ exponential(A, alg)
+                    end
+                end
+
+                @test exponential!(copy(A)) ≈ exponential!((1.0, copy(A)))
+
+                # exp(A)² == exp(2A)
+                @test expA * expA ≈ exponential((2, A))
+
+                # in-place semantics: aliases the input, unless a complex scalar forces
+                # a real tensor to widen to complex
+                Ain = copy(A)
+                A2 = @constinferred exponential!((τ, Ain))
+                A isa DiagonalTensorMap && @test A2 isa DiagonalTensorMap
+                if T1 <: Real && T2 <: Complex
+                    @test A2 !== Ain
+                else
+                    @test A2 === Ain
+                end
+
+                # exp(τA) and exp(-τA) are inverse
+                expτA = exponential!((τ, copy(A)))
+                expmτA = exponential!((-τ, copy(A)))
+                @test expτA * expmτA ≈ id(scalartype(expτA), domain(A))
+            end
+        end
     end
-end
-
-@timedtestset "exponential! for general matrices for $space, scalartype(A) = $st1, scalartype(τ) = $st2" for space in spaces, st1 in scalartypes, st2 in scalartypes
-    A = randn(st1, space, space)
-    τ = rand(st2)
-
-    @test exponential!(copy(A)) == exponential!((1.0, copy(A)))
-
-    A2 = exponential!((τ, A))
-    if st1 <: Real && st2 <: Complex
-        @test objectid(A2) != objectid(A)
-    else
-        @test objectid(A2) == objectid(A)
-    end
-
-    expτA = exponential!((τ, copy(A)))
-    expminτA = exponential!((-τ, copy(A)))
-    @test expτA * expminτA ≈ id(scalartype(expτA), space)
-end
-
-@timedtestset "exponential! for diagonal matrices for $space, scalartype(A) = $st1, scalartype(τ) = $st2" for space in spaces, st1 in scalartypes, st2 in scalartypes
-    A = DiagonalTensorMap(rand(st1, reduceddim(space)), space)
-    τ = rand(st2)
-
-    exponential!(copy(A))
-    @test exponential!(copy(A)) ≈ exponential!((1.0, copy(A))) #, DiagonalAlgorithm())
-
-    A2 = @constinferred exponential!((τ, A))
-    @test A2 isa DiagonalTensorMap
-    if st1 <: Real && st2 <: Complex
-        @test objectid(A2) != objectid(A)
-    else
-        @test objectid(A2) == objectid(A)
-    end
-
-    expτA = exponential!((τ, copy(A)))
-    expminτA = exponential!((-τ, copy(A)))
-    @test expτA * expminτA ≈ id(scalartype(expτA), space)
 end
