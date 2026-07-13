@@ -22,7 +22,7 @@ end
 MAK.default_algorithm(::typeof(exponential!), ::Type{Tuple{E, T}}; kwargs...) where {E <: Number, T <: AbstractTensorMap} =
     MAK.default_algorithm(exponential!, blocktype(T); kwargs...)
 MAK.copy_input(::typeof(exponential), (τ, t)::Tuple{E, T}) where {E <: Number, T <: AbstractTensorMap} =
-    (τ, copy_oftype(t, factorisation_scalartype(exponential, t)))
+    (τ, copy_oftype(t, (E <: Complex ? complex : identity)(factorisation_scalartype(exponential, t))))
 
 _select_truncation(f, ::AbstractTensorMap, trunc::TruncationStrategy) = trunc
 function _select_truncation(::typeof(left_null!), ::AbstractTensorMap, trunc::NamedTuple)
