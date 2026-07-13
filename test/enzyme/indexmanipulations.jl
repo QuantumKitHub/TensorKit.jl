@@ -67,7 +67,7 @@ Tβs = is_ci ? (Active,) : (Active, Const)
         end
     end
     if !Sys.iswindows() && VERSION > v"1.11.0-rc"
-        has_braiding && @timedtestset "flip_n_twist! TA ($TA)" for TA in (Duplicated,) 
+        has_braiding && @timedtestset "flip_n_twist! TA ($TA)" for TA in (Duplicated,)
             A = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
             if !(T <: Real && !(sectorscalartype(sectortype(A)) <: Real))
                 EnzymeTestUtils.test_reverse(twist!, TA, (copy(A), TA), (1, Const); atol, rtol, fkwargs = (inv = false,))
@@ -81,7 +81,7 @@ Tβs = is_ci ? (Active,) : (Active, Const)
             EnzymeTestUtils.test_reverse(flip, TA, (A, TA), ([1, 3], Const); atol, rtol)
         end
     end
-    
+
     @timedtestset "insert and remove units TA ($TA)" for TA in (Duplicated,)
         A = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
         @testset for insertunit in (insertleftunit, insertrightunit)
