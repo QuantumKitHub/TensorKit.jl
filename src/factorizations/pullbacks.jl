@@ -69,7 +69,7 @@ for pullback! in (:svd_pullback!, :eig_pullback!, :eigh_pullback!)
         return MAK.$pullback!(Δt, t, F, ΔF, _notrunc_ind(t); kwargs...)
     end
     @eval function MAK.$pullback!(
-            Δt, ::Nothing, F, ΔF; kwargs...
+            Δt::AbstractTensorMap, ::Nothing, F, ΔF; kwargs...
         )
         return MAK.$pullback!(Δt, nothing, F, ΔF, _notrunc_ind(Δt); kwargs...)
     end
