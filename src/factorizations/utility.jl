@@ -5,7 +5,7 @@ end
 factorisation_scalartype(f, t) = factorisation_scalartype(t)
 
 function copy_oftype(t::AbstractTensorMap, T::Type{<:Number})
-    return copy!(similar(t, T, space(t)), t)
+    return copy!(similar(t, T), t)
 end
 
 function _reverse!(t::AbstractTensorMap; dims = :)
