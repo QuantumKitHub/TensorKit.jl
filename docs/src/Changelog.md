@@ -38,6 +38,7 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 - Enzyme AD support: forward and reverse rules (with tests) for TensorOperations contractions, index manipulations, linear algebra, and VectorInterface operations ([#436](https://github.com/QuantumKitHub/TensorKit.jl/pull/436), [#437](https://github.com/QuantumKitHub/TensorKit.jl/pull/437), [#440](https://github.com/QuantumKitHub/TensorKit.jl/pull/440), [#449](https://github.com/QuantumKitHub/TensorKit.jl/pull/449), [#451](https://github.com/QuantumKitHub/TensorKit.jl/pull/451), [#466](https://github.com/QuantumKitHub/TensorKit.jl/pull/466))
 - `exponential` and `exponential!` for the matrix exponential of tensors ([#465](https://github.com/QuantumKitHub/TensorKit.jl/pull/465))
+- Docstrings for `catdomain` and `catcodomain` ([#485](https://github.com/QuantumKitHub/TensorKit.jl/pull/485))
 
 ### Changed
 
