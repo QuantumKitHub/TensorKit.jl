@@ -118,33 +118,6 @@ end
 
 function EnzymeRules.augmented_primal(
         config::EnzymeRules.RevConfigWidth{1},
-        func::Const{typeof(twist!)},
-        ::Type{RT},
-        t::Annotation{<:AbstractTensorMap},
-        inds::Const;
-        inv::Bool = false
-    ) where {RT}
-    twist!(t.val, inds.val; inv)
-    primal = EnzymeRules.needs_primal(config) ? t.val : nothing
-    shadow = EnzymeRules.needs_shadow(config) ? t.dval : nothing
-    return EnzymeRules.AugmentedReturn(primal, shadow, nothing)
-end
-
-function EnzymeRules.reverse(
-        config::EnzymeRules.RevConfigWidth{1},
-        func::Const{typeof(twist!)},
-        ::Type{RT},
-        cache,
-        t::Annotation{<:AbstractTensorMap},
-        inds::Const;
-        inv::Bool = false
-    ) where {RT}
-    !isa(t, Const) && twist!(t.dval, inds.val; inv = !inv)
-    return (nothing, nothing)
-end
-
-function EnzymeRules.augmented_primal(
-        config::EnzymeRules.RevConfigWidth{1},
         func::Const{typeof(flip)},
         ::Type{RT},
         t::Annotation{<:AbstractTensorMap},
