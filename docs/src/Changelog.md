@@ -36,14 +36,14 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 ### Added
 
-- Enzyme AD support: forward and reverse rules (with tests) for TensorOperations contractions, index manipulations, linear algebra, and VectorInterface operations ([#436](https://github.com/QuantumKitHub/TensorKit.jl/pull/436), [#437](https://github.com/QuantumKitHub/TensorKit.jl/pull/437), [#440](https://github.com/QuantumKitHub/TensorKit.jl/pull/440), [#449](https://github.com/QuantumKitHub/TensorKit.jl/pull/449), [#451](https://github.com/QuantumKitHub/TensorKit.jl/pull/451), [#466](https://github.com/QuantumKitHub/TensorKit.jl/pull/466))
+- Enzyme AD support: forward and reverse rules (with tests) for TensorOperations contractions, linear algebra, and VectorInterface operations, and reverse rules for index manipulations ([#436](https://github.com/QuantumKitHub/TensorKit.jl/pull/436), [#437](https://github.com/QuantumKitHub/TensorKit.jl/pull/437), [#440](https://github.com/QuantumKitHub/TensorKit.jl/pull/440), [#449](https://github.com/QuantumKitHub/TensorKit.jl/pull/449), [#451](https://github.com/QuantumKitHub/TensorKit.jl/pull/451), [#466](https://github.com/QuantumKitHub/TensorKit.jl/pull/466))
 - `exponential` and `exponential!` for the matrix exponential of tensors ([#465](https://github.com/QuantumKitHub/TensorKit.jl/pull/465))
 - Docstrings for `catdomain` and `catcodomain` ([#485](https://github.com/QuantumKitHub/TensorKit.jl/pull/485))
 
 ### Changed
 
 - Consolidated duplicated GPU logic into a new GPUArrays extension ([#460](https://github.com/QuantumKitHub/TensorKit.jl/pull/460))
-- Removed explicit dependence on cuTENSOR for the CUDA extension ([#455](https://github.com/QuantumKitHub/TensorKit.jl/pull/455))
+- Removed explicit dependence on cuTENSOR for the CUDA extension; importing `cuTENSOR` is still recommended for best performance, as it enables the corresponding TensorOperations extension ([#455](https://github.com/QuantumKitHub/TensorKit.jl/pull/455))
 - Improved `DimensionMismatch` error message in the `TensorMap` constructor ([#456](https://github.com/QuantumKitHub/TensorKit.jl/pull/456))
 
 ### Fixed
