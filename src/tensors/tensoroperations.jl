@@ -382,18 +382,6 @@ function _contract_memcost(dimA, dimB, dimC, C, A, pA, B, pB, pAB)
         dimC * !TO.isblasdestination(C, ipAB)
 end
 
-function TO.contract_memcost(
-        C::AbstractTensorMap,
-        A::AbstractTensorMap, pA::Index2Tuple,
-        B::AbstractTensorMap, pB::Index2Tuple,
-        pAB::Index2Tuple
-    )
-    ipAB = TO.oindABinC(pAB, pA, pB)
-    return dim(A) * (!TO.isblascontractable(A, pA) || scalartype(A) !== scalartype(C)) +
-        dim(B) * (!TO.isblascontractable(B, pB) || scalartype(B) !== scalartype(C)) +
-        dim(C) * !TO.isblasdestination(C, ipAB)
-end
-
 function TO.isblascontractable(A::AbstractTensorMap, pA::Index2Tuple)
     return scalartype(A) <: LinearAlgebra.BlasFloat && has_shared_permute(A, pA)
 end
