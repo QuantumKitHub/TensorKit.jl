@@ -33,6 +33,7 @@ pages = [
             "man/indexmanipulations.md",
             "man/factorizations.md",
             "man/contractions.md",
+            "man/precompilation.md",
         ],
     ],
     "Library" => [
