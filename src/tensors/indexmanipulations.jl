@@ -560,15 +560,16 @@ Base.@deprecate(
     if p[1] === codomainind(tsrc) && p[2] === domainind(tsrc)
         add!(tdst, tsrc, α, β)
     else
+        p2 = (linearize(p), ())
         if has_array_view(tdst) && has_array_view(tsrc)
-            TO.tensoradd!(tdst[], tsrc[], p, false, α, β, backend, allocator)
+            TO.tensoradd!(tdst[], tsrc[], p2, false, α, β, backend, allocator)
         else
             ntasks = use_threaded_transform(tdst, transformer) ? get_num_transformer_threads() : 1
             scheduler = ntasks == 1 ? SerialScheduler() : DynamicScheduler(; ntasks, split = :roundrobin)
             if tdst isa TensorMap && tsrc isa TensorMap # unpack data fields to avoid specializing
-                add_transform_kernel!(tdst.data, tsrc.data, p, transformer, α, β, backend, allocator, scheduler)
+                add_transform_kernel!(tdst.data, tsrc.data, p2, transformer, α, β, backend, allocator, scheduler)
             else
-                add_transform_kernel!(tdst, tsrc, p, transformer, α, β, backend, allocator, scheduler)
+                add_transform_kernel!(tdst, tsrc, p2, transformer, α, β, backend, allocator, scheduler)
             end
         end
     end
