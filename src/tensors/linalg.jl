@@ -467,7 +467,32 @@ for f in (:sqrt, :log, :asin, :acos, :acosh, :atanh, :acoth)
     end
 end
 
-# concatenate tensors
+"""
+    catdomain(t1::AbstractTensorMap{<:Any, S, N₁, 1}, t2::AbstractTensorMap{<:Any, S, N₁, 1}) where {S, N₁}
+
+Given two tensors that share the same codomain, and whose domain is a single
+`ElementarySpace` (rank 1) with matching duality, return a new tensor `t` with that
+same codomain and domain `V = domain(t1) ⊕ domain(t2)` — the tensor-map analogue of
+`hcat`.
+
+Throws a `SpaceMismatch` if the codomains don't match, or if `domain(t1)` and
+`domain(t2)` have different duality (i.e. one is dual and the other isn't) — a direct
+sum is only meaningful between spaces of matching duality.
+
+See also [`catcodomain`](@ref).
+
+# Examples
+```jldoctest
+julia> t1 = randn(ComplexF64, ℂ^2 ← ℂ^3);
+
+julia> t2 = randn(ComplexF64, ℂ^2 ← ℂ^4);
+
+julia> t3 = catdomain(t1, t2);
+
+julia> only(domain(t3)) == only(domain(t1)) ⊕ only(domain(t2))
+true
+```
+"""
 function catdomain(t1::AbstractTensorMap{<:Any, S, N₁, 1}, t2::AbstractTensorMap{<:Any, S, N₁, 1}) where {S, N₁}
     codomain(t1) == codomain(t2) ||
         throw(
@@ -487,6 +512,33 @@ function catdomain(t1::AbstractTensorMap{<:Any, S, N₁, 1}, t2::AbstractTensorM
     end
     return t
 end
+
+"""
+    catcodomain(t1::AbstractTensorMap{<:Any, S, 1, N₂}, t2::AbstractTensorMap{<:Any, S, 1, N₂}) where {S, N₂}
+
+Given two tensors that share the same domain, and whose codomain is a single
+`ElementarySpace` (rank 1) with matching duality, return a new tensor `t` with that
+same domain and codomain `V = codomain(t1) ⊕ codomain(t2)` — the tensor-map analogue
+of `vcat`.
+
+Throws a `SpaceMismatch` if the domains don't match, or if `codomain(t1)` and
+`codomain(t2)` have different duality (i.e. one is dual and the other isn't) — a
+direct sum is only meaningful between spaces of matching duality.
+
+See also [`catdomain`](@ref).
+
+# Examples
+```jldoctest
+julia> t1 = randn(ComplexF64, ℂ^2 ← ℂ^3);
+
+julia> t2 = randn(ComplexF64, ℂ^4 ← ℂ^3);
+
+julia> t3 = catcodomain(t1, t2);
+
+julia> only(codomain(t3)) == only(codomain(t1)) ⊕ only(codomain(t2))
+true
+```
+"""
 function catcodomain(t1::AbstractTensorMap{<:Any, S, 1, N₂}, t2::AbstractTensorMap{<:Any, S, 1, N₂}) where {S, N₂}
     domain(t1) == domain(t2) ||
         throw(SpaceMismatch("domains of tensors to concatenate must match:\n$(domain(t1)) ≠ $(domain(t2))"))
