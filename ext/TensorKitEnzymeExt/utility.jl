@@ -19,6 +19,68 @@ pullback_dC!(ΔC, β::Number) = scale!(ΔC, conj(β))
 @inline EnzymeRules.inactive_type(::Type{<:TensorKit.GenericTreeTransformer}) = true
 @inline EnzymeRules.inactive_type(::Type{<:TensorKit.VectorSpace}) = true
 
+function EnzymeRules.augmented_primal(
+        config::EnzymeRules.RevConfigWidth{1},
+        ::Const{typeof(subblock)},
+        ::Type{RT},
+        t::Annotation{<:AbstractTensorMap},
+        f::Annotation,
+    ) where {RT}
+    ret = EnzymeRules.needs_primal(config) ? subblock(t.val, f.val) : nothing
+    dret = if !isa(t, Const) && EnzymeRules.needs_shadow(config)
+        subblock(t.dval, f.val)
+    elseif EnzymeRules.needs_shadow(config)
+        Enzyme.make_zero(ret)
+    else
+        nothing
+    end
+    return EnzymeRules.AugmentedReturn(ret, dret, dret)
+end
+
+function EnzymeRules.reverse(
+        config::EnzymeRules.RevConfigWidth{1},
+        ::Const{typeof(subblock)},
+        ::Type{RT},
+        cache,
+        t::Annotation{<:AbstractTensorMap},
+        f::Annotation,
+    ) where {RT}
+    dret = cache
+    if !isnothing(dret) && !isa(t, Const)
+        subblock(t.dval, f.val) .= dret
+    end
+    return (nothing, nothing)
+end
+
+function EnzymeRules.forward(
+        config::EnzymeRules.FwdConfigWidth{1},
+        ::Const{typeof(subblock)},
+        ::Type{RT},
+        t::Annotation{<:AbstractTensorMap},
+        f::Annotation,
+    ) where {RT}
+    ret = EnzymeRules.needs_primal(config) ? subblock(t.val, f.val) : nothing
+    dret = if !isa(t, Const) && EnzymeRules.needs_shadow(config)
+        subblock(t.dval, f.val)
+    elseif EnzymeRules.needs_shadow(config)
+        Enzyme.make_zero(ret)
+    else
+        nothing
+    end
+    if EnzymeRules.needs_primal(config) && EnzymeRules.needs_shadow(config)
+        return Duplicated(ret, dret)
+    elseif EnzymeRules.needs_primal(config)
+        return ret
+    elseif EnzymeRules.needs_shadow(config)
+        return dret
+    else
+        return nothing
+    end
+end
+
+@inline EnzymeRules.inactive(::typeof(TensorKit.fsbraid), ::Any) = nothing
+@inline EnzymeRules.inactive(::typeof(TensorKit.fsbraid), ::Any, ::Any) = nothing
+@inline EnzymeRules.inactive(::typeof(TensorKit.artin_braid), ::Any, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.sectorstructure), ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.degeneracystructure), ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.select), s::HomSpace, i::Index2Tuple) = nothing
