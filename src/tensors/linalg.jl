@@ -41,7 +41,7 @@ function compose(A::AbstractTensorMap, B::AbstractTensorMap)
 end
 Base.:*(t1::AbstractTensorMap, t2::AbstractTensorMap) = compose(t1, t2)
 
-Base.exp(t::AbstractTensorMap) = exp!(copy(t))
+Base.exp(t::AbstractTensorMap) = exponential(t)
 function Base.:^(t::AbstractTensorMap, p::Integer)
     return p < 0 ? Base.power_by_squaring(inv(t), -p) : Base.power_by_squaring(t, p)
 end
@@ -416,15 +416,7 @@ function Base.:(/)(t1::AbstractTensorMap, t2::AbstractTensorMap)
     return t
 end
 
-# TensorMap exponentation:
-function exp!(t::TensorMap)
-    domain(t) == codomain(t) ||
-        error("Exponential of a tensor only exist when domain == codomain.")
-    for (c, b) in blocks(t)
-        copy!(b, LinearAlgebra.exp!(b))
-    end
-    return t
-end
+@deprecate exp!(t) exponential!(t)
 
 # Sylvester equation with TensorMap objects:
 function LinearAlgebra.sylvester(A::AbstractTensorMap, B::AbstractTensorMap, C::AbstractTensorMap)
