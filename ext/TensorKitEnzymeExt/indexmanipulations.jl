@@ -148,3 +148,24 @@ function EnzymeRules.reverse(
     end
     return (nothing, nothing)
 end
+
+function EnzymeRules.forward(
+        config::EnzymeRules.FwdConfigWidth{1},
+        func::Const{typeof(flip)},
+        ::Type{RT},
+        t::Annotation{<:AbstractTensorMap},
+        inds::Annotation;
+        inv::Bool = false,
+    ) where {RT}
+    t′ = flip(t.val, inds.val; inv)
+    dt′ = !isa(t, Const) ? flip(t.dval, inds.val; inv) : make_zero(t.val)
+    if EnzymeRules.needs_primal(config) && EnzymeRules.needs_shadow(config)
+        return Duplicated(t′, dt′)
+    elseif EnzymeRules.needs_primal(config)
+        return t′
+    elseif EnzymeRules.needs_shadow(config)
+        return dt′
+    else
+        return nothing
+    end
+end
