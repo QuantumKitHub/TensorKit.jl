@@ -45,10 +45,6 @@ function EnzymeRules.reverse(
         t::Annotation{<:AbstractTensorMap},
         f::Annotation,
     ) where {RT}
-    dret = cache
-    if !isnothing(dret) && !isa(t, Const)
-        subblock(t.dval, f.val) .= dret
-    end
     return (nothing, nothing)
 end
 
@@ -78,10 +74,6 @@ function EnzymeRules.reverse(
         t::Annotation{<:AbstractTensorMap},
         c::Annotation{<:Sector},
     ) where {RT}
-    dret = cache
-    if !isnothing(dret) && !isa(t, Const)
-        block(t.dval, c.val) .= dret
-    end
     return (nothing, nothing)
 end
 
