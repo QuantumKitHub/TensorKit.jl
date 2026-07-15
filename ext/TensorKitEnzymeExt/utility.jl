@@ -45,10 +45,35 @@ function EnzymeRules.reverse(
         t::Annotation{<:AbstractTensorMap},
         f::Annotation,
     ) where {RT}
-    dret = cache
-    if !isnothing(dret) && !isa(t, Const)
-        subblock(t.dval, f.val) .= dret
+    return (nothing, nothing)
+end
+
+function EnzymeRules.augmented_primal(
+        config::EnzymeRules.RevConfigWidth{1},
+        ::Const{typeof(block)},
+        ::Type{RT},
+        t::Annotation{<:AbstractTensorMap},
+        c::Annotation{<:Sector},
+    ) where {RT}
+    ret = EnzymeRules.needs_primal(config) ? block(t.val, c.val) : nothing
+    dret = if !isa(t, Const) && EnzymeRules.needs_shadow(config)
+        block(t.dval, c.val)
+    elseif EnzymeRules.needs_shadow(config)
+        Enzyme.make_zero(ret)
+    else
+        nothing
     end
+    return EnzymeRules.AugmentedReturn(ret, dret, dret)
+end
+
+function EnzymeRules.reverse(
+        config::EnzymeRules.RevConfigWidth{1},
+        ::Const{typeof(block)},
+        ::Type{RT},
+        cache,
+        t::Annotation{<:AbstractTensorMap},
+        c::Annotation{<:Sector},
+    ) where {RT}
     return (nothing, nothing)
 end
 
@@ -78,9 +103,38 @@ function EnzymeRules.forward(
     end
 end
 
+function EnzymeRules.forward(
+        config::EnzymeRules.FwdConfigWidth{1},
+        ::Const{typeof(block)},
+        ::Type{RT},
+        t::Annotation{<:AbstractTensorMap},
+        c::Annotation{<:Sector},
+    ) where {RT}
+    ret = EnzymeRules.needs_primal(config) ? block(t.val, c.val) : nothing
+    dret = if !isa(t, Const) && EnzymeRules.needs_shadow(config)
+        block(t.dval, c.val)
+    elseif EnzymeRules.needs_shadow(config)
+        Enzyme.make_zero(ret)
+    else
+        nothing
+    end
+    if EnzymeRules.needs_primal(config) && EnzymeRules.needs_shadow(config)
+        return Duplicated(ret, dret)
+    elseif EnzymeRules.needs_primal(config)
+        return ret
+    elseif EnzymeRules.needs_shadow(config)
+        return dret
+    else
+        return nothing
+    end
+end
+
 @inline EnzymeRules.inactive(::typeof(TensorKit.fsbraid), ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.fsbraid), ::Any, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.artin_braid), ::Any, ::Any) = nothing
+@inline EnzymeRules.inactive(::typeof(TensorKit.insertleftunit), ::HomSpace, ::Any) = nothing
+@inline EnzymeRules.inactive(::typeof(TensorKit.insertrightunit), ::HomSpace, ::Any) = nothing
+@inline EnzymeRules.inactive(::typeof(TensorKit.removeunit), ::HomSpace, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.sectorstructure), ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.degeneracystructure), ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.select), s::HomSpace, i::Index2Tuple) = nothing
