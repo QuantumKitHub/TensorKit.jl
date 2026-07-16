@@ -1,87 +1,27 @@
-for transform in (:permute, :transpose)
-    transform! = Symbol(transform, :!)
-    transform_pb = Symbol(transform, :_pullback_dA)
-    @eval function EnzymeRules.augmented_primal(
-            config::EnzymeRules.RevConfigWidth{1},
-            func::Const{typeof(TK.$transform!)},
-            ::Type{RT},
-            C::Annotation{<:AbstractTensorMap},
-            A::Annotation{<:AbstractTensorMap},
-            p::Const{<:Index2Tuple},
-            α::Annotation{<:Number},
-            β::Annotation{<:Number},
-            ba::Const...
-        ) where {RT}
-        C_cache = !isa(β, Const) ? copy(C.val) : nothing
-        A_cache = EnzymeRules.overwritten(config)[3] ? copy(A.val) : nothing
-        # if we need to compute Δa, it is faster to allocate an intermediate permuted A
-        # and store that instead of repeating the permutation in the pullback each time.
-        # effectively, we replace `add_permute` by `add ∘ permute`.
-        Ap = if !isa(α, Const)
-            Ap = $transform(A.val, p.val)
-            add!(C.val, Ap, α.val, β.val)
-            Ap
-        else
-            bavs = map(a -> a.val, ba)
-            TK.$transform!(C.val, A.val, p.val, α.val, β.val, bavs...)
-            nothing
-        end
-        cache = (C_cache, A_cache, Ap)
-        primal = EnzymeRules.needs_primal(config) ? C.val : nothing
-        shadow = EnzymeRules.needs_shadow(config) ? C.dval : nothing
-        return EnzymeRules.AugmentedReturn(primal, shadow, cache)
-    end
-    @eval function EnzymeRules.reverse(
-            config::EnzymeRules.RevConfigWidth{1},
-            func::Const{typeof(TK.$transform!)},
-            ::Type{RT},
-            cache,
-            C::Annotation{<:AbstractTensorMap},
-            A::Annotation{<:AbstractTensorMap},
-            p::Const{<:Index2Tuple},
-            α::Annotation{<:Number},
-            β::Annotation{<:Number},
-            ba::Const...
-        ) where {RT}
-        C_cache, A_cache, Ap = cache
-        Cval = something(C_cache, C.val)
-        bavs = map(a -> a.val, ba)
-        # ΔA
-        if !isa(A, Const) && !isa(C, Const)
-            Aval = something(A_cache, A.val)
-            TK.$transform_pb(A.dval, Aval, C.dval, C.val, p.val, α.val, bavs...)
-        end
-        Δα = pullback_dα(α, C, Ap)
-        Δβ = pullback_dβ(β, C, Cval)
-        !isa(C, Const) && pullback_dC!(C.dval, β.val)
-        return nothing, nothing, nothing, Δα, Δβ, map(Returns(nothing), ba)...
-    end
-end
-
 function EnzymeRules.augmented_primal(
         config::EnzymeRules.RevConfigWidth{1},
-        func::Const{typeof(TK.braid!)},
+        func::Const{typeof(TK.add_transform!)},
         ::Type{RT},
         C::Annotation{<:AbstractTensorMap},
         A::Annotation{<:AbstractTensorMap},
-        p::Const{<:Index2Tuple},
-        levels::Const{<:IndexTuple},
+        p::Annotation{<:Index2Tuple},
+        transformer::Annotation,
         α::Annotation{<:Number},
         β::Annotation{<:Number},
         ba::Const...
     ) where {RT}
-    C_cache = !isa(β, Const) ? copy(C.val) : nothing
-    A_cache = EnzymeRules.overwritten(config)[3] ? copy(A.val) : nothing
+    C_cache = !isa(β, Const) ? copy(C.val) : C.val
+    A_cache = EnzymeRules.overwritten(config)[3] ? copy(A.val) : A.val
     # if we need to compute Δa, it is faster to allocate an intermediate braided A
     # and store that instead of repeating the permutation in the pullback each time.
     # effectively, we replace `add_permute` by `add ∘ permute`.
+    bavs = map(a -> a.val, ba)
     Ap = if !isa(α, Const)
-        Ap = braid(A.val, p.val, levels.val)
+        Ap = TK.add_transform!(Enzyme.make_zero(C.val), A.val, p.val, transformer.val, One(), Zero(), bavs...)
         add!(C.val, Ap, α.val, β.val)
         Ap
     else
-        bavs = map(a -> a.val, ba)
-        TK.braid!(C.val, A.val, p.val, levels.val, α.val, β.val, bavs...)
+        TK.add_transform!(C.val, A.val, p.val, transformer.val, α.val, β.val, bavs...)
         nothing
     end
     cache = (C_cache, A_cache, Ap)
@@ -91,24 +31,33 @@ function EnzymeRules.augmented_primal(
 end
 function EnzymeRules.reverse(
         config::EnzymeRules.RevConfigWidth{1},
-        func::Const{typeof(TK.braid!)},
+        func::Const{typeof(TK.add_transform!)},
         ::Type{RT},
         cache,
         C::Annotation{<:AbstractTensorMap},
         A::Annotation{<:AbstractTensorMap},
-        p::Const{<:Index2Tuple},
-        levels::Const{<:IndexTuple},
+        p::Annotation{<:Index2Tuple},
+        transformer::Annotation,
         α::Annotation{<:Number},
         β::Annotation{<:Number},
         ba::Const...
     ) where {RT}
     C_cache, A_cache, Ap = cache
-    Cval = something(C_cache, C.val)
-    Aval = something(A_cache, A.val)
+    Cval = C_cache
+    Aval = A_cache
     bavs = map(a -> a.val, ba)
     # ΔA
     if !isa(A, Const) && !isa(C, Const)
-        TK.braid_pb(A.dval, Aval, C.dval, C.val, p.val, levels.val, α.val, bavs...)
+        ip = invperm(linearize(p.val))
+        pΔA = TO.repartition(ip, numout(Aval))
+        TC = VectorInterface.promote_scale(Cval, α.val)
+        if scalartype(A.dval) <: Real && !(TC <: Real)
+            ΔAc = TO.tensoralloc_add(TC, C.dval, pΔA, false, Val(false))
+            TK.add_transform!(ΔAc, C.dval, pΔA, transformer.val, conj(α.val), Zero(), bavs...)
+            add!(A.dval, real(ΔAc))
+        else
+            TK.add_transform!(A.dval, C.dval, pΔA, transformer.val, conj(α.val), One(), bavs...)
+        end
     end
     Δαr = pullback_dα(α, C, Ap)
     Δβr = pullback_dβ(β, C, Cval)
