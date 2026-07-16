@@ -58,7 +58,7 @@ for pullback! in (:svd_pullback!, :eig_pullback!, :eigh_pullback!)
             haskey(inds, c) || return nothing
             ind = inds[c]
             Fc = block.(F, Ref(c))
-            ΔFc = block.(ΔF, Ref(c))
+            ΔFc = map(ΔFc -> isnothing(ΔFc) ? nothing : block(ΔFc, c), ΔF)
             return MAK.$pullback!(Δb, nothing, Fc, ΔFc, ind; kwargs...)
         end
         return Δt
@@ -70,6 +70,11 @@ for pullback! in (:svd_pullback!, :eig_pullback!, :eigh_pullback!)
     end
     @eval function MAK.$pullback!(
             Δt::AbstractTensorMap, ::Nothing, F, ΔF; kwargs...
+        )
+        return MAK.$pullback!(Δt, nothing, F, ΔF, _notrunc_ind(Δt); kwargs...)
+    end
+    @eval function MAK.$pullback!(
+            Δt::AbstractTensorMap, ::Nothing, F, ΔF, ::Colon; kwargs...
         )
         return MAK.$pullback!(Δt, nothing, F, ΔF, _notrunc_ind(Δt); kwargs...)
     end
