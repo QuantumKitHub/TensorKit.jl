@@ -13,46 +13,16 @@ for V in spacelist
     Istr = type_repr(I)
     BraidingStyle(I) isa NoBraiding && continue
     @timedtestset "Braiding tensor with symmetry: $Istr" verbose = true begin
-        W = V[1] ⊗ V[2] ← V[2] ⊗ V[1]
+        TensorKitTestSuite.run_testsuite(:tensors, "braiding tensor properties", V)
+
+        # adapt tests
+        V1, V2, V3, V4, V5 = V
+        W = V1 ⊗ V2 ← V2 ⊗ V1
         t1 = @constinferred BraidingTensor(W)
-        @test space(t1) == W
-        @test codomain(t1) == codomain(W)
-        @test domain(t1) == domain(W)
-        @test scalartype(t1) == (isreal(sectortype(W)) ? Float64 : ComplexF64)
-        @test storagetype(t1) == Vector{scalartype(t1)}
         t2 = @constinferred BraidingTensor{ComplexF64}(W)
-        @test scalartype(t2) == ComplexF64
-        @test storagetype(t2) == Vector{ComplexF64}
         t3 = @testinferred adapt(storagetype(t2), t1)
         @test storagetype(t3) == storagetype(t2)
         @test t3 == t2
-
-        W2 = reverse(codomain(W)) ← domain(W)
-        @test_throws SpaceMismatch BraidingTensor(W2)
-
-        @test adjoint(t1) isa BraidingTensor
-        @test complex(t1) isa BraidingTensor
-        @test scalartype(complex(t1)) <: Complex
-
-        t3 = @inferred TensorMap(t2)
-        t4 = braid(id(storagetype(t2), domain(t2)), ((2, 1), (3, 4)), (1, 2, 3, 4))
-        @test t1 ≈ t4
-        for (c, b) in blocks(t1)
-            @test block(t1, c) ≈ b ≈ block(t3, c)
-        end
-        for (f1, f2) in fusiontrees(t1)
-            @test t1[f1, f2] ≈ t3[f1, f2]
-        end
-
-        t5 = @inferred TensorMap(t2')
-        t6 = braid(id(storagetype(t2), domain(t2')), ((2, 1), (3, 4)), (4, 3, 2, 1))
-        @test t5 ≈ t6
-        for (c, b) in blocks(t1')
-            @test block(t1', c) ≈ b ≈ block(t5, c)
-        end
-        for (f1, f2) in fusiontrees(t1')
-            @test t1'[f1, f2] ≈ t5[f1, f2]
-        end
     end
 end
 

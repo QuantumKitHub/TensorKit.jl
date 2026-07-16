@@ -5,18 +5,6 @@ using TensorKit: hassector, type_repr, HomSpace, sectorequal, sectorhash
 # TODO: remove this once type_repr works for all included types
 using TensorKitSectors
 
-
-"""
-    eval_show(x)
-
-Use `show` to generate a string representation of `x`, then parse and evaluate the resulting expression.
-"""
-function eval_show(x)
-    str = sprint(show, x; context = (:module => @__MODULE__))
-    ex = Meta.parse(str)
-    return eval(ex)
-end
-
 @timedtestset "Fields" begin
     @test isa(ℝ, Field)
     @test isa(ℂ, Field)
@@ -187,100 +175,8 @@ end
     @test @constinferred(axes(V)) == Base.OneTo(d)
 end
 
-@timedtestset "ElementarySpace: $(type_repr(Vect[I]))" for I in sectorlist
-    if Base.IteratorSize(values(I)) === Base.IsInfinite()
-        set = unique(vcat(allunits(I)..., [randsector(I) for k in 1:10]))
-        gen = (c => 2 for c in set)
-    else
-        gen = (values(I)[k] => (k + 1) for k in 1:length(values(I)))
-    end
-    V = GradedSpace(gen)
-    @test eval(Meta.parse(type_repr(typeof(V)))) == typeof(V)
-    @test eval_show(V) == V
-    @test eval_show(V') == V'
-    @test V' == GradedSpace(gen; dual = true)
-    @test V == @constinferred GradedSpace(gen...)
-    @test V' == @constinferred GradedSpace(gen...; dual = true)
-    @test V == @constinferred GradedSpace(tuple(gen...))
-    @test V' == @constinferred GradedSpace(tuple(gen...); dual = true)
-    @test V == @constinferred GradedSpace(Dict(gen))
-    @test V' == @constinferred GradedSpace(Dict(gen); dual = true)
-    @test V == @inferred Vect[I](gen)
-    @test V' == @constinferred Vect[I](gen; dual = true)
-    @test V == @constinferred Vect[I](gen...)
-    @test V' == @constinferred Vect[I](gen...; dual = true)
-    @test V == @constinferred Vect[I](Dict(gen))
-    @test V' == @constinferred Vect[I](Dict(gen); dual = true)
-    @test V == @constinferred typeof(V)(c => dim(V, c) for c in sectors(V))
-    if I isa ZNIrrep
-        @test V == @constinferred typeof(V)(V.dims)
-        @test V' == @constinferred typeof(V)(V.dims; dual = true)
-    end
-    @test @constinferred(hash(V)) == hash(deepcopy(V)) != hash(V')
-    @test V == GradedSpace(reverse(collect(gen))...)
-    @test eval_show(V) == V
-    @test eval_show(typeof(V)) == typeof(V)
-    # space with no sectors
-    @test dim(@constinferred(zerospace(V))) == 0
-    # space with unit(s), always test as if multifusion
-    W = @constinferred GradedSpace(unit => 1 for unit in allunits(I))
-    dict = Dict(unit => 1 for unit in allunits(I))
-    @test W == GradedSpace(dict)
-    @test W == GradedSpace(push!(dict, randsector(I) => 0))
-    @test @constinferred(zerospace(V)) == GradedSpace(unit => 0 for unit in allunits(I))
-    randunit = rand(collect(allunits(I)))
-    @test_throws ArgumentError("Sector $(randunit) appears multiple times") GradedSpace(randunit => 1, randunit => 3)
-
-    @test isunitspace(W)
-    @test @constinferred(unitspace(V)) == W == unitspace(typeof(V))
-    if UnitStyle(I) isa SimpleUnit
-        @test @constinferred(leftunitspace(V)) == W == @constinferred(rightunitspace(V))
-    else
-        @test_throws ArgumentError leftunitspace(V)
-        @test_throws ArgumentError rightunitspace(V)
-    end
-    @test eval_show(W) == W
-    @test isa(V, VectorSpace)
-    @test isa(V, ElementarySpace)
-    @test isa(InnerProductStyle(V), HasInnerProduct)
-    @test isa(InnerProductStyle(V), EuclideanInnerProduct)
-    @test isa(V, GradedSpace)
-    @test isa(V, GradedSpace{I})
-    @test @constinferred(dual(V)) == @constinferred(conj(V)) == @constinferred(adjoint(V)) != V
-    @test @constinferred(field(V)) == ℂ
-    @test @constinferred(sectortype(V)) == I
-    slist = @constinferred sectors(V)
-    @test @constinferred(hassector(V, first(slist)))
-    @test @constinferred(dim(V)) == sum(dim(s) * dim(V, s) for s in slist)
-    @test @constinferred(reduceddim(V)) == sum(dim(V, s) for s in slist)
-    @constinferred dim(V, first(slist))
-    if hasfusiontensor(I)
-        @test @constinferred(axes(V)) == Base.OneTo(dim(V))
-    end
-    @test @constinferred(⊕(V, zerospace(V))) == V
-    @test @constinferred(⊕(V, V)) == Vect[I](c => 2dim(V, c) for c in sectors(V))
-    @test @constinferred(⊕(V, V, V, V)) == Vect[I](c => 4dim(V, c) for c in sectors(V))
-    @test @constinferred(⊕(V, unitspace(V))) == Vect[I](c => isunit(c) + dim(V, c) for c in sectors(V))
-    @test @constinferred(fuse(V, unitspace(V))) == V
-    d = Dict{I, Int}()
-    for a in sectors(V), b in sectors(V)
-        for c in a ⊗ b
-            d[c] = get(d, c, 0) + dim(V, a) * dim(V, b) * Nsymbol(a, b, c)
-        end
-    end
-    @test @constinferred(fuse(V, V)) == GradedSpace(d)
-    @test @constinferred(flip(V)) == Vect[I](conj(c) => dim(V, c) for c in sectors(V))'
-    @test flip(V) ≅ V
-    @test flip(V) ≾ V
-    @test flip(V) ≿ V
-    @test @constinferred(⊕(V, V)) == @constinferred supremum(V, ⊕(V, V))
-    @test V == @constinferred infimum(V, ⊕(V, V))
-    @test V ≺ ⊕(V, V)
-    @test !(V ≻ ⊕(V, V))
-
-    u = first(allunits(I))
-    @test infimum(V, GradedSpace(u => 3)) == GradedSpace(u => 2)
-    @test_throws SpaceMismatch (⊕(V, V'))
+@timedtestset "ElementarySpace: $(type_repr(Vect[I]))" verbose = true for I in sectorlist
+    TensorKitTestSuite.run_testsuite(:spaces, "graded space", I)
 end
 
 @timedtestset "ProductSpace{ℂ}" begin
@@ -428,53 +324,8 @@ end
 end
 
 @timedtestset "HomSpace" begin
-    for (V1, V2, V3, V4, V5) in ad_spacelist(fast_tests)
-        W = HomSpace(V1 ⊗ V2, (V3 ⊗ V4 ⊗ V5)')
-        @test W == ((V3 ⊗ V4 ⊗ V5)' → V1 ⊗ V2)
-        @test W == (V1 ⊗ V2 ← (V3 ⊗ V4 ⊗ V5)')
-        @test W' == (V1 ⊗ V2 → (V3 ⊗ V4 ⊗ V5)')
-        @test codomain(W) == V1 ⊗ V2
-        @test domain(W)' == V3 ⊗ V4 ⊗ V5
-        @test eval_show(W) == W
-        @test eval_show(typeof(W)) == typeof(W)
-        @test spacetype(W) == typeof(V1)
-        @test sectortype(W) == sectortype(V1)
-        @test W[1] == V1
-        @test W[2] == V2
-        @test W[3] == V5
-        @test W[4] == V4
-        @test W[5] == V3
-        @test all(W .== (V1, V2, V5, V4, V3))
-        @test @constinferred(map(isdual, W)) == ntuple(i -> isdual(W[i]), length(W))
-        @test @constinferred(hash(W)) == hash(deepcopy(W)) != hash(W')
-        @test W == deepcopy(W)
-        cod = codomain(W)
-        dom = domain(W)
-        @test (cod ← dom ⊗ rightunitspace(dom[3])) ==
-            @constinferred(insertleftunit(W)) ==
-            @constinferred(insertrightunit(W))
-        @test @constinferred(removeunit(insertleftunit(W), $(numind(W) + 1))) == W
-        @test (cod ← dom ⊗ rightunitspace(dom[3])') ==
-            @constinferred(insertleftunit(W; conj = true)) ==
-            @constinferred(insertrightunit(W; conj = true))
-        @test (leftunitspace(cod[1]) ⊗ cod ← dom) ==
-            @constinferred(insertleftunit(W, 1)) ==
-            @constinferred(insertrightunit(W, 0))
-        @test (cod ⊗ rightunitspace(cod[2]) ← dom) ==
-            @constinferred(insertrightunit(W, 2))
-        @test (cod ← leftunitspace(dom[1]) ⊗ dom) ==
-            @constinferred(insertleftunit(W, 3))
-        @test @constinferred(removeunit(insertleftunit(W, 3), 3)) == W
-        if UnitStyle(sectortype(W)) isa SimpleUnit
-            @test @constinferred(insertrightunit(one(V1) ← V1, 0)) == (unitspace(V1) ← V1)
-            @test_throws BoundsError insertleftunit(one(V1) ← V1, 0)
-        else
-            @test_throws ArgumentError insertrightunit(one(V1) ← V1, 0)
-            @test_throws ArgumentError insertleftunit(one(V1) ← V1, 0)
-        end
-        @test (V1 ⊗ V2 ← V1 ⊗ V2) == @constinferred TensorKit.compose(W, W')
-        @test W == @constinferred permute(W, ((1, 2), (3, 4, 5)))
-        @test permute(W, ((2, 5, 4), (1, 3))) == (V2 ⊗ V3 ⊗ V4 ← V1' ⊗ V5') # cyclic permutation
+    for V in ad_spacelist(fast_tests)
+        TensorKitTestSuite.run_testsuite(:tensors, "hom space", V)
     end
 end
 
