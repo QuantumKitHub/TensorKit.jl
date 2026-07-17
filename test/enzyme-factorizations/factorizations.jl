@@ -75,7 +75,7 @@ end
     atol = default_tol(T)
     rtol = default_tol(T)
 
-    @testest "EIG" begin
+    @testset "EIG" begin
         DV = eig_full(t)
         ΔDV = EnzymeTestUtils.rand_tangent(DV)
         remove_eig_gauge_dependence!(ΔDV[2], DV...)
@@ -93,7 +93,7 @@ end
         EnzymeTestUtils.test_reverse(eig_trunc_no_error, Duplicated, (t, Duplicated), (alg, Const); output_tangent = ΔDVtrunc, atol, rtol)
     end
 
-    @testest "EIGH" begin
+    @testset "EIGH" begin
         th = project_hermitian(t)
         DV = eigh_full(th)
         ΔDV = EnzymeTestUtils.rand_tangent(DV)
