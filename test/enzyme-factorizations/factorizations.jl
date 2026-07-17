@@ -41,33 +41,33 @@ eltypes = (Float64, ComplexF64)
     end
 
     @testset "LQ" begin
-        EnzymeTestUtils.test_reverse(lq_compact, Duplicated, (A, Duplicated); atol, rtol)
+        EnzymeTestUtils.test_reverse(lq_compact, Duplicated, (t, Duplicated); atol, rtol)
 
         # lq_full/lq_null requires being careful with gauges
-        LQ = lq_full(A)
+        LQ = lq_full(t)
         ΔLQ = EnzymeTestUtils.rand_tangent(LQ)
-        remove_lq_gauge_dependence!(ΔLQ..., A, LQ...)
-        EnzymeTestUtils.test_reverse(lq_full, Duplicated, (A, Duplicated); output_tangent = ΔLQ, atol, rtol)
+        remove_lq_gauge_dependence!(ΔLQ..., t, LQ...)
+        EnzymeTestUtils.test_reverse(lq_full, Duplicated, (t, Duplicated); output_tangent = ΔLQ, atol, rtol)
 
-        Nᴴ = lq_null(A)
-        Q = lq_compact(A)[2]
+        Nᴴ = lq_null(t)
+        Q = lq_compact(t)[2]
         ΔNᴴ = EnzymeTestUtils.rand_tangent(Nᴴ)
         remove_lq_null_gauge_dependence!(ΔNᴴ, Q, Nᴴ)
-        EnzymeTestUtils.test_reverse(lq_null, Duplicated, (A, Duplicated); output_tangent = ΔNᴴ, atol, rtol)
+        EnzymeTestUtils.test_reverse(lq_null, Duplicated, (t, Duplicated); output_tangent = ΔNᴴ, atol, rtol)
     end
 
     @testset "QR" begin
         # qr_full/qr_null requires being careful with gauges
-        QR = qr_full(A)
+        QR = qr_full(t)
         ΔQR = EnzymeTestUtils.rand_tangent(QR)
-        remove_qr_gauge_dependence!(ΔQR..., A, QR...)
-        EnzymeTestUtils.test_reverse(qr_full, Duplicated, (A, Duplicated); output_tangent = ΔQR, atol, rtol)
+        remove_qr_gauge_dependence!(ΔQR..., t, QR...)
+        EnzymeTestUtils.test_reverse(qr_full, Duplicated, (t, Duplicated); output_tangent = ΔQR, atol, rtol)
 
-        N = qr_null(A)
-        Q = qr_compact(A)[1]
+        N = qr_null(t)
+        Q = qr_compact(t)[1]
         ΔN = EnzymeTestUtils.rand_tangent(N)
-        remove_qr_null_gauge_dependence!(ΔN, A, N)
-        EnzymeTestUtils.test_reverse(qr_null, Duplicated, (A, Duplicated); atol, rtol, output_tangent = ΔN)
+        remove_qr_null_gauge_dependence!(ΔN, t, N)
+        EnzymeTestUtils.test_reverse(qr_null, Duplicated, (t, Duplicated); atol, rtol, output_tangent = ΔN)
     end
 end
 
