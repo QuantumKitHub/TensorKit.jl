@@ -96,6 +96,14 @@ function MatrixAlgebraKit.findtruncated_svd(values::GPUSectorVector, strategy::M
     return SectorDict(c => Adapt.adapt(Vector, MatrixAlgebraKit.findtruncated_svd(d, strategy′)) for (c, d) in pairs(values))
 end
 
+function MatrixAlgebraKit.truncation_error!(values::GPUSectorVector, ind::AbstractVector{Bool})
+    for (c, ind_c) in pairs(ind)
+        sector_vals = values[c]
+        @. sector_vals *= !ind_c
+    end
+    return norm(values)
+end
+
 # project_symmetric! doesn't yet work for GPU types, so do this on the host, then copy
 function TensorKit.project_symmetric_and_check(::Type{T}, ::Type{A}, data::AbstractArray, V::TensorMapSpace; tol = sqrt(eps(real(float(eltype(data)))))) where {T, A <: AnyGPUVector{T}}
     h_t = TensorKit.TensorMapWithStorage{T, Vector{T}}(undef, V)
