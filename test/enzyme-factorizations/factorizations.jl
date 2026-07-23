@@ -12,7 +12,7 @@ using Random
 
 is_ci = get(ENV, "CI", "false") == "true"
 
-spacelist = is_ci ? ad_spacelist(fast_tests)[1:3] : ad_spacelist(fast_tests)
+spacelist = ad_spacelist(fast_tests)
 eltypes = (Float64, ComplexF64)
 
 @timedtestset "Enzyme - Factorizations: $(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes, t in (randn(T, V[1] ⊗ V[2] ← V[1] ⊗ V[2]), randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])'))
