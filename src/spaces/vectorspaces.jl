@@ -172,7 +172,7 @@ function leftunitspace(V::ElementarySpace)
     else
         !isempty(sectors(V)) || throw(ArgumentError("Cannot determine the left unit of an empty space"))
         _allequal(leftunit, sectors(V)) ||
-            throw(ArgumentError("sectors of $V do not have the same left unit"))
+            throw(ArgumentError(lazy"sectors of $V do not have the same left unit"))
 
         sector = leftunit(first(sectors(V)))
         return spacetype(V)(sector => 1)
@@ -194,7 +194,7 @@ function rightunitspace(V::ElementarySpace)
     else
         !isempty(sectors(V)) || throw(ArgumentError("Cannot determine the right unit of an empty space"))
         _allequal(rightunit, sectors(V)) ||
-            throw(ArgumentError("sectors of $V do not have the same right unit"))
+            throw(ArgumentError(lazy"sectors of $V do not have the same right unit"))
 
         sector = rightunit(first(sectors(V)))
         return spacetype(V)(sector => 1)

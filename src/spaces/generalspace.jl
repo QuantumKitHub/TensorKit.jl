@@ -16,7 +16,7 @@ struct GeneralSpace{𝔽} <: ElementarySpace
         return if 𝔽 isa Field
             new{𝔽}(Int(d), dual, (𝔽 ⊆ ℝ) ? false : conj)
         else
-            throw(ArgumentError("Unrecognised scalar field: $𝔽"))
+            throw(ArgumentError(lazy"Unrecognised scalar field: $𝔽"))
         end
     end
 end

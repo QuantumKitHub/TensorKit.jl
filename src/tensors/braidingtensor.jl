@@ -21,7 +21,7 @@ struct BraidingTensor{T, S, A <: DenseVector{T}} <: AbstractTensorMap{T, S, 2, 2
     function BraidingTensor{T, S, A}(V1::S, V2::S, adjoint::Bool = false) where {T, S <: IndexSpace, A <: DenseVector{T}}
         for a in sectors(V1), b in sectors(V2), c in (a ⊗ b)
             Nsymbol(a, b, c) == Nsymbol(b, a, c) ||
-                throw(ArgumentError("Cannot define a braiding between $a and $b"))
+                throw(ArgumentError(lazy"Cannot define a braiding between $a and $b"))
         end
         return new{T, S, A}(V1, V2, adjoint)
         # partial construction: only construct rowr and colr when needed

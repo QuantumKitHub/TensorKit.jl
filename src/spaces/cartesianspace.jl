@@ -59,7 +59,7 @@ unitspace(::Type{CartesianSpace}) = CartesianSpace(1)
 zerospace(::Type{CartesianSpace}) = CartesianSpace(0)
 ⊕(V₁::CartesianSpace, V₂::CartesianSpace) = CartesianSpace(V₁.d + V₂.d)
 function ⊖(V::CartesianSpace, W::CartesianSpace)
-    V ≿ W || throw(ArgumentError("$(W) is not a subspace of $(V)"))
+    V ≿ W || throw(ArgumentError(lazy"$(W) is not a subspace of $(V)"))
     return CartesianSpace(dim(V) - dim(W))
 end
 
