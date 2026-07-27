@@ -215,7 +215,7 @@ braid, but a general braid can be obtained by combining such operations.
 braid(f::FusionTree{I, N}, p::IndexTuple{N}, levels::IndexTuple{N}) where {I, N} =
     braid(f, (p, ()), (levels, ()))
 function braid(f::FusionTree{I, N}, (p, _)::Index2Tuple{N, 0}, (levels, _)::Index2Tuple{N, 0}) where {I, N}
-    TupleTools.isperm(p) || throw(ArgumentError("not a valid permutation: $p"))
+    TupleTools.isperm(p) || throw(ArgumentError(lazy"not a valid permutation: $p"))
     @assert FusionStyle(I) isa UniqueFusion
     if BraidingStyle(I) isa SymmetricBraiding # this assumes Fsymbols are 1!
         coeff = one(sectorscalartype(I))

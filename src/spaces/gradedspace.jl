@@ -35,8 +35,8 @@ function GradedSpace{I, NTuple{N, Int}}(dims; dual::Bool = false) where {I, N}
     for (c, dc) in dims
         k = convert(I, c)
         i = findindex(values(I), k)
-        k = dc < 0 && throw(ArgumentError("Sector $k has negative dimension $dc"))
-        isset[i] && throw(ArgumentError("Sector $c appears multiple times"))
+        k = dc < 0 && throw(ArgumentError(lazy"Sector $k has negative dimension $dc"))
+        isset[i] && throw(ArgumentError(lazy"Sector $c appears multiple times"))
         isset = TupleTools.setindex(isset, true, i)
         d = TupleTools.setindex(d, dc, i)
     end
@@ -50,8 +50,8 @@ function GradedSpace{I, SectorDict{I, Int}}(dims; dual::Bool = false) where {I <
     d = SectorDict{I, Int}()
     for (c, dc) in dims
         k = convert(I, c)
-        haskey(d, k) && throw(ArgumentError("Sector $k appears multiple times"))
-        dc < 0 && throw(ArgumentError("Sector $k has negative dimension $dc"))
+        haskey(d, k) && throw(ArgumentError(lazy"Sector $k appears multiple times"))
+        dc < 0 && throw(ArgumentError(lazy"Sector $k has negative dimension $dc"))
         !iszero(dc) && push!(d, k => dc)
     end
     return GradedSpace{I, SectorDict{I, Int}}(d, dual)

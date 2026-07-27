@@ -473,7 +473,7 @@ See also [`repartition!`](@ref) for writing into an existing destination.
         copy::Bool = false, backend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
     )
     N₁ + N₂ == numind(t) ||
-        throw(ArgumentError("Invalid repartition: $(numind(t)) to ($N₁, $N₂)"))
+        throw(ArgumentError(lazy"Invalid repartition: $(numind(t)) to ($N₁, $N₂)"))
     p₁, p₂ = let all_inds = (codomainind(t)..., reverse(domainind(t))...)
         ntuple(i -> all_inds[i], N₁), reverse(ntuple(i -> all_inds[i + N₁], N₂))
     end

@@ -95,9 +95,9 @@ similarstoragetype(t, ::Type{T}) where {T <: Number} = similarstoragetype(typeof
 
 # avoid infinite recursion
 similarstoragetype(X::Type) =
-    throw(ArgumentError("Cannot determine a storagetype for tensor / array type `$X`"))
+    throw(ArgumentError(lazy"Cannot determine a storagetype for tensor / array type `$X`"))
 similarstoragetype(X::Type, ::Type{T}) where {T <: Number} =
-    throw(ArgumentError("Cannot determine a storagetype for tensor / array type `$X` and/or scalar type `$T`"))
+    throw(ArgumentError(lazy"Cannot determine a storagetype for tensor / array type `$X` and/or scalar type `$T`"))
 
 # implement on tensors
 similarstoragetype(::Type{TT}) where {TT <: AbstractTensorMap} = similarstoragetype(storagetype(TT))
@@ -184,11 +184,11 @@ promote_storage_rule(::Type{T}, ::Type{Base.Bottom}, slurp...) where {T} = T
 promote_storage_result(::Type, ::Type, ::Type{T}, ::Type{S}) where {T, S} = (@inline; promote_storagetype(T, S))
 # If no promote_storage_rule is defined, both directions give Bottom => error
 promote_storage_result(T::Type, S::Type, ::Type{Base.Bottom}, ::Type{Base.Bottom}) =
-    throw(ArgumentError("No promotion rule defined for storagetype `$T` and `$S`"))
+    throw(ArgumentError(lazy"No promotion rule defined for storagetype `$T` and `$S`"))
 
 # promotion rules for common vector types
 promote_storage_rule(::Type{T}, ::Type{S}) where {T <: DenseVector, S <: DenseVector} =
-    T === S ? T : throw(ArgumentError("No promotion rule defined for storagetype `$T` and `$S`"))
+    T === S ? T : throw(ArgumentError(lazy"No promotion rule defined for storagetype `$T` and `$S`"))
 
 # tensor characteristics: space and index information
 #-----------------------------------------------------
@@ -440,7 +440,7 @@ Base.@propagate_inbounds function subblock(t::AbstractTensorMap, sectors::Tuple{
     I === sectortype(t) || throw(SectorMismatch("Not a valid sectortype for this tensor."))
     FusionStyle(I) isa UniqueFusion ||
         throw(SectorMismatch("Indexing with sectors is only possible for unique fusion styles."))
-    length(sectors) == numind(t) || throw(ArgumentError("invalid number of sectors"))
+    length(sectors) == numind(t) || throw(ArgumentError(lazy"invalid number of sectors ($(length(sectors))) for number of indices ($(numind(t)))"))
 
     # convert to fusiontrees
     s₁ = TupleTools.getindices(sectors, codomainind(t))
