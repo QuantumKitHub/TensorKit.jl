@@ -15,21 +15,21 @@
         numtrees = length(fusiontrees(out, incoupled, isdual))
         @test numtrees == count(n -> true, fusiontrees(out, incoupled, isdual))
     end
-    it = @constinferred fusiontrees(out, incoupled, isdual)
-    @constinferred Nothing iterate(it)
+    it = @testinferred fusiontrees(out, incoupled, isdual)
+    @testinferred Nothing iterate(it)
     f, s = iterate(it)
-    @constinferred Nothing iterate(it, s)
-    @test f == @constinferred first(it)
+    @testinferred Nothing iterate(it, s)
+    @test f == @testinferred first(it)
     @test eval(Meta.parse(sprint(show, f; context = (:module => @__MODULE__)))) == f
 end
 
 @testsuite :single_fusiontrees "constructor properties" I -> begin
     for u in allunits(I)
-        @constinferred FusionTree((), u, (), (), ())
-        @constinferred FusionTree((u,), u, (false,), (), ())
-        @constinferred FusionTree((u, u), u, (false, false), (), (1,))
-        @constinferred FusionTree((u, u, u), u, (false, false, false), (u,), (1, 1))
-        @constinferred FusionTree(
+        @testinferred FusionTree((), u, (), (), ())
+        @testinferred FusionTree((u,), u, (false,), (), ())
+        @testinferred FusionTree((u, u), u, (false, false), (), (1,))
+        @testinferred FusionTree((u, u, u), u, (false, false, false), (u,), (1, 1))
+        @testinferred FusionTree(
             (u, u, u, u), u, (false, false, false, false), (u, u), (1, 1, 1)
         )
         @test_throws MethodError FusionTree((u, u, u), u, (false, false), (u,), (1, 1))
@@ -48,12 +48,12 @@ end
         @test BraidingStyle(f) == BraidingStyle(I)
 
         if FusionStyle(I) isa UniqueFusion
-            @constinferred FusionTree((), u, ())
-            @constinferred FusionTree((u,), u, (false,))
-            @constinferred FusionTree((u, u), u, (false, false))
-            @constinferred FusionTree((u, u, u), u)
+            @testinferred FusionTree((), u, ())
+            @testinferred FusionTree((u,), u, (false,))
+            @testinferred FusionTree((u, u), u, (false, false))
+            @testinferred FusionTree((u, u, u), u)
             if UnitStyle(I) isa SimpleUnit
-                @constinferred FusionTree((u, u, u, u))
+                @testinferred FusionTree((u, u, u, u))
             else
                 @test_throws ArgumentError FusionTree((u, u, u, u))
             end
@@ -80,10 +80,10 @@ end
     isdual = ntuple(n -> rand(Bool), N)
     f = rand(collect(fusiontrees(uncoupled, coupled, isdual)))
     for i in 0:N
-        f₁, f₂ = @constinferred TK.split(f, $i)
+        f₁, f₂ = @testinferred check_split(f, Val(i))
         @test length(f₁) == i
         @test length(f₂) == N - i + 1
-        f′ = @constinferred TK.join(f₁, f₂)
+        f′ = @testinferred TK.join(f₁, f₂)
         @test f′ == f
     end
 end
@@ -100,12 +100,12 @@ end
             a = f.uncoupled[1]
             isduala = f.isdual[1]
             c = f.coupled
-            f′s, coeffs = @constinferred TK.multi_Fmove(f)
+            f′s, coeffs = @testinferred TK.multi_Fmove(f)
             @test norm(coeffs) ≈ 1 atol = 1.0e-12 # expansion should have unit norm
             d = Dict(f => -one(eltype(eltype(coeffs))))
             for (f′, coeff) in zip(f′s, coeffs)
                 @test coeff ≈ TK.multi_associator(f, f′)
-                f′′s, coeff′s = @constinferred TK.multi_Fmove_inv(a, c, f′, isduala)
+                f′′s, coeff′s = @testinferred TK.multi_Fmove_inv(a, c, f′, isduala)
                 if FusionStyle(I) isa MultiplicityFreeFusion
                     @test norm(coeff′s) ≈ 1 atol = 1.0e-12 # expansion should have unit norm
                 else
@@ -136,7 +136,7 @@ end
                 a = f.uncoupled[1]
                 isduala = f.isdual[1]
                 c = f.coupled
-                f′s, coeffs = @constinferred TK.multi_Fmove(f)
+                f′s, coeffs = @testinferred TK.multi_Fmove(f)
                 for (f′, coeff) in zip(f′s, coeffs)
                     f′tensor = fusiontensor(f′)
                     for i in 1:Nsymbol(a, f′.coupled, c)
@@ -171,7 +171,7 @@ end
         isdual1 = Base.setindex(isdual1, false, i)
         f1 = rand(collect(fusiontrees(out1, in1, isdual1)))
 
-        trees = @constinferred TK.insertat(f1, i, f2)
+        trees = @testinferred TK.insertat(f1, i, f2)
         @test norm(values(trees)) ≈ 1
 
         if hasfusiontensor(I)
@@ -209,10 +209,10 @@ end
     f1 = rand(collect(fusiontrees(out1, in1)))
     f2 = rand(collect(fusiontrees(out2, in2)))
 
-    d = @constinferred TK.merge(f1, f2, first(in1 ⊗ in2), 1)
+    d = @testinferred TK.merge(f1, f2, first(in1 ⊗ in2), 1)
     @test norm(values(d)) ≈ 1
     if !(FusionStyle(I) isa GenericFusion)
-        @constinferred TK.merge(f1, f2, first(in1 ⊗ in2))
+        @testinferred TK.merge(f1, f2, first(in1 ⊗ in2))
     end
     @test dim(in1) * dim(in2) ≈ sum(
         abs2(coeff) * dim(c) for c in in1 ⊗ in2
@@ -259,7 +259,7 @@ end
             out = Dict(f => -sqrtdim(b) * one(fusionscalartype(I)))
             fbb = FusionTree{I}((b, dual(b)), leftunit(b), (false, true), (), (1,))
             for (f′′, coeff) in TK.insertat(f′, i + 1, fbb)
-                d = @constinferred TK.elementary_trace(f′′, i + 1)
+                d = @testinferred TK.elementary_trace(f′′, i + 1)
                 for (tree, coeff2) in d
                     out[tree] = get(out, tree, zero(eltype(coeff2))) + coeff * coeff2
                 end
@@ -282,7 +282,7 @@ end
         fbb = FusionTree{I}((b, rightunit(b), dual(b)), leftunit(b), (false, false, true), (b,), (1, 1))
         out = Dict(f′ => -sqrtdim(b) * one(fusionscalartype(I)))
         for (f′′, coeff) in TK.insertat(fbb, 2, f′)
-            d = @constinferred TK.elementary_trace(f′′, N + 3)
+            d = @testinferred TK.elementary_trace(f′′, N + 3)
             for (tree, coeff2) in d
                 out[tree] = get(out, tree, zero(eltype(coeff2))) + coeff * coeff2
             end
@@ -349,15 +349,15 @@ end
 @testsuite :double_fusiontrees "bending" I -> begin
     _, src, A = _random_doubletree_setup(I)
     # single bend
-    dst, U = @constinferred TK.bendright(src)
-    dst2, U2 = @constinferred TK.bendleft(dst)
+    dst, U = @testinferred TK.bendright(src)
+    dst2, U2 = @testinferred TK.bendleft(dst)
     @test src == dst2
     @test _isone(U2 * U)
     # double bend
-    dst1, U1 = @constinferred TK.bendleft(src)
-    dst2, U2 = @constinferred TK.bendleft(dst1)
-    dst3, U3 = @constinferred TK.bendright(dst2)
-    dst4, U4 = @constinferred TK.bendright(dst3)
+    dst1, U1 = @testinferred TK.bendleft(src)
+    dst2, U2 = @testinferred TK.bendleft(dst1)
+    dst3, U3 = @testinferred TK.bendright(dst2)
+    dst4, U4 = @testinferred TK.bendright(dst3)
     @test src == dst4
     @test _isone(U4 * U3 * U2 * U1)
 
@@ -381,15 +381,15 @@ end
 @testsuite :double_fusiontrees "folding" I -> begin
     _, src, A = _random_doubletree_setup(I)
     # single bend
-    dst, U = @constinferred TK.foldleft(src)
-    dst2, U2 = @constinferred TK.foldright(dst)
+    dst, U = @testinferred TK.foldleft(src)
+    dst2, U2 = @testinferred TK.foldright(dst)
     @test src == dst2
     @test _isone(U2 * U)
     # double bend
-    dst1, U1 = @constinferred TK.foldright(src)
-    dst2, U2 = @constinferred TK.foldright(dst1)
-    dst3, U3 = @constinferred TK.foldleft(dst2)
-    dst4, U4 = @constinferred TK.foldleft(dst3)
+    dst1, U1 = @testinferred TK.foldright(src)
+    dst2, U2 = @testinferred TK.foldright(dst1)
+    dst3, U3 = @testinferred TK.foldleft(dst2)
+    dst4, U4 = @testinferred TK.foldleft(dst3)
     @test src == dst4
     @test _isone(U4 * U3 * U2 * U1)
 
@@ -413,7 +413,7 @@ end
 @testsuite :double_fusiontrees "repartitioning" I -> begin
     N, src, A = _random_doubletree_setup(I)
     for n in 0:(2 * N)
-        dst, U = @constinferred TK.repartition(src, $n)
+        dst, U = @testinferred TK.repartition(src, Val(n))
         # @test _isunitary(U)
 
         dst′, U′ = repartition(dst, N)
@@ -447,8 +447,8 @@ end
         ip′ = tuple(getindex.(Ref(vcat(1:n, (2N):-1:(n + 1))), ip)...)
         ip1, ip2 = ip′[1:N], ip′[(2N):-1:(N + 1)]
 
-        dst, U = @constinferred transpose(src, (p1, p2))
-        dst′, U′ = @constinferred transpose(dst, (ip1, ip2))
+        dst, U = @testinferred transpose(src, (p1, p2))
+        dst′, U′ = @testinferred transpose(dst, (ip1, ip2))
         @test _isone(U * U′)
 
         if BraidingStyle(I) isa Bosonic
@@ -484,9 +484,9 @@ end
         il1, il2 = ilevels[1:n], ilevels[(n + 1):(2N)]
 
         if BraidingStyle(I) isa SymmetricBraiding
-            dst, U = @constinferred TensorKit.permute(src, (p1, p2))
+            dst, U = @testinferred TensorKit.permute(src, (p1, p2))
         else
-            dst, U = @constinferred TensorKit.braid(src, (p1, p2), (l1, l2))
+            dst, U = @testinferred TensorKit.braid(src, (p1, p2), (l1, l2))
         end
 
         # check norm-preserving
@@ -504,9 +504,9 @@ end
 
         # check reversible
         if BraidingStyle(I) isa SymmetricBraiding
-            dst′, U′ = @constinferred TensorKit.permute(dst, (ip1, ip2))
+            dst′, U′ = @testinferred TensorKit.permute(dst, (ip1, ip2))
         else
-            dst′, U′ = @constinferred TensorKit.braid(dst, (ip1, ip2), (il1, il2))
+            dst′, U′ = @testinferred TensorKit.braid(dst, (ip1, ip2), (il1, il2))
         end
         @test _isone(U * U′)
 

@@ -4,16 +4,16 @@
 @testsuite :diagonal_tensors "basic properties and algebra" V -> begin
     for T in (fast_tests[] ? (Float64, ComplexF64) : (Float32, Float64, ComplexF32, ComplexF64, BigFloat))
         # constructors
-        t = @constinferred DiagonalTensorMap{T}(undef, V)
-        t = @constinferred DiagonalTensorMap(rand(T, reduceddim(V)), V)
-        t2 = @constinferred DiagonalTensorMap{T}(undef, space(t))
+        t = @testinferred DiagonalTensorMap{T}(undef, V)
+        t = @testinferred DiagonalTensorMap(rand(T, reduceddim(V)), V)
+        t2 = @testinferred DiagonalTensorMap{T}(undef, space(t))
         @test space(t2) == space(t)
         @test_throws ArgumentError DiagonalTensorMap{T}(undef, V^2 ← V)
-        t2 = @constinferred DiagonalTensorMap{T}(undef, domain(t))
+        t2 = @testinferred DiagonalTensorMap{T}(undef, domain(t))
         @test space(t2) == space(t)
         @test_throws ArgumentError DiagonalTensorMap{T}(undef, V^2)
         # properties
-        @test @constinferred(hash(t)) == hash(deepcopy(t))
+        @test @testinferred(hash(t)) == hash(deepcopy(t))
         @test scalartype(t) == T
         @test codomain(t) == ProductSpace(V)
         @test domain(t) == ProductSpace(V)
@@ -21,16 +21,16 @@
         @test space(t') == (V ← V)
         @test dim(t) == dim(space(t))
         # blocks
-        bs = @constinferred blocks(t)
-        (c, b1), state = @constinferred Nothing iterate(bs)
+        bs = @testinferred blocks(t)
+        (c, b1), state = @testinferred Nothing iterate(bs)
         @test c == first(blocksectors(V ← V))
-        next = @constinferred Nothing iterate(bs, state)
-        b2 = @constinferred block(t, first(blocksectors(t)))
+        next = @testinferred Nothing iterate(bs, state)
+        b2 = @testinferred block(t, first(blocksectors(t)))
         @test b1 == b2
         @test eltype(bs) === Pair{typeof(c), typeof(b1)}
         @test typeof(b1) === TensorKit.blocktype(t)
         # basic linear algebra
-        @test isa(@constinferred(norm(t)), real(T))
+        @test isa(@testinferred(norm(t)), real(T))
         @test norm(t)^2 ≈ dot(t, t)
         α = rand(T)
         @test norm(α * t) ≈ abs(α) * norm(t)
@@ -41,7 +41,7 @@
         @test norm(t + t, p) ≈ 2 * norm(t, p)
         @test norm(t) ≈ norm(t')
 
-        @test t == @constinferred(TensorMap(t))
+        @test t == @testinferred(TensorMap(t))
         @test norm(t + TensorMap(t)) ≈ norm(TensorMap(t) + t) ≈ 2 * norm(t)
 
         @test norm(zerovector!(t)) == 0
@@ -59,7 +59,7 @@
         t3 = DiagonalTensorMap(rand(T, reduceddim(V)), V)
         α = rand(T)
         β = rand(T)
-        @test @constinferred(dot(t1, t2)) ≈ conj(dot(t2, t1))
+        @test @testinferred(dot(t1, t2)) ≈ conj(dot(t2, t1))
         @test dot(t2, t1) ≈ conj(dot(t2', t1'))
         @test dot(t3, α * t1 + β * t2) ≈ α * dot(t3, t1) + β * dot(t3, t2)
     end
@@ -82,11 +82,11 @@ end
     for T in (Float64, ComplexF64, ComplexF32)
         t = DiagonalTensorMap(rand(T, reduceddim(V)), V)
 
-        tr = @constinferred real(t)
+        tr = @testinferred real(t)
         @test scalartype(tr) <: Real
         @test real(convert(TensorMap, t)) == convert(TensorMap, tr)
 
-        ti = @constinferred imag(t)
+        ti = @testinferred imag(t)
         @test scalartype(ti) <: Real
         @test imag(convert(TensorMap, t)) == convert(TensorMap, ti)
 
@@ -100,7 +100,7 @@ end
 end
 
 @testsuite :diagonal_tensors "tensor conversion" V -> begin
-    t = @constinferred DiagonalTensorMap(undef, V)
+    t = @testinferred DiagonalTensorMap(undef, V)
     rand!(t.data)
     # element type conversion
     tc = complex(t)
@@ -119,35 +119,35 @@ end
     t_tm = convert(TensorMap, t)
 
     # preserving diagonal
-    t1 = @constinferred permute(t, $(((2,), (1,))))
+    t1 = @testinferred permute(t, ((2,), (1,)))
     @test t1 isa DiagonalTensorMap
     @test convert(TensorMap, t1) == permute(t_tm, (((2,), (1,))))
-    t1′ = @constinferred transpose(t)
+    t1′ = @testinferred transpose(t)
     @test t1′ isa DiagonalTensorMap
     @test convert(TensorMap, t1′) == transpose(t_tm)
     BraidingStyle(I) isa Bosonic && @test t1 ≈ t1′
 
     # not preserving diagonal
-    t2 = @constinferred permute(t, $(((1, 2), ())))
+    t2 = @testinferred permute(t, ((1, 2), ()))
     @test convert(TensorMap, t2) == permute(t_tm, (((1, 2), ())))
-    t3 = @constinferred permute(t, $(((2, 1), ())))
+    t3 = @testinferred permute(t, ((2, 1), ()))
     @test convert(TensorMap, t3) == permute(t_tm, (((2, 1), ())))
-    t4 = @constinferred permute(t, $(((), (1, 2))))
+    t4 = @testinferred permute(t, ((), (1, 2)))
     @test convert(TensorMap, t4) == permute(t_tm, (((), (1, 2))))
-    t5 = @constinferred permute(t, $(((), (2, 1))))
+    t5 = @testinferred permute(t, ((), (2, 1)))
     @test convert(TensorMap, t5) == permute(t_tm, (((), (2, 1))))
 end
 
 @testsuite :diagonal_tensors "trace, multiplication and inverse" V -> begin
     t1 = DiagonalTensorMap(rand(Float64, reduceddim(V)), V)
     t2 = DiagonalTensorMap(rand(ComplexF64, reduceddim(V)), V)
-    @test tr(TensorMap(t1)) == @constinferred tr(t1)
-    @test tr(TensorMap(t2)) == @constinferred tr(t2)
-    @test TensorMap(@constinferred t1 * t2) ≈ TensorMap(t1) * TensorMap(t2)
-    @test TensorMap(@constinferred t1 \ t2) ≈ TensorMap(t1) \ TensorMap(t2)
-    @test TensorMap(@constinferred t1 / t2) ≈ TensorMap(t1) / TensorMap(t2)
-    @test TensorMap(@constinferred inv(t1)) ≈ inv(TensorMap(t1))
-    @test TensorMap(@constinferred pinv(t1)) ≈ pinv(TensorMap(t1))
+    @test tr(TensorMap(t1)) == @testinferred tr(t1)
+    @test tr(TensorMap(t2)) == @testinferred tr(t2)
+    @test TensorMap(@testinferred t1 * t2) ≈ TensorMap(t1) * TensorMap(t2)
+    @test TensorMap(@testinferred t1 \ t2) ≈ TensorMap(t1) \ TensorMap(t2)
+    @test TensorMap(@testinferred t1 / t2) ≈ TensorMap(t1) / TensorMap(t2)
+    @test TensorMap(@testinferred inv(t1)) ≈ inv(TensorMap(t1))
+    @test TensorMap(@testinferred pinv(t1)) ≈ pinv(TensorMap(t1))
     @test all(
         Base.Fix2(isa, DiagonalTensorMap), (t1 * t2, t1 \ t2, t1 / t2, inv(t1), pinv(t1))
     )
@@ -204,24 +204,24 @@ end
         d = DiagonalTensorMap(rand(T, reduceddim(V)), V)
         # rand is important for positive numbers in the real case, for log and sqrt
         t = TensorMap(d)
-        @test @constinferred exp(d) ≈ exp(t)
-        @test @constinferred log(d) ≈ log(t)
-        @test @constinferred sqrt(d) ≈ sqrt(t)
-        @test @constinferred sin(d) ≈ sin(t)
-        @test @constinferred cos(d) ≈ cos(t)
-        @test @constinferred tan(d) ≈ tan(t)
-        @test @constinferred cot(d) ≈ cot(t)
-        @test @constinferred sinh(d) ≈ sinh(t)
-        @test @constinferred cosh(d) ≈ cosh(t)
-        @test @constinferred tanh(d) ≈ tanh(t)
-        @test @constinferred coth(d) ≈ coth(t)
-        @test @constinferred asin(d) ≈ asin(t)
-        @test @constinferred acos(d) ≈ acos(t)
-        @test @constinferred atan(d) ≈ atan(t)
-        @test @constinferred acot(d) ≈ acot(t)
-        @test @constinferred asinh(d) ≈ asinh(t)
-        @test @constinferred acosh(one(d) + d) ≈ acosh(one(t) + t)
-        @test @constinferred atanh(d) ≈ atanh(t)
-        @test @constinferred acoth(one(t) + d) ≈ acoth(one(d) + t)
+        @test @testinferred exp(d) ≈ exp(t)
+        @test @testinferred log(d) ≈ log(t)
+        @test @testinferred sqrt(d) ≈ sqrt(t)
+        @test @testinferred sin(d) ≈ sin(t)
+        @test @testinferred cos(d) ≈ cos(t)
+        @test @testinferred tan(d) ≈ tan(t)
+        @test @testinferred cot(d) ≈ cot(t)
+        @test @testinferred sinh(d) ≈ sinh(t)
+        @test @testinferred cosh(d) ≈ cosh(t)
+        @test @testinferred tanh(d) ≈ tanh(t)
+        @test @testinferred coth(d) ≈ coth(t)
+        @test @testinferred asin(d) ≈ asin(t)
+        @test @testinferred acos(d) ≈ acos(t)
+        @test @testinferred atan(d) ≈ atan(t)
+        @test @testinferred acot(d) ≈ acot(t)
+        @test @testinferred asinh(d) ≈ asinh(t)
+        @test @testinferred acosh(one(d) + d) ≈ acosh(one(t) + t)
+        @test @testinferred atanh(d) ≈ atanh(t)
+        @test @testinferred acoth(one(t) + d) ≈ acoth(one(d) + t)
     end
 end

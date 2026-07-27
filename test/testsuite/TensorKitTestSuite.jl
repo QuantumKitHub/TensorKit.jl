@@ -63,25 +63,16 @@ using .SectorTestSuite: smallset, randsector, hasfusiontensor
 using .SectorTestSuite: can_fuse, F_unitarity_test, R_unitarity_test
 import .SectorTestSuite: random_fusion # TODO: is the method added below needed?
 
-const testgroups = Dict{Symbol, Dict{String, Expr}}(
-    :single_fusiontrees => Dict{String, Expr}(),
-    :double_fusiontrees => Dict{String, Expr}(),
-    :spaces => Dict{String, Expr}(),
-    :tensors => Dict{String, Expr}(),
-    :diagonal_tensors => Dict{String, Expr}(),
-    :factorizations => Dict{String, Expr}(),
+const testgroups = Dict{Symbol, Dict{String, Function}}(
+    :single_fusiontrees => Dict{String, Function}(),
+    :double_fusiontrees => Dict{String, Function}(),
+    :spaces => Dict{String, Function}(),
+    :tensors => Dict{String, Function}(),
+    :diagonal_tensors => Dict{String, Function}(),
+    :factorizations => Dict{String, Function}(),
 )
 
 const fast_tests = Ref(false) # mutable constant, test by default thoroughly
-
-# cannot just esc() the body, because that would make it a closure, compile it at a fixed world age and break constprop=true
-# workaround here is to store an unevaluated `Expr` and `Core.eval` it in a fresh `let` block every time
-# this is at the cost of not reusing compiled code
-function _run_testsuite_entry(lambda::Expr, arg)
-    param, body = lambda.args[1], lambda.args[2]
-    letex = Expr(:let, Expr(:(=), param, arg), body) # let block makes param local to the body
-    return Core.eval(@__MODULE__, letex)
-end
 
 """
     @testsuite testgroup name I -> begin
@@ -91,7 +82,7 @@ end
 Register a testsuite entry under `testgroup` (one of `:single_fusiontrees`, `:double_fusiontrees`, `:spaces`,`:tensors`, `:diagonal_tensors`).
 The body is executed with a single argument: the concrete `Sector` type under test
 (for `:single_fusiontrees`, `:double_fusiontrees` and `:spaces`), a space (for `:diagonal_tensors`),
-or a 5-tuple of mutually compatible spaces (for `:tensors` and `:factorizations`). 
+or a 5-tuple of mutually compatible spaces (for `:tensors` and `:factorizations`).
 
 For the test groups involving spaces, see `setup.jl` for the space design considerations.
 
@@ -103,7 +94,7 @@ macro testsuite(testgroup, name, ex)
     group = QuoteNode(testgroupsym)
     return quote
         @assert !haskey(testgroups[$group], $name) "duplicate testsuite name: $($name) ($($group))"
-        testgroups[$group][$name] = $(QuoteNode(ex))
+        testgroups[$group][$name] = $(esc(ex))
         nothing
     end
 end
@@ -113,7 +104,7 @@ end
 
 Run a single registered testsuite entry by its `group` and `name`.
 """
-run_testsuite(group::Symbol, name::String, arg) = _run_testsuite_entry(testgroups[group][name], arg)
+run_testsuite(group::Symbol, name::String, arg) = testgroups[group][name](arg)
 
 # Sector utilities
 # ----------------
@@ -128,6 +119,29 @@ function random_fusion(I::Type{<:Sector}, ::Val{N}) where {N}
     v = random_fusion(I, N)
     return ntuple(i -> v[i], Val(N))
 end
+
+# `@testinferred`-only helpers for the handful of checks whose inferred type depends on a runtime value
+"""
+    check_split(f::FusionTree, ::Val{i}) where {i}
+
+`Val`-typed wrapper around `TensorKit.split(f, i)`.
+"""
+check_split(f, ::Val{i}) where {i} = TK.split(f, i)
+
+"""
+    check_repartition(t::AbstractTensorMap, ::Val{n}) where {n}
+
+`Val`-typed wrapper around `TensorKit.repartition(t, n)`.
+"""
+check_repartition(t, ::Val{n}) where {n} = repartition(t, n)
+
+"""
+    check_alg(f, t, ::Val{alg}) where {alg}
+
+`Val`-typed wrapper for calling `f(t; alg)` with `f` some factorization method, and the algorithm is 
+selected through the `alg::Symbol` keyword (dispatched via `MatrixAlgebraKit.select_algorithm`).
+"""
+check_alg(f, t, ::Val{alg}) where {alg} = f(t; alg)
 
 """
     force_planar(obj)

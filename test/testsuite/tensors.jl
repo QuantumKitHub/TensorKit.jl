@@ -7,8 +7,8 @@
     V1, V2, V3, V4, V5 = V
     W = V1 ⊗ V2 ⊗ V3 ⊗ V4 ⊗ V5
     for T in (Int, Float32, Float64, ComplexF32, ComplexF64, BigFloat)
-        t = @constinferred zeros(T, W)
-        @test @constinferred(hash(t)) == hash(deepcopy(t))
+        t = @testinferred zeros(T, W)
+        @test @testinferred(hash(t)) == hash(deepcopy(t))
         @test scalartype(t) == T
         @test norm(t) == 0
         @test codomain(t) == W
@@ -16,8 +16,8 @@
         @test domain(t) == one(W)
         @test typeof(t) == TensorMap{T, spacetype(t), 5, 0, Vector{T}}
         # Array type input
-        t = @constinferred zeros(Vector{T}, W)
-        @test @constinferred(hash(t)) == hash(deepcopy(t))
+        t = @testinferred zeros(Vector{T}, W)
+        @test @testinferred(hash(t)) == hash(deepcopy(t))
         @test scalartype(t) == T
         @test norm(t) == 0
         @test codomain(t) == W
@@ -25,12 +25,12 @@
         @test domain(t) == one(W)
         @test typeof(t) == TensorMap{T, spacetype(t), 5, 0, Vector{T}}
         # blocks
-        bs = @constinferred blocks(t)
+        bs = @testinferred blocks(t)
         if !isempty(blocksectors(t)) # multifusion space ending on module gives empty data
-            (c, b1), state = @constinferred Nothing iterate(bs)
+            (c, b1), state = @testinferred Nothing iterate(bs)
             @test c == first(blocksectors(W))
-            next = @constinferred Nothing iterate(bs, state)
-            b2 = @constinferred block(t, first(blocksectors(t)))
+            next = @testinferred Nothing iterate(bs, state)
+            b2 = @testinferred block(t, first(blocksectors(t)))
             @test b1 == b2
             @test eltype(bs) === Pair{typeof(c), typeof(b1)}
             @test typeof(b1) === TensorKit.blocktype(t)
@@ -43,7 +43,7 @@ end
     V1, V2, V3, V4, V5 = V
     W = V1 ⊗ V2 ← (V3 ⊗ V4 ⊗ V5)'
     for T in (Int, Float32, ComplexF64)
-        t = @constinferred rand(T, W)
+        t = @testinferred rand(T, W)
         d = convert(Dict, t)
         @test t == convert(TensorMap, d)
     end
@@ -67,13 +67,13 @@ end
                     rand!(b, -20:20)
                 end
             else
-                t = @constinferred randn(T, W)
+                t = @testinferred randn(T, W)
             end
-            a = @constinferred convert(Array, t)
+            a = @testinferred convert(Array, t)
             b = reshape(a, dim(codomain(W)), dim(domain(W)))
-            @test t ≈ @constinferred TensorMap(a, W)
-            @test t ≈ @constinferred TensorMap(b, W)
-            @test t === @constinferred TensorMap(t.data, W)
+            @test t ≈ @testinferred TensorMap(a, W)
+            @test t ≈ @testinferred TensorMap(b, W)
+            @test t === @testinferred TensorMap(t.data, W)
         end
     end
     for T in (Int, Float32, ComplexF64)
@@ -89,13 +89,13 @@ end
     V1, V2, V3, V4, V5 = V
     W = V1 ⊗ V2
     for T in (Float64, ComplexF64, ComplexF32)
-        t = @constinferred randn(T, W, W)
+        t = @testinferred randn(T, W, W)
 
-        tr = @constinferred real(t)
+        tr = @testinferred real(t)
         @test scalartype(tr) <: Real
         @test real(convert(Array, t)) == convert(Array, tr)
 
-        ti = @constinferred imag(t)
+        ti = @testinferred imag(t)
         @test scalartype(ti) <: Real
         @test imag(convert(Array, t)) == convert(Array, ti)
 
@@ -111,7 +111,7 @@ end
 @testsuite :tensors "tensor conversion" V -> begin
     V1, V2, V3, V4, V5 = V
     W = V1 ⊗ V2
-    t = @constinferred randn(W ← W)
+    t = @testinferred randn(W ← W)
     @test typeof(convert(TensorMap, t')) == typeof(t)
     tc = complex(t)
     @test convert(typeof(tc), t) == tc
@@ -129,7 +129,7 @@ end
     if BraidingStyle(I) isa SymmetricBraiding
         t = rand(ComplexF64, V1 ⊗ V2' ⊗ V2 ⊗ V1')
         t2 = permute(t, ((1, 2), (4, 3)))
-        s = @constinferred tr(t2)
+        s = @testinferred tr(t2)
         @test conj(s) ≈ tr(t2')
         if !isdual(V1)
             t2 = twist!(t2, 1)
@@ -145,7 +145,7 @@ end
         @test ss ≈ s3
     end
     t = rand(ComplexF64, V1 ⊗ V2 ← V1 ⊗ V2) # avoid permutes
-    ss = @constinferred tr(t)
+    ss = @testinferred tr(t)
     @test conj(ss) ≈ tr(t')
     @planar s2 = t[a b; a b]
     @planar t3[a; b] := t[a c; b c]
@@ -219,7 +219,7 @@ end
     for T in (Float32, ComplexF64)
         t1 = rand(T, V1, V5')
         t2 = rand(T, V2 ⊗ V3, V4')
-        t = @constinferred (t1 ⊗ t2)
+        t = @testinferred (t1 ⊗ t2)
         @test norm(t) ≈ norm(t1) * norm(t2)
     end
 end
@@ -231,7 +231,7 @@ end
     for T in (Float32, ComplexF64)
         t1 = rand(T, V1, V5')
         t2 = rand(T, V2 ⊗ V3, V4')
-        t = @constinferred (t1 ⊗ t2)
+        t = @testinferred (t1 ⊗ t2)
         d1 = dim(codomain(t1))
         d2 = dim(codomain(t2))
         d3 = dim(domain(t1))
@@ -250,7 +250,7 @@ end
     for T in (Float32, ComplexF64)
         t1 = rand(T, V1, V5')
         t2 = rand(T, V2 ⊗ V3, V4')
-        t = @constinferred (t1 ⊗ t2)
+        t = @testinferred (t1 ⊗ t2)
         @tensor t′[1 2 3; 4 5] := t1[1; 4] * t2[2 3; 5]
         @test t ≈ t′
     end
@@ -261,20 +261,20 @@ end
     # absorbing small into large
     t1 = zeros((V1 ⊕ V1) ⊗ (V2 ⊕ V2), (V3 ⊗ (V4 ⊕ V4) ⊗ V5)')
     t2 = rand(V1 ⊗ V2, (V3 ⊗ V4 ⊗ V5)')
-    t3 = @constinferred absorb(t1, t2)
+    t3 = @testinferred absorb(t1, t2)
     @test norm(t3) ≈ norm(t2)
     @test norm(t1) == 0
-    t4 = @constinferred absorb!(t1, t2)
+    t4 = @testinferred absorb!(t1, t2)
     @test t1 === t4
     @test t3 ≈ t4
 
     # absorbing large into small
     t1 = rand((V1 ⊕ V1) ⊗ (V2 ⊕ V2), (V3 ⊗ (V4 ⊕ V4) ⊗ V5)')
     t2 = zeros(V1 ⊗ V2, (V3 ⊗ V4 ⊗ V5)')
-    t3 = @constinferred absorb(t2, t1)
+    t3 = @testinferred absorb(t2, t1)
     @test norm(t3) < norm(t1)
     @test norm(t2) == 0
-    t4 = @constinferred absorb!(t2, t1)
+    t4 = @testinferred absorb!(t2, t1)
     @test t2 === t4
     @test t3 ≈ t4
 end
@@ -287,7 +287,7 @@ end
     V1, V2, V3, V4, V5 = V
     W = V1 ⊗ V2 ← (V3 ⊗ V4 ⊗ V5)'
     for T in (Float32, ComplexF64)
-        t = @constinferred rand(T, W)
+        t = @testinferred rand(T, W)
         @test scalartype(t) == T
         @test space(t) == W
         @test space(t') == W'
@@ -295,17 +295,17 @@ end
         @test codomain(t) == codomain(W)
         @test domain(t) == domain(W)
         # blocks for adjoint
-        bs = @constinferred blocks(t')
-        (c, b1), state = @constinferred Nothing iterate(bs)
+        bs = @testinferred blocks(t')
+        (c, b1), state = @testinferred Nothing iterate(bs)
         @test c == first(blocksectors(W'))
-        next = @constinferred Nothing iterate(bs, state)
-        b2 = @constinferred block(t', first(blocksectors(t')))
+        next = @testinferred Nothing iterate(bs, state)
+        b2 = @testinferred block(t', first(blocksectors(t')))
         @test b1 == b2
         @test eltype(bs) === Pair{typeof(c), typeof(b1)}
         @test typeof(b1) === TensorKit.blocktype(t')
         @test typeof(c) === sectortype(t)
         # linear algebra
-        @test isa(@constinferred(norm(t)), real(T))
+        @test isa(@testinferred(norm(t)), real(T))
         @test norm(t)^2 ≈ dot(t, t)
         α = rand(T)
         @test norm(α * t) ≈ abs(α) * norm(t)
@@ -316,21 +316,21 @@ end
         @test norm(t + t, p) ≈ 2 * norm(t, p)
         @test norm(t) ≈ norm(t')
 
-        t2 = @constinferred rand!(similar(t))
+        t2 = @testinferred rand!(similar(t))
         β = rand(T)
-        @test @constinferred(dot(β * t2, α * t)) ≈ conj(β) * α * conj(dot(t, t2))
+        @test @testinferred(dot(β * t2, α * t)) ≈ conj(β) * α * conj(dot(t, t2))
         @test dot(t2, t) ≈ conj(dot(t, t2))
         @test dot(t2, t) ≈ conj(dot(t2', t'))
         @test dot(t2, t) ≈ dot(t', t2')
 
         if UnitStyle(I) isa SimpleUnit || !isempty(blocksectors(V2 ⊗ V1))
-            i1 = @constinferred(isomorphism(T, V1 ⊗ V2, V2 ⊗ V1)) # can't reverse fusion here when modules are involved
-            i2 = @constinferred(isomorphism(Vector{T}, V2 ⊗ V1, V1 ⊗ V2))
-            @test i1 * i2 == @constinferred(id(T, V1 ⊗ V2))
-            @test i2 * i1 == @constinferred(id(Vector{T}, V2 ⊗ V1))
+            i1 = @testinferred(isomorphism(T, V1 ⊗ V2, V2 ⊗ V1)) # can't reverse fusion here when modules are involved
+            i2 = @testinferred(isomorphism(Vector{T}, V2 ⊗ V1, V1 ⊗ V2))
+            @test i1 * i2 == @testinferred(id(T, V1 ⊗ V2))
+            @test i2 * i1 == @testinferred(id(Vector{T}, V2 ⊗ V1))
         end
 
-        w = @constinferred isometry(T, V1 ⊗ (rightunitspace(V1) ⊕ rightunitspace(V1)), V1)
+        w = @testinferred isometry(T, V1 ⊗ (rightunitspace(V1) ⊕ rightunitspace(V1)), V1)
         @test dim(w) == 2 * dim(V1 ← V1)
         @test w' * w == id(Vector{T}, V1)
         @test w * w' == (w * w')^2
@@ -344,7 +344,7 @@ end
     W = V1 ⊗ V2 ⊗ V3 ← (V4 ⊗ V5)'
     for T in (Float32, ComplexF64)
         t = rand(T, W)
-        t2 = @constinferred rand!(similar(t))
+        t2 = @testinferred rand!(similar(t))
         @test norm(t, 2) ≈ norm(convert(Array, t), 2)
         @test dot(t2, t) ≈ dot(convert(Array, t2), convert(Array, t))
         α = rand(T)
@@ -444,41 +444,41 @@ end
     for T in (Float64, ComplexF64)
         t = randn(T, W, W)
         s = dim(W)
-        expt = @constinferred exp(t)
+        expt = @testinferred exp(t)
         @test reshape(convert(Array, expt), (s, s)) ≈
             exp(reshape(convert(Array, t), (s, s)))
 
-        @test (@constinferred sqrt(t))^2 ≈ t
+        @test (@testinferred sqrt(t))^2 ≈ t
         @test reshape(convert(Array, sqrt(t^2)), (s, s)) ≈
             sqrt(reshape(convert(Array, t^2), (s, s)))
 
-        @test exp(@constinferred log(expt)) ≈ expt
+        @test exp(@testinferred log(expt)) ≈ expt
         @test reshape(convert(Array, log(expt)), (s, s)) ≈
             log(reshape(convert(Array, expt), (s, s)))
 
-        @test (@constinferred cos(t))^2 + (@constinferred sin(t))^2 ≈ id(W)
-        @test (@constinferred tan(t)) ≈ sin(t) / cos(t)
-        @test (@constinferred cot(t)) ≈ cos(t) / sin(t)
-        @test (@constinferred cosh(t))^2 - (@constinferred sinh(t))^2 ≈ id(W)
-        @test (@constinferred tanh(t)) ≈ sinh(t) / cosh(t)
-        @test (@constinferred coth(t)) ≈ cosh(t) / sinh(t)
+        @test (@testinferred cos(t))^2 + (@testinferred sin(t))^2 ≈ id(W)
+        @test (@testinferred tan(t)) ≈ sin(t) / cos(t)
+        @test (@testinferred cot(t)) ≈ cos(t) / sin(t)
+        @test (@testinferred cosh(t))^2 - (@testinferred sinh(t))^2 ≈ id(W)
+        @test (@testinferred tanh(t)) ≈ sinh(t) / cosh(t)
+        @test (@testinferred coth(t)) ≈ cosh(t) / sinh(t)
 
         t1 = sin(t)
-        @test sin(@constinferred asin(t1)) ≈ t1
+        @test sin(@testinferred asin(t1)) ≈ t1
         t2 = cos(t)
-        @test cos(@constinferred acos(t2)) ≈ t2
+        @test cos(@testinferred acos(t2)) ≈ t2
         t3 = sinh(t)
-        @test sinh(@constinferred asinh(t3)) ≈ t3
+        @test sinh(@testinferred asinh(t3)) ≈ t3
         t4 = cosh(t)
-        @test cosh(@constinferred acosh(t4)) ≈ t4
+        @test cosh(@testinferred acosh(t4)) ≈ t4
         t5 = tan(t)
-        @test tan(@constinferred atan(t5)) ≈ t5
+        @test tan(@testinferred atan(t5)) ≈ t5
         t6 = cot(t)
-        @test cot(@constinferred acot(t6)) ≈ t6
+        @test cot(@testinferred acot(t6)) ≈ t6
         t7 = tanh(t)
-        @test tanh(@constinferred atanh(t7)) ≈ t7
+        @test tanh(@testinferred atanh(t7)) ≈ t7
         t8 = coth(t)
-        @test coth(@constinferred acoth(t8)) ≈ t8
+        @test coth(@testinferred acoth(t8)) ≈ t8
         t = randn(T, W, V1) # not square
         for f in
             (
@@ -499,7 +499,7 @@ end
         tA = 3 // 2 * left_polar(tA)[1]
         tB = 1 // 5 * left_polar(tB)[1]
         tC = rand(T, V1 ⊗ V2, (V3 ⊗ V4 ⊗ V5)')
-        t = @constinferred sylvester(tA, tB, tC)
+        t = @testinferred sylvester(tA, tB, tC)
         @test codomain(t) == V1 ⊗ V2
         @test domain(t) == (V3 ⊗ V4 ⊗ V5)'
         @test norm(tA * t + t * tB + tC) <
@@ -518,14 +518,14 @@ end
     V1, V2, V3, V4, V5 = V
     W = V1 ⊗ V2 ← (V3 ⊗ V4 ⊗ V5)'
     for T in (Float32, ComplexF64)
-        t = @constinferred rand(T, W)
-        t2 = @constinferred insertleftunit(t)
-        @test t2 == @constinferred insertrightunit(t)
+        t = @testinferred rand(T, W)
+        t2 = @testinferred insertleftunit(t)
+        @test t2 == @testinferred insertrightunit(t)
         @test space(t2) == insertleftunit(space(t))
-        @test @constinferred(removeunit(t2, $(numind(t2)))) == t
-        t3 = @constinferred insertleftunit(t; copy = true)
-        @test t3 == @constinferred insertrightunit(t; copy = true)
-        @test @constinferred(removeunit(t3, $(numind(t3)))) == t
+        @test (@testinferred removeunit(t2, Val(numind(t2)))) == t
+        t3 = @testinferred insertleftunit(t; copy = true)
+        @test t3 == @testinferred insertrightunit(t; copy = true)
+        @test (@testinferred removeunit(t3, Val(numind(t3)))) == t
 
         @test numind(t2) == numind(t) + 1
         @test scalartype(t2) === T
@@ -536,19 +536,19 @@ end
             @test b == block(t3, c)
         end
 
-        t4 = @constinferred insertrightunit(t, 3; dual = true)
+        t4 = @testinferred insertrightunit(t, Val(3); dual = true)
         @test numin(t4) == numin(t) + 1 && numout(t4) == numout(t)
         for (c, b) in blocks(t)
             @test b == block(t4, c)
         end
-        @test @constinferred(removeunit(t4, 4)) == t
+        @test (@testinferred removeunit(t4, Val(4))) == t
 
-        t5 = @constinferred insertleftunit(t, 4; dual = true)
+        t5 = @testinferred insertleftunit(t, Val(4); dual = true)
         @test numin(t5) == numin(t) + 1 && numout(t5) == numout(t)
         for (c, b) in blocks(t)
             @test b == block(t5, c)
         end
-        @test @constinferred(removeunit(t5, 4)) == t
+        @test (@testinferred removeunit(t5, Val(4))) == t
     end
 end
 
@@ -563,15 +563,15 @@ end
         for p in permutations(1:5)
             p1 = ntuple(n -> p[n], k)
             p2 = ntuple(n -> p[k + n], 5 - k)
-            t2 = @constinferred permute(t, (p1, p2))
+            t2 = @testinferred permute(t, (p1, p2))
             @test norm(t2) ≈ norm(t)
             t2′ = permute(t′, (p1, p2))
             @test dot(t2′, t2) ≈ dot(t′, t) ≈ dot(transpose(t2′), transpose(t2))
         end
 
-        t3 = @constinferred repartition(t, $k)
+        t3 = @testinferred check_repartition(t, Val(k))
         @test norm(t3) ≈ norm(t)
-        t3′ = @constinferred repartition!(similar(t3), t′)
+        t3′ = @testinferred repartition!(similar(t3), t′)
         @test norm(t3′) ≈ norm(t′)
         @test dot(t′, t) ≈ dot(t3′, t3)
     end
@@ -909,13 +909,13 @@ end
     BraidingStyle(I) isa HasBraiding || return nothing
     V1, V2, V3, V4, V5 = V
     W = V1 ⊗ V2 ← V2 ⊗ V1
-    t1 = @constinferred BraidingTensor(W)
+    t1 = @testinferred BraidingTensor(W)
     @test space(t1) == W
     @test codomain(t1) == codomain(W)
     @test domain(t1) == domain(W)
     @test scalartype(t1) == (isreal(sectortype(W)) ? Float64 : ComplexF64)
     @test storagetype(t1) == Vector{scalartype(t1)}
-    t2 = @constinferred BraidingTensor{ComplexF64}(W)
+    t2 = @testinferred BraidingTensor{ComplexF64}(W)
     @test scalartype(t2) == ComplexF64
     @test storagetype(t2) == Vector{ComplexF64}
 
@@ -967,34 +967,34 @@ end
     @test W[4] == V4
     @test W[5] == V3
     @test all(W .== (V1, V2, V5, V4, V3))
-    @test @constinferred(map(isdual, W)) == ntuple(i -> isdual(W[i]), length(W))
-    @test @constinferred(hash(W)) == hash(deepcopy(W)) != hash(W')
+    @test @testinferred(map(isdual, W)) == ntuple(i -> isdual(W[i]), length(W))
+    @test @testinferred(hash(W)) == hash(deepcopy(W)) != hash(W')
     @test W == deepcopy(W)
     cod = codomain(W)
     dom = domain(W)
     @test (cod ← dom ⊗ rightunitspace(dom[3])) ==
-        @constinferred(insertleftunit(W)) ==
-        @constinferred(insertrightunit(W))
-    @test @constinferred(removeunit(insertleftunit(W), $(numind(W) + 1))) == W
+        @testinferred(insertleftunit(W)) ==
+        @testinferred(insertrightunit(W))
+    @test (@testinferred removeunit(insertleftunit(W), Val(numind(W) + 1))) == W
     @test (cod ← dom ⊗ rightunitspace(dom[3])') ==
-        @constinferred(insertleftunit(W; conj = true)) ==
-        @constinferred(insertrightunit(W; conj = true))
+        @testinferred(insertleftunit(W; conj = true)) ==
+        @testinferred(insertrightunit(W; conj = true))
     @test (leftunitspace(cod[1]) ⊗ cod ← dom) ==
-        @constinferred(insertleftunit(W, 1)) ==
-        @constinferred(insertrightunit(W, 0))
+        @testinferred(insertleftunit(W, Val(1))) ==
+        @testinferred(insertrightunit(W, Val(0)))
     @test (cod ⊗ rightunitspace(cod[2]) ← dom) ==
-        @constinferred(insertrightunit(W, 2))
+        @testinferred(insertrightunit(W, Val(2)))
     @test (cod ← leftunitspace(dom[1]) ⊗ dom) ==
-        @constinferred(insertleftunit(W, 3))
-    @test @constinferred(removeunit(insertleftunit(W, 3), 3)) == W
+        @testinferred(insertleftunit(W, Val(3)))
+    @test (@testinferred removeunit(insertleftunit(W, Val(3)), Val(3))) == W
     if UnitStyle(sectortype(W)) isa SimpleUnit
-        @test @constinferred(insertrightunit(one(V1) ← V1, 0)) == (unitspace(V1) ← V1)
+        @test @testinferred(insertrightunit(one(V1) ← V1, Val(0))) == (unitspace(V1) ← V1)
         @test_throws BoundsError insertleftunit(one(V1) ← V1, 0)
     else
         @test_throws ArgumentError insertrightunit(one(V1) ← V1, 0)
         @test_throws ArgumentError insertleftunit(one(V1) ← V1, 0)
     end
-    @test (V1 ⊗ V2 ← V1 ⊗ V2) == @constinferred TensorKit.compose(W, W')
-    @test W == @constinferred permute(W, ((1, 2), (3, 4, 5)))
+    @test (V1 ⊗ V2 ← V1 ⊗ V2) == @testinferred TensorKit.compose(W, W')
+    @test W == @testinferred permute(W, ((1, 2), (3, 4, 5)))
     @test permute(W, ((2, 5, 4), (1, 3))) == (V2 ⊗ V3 ⊗ V4 ← V1' ⊗ V5') # cyclic permutation
 end

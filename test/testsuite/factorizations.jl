@@ -16,44 +16,44 @@ eltypes = (Float32, ComplexF64)
                 DiagonalTensorMap(rand(T, reduceddim(Vd)), Vd),
             )
 
-        d, v = @constinferred eig_full(t)
+        d, v = @testinferred eig_full(t)
         @test t * v ≈ v * d
 
-        d, v = @constinferred eig_full(t, DefaultAlgorithm())
+        d, v = @testinferred eig_full(t, DefaultAlgorithm())
         @test t * v ≈ v * d
 
-        d′ = @constinferred eig_vals(t)
+        d′ = @testinferred eig_vals(t)
         @test d′ ≈ diagview(d)
         @test d′ isa TensorKit.SectorVector
 
-        d′ = @constinferred eig_vals(t, DefaultAlgorithm())
+        d′ = @testinferred eig_vals(t, DefaultAlgorithm())
         @test d′ ≈ diagview(d)
         @test d′ isa TensorKit.SectorVector
 
-        d2 = @constinferred DiagonalTensorMap(d′)
+        d2 = @testinferred DiagonalTensorMap(d′)
         @test d2 ≈ d
 
         vdv = project_hermitian!(v' * v)
-        @test @constinferred isposdef(vdv)
+        @test @testinferred isposdef(vdv)
         t isa DiagonalTensorMap || @test !isposdef(t) # unlikely for non-hermitian map
 
         nvals = round(Int, dim(domain(t)) / 2)
-        d, v = @constinferred eig_trunc(t; trunc = truncrank(nvals))
+        d, v = @testinferred eig_trunc(t; trunc = truncrank(nvals))
         @test t * v ≈ v * d
         @test abs(dim(domain(d)) - nvals) ≤ maximum(c -> blockdim(domain(t), c), blocksectors(t); init = 1)
 
-        d, v = @constinferred eig_trunc(t, DefaultAlgorithm(; trunc = truncrank(nvals)))
+        d, v = @testinferred eig_trunc(t, DefaultAlgorithm(; trunc = truncrank(nvals)))
         @test t * v ≈ v * d
         @test abs(dim(domain(d)) - nvals) ≤ maximum(c -> blockdim(domain(t), c), blocksectors(t); init = 1)
 
-        t2 = @constinferred project_hermitian(t)
+        t2 = @testinferred project_hermitian(t)
         D, V = eigen(t2)
         @test isisometric(V)
-        D̃, Ṽ = @constinferred eigh_full(t2)
+        D̃, Ṽ = @testinferred eigh_full(t2)
         @test D ≈ D̃
         @test V ≈ Ṽ
 
-        D̃, Ṽ = @constinferred eigh_full(t2, DefaultAlgorithm())
+        D̃, Ṽ = @testinferred eigh_full(t2, DefaultAlgorithm())
         @test D ≈ D̃
         @test V ≈ Ṽ
 
@@ -63,15 +63,15 @@ eltypes = (Float32, ComplexF64)
         @test isposdef(t2 - λ * one(t2) + 0.1 * one(t2))
         @test !isposdef(t2 - λ * one(t2) - 0.1 * one(t2))
 
-        d, v = @constinferred eigh_full(t2)
+        d, v = @testinferred eigh_full(t2)
         @test t2 * v ≈ v * d
         @test isunitary(v)
 
-        d′ = @constinferred eigh_vals(t2)
+        d′ = @testinferred eigh_vals(t2)
         @test d′ ≈ diagview(d)
         @test d′ isa TensorKit.SectorVector
 
-        d′ = @constinferred eigh_vals(t2, DefaultAlgorithm())
+        d′ = @testinferred eigh_vals(t2, DefaultAlgorithm())
         @test d′ ≈ diagview(d)
         @test d′ isa TensorKit.SectorVector
 
@@ -81,11 +81,11 @@ eltypes = (Float32, ComplexF64)
         @test isposdef(t2 - λ * one(t) + 0.1 * one(t2))
         @test !isposdef(t2 - λ * one(t) - 0.1 * one(t2))
 
-        d, v = @constinferred eigh_trunc(t2; trunc = truncrank(nvals))
+        d, v = @testinferred eigh_trunc(t2; trunc = truncrank(nvals))
         @test t2 * v ≈ v * d
         @test abs(dim(domain(d)) - nvals) ≤ maximum(c -> blockdim(domain(t), c), blocksectors(t); init = 1)
 
-        d, v = @constinferred eigh_trunc(t2, DefaultAlgorithm(; trunc = truncrank(nvals)))
+        d, v = @testinferred eigh_trunc(t2, DefaultAlgorithm(; trunc = truncrank(nvals)))
         @test t2 * v ≈ v * d
         @test abs(dim(domain(d)) - nvals) ≤ maximum(c -> blockdim(domain(t), c), blocksectors(t); init = 1)
     end
@@ -105,43 +105,43 @@ end
                 DiagonalTensorMap(rand(T, reduceddim(Vd)), Vd),
             )
 
-        Q, R = @constinferred qr_full(t)
+        Q, R = @testinferred qr_full(t)
         @test Q * R ≈ t
         @test isunitary(Q)
 
-        Q, R = @constinferred qr_full(t, DefaultAlgorithm())
+        Q, R = @testinferred qr_full(t, DefaultAlgorithm())
         @test Q * R ≈ t
         @test isunitary(Q)
 
-        Q, R = @constinferred qr_compact(t)
+        Q, R = @testinferred qr_compact(t)
         @test Q * R ≈ t
         @test isisometric(Q)
 
-        Q, R = @constinferred qr_compact(t, DefaultAlgorithm())
+        Q, R = @testinferred qr_compact(t, DefaultAlgorithm())
         @test Q * R ≈ t
         @test isisometric(Q)
 
-        Q, R = @constinferred left_orth(t)
+        Q, R = @testinferred left_orth(t)
         @test Q * R ≈ t
         @test isisometric(Q)
 
-        Q, R = @constinferred left_orth(t, DefaultAlgorithm())
+        Q, R = @testinferred left_orth(t, DefaultAlgorithm())
         @test Q * R ≈ t
         @test isisometric(Q)
 
-        N = @constinferred qr_null(t)
+        N = @testinferred qr_null(t)
         @test isisometric(N)
         @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
 
-        N = @constinferred qr_null(t, DefaultAlgorithm())
+        N = @testinferred qr_null(t, DefaultAlgorithm())
         @test isisometric(N)
         @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
 
-        N = @constinferred left_null(t)
+        N = @testinferred left_null(t)
         @test isisometric(N)
         @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
 
-        N = @constinferred left_null(t, DefaultAlgorithm())
+        N = @testinferred left_null(t, DefaultAlgorithm())
         @test isisometric(N)
         @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
     end
@@ -150,41 +150,41 @@ end
     for T in eltypes
         t = rand(T, V1 ⊗ V2, zerospace(V1))
 
-        Q, R = @constinferred qr_full(t)
+        Q, R = @testinferred qr_full(t)
         @test Q * R ≈ t
         @test isunitary(Q)
         @test dim(R) == dim(t) == 0
 
-        Q, R = @constinferred qr_full(t, DefaultAlgorithm())
+        Q, R = @testinferred qr_full(t, DefaultAlgorithm())
         @test Q * R ≈ t
         @test isunitary(Q)
         @test dim(R) == dim(t) == 0
 
-        Q, R = @constinferred qr_compact(t)
+        Q, R = @testinferred qr_compact(t)
         @test Q * R ≈ t
         @test isisometric(Q)
         @test dim(Q) == dim(R) == dim(t)
 
-        Q, R = @constinferred qr_compact(t, DefaultAlgorithm())
+        Q, R = @testinferred qr_compact(t, DefaultAlgorithm())
         @test Q * R ≈ t
         @test isisometric(Q)
         @test dim(Q) == dim(R) == dim(t)
 
-        Q, R = @constinferred left_orth(t)
+        Q, R = @testinferred left_orth(t)
         @test Q * R ≈ t
         @test isisometric(Q)
         @test dim(Q) == dim(R) == dim(t)
 
-        Q, R = @constinferred left_orth(t, DefaultAlgorithm())
+        Q, R = @testinferred left_orth(t, DefaultAlgorithm())
         @test Q * R ≈ t
         @test isisometric(Q)
         @test dim(Q) == dim(R) == dim(t)
 
-        N = @constinferred qr_null(t)
+        N = @testinferred qr_null(t)
         @test isunitary(N)
         @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
 
-        N = @constinferred qr_null(t, DefaultAlgorithm())
+        N = @testinferred qr_null(t, DefaultAlgorithm())
         @test isunitary(N)
         @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
     end
@@ -202,35 +202,35 @@ end
                 DiagonalTensorMap(rand(T, reduceddim(Vd)), Vd),
             )
 
-        L, Q = @constinferred lq_full(t)
+        L, Q = @testinferred lq_full(t)
         @test L * Q ≈ t
         @test isunitary(Q)
 
-        L, Q = @constinferred lq_full(t, DefaultAlgorithm())
+        L, Q = @testinferred lq_full(t, DefaultAlgorithm())
         @test L * Q ≈ t
         @test isunitary(Q)
 
-        L, Q = @constinferred lq_compact(t)
+        L, Q = @testinferred lq_compact(t)
         @test L * Q ≈ t
         @test isisometric(Q; side = :right)
 
-        L, Q = @constinferred lq_compact(t, DefaultAlgorithm())
+        L, Q = @testinferred lq_compact(t, DefaultAlgorithm())
         @test L * Q ≈ t
         @test isisometric(Q; side = :right)
 
-        L, Q = @constinferred right_orth(t)
+        L, Q = @testinferred right_orth(t)
         @test L * Q ≈ t
         @test isisometric(Q; side = :right)
 
-        L, Q = @constinferred right_orth(t, DefaultAlgorithm())
+        L, Q = @testinferred right_orth(t, DefaultAlgorithm())
         @test L * Q ≈ t
         @test isisometric(Q; side = :right)
 
-        Nᴴ = @constinferred lq_null(t)
+        Nᴴ = @testinferred lq_null(t)
         @test isisometric(Nᴴ; side = :right)
         @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
 
-        Nᴴ = @constinferred lq_null(t, DefaultAlgorithm())
+        Nᴴ = @testinferred lq_null(t, DefaultAlgorithm())
         @test isisometric(Nᴴ; side = :right)
         @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
     end
@@ -239,41 +239,41 @@ end
         # empty tensor
         t = rand(T, zerospace(V1), V1 ⊗ V2)
 
-        L, Q = @constinferred lq_full(t)
+        L, Q = @testinferred lq_full(t)
         @test L * Q ≈ t
         @test isunitary(Q)
         @test dim(L) == dim(t) == 0
 
-        L, Q = @constinferred lq_full(t, DefaultAlgorithm())
+        L, Q = @testinferred lq_full(t, DefaultAlgorithm())
         @test L * Q ≈ t
         @test isunitary(Q)
         @test dim(L) == dim(t) == 0
 
-        L, Q = @constinferred lq_compact(t)
+        L, Q = @testinferred lq_compact(t)
         @test L * Q ≈ t
         @test isisometric(Q; side = :right)
         @test dim(Q) == dim(L) == dim(t)
 
-        L, Q = @constinferred lq_compact(t, DefaultAlgorithm())
+        L, Q = @testinferred lq_compact(t, DefaultAlgorithm())
         @test L * Q ≈ t
         @test isisometric(Q; side = :right)
         @test dim(Q) == dim(L) == dim(t)
 
-        L, Q = @constinferred right_orth(t)
+        L, Q = @testinferred right_orth(t)
         @test L * Q ≈ t
         @test isisometric(Q; side = :right)
         @test dim(Q) == dim(L) == dim(t)
 
-        L, Q = @constinferred right_orth(t, DefaultAlgorithm())
+        L, Q = @testinferred right_orth(t, DefaultAlgorithm())
         @test L * Q ≈ t
         @test isisometric(Q; side = :right)
         @test dim(Q) == dim(L) == dim(t)
 
-        Nᴴ = @constinferred lq_null(t)
+        Nᴴ = @testinferred lq_null(t)
         @test isunitary(Nᴴ)
         @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
 
-        Nᴴ = @constinferred lq_null(t, DefaultAlgorithm())
+        Nᴴ = @testinferred lq_null(t, DefaultAlgorithm())
         @test isunitary(Nᴴ)
         @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
     end
@@ -297,11 +297,11 @@ end
         ta = (t - t') / 2
         tc = copy(t)
 
-        th′ = @constinferred project_hermitian(t)
+        th′ = @testinferred project_hermitian(t)
         @test ishermitian(th′)
         @test th′ ≈ th
 
-        th′ = @constinferred project_hermitian(t, DefaultAlgorithm())
+        th′ = @testinferred project_hermitian(t, DefaultAlgorithm())
         @test ishermitian(th′)
         @test th′ ≈ th
 
@@ -314,7 +314,7 @@ end
         @test isantihermitian(ta′)
         @test ta′ ≈ ta
 
-        ta′ = @constinferred project_antihermitian(t, DefaultAlgorithm())
+        ta′ = @testinferred project_antihermitian(t, DefaultAlgorithm())
         @test isantihermitian(ta′)
         @test ta′ ≈ ta
 
@@ -342,7 +342,7 @@ end
             )
         t2 = project_isometric(t)
         @test isisometric(t2)
-        t2′ = @constinferred project_isometric(t, DefaultAlgorithm())
+        t2′ = @testinferred project_isometric(t, DefaultAlgorithm())
         @test isisometric(t2′)
         @test t2′ * ((t2′)' * t) ≈ t
 
@@ -351,7 +351,7 @@ end
         @test t2 * (t2' * t) ≈ t
 
         tc = similar(t)
-        t3 = @constinferred project_isometric!(copy!(tc, t), t2)
+        t3 = @testinferred project_isometric!(copy!(tc, t), t2)
         @test t3 === t2
         @test isisometric(t2)
 
@@ -383,14 +383,14 @@ end
         @test r ≈ min(d1, d2)
         @test typeof(r) == typeof(d1)
         M = left_null(t)
-        @test @constinferred(rank(M)) + r ≈ d1
+        @test @testinferred(rank(M)) + r ≈ d1
         Mᴴ = right_null(t)
         @test rank(Mᴴ) + r ≈ d2
     end
     for T in eltypes
         u = unitary(T, V1 ⊗ V2, V1 ⊗ V2)
-        @test @constinferred(cond(u)) ≈ one(real(T))
-        @test @constinferred(rank(u)) ≈ dim(V1 ⊗ V2)
+        @test @testinferred(cond(u)) ≈ one(real(T))
+        @test @testinferred(rank(u)) ≈ dim(V1 ⊗ V2)
 
         t = rand(T, zerospace(V1), W)
         @test rank(t) == 0
@@ -400,7 +400,7 @@ end
     end
     for T in eltypes, t in (randn(T, W, W), randn(T, W, W)')
         project_hermitian!(t)
-        vals = @constinferred eigh_vals(t)
+        vals = @testinferred eigh_vals(t)
         λmax = maximum(abs, vals)
         λmin = minimum(abs, vals)
         @test cond(t) ≈ λmax / λmin
@@ -420,16 +420,16 @@ end
             )
 
         @assert domain(t) ≾ codomain(t)
-        w, p = @constinferred left_polar(t)
+        w, p = @testinferred left_polar(t)
         @test w * p ≈ t
         @test isisometric(w)
         @test isposdef(p)
 
-        w′, p′ = @constinferred left_polar(t, DefaultAlgorithm())
+        w′, p′ = @testinferred left_polar(t, DefaultAlgorithm())
         @test w ≈ w′
         @test p ≈ p′
 
-        w, p = @constinferred left_orth(t; alg = :polar)
+        w, p = @testinferred check_alg(left_orth, t, Val(:polar))
         @test w * p ≈ t
         @test isisometric(w)
     end
@@ -443,16 +443,16 @@ end
             )
 
         @assert codomain(t) ≾ domain(t)
-        p, wᴴ = @constinferred right_polar(t)
+        p, wᴴ = @testinferred right_polar(t)
         @test p * wᴴ ≈ t
         @test isisometric(wᴴ; side = :right)
         @test isposdef(p)
 
-        p′, wᴴ′ = @constinferred right_polar(t, DefaultAlgorithm())
+        p′, wᴴ′ = @testinferred right_polar(t, DefaultAlgorithm())
         @test p′ ≈ p
         @test wᴴ′ ≈ wᴴ
 
-        p, wᴴ = @constinferred right_orth(t; alg = :polar)
+        p, wᴴ = @testinferred check_alg(right_orth, t, Val(:polar))
         @test p * wᴴ ≈ t
         @test isisometric(wᴴ; side = :right)
     end
@@ -470,82 +470,82 @@ end
                 DiagonalTensorMap(rand(T, reduceddim(Vd)), Vd),
             )
 
-        u, s, vᴴ = @constinferred svd_full(t)
+        u, s, vᴴ = @testinferred svd_full(t)
         @test u * s * vᴴ ≈ t
         @test isunitary(u)
         @test isunitary(vᴴ)
 
-        u′, s′, vᴴ′ = @constinferred svd_full(t, DefaultAlgorithm())
+        u′, s′, vᴴ′ = @testinferred svd_full(t, DefaultAlgorithm())
         @test u ≈ u′
         @test s ≈ s′
         @test vᴴ ≈ vᴴ′
 
-        u, s, vᴴ = @constinferred svd_compact(t)
+        u, s, vᴴ = @testinferred svd_compact(t)
         @test u * s * vᴴ ≈ t
         @test isisometric(u)
         @test isposdef(s)
         @test isisometric(vᴴ; side = :right)
 
-        u′, s′, vᴴ′ = @constinferred svd_compact(t, DefaultAlgorithm())
+        u′, s′, vᴴ′ = @testinferred svd_compact(t, DefaultAlgorithm())
         @test u ≈ u′
         @test s ≈ s′
         @test vᴴ ≈ vᴴ′
 
-        s′ = @constinferred svd_vals(t)
+        s′ = @testinferred svd_vals(t)
         @test s′ ≈ diagview(s)
         @test s′ isa TensorKit.SectorVector
 
-        s′ = @constinferred svd_vals(t, DefaultAlgorithm())
+        s′ = @testinferred svd_vals(t, DefaultAlgorithm())
         @test s′ ≈ diagview(s)
         @test s′ isa TensorKit.SectorVector
 
-        s2 = @constinferred DiagonalTensorMap(s′)
+        s2 = @testinferred DiagonalTensorMap(s′)
         @test s2 ≈ s
 
-        v, c = @constinferred left_orth(t; alg = :svd)
+        v, c = @testinferred check_alg(left_orth, t, Val(:svd))
         @test v * c ≈ t
         @test isisometric(v)
 
-        c, vᴴ = @constinferred right_orth(t; alg = :svd)
+        c, vᴴ = @testinferred check_alg(right_orth, t, Val(:svd))
         @test c * vᴴ ≈ t
         @test isisometric(vᴴ; side = :right)
 
         atol = norm(t) * defaulttol(T) # tol used by `:svd` left_null/right_null
 
-        N = @constinferred left_null(t; alg = :svd)
+        N = @testinferred check_alg(left_null, t, Val(:svd))
         @test isisometric(N)
         @test norm(N' * t) ≈ 0 atol = atol
 
-        N = @constinferred left_null(t; trunc = (; atol = 6 * atol))
+        N = @testinferred left_null(t; trunc = (; atol = 6 * atol))
         @test isisometric(N)
         @test norm(N' * t) ≈ 0 atol = 10 * atol
 
-        Nᴴ = @constinferred right_null(t; alg = :svd)
+        Nᴴ = @testinferred check_alg(right_null, t, Val(:svd))
         @test isisometric(Nᴴ; side = :right)
         @test norm(t * Nᴴ') ≈ 0 atol = atol
 
-        Nᴴ = @constinferred right_null(t; trunc = (; atol = 6 * atol))
+        Nᴴ = @testinferred right_null(t; trunc = (; atol = 6 * atol))
         @test isisometric(Nᴴ; side = :right)
         @test norm(t * Nᴴ') ≈ 0 atol = 10 * atol
     end
 
     # empty tensor
     for T in eltypes, t in (rand(T, W, zerospace(V1)), rand(T, zerospace(V1), W))
-        U, S, Vᴴ = @constinferred svd_full(t)
+        U, S, Vᴴ = @testinferred svd_full(t)
         @test U * S * Vᴴ ≈ t
         @test isunitary(U)
         @test isunitary(Vᴴ)
 
-        U, S, Vᴴ = @constinferred svd_full(t, DefaultAlgorithm())
+        U, S, Vᴴ = @testinferred svd_full(t, DefaultAlgorithm())
         @test U * S * Vᴴ ≈ t
         @test isunitary(U)
         @test isunitary(Vᴴ)
 
-        U, S, Vᴴ = @constinferred svd_compact(t)
+        U, S, Vᴴ = @testinferred svd_compact(t)
         @test U * S * Vᴴ ≈ t
         @test dim(U) == dim(S) == dim(Vᴴ) == dim(t) == 0
 
-        U, S, Vᴴ = @constinferred svd_compact(t, DefaultAlgorithm())
+        U, S, Vᴴ = @testinferred svd_compact(t, DefaultAlgorithm())
         @test U * S * Vᴴ ≈ t
         @test dim(U) == dim(S) == dim(Vᴴ) == dim(t) == 0
     end
@@ -563,15 +563,15 @@ end
                 DiagonalTensorMap(rand(T, reduceddim(Vd)), Vd),
             )
 
-        @constinferred normalize!(t)
+        @testinferred normalize!(t)
 
-        U, S, Vᴴ, ϵ = @constinferred svd_trunc(t; trunc = notrunc())
+        U, S, Vᴴ, ϵ = @testinferred svd_trunc(t; trunc = notrunc())
         @test U * S * Vᴴ ≈ t
         @test ϵ ≈ 0
         @test isisometric(U)
         @test isisometric(Vᴴ; side = :right)
 
-        U, S, Vᴴ, ϵ = @constinferred svd_trunc(t, DefaultAlgorithm(; trunc = notrunc()))
+        U, S, Vᴴ, ϵ = @testinferred svd_trunc(t, DefaultAlgorithm(; trunc = notrunc()))
         @test U * S * Vᴴ ≈ t
         @test ϵ ≈ 0
         @test isisometric(U)
@@ -579,13 +579,13 @@ end
 
         # when rank of t is already smaller than truncrank
         t_rank = ceil(Int, min(dim(codomain(t)), dim(domain(t))))
-        U, S, Vᴴ, ϵ = @constinferred svd_trunc(t; trunc = truncrank(t_rank + 1))
+        U, S, Vᴴ, ϵ = @testinferred svd_trunc(t; trunc = truncrank(t_rank + 1))
         @test U * S * Vᴴ ≈ t
         @test ϵ ≈ 0
         @test isisometric(U)
         @test isisometric(Vᴴ; side = :right)
 
-        U, S, Vᴴ, ϵ = @constinferred svd_trunc(t, DefaultAlgorithm(; trunc = truncrank(t_rank + 1)))
+        U, S, Vᴴ, ϵ = @testinferred svd_trunc(t, DefaultAlgorithm(; trunc = truncrank(t_rank + 1)))
         @test U * S * Vᴴ ≈ t
         @test ϵ ≈ 0
         @test isisometric(U)
@@ -594,7 +594,7 @@ end
         # dimension of S is a float for IsingBimodule
         nvals = round(Int, dim(domain(S)) / 2)
         trunc = truncrank(nvals)
-        U1, S1, Vᴴ1, ϵ1 = @constinferred svd_trunc(t; trunc)
+        U1, S1, Vᴴ1, ϵ1 = @testinferred svd_trunc(t; trunc)
         @test t * Vᴴ1' ≈ U1 * S1
         @test isisometric(U1)
         @test isisometric(Vᴴ1; side = :right)
@@ -603,7 +603,7 @@ end
 
         λ = minimum(diagview(S1))
         trunc = trunctol(; atol = λ - 10eps(λ))
-        U2, S2, Vᴴ2, ϵ2 = @constinferred svd_trunc(t; trunc)
+        U2, S2, Vᴴ2, ϵ2 = @testinferred svd_trunc(t; trunc)
         @test t * Vᴴ2' ≈ U2 * S2
         @test isisometric(U2)
         @test isisometric(Vᴴ2; side = :right)
@@ -617,7 +617,7 @@ end
         trunc = truncspace(space(S2, 1))
         @test spacetype(typeof(trunc)) == spacetype(W)
         @test sectortype(trunc) == sectortype(W)
-        U3, S3, Vᴴ3, ϵ3 = @constinferred svd_trunc(t; trunc)
+        U3, S3, Vᴴ3, ϵ3 = @testinferred svd_trunc(t; trunc)
         @test t * Vᴴ3' ≈ U3 * S3
         @test isisometric(U3)
         @test isisometric(Vᴴ3; side = :right)
@@ -625,7 +625,7 @@ end
         @test space(S3, 1) ≾ space(S2, 1)
 
         for trunc in (truncerror(; atol = ϵ2), truncerror(; rtol = ϵ2 / norm(t)))
-            U4, S4, Vᴴ4, ϵ4 = @constinferred svd_trunc(t; trunc)
+            U4, S4, Vᴴ4, ϵ4 = @testinferred svd_trunc(t; trunc)
             @test t * Vᴴ4' ≈ U4 * S4
             @test isisometric(U4)
             @test isisometric(Vᴴ4; side = :right)
@@ -634,7 +634,7 @@ end
         end
 
         trunc = truncrank(nvals) & trunctol(; atol = λ - 10eps(λ))
-        U5, S5, Vᴴ5, ϵ5 = @constinferred svd_trunc(t; trunc)
+        U5, S5, Vᴴ5, ϵ5 = @testinferred svd_trunc(t; trunc)
         @test t * Vᴴ5' ≈ U5 * S5
         @test isisometric(U5)
         @test isisometric(Vᴴ5; side = :right)
@@ -643,7 +643,7 @@ end
         @test abs(dim(domain(S5)) - nvals) ≤ maximum(c -> blockdim(domain(t), c), blocksectors(t); init = 1)
 
         trunc = truncrank(nvals) | trunctol(; atol = λ - 10eps(λ))
-        U5, S5, Vᴴ5, ϵ5 = @constinferred svd_trunc(t; trunc)
+        U5, S5, Vᴴ5, ϵ5 = @testinferred svd_trunc(t; trunc)
         @test t * Vᴴ5' ≈ U5 * S5
         @test isisometric(U5)
         @test isisometric(Vᴴ5; side = :right)
