@@ -18,7 +18,7 @@ When making changes to this project, please update the "Unreleased" section with
 
 When releasing a new version, move the "Unreleased" changes to a new version section with the release date.
 
-## [Unreleased](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.0...HEAD)
+## [Unreleased](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.1...HEAD)
 
 ### Added
 
@@ -31,6 +31,31 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 ### Fixed
 
 ### Performance
+
+## [0.17.1](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.0...v0.17.1) - 2026-07-13
+
+### Added
+
+- Enzyme AD support: forward and reverse rules (with tests) for TensorOperations contractions, linear algebra, and VectorInterface operations, and reverse rules for index manipulations ([#436](https://github.com/QuantumKitHub/TensorKit.jl/pull/436), [#437](https://github.com/QuantumKitHub/TensorKit.jl/pull/437), [#440](https://github.com/QuantumKitHub/TensorKit.jl/pull/440), [#449](https://github.com/QuantumKitHub/TensorKit.jl/pull/449), [#451](https://github.com/QuantumKitHub/TensorKit.jl/pull/451), [#466](https://github.com/QuantumKitHub/TensorKit.jl/pull/466))
+- `exponential` and `exponential!` for the matrix exponential of tensors ([#465](https://github.com/QuantumKitHub/TensorKit.jl/pull/465))
+- Docstrings for `catdomain` and `catcodomain` ([#485](https://github.com/QuantumKitHub/TensorKit.jl/pull/485))
+
+### Changed
+
+- Consolidated duplicated GPU logic into a new GPUArrays extension ([#460](https://github.com/QuantumKitHub/TensorKit.jl/pull/460))
+- Removed explicit dependence on cuTENSOR for the CUDA extension; importing `cuTENSOR` is still recommended for best performance, as it enables the corresponding TensorOperations extension ([#455](https://github.com/QuantumKitHub/TensorKit.jl/pull/455))
+- Improved `DimensionMismatch` error message in the `TensorMap` constructor ([#456](https://github.com/QuantumKitHub/TensorKit.jl/pull/456))
+
+### Fixed
+
+- Added missing zero-derivatives and an in-place rrule test for `svd_trunc` ([#448](https://github.com/QuantumKitHub/TensorKit.jl/pull/448))
+
+### Performance
+
+- Reduced overhead in the `TensorMap` constructor and in `sectorequal`/`sectorhash` for trivial symmetries ([#476](https://github.com/QuantumKitHub/TensorKit.jl/pull/476))
+- Further trivial-symmetry improvements and reduced respecialization for `contract!` ([#479](https://github.com/QuantumKitHub/TensorKit.jl/pull/479))
+- Fast path for trivial tensors into the TensorOperations machinery ([#463](https://github.com/QuantumKitHub/TensorKit.jl/pull/463))
+- Marked more error strings as lazy to reduce runtime overhead ([#478](https://github.com/QuantumKitHub/TensorKit.jl/pull/478))
 
 ## [0.17.0](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.16.5...v0.17.0) - 2026-06-03
 

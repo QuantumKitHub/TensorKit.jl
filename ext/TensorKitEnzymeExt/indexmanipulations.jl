@@ -118,33 +118,6 @@ end
 
 function EnzymeRules.augmented_primal(
         config::EnzymeRules.RevConfigWidth{1},
-        func::Const{typeof(twist!)},
-        ::Type{RT},
-        t::Annotation{<:AbstractTensorMap},
-        inds::Const;
-        inv::Bool = false
-    ) where {RT}
-    twist!(t.val, inds.val; inv)
-    primal = EnzymeRules.needs_primal(config) ? t.val : nothing
-    shadow = EnzymeRules.needs_shadow(config) ? t.dval : nothing
-    return EnzymeRules.AugmentedReturn(primal, shadow, nothing)
-end
-
-function EnzymeRules.reverse(
-        config::EnzymeRules.RevConfigWidth{1},
-        func::Const{typeof(twist!)},
-        ::Type{RT},
-        cache,
-        t::Annotation{<:AbstractTensorMap},
-        inds::Const;
-        inv::Bool = false
-    ) where {RT}
-    !isa(t, Const) && twist!(t.dval, inds.val; inv = !inv)
-    return (nothing, nothing)
-end
-
-function EnzymeRules.augmented_primal(
-        config::EnzymeRules.RevConfigWidth{1},
         func::Const{typeof(flip)},
         ::Type{RT},
         t::Annotation{<:AbstractTensorMap},
@@ -176,91 +149,23 @@ function EnzymeRules.reverse(
     return (nothing, nothing)
 end
 
-for insertunit in (:insertleftunit, :insertrightunit)
-    @eval begin
-        function EnzymeRules.augmented_primal(
-                config::EnzymeRules.RevConfigWidth{1},
-                func::Const{typeof($insertunit)},
-                ::Type{RT},
-                tsrc::Annotation{<:AbstractTensorMap},
-                ival::Const{<:Val};
-                kwargs...
-            ) where {RT}
-            if tsrc.val isa TensorMap && !get(kwargs, :copy, false) && !isa(tsrc, Const)
-                tsrc_cache = tsrc.val
-                tdst = $insertunit(tsrc.val, ival.val; kwargs...)
-                Δtdst = $insertunit(tsrc.dval, ival.val; kwargs...)
-            else
-                tsrc_cache = nothing
-                tdst = $insertunit(tsrc.val, ival.val; kwargs...)
-                Δtdst = make_zero(tdst)
-            end
-            primal = EnzymeRules.needs_primal(config) ? tdst : nothing
-            shadow = EnzymeRules.needs_shadow(config) ? Δtdst : nothing
-            cache = (tsrc_cache, tdst, Δtdst)
-            return EnzymeRules.AugmentedReturn(primal, shadow, cache)
-        end
-        function EnzymeRules.reverse(
-                config::EnzymeRules.RevConfigWidth{1},
-                func::Const{typeof($insertunit)},
-                ::Type{RT},
-                cache,
-                tsrc::Annotation{<:AbstractTensorMap},
-                ival::Const{<:Val};
-                kwargs...
-            ) where {RT}
-            tsrc_cache, tdst, Δtdst = cache
-            # note: since data is already shared for <:TensorMap, don't have to do anything here!
-            if isnothing(tsrc_cache) && !isa(tsrc, Const)
-                for (c, b) in blocks(Δtdst)
-                    add!(block(tsrc.dval, c), b)
-                end
-            end
-            return (nothing, nothing)
-        end
-    end
-end
-
-function EnzymeRules.augmented_primal(
-        config::EnzymeRules.RevConfigWidth{1},
-        func::Const{typeof(removeunit)},
+function EnzymeRules.forward(
+        config::EnzymeRules.FwdConfigWidth{1},
+        func::Const{typeof(flip)},
         ::Type{RT},
-        tsrc::Annotation{<:AbstractTensorMap},
-        ival::Const{<:Val};
-        kwargs...
+        t::Annotation{<:AbstractTensorMap},
+        inds::Annotation;
+        inv::Bool = false,
     ) where {RT}
-    # tdst shares data with tsrc if <:TensorMap & copy=false, in this case we have to deal with correctly
-    # sharing address spaces
-    if tsrc.val isa TensorMap && !get(kwargs, :copy, false) && !isa(tsrc, Const)
-        tsrc_cache = tsrc.val
-        tdst = removeunit(tsrc.val, ival.val; kwargs...)
-        Δtdst = removeunit(tsrc.dval, ival.val)
+    t′ = flip(t.val, inds.val; inv)
+    dt′ = !isa(t, Const) ? flip(t.dval, inds.val; inv) : make_zero(t.val)
+    if EnzymeRules.needs_primal(config) && EnzymeRules.needs_shadow(config)
+        return Duplicated(t′, dt′)
+    elseif EnzymeRules.needs_primal(config)
+        return t′
+    elseif EnzymeRules.needs_shadow(config)
+        return dt′
     else
-        tsrc_cache = nothing
-        tdst = removeunit(tsrc.val, ival.val; kwargs...)
-        Δtdst = make_zero(tdst)
+        return nothing
     end
-    primal = EnzymeRules.needs_primal(config) ? tdst : nothing
-    shadow = EnzymeRules.needs_shadow(config) ? Δtdst : nothing
-    cache = (tsrc_cache, tdst, Δtdst)
-    return EnzymeRules.AugmentedReturn(primal, shadow, cache)
-end
-
-function EnzymeRules.reverse(
-        config::EnzymeRules.RevConfigWidth{1},
-        func::Const{typeof(removeunit)},
-        ::Type{RT},
-        cache,
-        tsrc::Annotation{<:AbstractTensorMap},
-        ival::Const{<:Val};
-        kwargs...
-    ) where {RT}
-    tsrc_cache, tdst, Δtdst = cache
-    # note: since data for <: TensorMap is already shared, don't have to do anything here!
-    if isnothing(tsrc_cache) && !isa(tsrc, Const)
-        for (c, b) in blocks(Δtdst)
-            add!(block(tsrc.dval, c), b)
-        end
-    end
-    return (nothing, nothing)
 end

@@ -20,6 +20,10 @@ if !Sys.iswindows() && VERSION > v"1.11.0-rc"
                 EnzymeTestUtils.test_reverse(twist!, TA, (copy(A), TA), ([1, 3], Const); atol, rtol, fkwargs = (inv = true,))
                 EnzymeTestUtils.test_reverse(twist!, TA, (copy(A), TA), (1, Const); atol, rtol)
                 EnzymeTestUtils.test_reverse(twist!, TA, (copy(A), TA), ([1, 3], Const); atol, rtol)
+                EnzymeTestUtils.test_forward(twist!, TA, (copy(A), TA), (1, Const); atol, rtol, fkwargs = (inv = false,))
+                EnzymeTestUtils.test_forward(twist!, TA, (copy(A), TA), ([1, 3], Const); atol, rtol, fkwargs = (inv = true,))
+                EnzymeTestUtils.test_forward(twist!, TA, (copy(A), TA), (1, Const); atol, rtol)
+                EnzymeTestUtils.test_forward(twist!, TA, (copy(A), TA), ([1, 3], Const); atol, rtol)
             end
         end
     end

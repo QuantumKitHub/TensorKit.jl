@@ -254,8 +254,7 @@ function permute(
 
     # general case
     tdst = similar(t, promote_permute(t), permute(space(t), p))
-    levels = ntuple(identity, numind(t))
-    return @inbounds braid!(tdst, t, p, levels, One(), Zero(), backend, allocator)
+    return @inbounds permute!(tdst, t, p, One(), Zero(), backend, allocator)
 end
 function permute(t::AdjointTensorMap, (p₁, p₂)::Index2Tuple; kwargs...)
     p₁′ = adjointtensorindices(t, p₂)
@@ -306,6 +305,10 @@ See also [`braid`](@ref) for creating a new tensor.
         backend::AbstractBackend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
     )
     @boundscheck spacecheck_transform(braid, tdst, tsrc, p, levels)
+    if has_array_view(tdst) && has_array_view(tsrc)
+        TO.tensoradd!(tdst[], tsrc[], p, false, α, β, backend, allocator)
+        return tdst
+    end
     levels1 = TupleTools.getindices(levels, codomainind(tsrc))
     levels2 = TupleTools.getindices(levels, domainind(tsrc))
     transformer = treebraider(tdst, tsrc, p, (levels1, levels2))
@@ -377,6 +380,10 @@ end
         backend::AbstractBackend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
     )
     @boundscheck spacecheck_transform(transpose, tdst, tsrc, p)
+    if has_array_view(tdst) && has_array_view(tsrc)
+        TO.tensoradd!(tdst[], tsrc[], p, false, α, β, backend, allocator)
+        return tdst
+    end
     transformer = treetransposer(tdst, tsrc, p)
     return @inbounds add_transform!(tdst, tsrc, p, transformer, α, β, backend, allocator)
 end

@@ -40,7 +40,7 @@ Note that, because the adjoint interchanges domain and codomain, we have `space(
 
 When tensor map instances are endomorphisms, i.e. they have the same domain and codomain, there is a multiplicative identity which can be obtained as `one(t)` or `one!(t)`, where the latter overwrites the contents of `t`.
 The multiplicative identity on a space `V` can also be obtained using `id(A, V)` as discussed [above](@ref ss_tensor_construction), such that for a general homomorphism `t′`, we have `t′ == id(codomain(t′)) * t′ == t′ * id(domain(t′))`.
-Returning to the case of endomorphisms `t`, we can compute the trace via `tr(t)` and exponentiate them using `exp(t)`, or if the contents of `t` can be destroyed in the process, `exp!(t)`.
+Returning to the case of endomorphisms `t`, we can compute the trace via `tr(t)` and exponentiate them using `exp(t)` (or the more general `exponential(t)`), or if the contents of `t` can be destroyed in the process, `exponential!(t)`.
 Furthermore, there are a number of tensor factorizations for both endomorphisms and general homomorphisms that we discuss on the [Tensor factorizations](@ref ss_tensor_factorization) page.
 
 Finally, there are a number of operations that also belong in this paragraph because of their analogy to common matrix operations.
