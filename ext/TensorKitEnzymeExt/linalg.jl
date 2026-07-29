@@ -12,8 +12,8 @@ function EnzymeRules.augmented_primal(
         β::Annotation,
     ) where {RT}
     cacheC = !isa(β, Const) ? copy(C.val) : C.val
-    cacheA = !isa(B, Const) && EnzymeRules.overwritten(config)[3] ? copy(A.val) : nothing
-    cacheB = !isa(A, Const) && EnzymeRules.overwritten(config)[4] ? copy(B.val) : nothing
+    cacheA = !isa(B, Const) && EnzymeRules.overwritten(config)[3] ? copy(A.val) : A.val
+    cacheB = !isa(A, Const) && EnzymeRules.overwritten(config)[4] ? copy(B.val) : B.val
     AB = if !isa(α, Const)
         AB = A.val * B.val
         add!(C.val, AB, α.val, β.val)
@@ -39,11 +39,7 @@ function EnzymeRules.reverse(
         α::Annotation{<:Number},
         β::Annotation{<:Number},
     ) where {RT}
-    cacheC, cacheA, cacheB, AB = cache
-    Cval = cacheC
-    Aval = something(cacheA, A.val)
-    Bval = something(cacheB, B.val)
-
+    Cval, Aval, Bval, AB = cache
     !isa(A, Const) && !isa(C, Const) && TK.project_mul!(A.dval, C.dval, Bval', conj(α.val), One())
     !isa(B, Const) && !isa(C, Const) && TK.project_mul!(B.dval, Aval', C.dval, conj(α.val), One())
     Δαr = pullback_dα(α, C, AB)
