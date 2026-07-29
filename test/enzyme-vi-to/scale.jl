@@ -7,19 +7,19 @@ using Random
 spacelist = ad_spacelist(fast_tests)
 eltypes = (Float64, ComplexF64)
 
+is_ci = get(ENV, "CI", "false") == "true"
+
+rTαs = is_ci ? (Active,) : (Active, Const)
+fTαs = is_ci ? (Duplicated,) : (Duplicated, Const)
+
 @testset "Enzyme - VectorInterface (scale!)" begin
     @timedtestset "$(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes
         atol = default_tol(T)
         rtol = default_tol(T)
         α = randn(T)
-        # see https://github.com/QuantumKitHub/TensorKit.jl/issues/457
-        if VERSION < v"1.11.0-rc" && sectortype(eltype(V)) == Trivial
-            CV = V[1] ⊗ V[2] ← V[4] ⊗ V[5]
-        else
-            CV = V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5]
-        end
+        CV = V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5]
         @testset for TC in (Duplicated,)
-            for Tα in (Active, Const)
+            for Tα in rTαs
                 C = randn(T, CV)
                 EnzymeTestUtils.test_reverse(scale!, TC, (C, TC), (α, Tα); atol, rtol)
                 C = randn(T, CV)
@@ -30,7 +30,7 @@ eltypes = (Float64, ComplexF64)
                     EnzymeTestUtils.test_reverse(scale!, TC, (fc(C), TC), (fa(A), TA), (α, Tα); atol, rtol)
                 end
             end
-            for Tα in (Duplicated, Const)
+            for Tα in fTαs
                 C = randn(T, CV)
                 EnzymeTestUtils.test_forward(scale!, TC, (C, TC), (α, Tα); atol, rtol)
                 C = randn(T, CV)
