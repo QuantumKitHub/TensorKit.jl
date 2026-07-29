@@ -27,17 +27,6 @@ eltypes = (Float64, ComplexF64)
     # pAB = randcircshift(k1, k3)
     pAB = _repartition(tuple((1:(k1 + k3))...), k1)
 
-    α = randn(T)
-    β = randn(T)
-
-    A = randn(T, permute(V1 ⊗ V2 ⊗ V3 ← (V4 ⊗ V5)', ipA))
-    B = randn(T, permute((V4 ⊗ V5)' ← V1 ⊗ V2 ⊗ V3, ipB))
-    C = randn!(
-        TensorOperations.tensoralloc_contract(
-            T, A, pA, false, B, pB, false, pAB, Val(false)
-        )
-    )
-
     α_ = randn(T)
     β_ = randn(T)
 
