@@ -1,9 +1,32 @@
+"""
+    const GLOBAL_CACHES
+
+Registry of the global caches TensorKit maintains, as `name => cache` pairs.
+
+See also [`empty_globalcaches!`](@ref) and [`global_cache_info`](@ref).
+"""
 const GLOBAL_CACHES = Pair{Symbol, Any}[]
+
+"""
+    empty_globalcaches!()
+
+Empty every global cache in [`GLOBAL_CACHES`](@ref).
+Since everything is recomputed on demand, this is purely a memory measure.
+
+See also [`global_cache_info`](@ref).
+"""
 function empty_globalcaches!()
     foreach(empty! ∘ last, GLOBAL_CACHES)
     return nothing
 end
 
+"""
+    global_cache_info([io::IO = stdout])
+
+Print the hit/miss statistics and current size of every global cache in [`GLOBAL_CACHES`](@ref).
+
+See also [`empty_globalcaches!`](@ref).
+"""
 function global_cache_info(io::IO = stdout)
     for (name, cache) in GLOBAL_CACHES
         println(io, name, ":\t", LRUCache.cache_info(cache))
