@@ -199,6 +199,7 @@ end
     @test eval_show(V) == V
     @test eval_show(V') == V'
     @test V' == GradedSpace(gen; dual = true)
+    @test V' == GradedSpace{I}(gen; dual = true)
     @test V == @constinferred GradedSpace(gen...)
     @test V' == @constinferred GradedSpace(gen...; dual = true)
     @test V == @constinferred GradedSpace(tuple(gen...))
