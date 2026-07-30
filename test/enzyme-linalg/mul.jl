@@ -30,10 +30,10 @@ fTs(::One, is_ci::Bool) = (Const,)
             B = randn(T, domain(A) ← domain(C))
             for TC in (Duplicated,), TA in (Duplicated,), TB in (Duplicated,)
                 for (α, β) in αβs
-                    rTαs = rTs(α)
-                    rTβs = rTs(β)
-                    fTαs = fTs(α)
-                    fTβs = fTs(β)
+                    rTαs = rTs(α, is_ci)
+                    rTβs = rTs(β, is_ci)
+                    fTαs = fTs(α, is_ci)
+                    fTβs = fTs(β, is_ci)
                     for Tα in rTαs, Tβ in rTβs
                         EnzymeTestUtils.test_reverse(mul!, TC, (C, TC), (A, TA), (B, TB), (α, Tα), (β, Tβ); atol, rtol, testset_name = "mul! reverse Tα $Tα, Tβ $Tβ")
                     end
@@ -74,10 +74,10 @@ fTs(::One, is_ci::Bool) = (Const,)
             )
             αβs = !is_ci ? ((One(), Zero()), (α_, β_)) : ((α_, β_),)
             @testset for TC in (Duplicated,), TA in (Duplicated,), TB in (Duplicated,), (α, β) in αβs
-                rTαs = rTs(α)
-                rTβs = rTs(β)
-                fTαs = fTs(α)
-                fTβs = fTs(β)
+                rTαs = rTs(α, is_ci)
+                rTβs = rTs(β, is_ci)
+                fTαs = fTs(α, is_ci)
+                fTβs = fTs(β, is_ci)
                 for Tα in rTαs, Tβ in rTβs
                     EnzymeTestUtils.test_reverse(TensorKit.planarcontract!, TC, (C, TC), (A, TA), (pA, Const), (B, TB), (pB, Const), (pAB, Const), (α, Tα), (β, Tβ); atol, rtol, testset_name = "planarcontract! Tα = $Tα, Tβ = $Tβ")
                 end
