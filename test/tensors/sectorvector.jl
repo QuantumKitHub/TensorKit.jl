@@ -37,7 +37,6 @@ spacelist = (
             oldval = v[1]
             v[1] = one(T)
             @test v[1] == one(T) == parent(v)[1]
-            v[1] = oldval
         end
 
         @timedtestset "similar and copy ($T)" begin
