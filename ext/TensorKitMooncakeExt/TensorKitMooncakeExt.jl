@@ -19,7 +19,6 @@ include("linalg.jl")
 include("indexmanipulations.jl")
 include("vectorinterface.jl")
 include("tensoroperations.jl")
-include("planaroperations.jl")
 include("factorizations.jl")
 
 end
