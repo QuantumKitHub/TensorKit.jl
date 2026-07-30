@@ -6,8 +6,7 @@ using Enzyme, EnzymeTestUtils
 using Random
 
 spacelist = ad_spacelist(fast_tests)
-#eltypes = (Float64, ComplexF64)
-eltypes = (ComplexF64,)
+eltypes = (Float64, ComplexF64)
 
 @timedtestset "Enzyme - PlanarOperations (planartrace): $(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes
     atol = default_tol(T)
