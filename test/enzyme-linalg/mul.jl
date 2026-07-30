@@ -1,5 +1,6 @@
 using Test, TestExtras
 using TensorKit
+using TensorOperations
 using VectorInterface
 using Enzyme, EnzymeTestUtils
 using Random
