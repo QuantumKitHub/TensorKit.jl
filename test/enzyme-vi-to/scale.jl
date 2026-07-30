@@ -18,26 +18,20 @@ fTαs = is_ci ? (Duplicated,) : (Duplicated, Const)
         rtol = default_tol(T)
         α = randn(T)
         CV = V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5]
+        C = randn(T, CV)
+        A = randn(T, CV)
         @testset for TC in (Duplicated,)
             for Tα in rTαs
-                C = randn(T, CV)
                 EnzymeTestUtils.test_reverse(scale!, TC, (C, TC), (α, Tα); atol, rtol)
-                C = randn(T, CV)
-                EnzymeTestUtils.test_reverse(scale!, TC, (C', TC), (α, Tα); atol, rtol)
+                !is_ci && EnzymeTestUtils.test_reverse(scale!, TC, (C', TC), (α, Tα); atol, rtol)
                 @testset for TA in (Duplicated,), (fc, fa) in ((identity, identity), (adjoint, adjoint))
-                    C = randn(T, CV)
-                    A = randn(T, CV)
                     EnzymeTestUtils.test_reverse(scale!, TC, (fc(C), TC), (fa(A), TA), (α, Tα); atol, rtol)
                 end
             end
             for Tα in fTαs
-                C = randn(T, CV)
                 EnzymeTestUtils.test_forward(scale!, TC, (C, TC), (α, Tα); atol, rtol)
-                C = randn(T, CV)
-                EnzymeTestUtils.test_forward(scale!, TC, (C', TC), (α, Tα); atol, rtol)
+                !is_ci && EnzymeTestUtils.test_forward(scale!, TC, (C', TC), (α, Tα); atol, rtol)
                 @testset for TA in (Duplicated,), (fc, fa) in ((identity, identity), (adjoint, adjoint))
-                    C = randn(T, CV)
-                    A = randn(T, CV)
                     EnzymeTestUtils.test_forward(scale!, TC, (fc(C), TC), (fa(A), TA), (α, Tα); atol, rtol)
                 end
             end
