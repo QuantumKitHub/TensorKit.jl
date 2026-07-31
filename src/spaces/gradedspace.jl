@@ -65,7 +65,7 @@ function GradedSpace{I, D}(d1::Pair, d2::Pair, dims::Vararg{Pair}; kwargs...) wh
     return GradedSpace{I, D}((d1, d2, dims...); kwargs...)
 end
 
-GradedSpace{I}(args...; kwargs...) where {I <: Sector} = Vect[I](args..., kwargs...)
+GradedSpace{I}(args...; kwargs...) where {I <: Sector} = Vect[I](args...; kwargs...)
 
 function GradedSpace(
         dims::Tuple{Pair{I, <:Integer}, Vararg{Pair{I, <:Integer}}}; dual::Bool = false
