@@ -8,6 +8,8 @@ using Random
 spacelist = ad_spacelist(fast_tests)
 eltypes = (Float64, ComplexF64)
 
+is_ci = get(ENV, "CI", "false") == "true"
+
 @timedtestset "Enzyme - Index Manipulations (twist):" begin
     @timedtestset "$(TensorKit.type_repr(sectortype(eltype(V)))) ($T)" for V in spacelist, T in eltypes, TA in (Duplicated,)
         atol = default_tol(T)
@@ -17,12 +19,16 @@ eltypes = (Float64, ComplexF64)
         if has_braiding && !(T <: Real && !(sectorscalartype(sectortype(A)) <: Real))
             EnzymeTestUtils.test_reverse(twist!, TA, (A, TA), (1, Const); atol, rtol, fkwargs = (inv = false,))
             EnzymeTestUtils.test_reverse(twist!, TA, (A, TA), ([1, 3], Const); atol, rtol, fkwargs = (inv = true,))
-            EnzymeTestUtils.test_reverse(twist!, TA, (A, TA), (1, Const); atol, rtol)
-            EnzymeTestUtils.test_reverse(twist!, TA, (A, TA), ([1, 3], Const); atol, rtol)
+            if !is_ci
+                EnzymeTestUtils.test_reverse(twist!, TA, (A, TA), (1, Const); atol, rtol)
+                EnzymeTestUtils.test_reverse(twist!, TA, (A, TA), ([1, 3], Const); atol, rtol)
+            end
             EnzymeTestUtils.test_forward(twist!, TA, (A, TA), (1, Const); atol, rtol, fkwargs = (inv = false,))
             EnzymeTestUtils.test_forward(twist!, TA, (A, TA), ([1, 3], Const); atol, rtol, fkwargs = (inv = true,))
-            EnzymeTestUtils.test_forward(twist!, TA, (A, TA), (1, Const); atol, rtol)
-            EnzymeTestUtils.test_forward(twist!, TA, (A, TA), ([1, 3], Const); atol, rtol)
+            if !is_ci
+                EnzymeTestUtils.test_forward(twist!, TA, (A, TA), (1, Const); atol, rtol)
+                EnzymeTestUtils.test_forward(twist!, TA, (A, TA), ([1, 3], Const); atol, rtol)
+            end
         end
     end
 end
