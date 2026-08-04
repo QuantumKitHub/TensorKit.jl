@@ -283,7 +283,7 @@ function braid(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple, leve
     @assert numind(src) == length(p[1]) + length(p[2])
     @assert numout(src) == length(levels[1]) && numin(src) == length(levels[2])
     @assert TupleTools.isperm((p[1]..., p[2]...))
-    _check_levels(levels[1]..., levels[2]...)
+    _check_levels(tuple(levels[1]..., levels[2]...))
     return fsbraid((src, p, levels))
 end
 
