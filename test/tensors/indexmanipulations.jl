@@ -145,8 +145,11 @@ end
     t = rand(ComplexF64, ℂ^2 ⊗ ℂ^3 ← ℂ^4)
     p = ((2, 1), (3,))
     @test braid(t, p, (1, 3, 2)) isa TensorMap
-    @test_throws ArgumentError braid(t, p, (1, 2, 2)) # duplicate levels
-    @test_throws ArgumentError braid(t, p, (1, 2)) # wrong length
-    @test_throws ArgumentError braid(space(t), p, (1, 2, 2))
-    @test_throws ArgumentError braid!(similar(t, permute(space(t), p)), t, p, (1, 2, 2))
+    dupe_levels = (1, 2, 2)
+    dupe_err_str = "levels must be all distinct, got $(dupe_levels)"
+    len_err_str = "length of levels should be $(numind(t)), got $(length((1, 2)))"
+    @test_throws ArgumentError(dupe_err_str) braid(t, p, dupe_levels) # duplicate levels
+    @test_throws ArgumentError(len_err_str) braid(t, p, (1, 2)) # wrong length
+    @test_throws ArgumentError(dupe_err_str) braid(space(t), p, dupe_levels)
+    @test_throws ArgumentError(dupe_err_str) braid!(similar(t, permute(space(t), p)), t, p, dupe_levels)
 end

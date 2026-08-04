@@ -84,7 +84,7 @@ _alldistinct(t::Tuple) = !in(t[1], tail(t)) && _alldistinct(tail(t))
     _check_levels(levels::Tuple) -> Nothing
 
 Check whether all elements of a tuple are distinct, throwing an `ArgumentError` if not.
-This is used to validate the `levels` of `braid`.
+This is used to validate the `levels` of [`braid`](@ref).
 """
 _check_levels(levels::Tuple) = _alldistinct(levels) || _throw_levels(levels)
 
