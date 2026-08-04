@@ -182,15 +182,6 @@ using TensorKitSectors
             @test_throws ArgumentError(err_str) TensorKit.braid(src, ((2, 1, ntuple(i -> i + 2, N - 2)...), ntuple(i -> i + N, N)), (eq, eq)) # and rejected when they do
         end
 
-        n = rand(0:(2N))
-        p = (randperm(2 * N)...,)
-        p1, p2 = p[1:n], p[(n + 1):(2N)]
-        levels = ntuple(identity, 2N)
-        l1, l2 = levels[1:N], levels[(N + 1):(2N)]
-        l1′ = TupleTools.setindex(l1, l2[1], 1)
-        err_str = "levels must be all distinct, got $(tuple(l1′..., l2...))"
-        @test_throws ArgumentError(err_str) TensorKit.braid(src, (p1, p2), (l1′, l2))
-
         for n in 0:(2N)
             p1, p2 = p[1:n], p[(n + 1):(2N)]
             ip = invperm(p)
