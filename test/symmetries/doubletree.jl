@@ -174,6 +174,14 @@ using TensorKitSectors
     end
 
     BraidingStyle(I) isa HasBraiding && @testset "Double fusion tree: permutation and braiding" begin
+        if !(BraidingStyle(I) isa SymmetricBraiding)
+            eq = ntuple(Returns(1), N) # potential problematic level 1
+            err_str = "ambiguous braid: two indices with equal level 1 have to cross"
+
+            @test TensorKit.braid(src, (ntuple(identity, N), ntuple(i -> i + N, N)), (eq, eq)) isa Pair # equal levels are fine when the indices never meet
+            @test_throws ArgumentError(err_str) TensorKit.braid(src, ((2, 1, ntuple(i -> i + 2, N - 2)...), ntuple(i -> i + N, N)), (eq, eq)) # and rejected when they do
+        end
+
         n = rand(0:(2N))
         p = (randperm(2 * N)...,)
         p1, p2 = p[1:n], p[(n + 1):(2N)]

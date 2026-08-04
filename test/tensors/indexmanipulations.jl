@@ -137,19 +137,17 @@ for V in spacelist
             t2 = braid(copy(t'), p, levels)
             @test t1 ≈ t2
         end
+        hasbraiding && !symmetricbraiding && @timedtestset "Braid: invalid levels" begin
+            t = rand(ComplexF64, V1 ⊗ V2 ← V3)
+            p = ((2, 1), (3,))
+            dupe_levels = (2, 2, 1) # level 2 is the duplicate
+            bad_lengths = (1, 2)
+            dupe_err_str = "ambiguous braid: two indices with equal level 2 have to cross"
+            len_err_str = "length of levels should be $(numind(t)), got $(length(bad_lengths))"
+            @test_throws ArgumentError(dupe_err_str) braid(t, p, dupe_levels) # duplicate levels
+            @test_throws ArgumentError(len_err_str) braid(t, p, bad_lengths) # wrong length
+            @test_throws ArgumentError(dupe_err_str) braid!(similar(t, permute(space(t), p)), t, p, dupe_levels)
+        end
     end
     TensorKit.empty_globalcaches!()
-end
-
-@timedtestset "braid: invalid levels" begin
-    t = rand(ComplexF64, ℂ^2 ⊗ ℂ^3 ← ℂ^4)
-    p = ((2, 1), (3,))
-    @test braid(t, p, (1, 3, 2)) isa TensorMap
-    dupe_levels = (1, 2, 2)
-    dupe_err_str = "levels must be all distinct, got $(dupe_levels)"
-    len_err_str = "length of levels should be $(numind(t)), got $(length((1, 2)))"
-    @test_throws ArgumentError(dupe_err_str) braid(t, p, dupe_levels) # duplicate levels
-    @test_throws ArgumentError(len_err_str) braid(t, p, (1, 2)) # wrong length
-    @test_throws ArgumentError(dupe_err_str) braid(space(t), p, dupe_levels)
-    @test_throws ArgumentError(dupe_err_str) braid!(similar(t, permute(space(t), p)), t, p, dupe_levels)
 end
