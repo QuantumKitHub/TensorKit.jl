@@ -249,7 +249,7 @@ function planarcontract!(
     N = numind(B)
     levels = (
         levelsA[cindA[1]], levelsA[cindA[2]],
-        ntuple(Returns(3), N - 2)...,
+        ntuple(i -> i + 2, N - 2)...,
     )
 
     braid!(
@@ -303,7 +303,7 @@ function planarcontract!(
     N = numind(A)
     M = N - 2
     levels = (
-        ntuple(Returns(3), M)...,
+        ntuple(i -> i + 2, M)...,
         levelsB[cindB[1]], levelsB[cindB[2]],
     )
 
