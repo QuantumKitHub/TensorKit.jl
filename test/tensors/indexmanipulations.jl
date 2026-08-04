@@ -140,3 +140,13 @@ for V in spacelist
     end
     TensorKit.empty_globalcaches!()
 end
+
+@timedtestset "braid: invalid levels" begin
+    t = rand(ComplexF64, ℂ^2 ⊗ ℂ^3 ← ℂ^4)
+    p = ((2, 1), (3,))
+    @test braid(t, p, (1, 3, 2)) isa TensorMap
+    @test_throws ArgumentError braid(t, p, (1, 2, 2)) # duplicate levels
+    @test_throws ArgumentError braid(t, p, (1, 2)) # wrong length
+    @test_throws ArgumentError braid(space(t), p, (1, 2, 2))
+    @test_throws ArgumentError braid!(similar(t, permute(space(t), p)), t, p, (1, 2, 2))
+end

@@ -174,6 +174,12 @@ using TensorKitSectors
     end
 
     BraidingStyle(I) isa HasBraiding && @testset "Double fusion tree: permutation and braiding" begin
+        n = rand(0:(2N))
+        p1, p2 = p[1:n], p[(n + 1):(2N)]
+        levels = ntuple(identity, 2N)
+        l1, l2 = levels[1:N], levels[(N + 1):(2N)]
+        @test_throws ArgumentError TensorKit.braid(src, (p1, p2), (TupleTools.setindex(l1, l2[1], 1), l2))
+
         for n in 0:(2N)
             p = (randperm(2 * N)...,)
             p1, p2 = p[1:n], p[(n + 1):(2N)]
