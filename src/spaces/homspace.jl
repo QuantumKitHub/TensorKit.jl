@@ -228,6 +228,7 @@ function braid(W::HomSpace, (p₁, p₂)::Index2Tuple, levels::IndexTuple)
     p = (p₁..., p₂...)
     TupleTools.isperm(p) && length(p) == numind(W) == length(levels) ||
         throw(ArgumentError(lazy"$((p₁, p₂)), $levels is not a valid braiding for $(W)"))
+    _check_levels(levels)
     return select(W, (p₁, p₂))
 end
 

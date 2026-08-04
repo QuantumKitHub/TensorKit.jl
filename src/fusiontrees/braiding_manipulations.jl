@@ -216,6 +216,7 @@ braid(f::FusionTree{I, N}, p::IndexTuple{N}, levels::IndexTuple{N}) where {I, N}
     braid(f, (p, ()), (levels, ()))
 function braid(f::FusionTree{I, N}, (p, _)::Index2Tuple{N, 0}, (levels, _)::Index2Tuple{N, 0}) where {I, N}
     TupleTools.isperm(p) || throw(ArgumentError(lazy"not a valid permutation: $p"))
+    _check_levels(levels)
     @assert FusionStyle(I) isa UniqueFusion
     if BraidingStyle(I) isa SymmetricBraiding # this assumes Fsymbols are 1!
         coeff = one(sectorscalartype(I))
@@ -282,6 +283,7 @@ function braid(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple, leve
     @assert numind(src) == length(p[1]) + length(p[2])
     @assert numout(src) == length(levels[1]) && numin(src) == length(levels[2])
     @assert TupleTools.isperm((p[1]..., p[2]...))
+    _check_levels(levels[1]..., levels[2]...)
     return fsbraid((src, p, levels))
 end
 
