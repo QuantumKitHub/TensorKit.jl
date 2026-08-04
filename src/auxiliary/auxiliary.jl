@@ -76,3 +76,18 @@ end
 else
     _allequal(f, xs) = allequal(f, xs)
 end
+
+_alldistinct(::Tuple{}) = true
+_alldistinct(t::Tuple) = !in(t[1], tail(t)) && _alldistinct(tail(t))
+
+"""
+    _check_levels(levels::Tuple) -> Nothing
+
+Check whether all elements of a tuple are distinct, throwing an `ArgumentError` if not.
+This is used to validate the `levels` of `braid`.
+"""
+_check_levels(levels::Tuple) = _alldistinct(levels) || _throw_levels(levels)
+
+@noinline function _throw_levels(levels)
+    throw(ArgumentError(lazy"levels must be all distinct, got $levels"))
+end
