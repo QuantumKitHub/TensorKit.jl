@@ -183,6 +183,7 @@ using TensorKitSectors
         end
 
         for n in 0:(2N)
+            p = (randperm(2 * N)...,)
             p1, p2 = p[1:n], p[(n + 1):(2N)]
             ip = invperm(p)
             ip1, ip2 = ip[1:N], ip[(N + 1):(2N)]
