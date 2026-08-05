@@ -296,7 +296,6 @@ The codomain and domain of `tdst` correspond to the indices in `p₁` and `p₂`
 Here, `levels` is a tuple of length `numind(tsrc)` that assigns a level or depth to the indices of `tsrc`,
 which determines whether they will braid over or under any other index with which they have to change places.
 In other words, a smaller value in `levels` means that the corresponding index will be braided over any other index with a higher value.
-`levels` can thus not contain duplicate values when the braiding is anyonic, as overbraiding and underbraiding are then not equivalent.
 
 Optionally specify a `backend` and `allocator` for the underlying array operation.
 
@@ -329,7 +328,6 @@ The codomain and domain of `tdst` correspond to the indices in `p₁` and `p₂`
 Here, `levels` is a tuple of length `numind(tsrc)` that assigns a level or depth to the indices of `tsrc`,
 which determines whether they will braid over or under any other index with which they have to change places.
 In other words, a smaller value in `levels` means that the corresponding index will be braided over any other index with a higher value.
-`levels` can thus not contain duplicate values when the braiding is anyonic, as overbraiding and underbraiding are then not equivalent.
 
 If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwise, a copy is always made.
 Optionally specify a `backend` and `allocator` for the underlying array operation.
