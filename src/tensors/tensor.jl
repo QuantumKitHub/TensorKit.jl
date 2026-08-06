@@ -472,7 +472,7 @@ function blocktype(::Type{TT}) where {TT <: TensorMap}
     T = eltype(A)
     @static if isdefined(Core, :Memory) # StridedViews normalizes parent types!
         if A <: Vector{T}
-            A = GenericMemory{T}
+            A = Memory{T}
         end
     end
     return StridedView{T, 2, A, typeof(identity)}
@@ -481,24 +481,25 @@ end
 function Base.iterate(iter::BlockIterator{<:TensorMap}, state...)
     next = iterate(pairs(iter.structure), state...)
     isnothing(next) && return next
-    (c, (sz, str, offset)), newstate = next
-    return c => StridedView(iter.t.data, sz, str, offset), newstate
+    (c, ((d₁, d₂), r)), newstate = next
+    return c => StridedView(iter.t.data, (d₁, d₂), (1, d₁), first(r) - 1), newstate
 end
 
 function Base.getindex(iter::BlockIterator{<:TensorMap}, c::Sector)
     sectortype(iter.t) === typeof(c) || throw(SectorMismatch())
-    (d₁, d₂), (s₁, s₂), offset = get(iter.structure, c) do
-        # is c is not a key, at least one of the two dimensions will be zero:
+    found, token = gettoken(iter.structure, c)
+    if found
+        (d₁, d₂), r = gettokenvalue(iter.structure, token)
+        offset = first(r) - 1
+    else
+        # if c is not a key, at least one of the two dimensions will be zero:
         # it then does not matter where exactly we construct a view in `t.data`,
         # as it will have length zero anyway
-        d₁′ = blockdim(codomain(iter.t), c)
-        d₂′ = blockdim(domain(iter.t), c)
-        s₁ = 1
-        s₂ = 0
+        d₁ = blockdim(codomain(iter.t), c)
+        d₂ = blockdim(domain(iter.t), c)
         offset = 0
-        return (d₁′, d₂′), (s₁, s₂), offset
     end
-    return StridedView(iter.t.data, (d₁, d₂), (s₁, s₂), offset)
+    return StridedView(iter.t.data, (d₁, d₂), (1, d₁), offset)
 end
 
 # Getting and setting the data at the subblock level
