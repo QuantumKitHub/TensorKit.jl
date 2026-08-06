@@ -187,20 +187,6 @@ function fusionblocks(W::HomSpace)
     return fblocks
 end
 
-function diagonalblockstructure(W::HomSpace)
-    ((numin(W) == numout(W) == 1) && domain(W) == codomain(W)) ||
-        throw(SpaceMismatch("Diagonal only support on V←V with a single space V"))
-    structure = SectorDict{sectortype(W), UnitRange{Int}}() # range
-    offset = 0
-    dom = domain(W)[1]
-    for c in blocksectors(W)
-        d = dim(dom, c)
-        structure[c] = offset .+ (1:d)
-        offset += d
-    end
-    return structure
-end
-
 # Operations on HomSpaces
 # -----------------------
 """
