@@ -60,7 +60,7 @@ function ⊕(V₁::ComplexSpace, V₂::ComplexSpace)
 end
 function ⊖(V::ComplexSpace, W::ComplexSpace)
     (V ≿ W && isdual(V) == isdual(W)) ||
-        throw(ArgumentError("$(W) is not a subspace of $(V)"))
+        throw(ArgumentError(lazy"$(W) is not a subspace of $(V)"))
     return ComplexSpace(dim(V) - dim(W), isdual(V))
 end
 

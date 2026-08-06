@@ -77,5 +77,5 @@ function ⊠(P₀::ProductSpace{<:ElementarySpace, 0}, P::ProductSpace{<:Element
 end
 
 @noinline function throw_incompatible_fields(P₁, P₂)
-    throw(ArgumentError("Deligne products require spaces over the same field: $(field(P₁)) ≠ $(field(P₂))"))
+    throw(ArgumentError(lazy"Deligne products require spaces over the same field: $(field(P₁)) ≠ $(field(P₂))"))
 end

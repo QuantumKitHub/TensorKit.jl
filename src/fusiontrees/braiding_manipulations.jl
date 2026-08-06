@@ -215,9 +215,10 @@ braid, but a general braid can be obtained by combining such operations.
 braid(f::FusionTree{I, N}, p::IndexTuple{N}, levels::IndexTuple{N}) where {I, N} =
     braid(f, (p, ()), (levels, ()))
 function braid(f::FusionTree{I, N}, (p, _)::Index2Tuple{N, 0}, (levels, _)::Index2Tuple{N, 0}) where {I, N}
-    TupleTools.isperm(p) || throw(ArgumentError("not a valid permutation: $p"))
+    TupleTools.isperm(p) || throw(ArgumentError(lazy"not a valid permutation: $p"))
     @assert FusionStyle(I) isa UniqueFusion
-    if BraidingStyle(I) isa SymmetricBraiding # this assumes Fsymbols are 1!
+    braid_style = BraidingStyle(I)
+    if braid_style isa SymmetricBraiding # this assumes Fsymbols are 1!
         coeff = one(sectorscalartype(I))
         for i in 1:N
             for j in 1:(i - 1)
@@ -236,6 +237,7 @@ function braid(f::FusionTree{I, N}, (p, _)::Index2Tuple{N, 0}, (levels, _)::Inde
         T = sectorscalartype(I)
         c = one(T)
         for s in permutation2swaps(p)
+            _check_levels(braid_style, levels, s)
             inv = levels[s] > levels[s + 1]
             f, c′ = artin_braid(f, s; inv)
             c *= c′
@@ -316,7 +318,9 @@ end
 
         dst, U = repartition(src, numind(src))
 
+        braid_style = BraidingStyle(I)
         for s in permutation2swaps(p)
+            _check_levels(braid_style, levels, s)
             inv = levels[s] > levels[s + 1]
             dst, U_tmp = artin_braid(dst, s; inv)
             U = U_tmp * U

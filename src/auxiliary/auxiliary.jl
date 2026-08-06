@@ -76,3 +76,19 @@ end
 else
     _allequal(f, xs) = allequal(f, xs)
 end
+
+"""
+    _check_levels(levels::Tuple) -> Nothing
+
+Check whether all elements of a tuple are distinct, throwing an `ArgumentError` if not.
+This is used to validate the `levels` of [`braid`](@ref).
+For symmetric braidings, this check is skipped since the levels are irrelevant.   
+"""
+_check_levels(::SymmetricBraiding, levels, s) = nothing
+@inline function _check_levels(::BraidingStyle, levels, s)
+    levels[s] == levels[s + 1] && _throw_ambiguous_levels(levels[s])
+    return nothing
+end
+@noinline function _throw_ambiguous_levels(l)
+    throw(ArgumentError(lazy"ambiguous braid: two indices with equal level $l have to cross"))
+end

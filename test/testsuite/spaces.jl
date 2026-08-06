@@ -12,6 +12,7 @@
     @test eval_show(V) == V
     @test eval_show(V') == V'
     @test V' == GradedSpace(gen; dual = true)
+    @test V' == GradedSpace{I}(gen; dual = true)
     @test V == @testinferred GradedSpace(gen...)
     @test V' == @testinferred GradedSpace(gen...; dual = true)
     @test V == @testinferred GradedSpace(tuple(gen...))

@@ -293,8 +293,10 @@ end
 
 Compute `tdst = β * tdst + α * braid(tsrc, (p₁, p₂), levels)`, writing the result into `tdst`.
 The codomain and domain of `tdst` correspond to the indices in `p₁` and `p₂` of `tsrc` respectively.
-Here, `levels` is a tuple of length `numind(tsrc)` that assigns a level or height to the indices of `tsrc`,
+Here, `levels` is a tuple of length `numind(tsrc)` that assigns a level or depth to the indices of `tsrc`,
 which determines whether they will braid over or under any other index with which they have to change places.
+In other words, a smaller value in `levels` means that the corresponding index will be braided over any other index with a higher value.
+
 Optionally specify a `backend` and `allocator` for the underlying array operation.
 
 See also [`braid`](@ref) for creating a new tensor.
@@ -323,8 +325,9 @@ end
 
 Return tensor `tdst` obtained by braiding the indices of `tsrc`.
 The codomain and domain of `tdst` correspond to the indices in `p₁` and `p₂` of `tsrc` respectively.
-Here, `levels` is a tuple of length `numind(tsrc)` that assigns a level or height to the indices of `tsrc`,
+Here, `levels` is a tuple of length `numind(tsrc)` that assigns a level or depth to the indices of `tsrc`,
 which determines whether they will braid over or under any other index with which they have to change places.
+In other words, a smaller value in `levels` means that the corresponding index will be braided over any other index with a higher value.
 
 If `copy=false`, `tdst` might share data with `tsrc` whenever possible. Otherwise, a copy is always made.
 Optionally specify a `backend` and `allocator` for the underlying array operation.
@@ -473,7 +476,7 @@ See also [`repartition!`](@ref) for writing into an existing destination.
         copy::Bool = false, backend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
     )
     N₁ + N₂ == numind(t) ||
-        throw(ArgumentError("Invalid repartition: $(numind(t)) to ($N₁, $N₂)"))
+        throw(ArgumentError(lazy"Invalid repartition: $(numind(t)) to ($N₁, $N₂)"))
     p₁, p₂ = let all_inds = (codomainind(t)..., reverse(domainind(t))...)
         ntuple(i -> all_inds[i], N₁), reverse(ntuple(i -> all_inds[i + N₁], N₂))
     end
