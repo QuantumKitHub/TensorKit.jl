@@ -2,26 +2,31 @@ module TestSetup
 
 export randindextuple, randcircshift, _repartition, trivtuple
 export default_tol
-export smallset, randsector, hasfusiontensor, force_planar
+export smallset, randsector, hasfusiontensor, force_planar, eval_show
 export random_fusion
 export sectorlist, fast_sectorlist
 # export dim_isapprox
 export default_spacelist, factorization_spacelist, ad_spacelist
 export test_ad_rrule
 export _isunitary, _isone
+export TensorKitTestSuite
 
 using Random
 using Test: @test
 using TensorKit
-using TensorKit: ℙ, PlanarTrivial
 using TensorKitSectors
 using TensorOperations: IndexTuple, Index2Tuple
-using Base.Iterators: take, product
 using TupleTools
-using MatrixAlgebraKit: MatrixAlgebraKit, diagview
+using MatrixAlgebraKit: MatrixAlgebraKit
 using ChainRulesCore: NoTangent
 using ChainRulesTestUtils: ChainRulesTestUtils, test_rrule
 using Zygote: Zygote, rrule_via_ad
+
+include(joinpath(@__DIR__, "testsuite", "TensorKitTestSuite.jl"))
+using .TensorKitTestSuite
+# not exported by TensorKitTestSuite to avoid clash with TensorKitSectors.SectorTestSuite
+using .TensorKitTestSuite: _isunitary, _isone
+using .TensorKitTestSuite: smallset, randsector, hasfusiontensor, random_fusion
 
 Random.seed!(123456)
 
@@ -63,92 +68,8 @@ end
 default_tol(::Type{<:Union{Float32, Complex{Float32}}}) = 1.0e-2
 default_tol(::Type{<:Union{Float64, Complex{Float64}}}) = 1.0e-5
 
-# Sector utility
+# Sector lists
 # --------------
-smallset(::Type{I}) where {I <: Sector} = take(values(I), 5)
-function smallset(::Type{ProductSector{Tuple{I1, I2}}}) where {I1, I2}
-    iter = product(smallset(I1), smallset(I2))
-    s = collect(i ⊠ j for (i, j) in iter if dim(i) * dim(j) <= 6)
-    return length(s) > 6 ? rand(s, 6) : s
-end
-function smallset(::Type{ProductSector{Tuple{I1, I2, I3}}}) where {I1, I2, I3}
-    iter = product(smallset(I1), smallset(I2), smallset(I3))
-    s = collect(i ⊠ j ⊠ k for (i, j, k) in iter if dim(i) * dim(j) * dim(k) <= 6)
-    return length(s) > 6 ? rand(s, 6) : s
-end
-function randsector(::Type{I}) where {I <: Sector}
-    s = collect(smallset(I))
-    a = rand(s)
-    while isunit(a) # don't use trivial label
-        a = rand(s)
-    end
-    return a
-end
-function hasfusiontensor(I::Type{<:Sector})
-    try
-        u = first(allunits(I))
-        fusiontensor(u, u, u)
-        return true
-    catch e
-        if e isa MethodError
-            return false
-        else
-            rethrow(e)
-        end
-    end
-end
-
-"""
-    force_planar(obj)
-
-Replace an object with a planar equivalent -- i.e. one that disallows braiding.
-"""
-force_planar(V::ComplexSpace) = isdual(V) ? (ℙ^dim(V))' : ℙ^dim(V)
-function force_planar(V::GradedSpace)
-    return GradedSpace((c ⊠ PlanarTrivial() => dim(V, c) for c in sectors(V))..., isdual(V))
-end
-force_planar(V::ProductSpace) = mapreduce(force_planar, ⊗, V)
-function force_planar(tsrc::TensorMap{<:Any, ComplexSpace})
-    tdst = similar(tsrc, force_planar(codomain(tsrc)) ← force_planar(domain(tsrc)))
-    copyto!(block(tdst, PlanarTrivial()), block(tsrc, Trivial()))
-    return tdst
-end
-function force_planar(tsrc::TensorMap{<:Any, <:GradedSpace})
-    tdst = similar(tsrc, force_planar(codomain(tsrc)) ← force_planar(domain(tsrc)))
-    for (c, b) in blocks(tsrc)
-        copyto!(block(tdst, c ⊠ PlanarTrivial()), b)
-    end
-    return tdst
-end
-
-function random_fusion(I::Type{<:Sector}, ::Val{N}) where {N} # for fusion tree tests
-    N == 1 && return (randsector(I),)
-    tail = random_fusion(I, Val(N - 1))
-    s = randsector(I)
-    counter = 0
-    while isempty(⊗(s, first(tail))) && counter < 20
-        counter += 1
-        s = (counter < 20) ? randsector(I) : leftunit(first(tail))
-    end
-    return (s, tail...)
-end
-
-# # helper function to check that d - dim(c) < dim(V) <= d where c is the largest sector
-# # to allow for truncations to have some margin with larger sectors
-# function dim_isapprox(V::ElementarySpace, d::Int)
-#     dim_c_max = maximum(dim, sectors(V); init = 1)
-#     return max(0, d - dim_c_max) ≤ dim(V) ≤ d + dim_c_max
-# end
-# function dim_isapprox(V::ProductSpace, d::Int)
-#     dim_c_max = maximum(dim, blocksectors(V); init = 1)
-#     return max(0, d - dim_c_max) ≤ dim(V) ≤ d + dim_c_max
-# end
-
-_isunitary(x::Number; kwargs...) = isapprox(x * x', one(x); kwargs...)
-_isunitary(x; kwargs...) = isunitary(x; kwargs...)
-_isone(x; kwargs...) = isapprox(x, one(x); kwargs...)
-
-
 uniquefusionsectorlist = (
     Z2Irrep, Z3Irrep, Z4Irrep, Z3Irrep ⊠ Z4Irrep, U1Irrep,
     FermionParity, FermionParity ⊠ FermionParity, FermionNumber, # fermionic
