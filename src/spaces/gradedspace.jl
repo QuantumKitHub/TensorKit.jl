@@ -265,15 +265,22 @@ construct or obtain the concrete type `GradedSpace{I,D}` instances without havin
 specify `D`.
 """
 const Vect = SpaceTable()
+
+
+# above this many sector values, `Vect[I]` stores `Sector`s in a `SectorDict`
+# even when `I` has a finite `IteratorSize`
+# at or below it, `Sector`s are stored in an `NTuple`.
+# this cutoff is chosen based on benchmarks on functions which build or reconstruct `GradedSpace` instances`
+const GRADEDSPACE_TUPLE_CUTOFF = 32
+
 Base.getindex(::SpaceTable) = ComplexSpace
 Base.getindex(::SpaceTable, ::Type{Trivial}) = ComplexSpace
 function Base.getindex(::SpaceTable, I::Type{<:Sector})
     if Base.IteratorSize(values(I)) isa Union{HasLength, HasShape}
         N = length(values(I))
-        return GradedSpace{I, NTuple{N, Int}}
-    else
-        return GradedSpace{I, SectorDict{I, Int}}
+        N <= GRADEDSPACE_TUPLE_CUTOFF && return GradedSpace{I, NTuple{N, Int}}
     end
+    return GradedSpace{I, SectorDict{I, Int}}
 end
 
 Base.getindex(::ComplexNumbers, I::Type{<:Sector}) = Vect[I]
