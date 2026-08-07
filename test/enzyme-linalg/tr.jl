@@ -24,10 +24,10 @@ TDs = is_ci ? (Duplicated,) : (Const, Duplicated)
             EnzymeTestUtils.test_reverse(tr, RT, (D2, TD); atol, rtol)
             EnzymeTestUtils.test_reverse(tr, RT, (D3, TD); atol, rtol)
         end
-        #=@testset "tr forward: RT $RT, TD $TD" for RT in fRTs, TD in TDs
+        @testset "tr forward: RT $RT, TD $TD" for RT in fRTs, TD in TDs
             EnzymeTestUtils.test_forward(tr, RT, (D1, TD); atol, rtol)
             EnzymeTestUtils.test_forward(tr, RT, (D2, TD); atol, rtol)
             EnzymeTestUtils.test_forward(tr, RT, (D3, TD); atol, rtol)
-        end=#
+        end
     end
 end
