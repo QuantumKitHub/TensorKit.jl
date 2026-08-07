@@ -102,12 +102,12 @@ for V in spacelist
                 @test t1 * (t1 \ t) ≈ t
                 @test (t / t2) * t2 ≈ t
                 @test t1 \ one(t1) ≈ inv(t1)
-                @test_broken one(t1) / t1 ≈ pinv(t1) # pinv doesn't yet work for StridedView
+                @test one(t1) / t1 ≈ pinv(t1)
                 @test_throws SpaceMismatch inv(t)
                 @test_throws SpaceMismatch t2 \ t
                 @test_throws SpaceMismatch t / t1
-                #tp = pinv(t) * t
-                #@test tp ≈ tp * tp
+                tp = pinv(t) * t
+                @test tp ≈ tp * tp
             end
         end
         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
@@ -129,7 +129,7 @@ for V in spacelist
                     @test reshape(convert(Array, t2' * t'), d2, d1) ≈ At2' * At'
 
                     @test reshape(convert(Array, inv(t1)), d1, d1) ≈ inv(At1)
-                    @test_broken reshape(convert(Array, pinv(t)), d2, d1) ≈ pinv(At) # pinv doesn't yet work for StridedView
+                    @test reshape(convert(Array, pinv(t)), d2, d1) ≈ pinv(At)
 
                     if T == Float32 || T == ComplexF32
                         continue
@@ -165,23 +165,22 @@ for V in spacelist
                     @test reshape(convert(Array, expt), (s, s)) ≈
                         exp(reshape(convert(Array, t), (s, s)))
 
-                    # TODO waiting on schur! support
-                    @test_broken (@constinferred sqrt(t))^2 ≈ t
-                    @test_broken reshape(convert(Array, sqrt(t^2)), (s, s)) ≈
+                    @test (@constinferred sqrt(t))^2 ≈ t
+                    @test reshape(convert(Array, sqrt(t^2)), (s, s)) ≈
                         sqrt(reshape(convert(Array, t^2), (s, s)))
 
-                    @test_broken exp(@constinferred log(expt)) ≈ expt
-                    @test_broken reshape(convert(Array, log(expt)), (s, s)) ≈
+                    @test exp(@constinferred log(expt)) ≈ expt
+                    @test reshape(convert(Array, log(expt)), (s, s)) ≈
                         log(reshape(convert(Array, expt), (s, s)))
 
-                    @test_broken (@constinferred cos(t))^2 + (@constinferred sin(t))^2 ≈ id(W)
-                    @test_broken (@constinferred tan(t)) ≈ sin(t) / cos(t)
-                    @test_broken (@constinferred cot(t)) ≈ cos(t) / sin(t)
-                    @test_broken (@constinferred cosh(t))^2 - (@constinferred sinh(t))^2 ≈ id(W)
-                    @test_broken (@constinferred tanh(t)) ≈ sinh(t) / cosh(t)
-                    @test_broken (@constinferred coth(t)) ≈ cosh(t) / sinh(t)
+                    @test (@constinferred cos(t))^2 + (@constinferred sin(t))^2 ≈ id(W)
+                    @test (@constinferred tan(t)) ≈ sin(t) / cos(t)
+                    @test (@constinferred cot(t)) ≈ cos(t) / sin(t)
+                    @test (@constinferred cosh(t))^2 - (@constinferred sinh(t))^2 ≈ id(W)
+                    @test (@constinferred tanh(t)) ≈ sinh(t) / cosh(t)
+                    @test (@constinferred coth(t)) ≈ cosh(t) / sinh(t)
 
-                    #=t1 = sin(t)
+                    t1 = sin(t)
                     @test sin(@constinferred asin(t1)) ≈ t1
                     t2 = cos(t)
                     @test cos(@constinferred acos(t2)) ≈ t2
@@ -204,12 +203,11 @@ for V in spacelist
                             sqrt, log, asin, acos, acosh, atanh, acoth,
                         )
                         @test_throws SpaceMismatch f(t)
-                    end=#
+                    end
                 end
             end
         end
-        # TODO waiting on schur! support
-        #=@timedtestset "Sylvester equation" begin
+        @timedtestset "Sylvester equation" begin
             for T in (Float32, ComplexF64)
                 tA = rand(T, V1 ⊗ V2, V1 ⊗ V2)
                 tB = rand(T, (V3 ⊗ V4 ⊗ V5)', (V3 ⊗ V4 ⊗ V5)')
@@ -226,7 +224,7 @@ for V in spacelist
                     @test matrix(t) ≈ sylvester(matrix(tA), matrix(tB), matrix(tC))
                 end
             end
-        end=#
+        end
     end
     TensorKit.empty_globalcaches!()
 end
