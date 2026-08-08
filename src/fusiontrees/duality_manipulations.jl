@@ -474,9 +474,10 @@ U = Utmp * U
 return dst, U
 ```
 =#
-@generated function repartition(src::Union{FusionTreePair, FusionTreeBlock}, ::Val{N}) where {N}
-    return _repartition_body(numout(src) - N)
-end
+# NOTE: `_repartition_body` must be defined *before* the `@generated repartition` that calls
+# it, so that it is visible to the generator's world age. Otherwise a precompile workload that
+# first triggers `repartition` fails with `UndefVarError: _repartition_body` (at runtime the
+# first call happens at a later world age, which masks the ordering issue).
 function _repartition_body(N)
     if N == 0
         ex = quote
@@ -502,6 +503,9 @@ function _repartition_body(N)
         end
     end
     return ex
+end
+@generated function repartition(src::Union{FusionTreePair, FusionTreeBlock}, ::Val{N}) where {N}
+    return _repartition_body(numout(src) - N)
 end
 
 """
