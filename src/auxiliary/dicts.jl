@@ -89,14 +89,14 @@ end
 Base.empty(::SortedVectorDict, ::Type{K}, ::Type{V}) where {K, V} = SortedVectorDict{K, V}()
 Base.empty!(d::SortedVectorDict) = (empty!(d.keys); empty!(d.values); return d)
 
-# _searchsortedfirst(v::Vector, k) = searchsortedfirst(v, k)
-function _searchsortedfirst(v::Vector, k)
-    i = 1
-    @inbounds while i <= length(v) && isless(v[i], k)
-        i += 1
-    end
-    return i
-end
+_searchsortedfirst(v::Vector, k) = searchsortedfirst(v, k)
+# function _searchsortedfirst(v::Vector, k)
+#     i = 1
+#     @inbounds while i <= length(v) && isless(v[i], k)
+#         i += 1
+#     end
+#     return i
+# end
 
 function Base.delete!(d::SortedVectorDict{K}, k) where {K}
     key = convert(K, k)
