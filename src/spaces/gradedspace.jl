@@ -89,9 +89,20 @@ GradedSpace(g::AbstractDict; dual::Bool = false) = GradedSpace(g...; dual = dual
 field(::Type{<:GradedSpace}) = ℂ
 InnerProductStyle(::Type{<:GradedSpace}) = EuclideanInnerProduct()
 
-function dim(V::GradedSpace)
-    init = 0 * dim(first(allunits(sectortype(V))))
-    return sum(c -> dim(c) * dim(V, c), sectors(V); init = init)
+function dim(V::GradedSpace{I, <:AbstractDict}) where {I <: Sector}
+    init = zero(dimscalartype(I))
+    return sum(((c, d),) -> dim(c) * d, V.dims; init)
+end
+function dim(V::GradedSpace{I, NTuple{N, Int}}) where {I <: Sector, N}
+    init = zero(dimscalartype(I))
+    D = init
+    vals = values(I)
+    @inbounds for n in 1:N
+        d = V.dims[n]
+        iszero(d) && continue
+        D += dim(vals[n]) * d # dim(c) = dim(dual(c))
+    end
+    return D
 end
 function dim(V::GradedSpace{I, <:AbstractDict}, c::I) where {I <: Sector}
     return get(V.dims, isdual(V) ? dual(c) : c, 0)
