@@ -171,7 +171,7 @@ function ⊕(V₁::GradedSpace{I, <:Tuple}, V₂::GradedSpace{I, <:Tuple}) where
     newdims = map(+, V₁.dims, V₂.dims)
     return typeof(V₁)(newdims, dual1)
 end
-function ⊖(V::GradedSpace{I, <: Tuple}, W::GradedSpace{I, <: Tuple}) where {I <: Sector}
+function ⊖(V::GradedSpace{I, <:Tuple}, W::GradedSpace{I, <:Tuple}) where {I <: Sector}
     dualV = isdual(V)
     V ≿ W && dualV == isdual(W) || throw(SpaceMismatch("$(W) is not a subspace of $(V)"))
     newdims = map(-, V.dims, W.dims)
@@ -210,23 +210,67 @@ function fuse(V₁::GradedSpace{I}, V₂::GradedSpace{I}) where {I <: Sector}
     return typeof(V₁)(dims)
 end
 
-function infimum(V₁::GradedSpace{I}, V₂::GradedSpace{I}) where {I <: Sector}
+function infimum(V₁::GradedSpace{I, <:Tuple}, V₂::GradedSpace{I, <:Tuple}) where {I <: Sector}
     Visdual = isdual(V₁)
-    Visdual == isdual(V₂) ||
-        throw(SpaceMismatch("Infimum of space and dual space does not exist"))
-    return typeof(V₁)(
-        (Visdual ? dual(c) : c) => min(dim(V₁, c), dim(V₂, c))
-            for c in intersect(sectors(V₁), sectors(V₂)); dual = Visdual
-    )
+    Visdual == isdual(V₂) || throw(SpaceMismatch("Infimum of space and dual space does not exist"))
+    newdims = map(min, V₁.dims, V₂.dims)
+    return typeof(V₁)(newdims, Visdual)
 end
-function supremum(V₁::GradedSpace{I}, V₂::GradedSpace{I}) where {I <: Sector}
+function infimum(V₁::GradedSpace{I, <:SectorDict}, V₂::GradedSpace{I, <:SectorDict}) where {I <: Sector}
     Visdual = isdual(V₁)
-    Visdual == isdual(V₂) ||
-        throw(SpaceMismatch("Supremum of space and dual space does not exist"))
-    return typeof(V₁)(
-        (Visdual ? dual(c) : c) => max(dim(V₁, c), dim(V₂, c))
-            for c in union(sectors(V₁), sectors(V₂)); dual = Visdual
-    )
+    Visdual == isdual(V₂) || throw(SpaceMismatch("Infimum of space and dual space does not exist"))
+    k1, k2 = V₁.dims.keys, V₂.dims.keys
+    v1, v2 = V₁.dims.values, V₂.dims.values
+    n1, n2 = length(k1), length(k2)
+    ks, vs = Vector{I}(), Vector{Int}()
+    i, j = 1, 1
+    @inbounds while i <= n1 && j <= n2
+        if k1[i] == k2[j]
+            m = min(v1[i], v2[j])
+            if !iszero(m)
+                push!(ks, k1[i]); push!(vs, m)
+            end
+            i += 1; j += 1
+        elseif k1[i] < k2[j]
+            i += 1
+        else
+            j += 1
+        end
+    end
+    return typeof(V₁)(SectorDict{I, Int}(ks, vs), Visdual)
+end
+function supremum(V₁::GradedSpace{I, <:Tuple}, V₂::GradedSpace{I, <:Tuple}) where {I <: Sector}
+    Visdual = isdual(V₁)
+    Visdual == isdual(V₂) || throw(SpaceMismatch("Supremum of space and dual space does not exist"))
+    newdims = map(max, V₁.dims, V₂.dims)
+    return typeof(V₁)(newdims, Visdual)
+end
+function supremum(V₁::GradedSpace{I, <:SectorDict}, V₂::GradedSpace{I, <:SectorDict}) where {I <: Sector}
+    Visdual = isdual(V₁)
+    Visdual == isdual(V₂) || throw(SpaceMismatch("Supremum of space and dual space does not exist"))
+    k1, k2 = V₁.dims.keys, V₂.dims.keys
+    v1, v2 = V₁.dims.values, V₂.dims.values
+    n1, n2 = length(k1), length(k2)
+    ks, vs = Vector{I}(), Vector{Int}()
+    sizehint!(ks, n1 + n2)
+    sizehint!(vs, n1 + n2)
+    i, j = 1, 1
+    @inbounds while i <= n1 && j <= n2
+        if k1[i] == k2[j]
+            push!(ks, k1[i]); push!(vs, max(v1[i], v2[j])); i += 1; j += 1
+        elseif k1[i] < k2[j]
+            push!(ks, k1[i]); push!(vs, v1[i]); i += 1
+        else
+            push!(ks, k2[j]); push!(vs, v2[j]); j += 1
+        end
+    end
+    @inbounds while i <= n1
+        push!(ks, k1[i]); push!(vs, v1[i]); i += 1
+    end
+    @inbounds while j <= n2
+        push!(ks, k2[j]); push!(vs, v2[j]); j += 1
+    end
+    return typeof(V₁)(SectorDict{I, Int}(ks, vs), Visdual)
 end
 
 hassector(V::GradedSpace{I}, s::I) where {I <: Sector} = dim(V, s) != 0
