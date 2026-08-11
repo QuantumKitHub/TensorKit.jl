@@ -180,9 +180,10 @@ function fuse(V₁::GradedSpace{I, <:SectorDict}, V₂::GradedSpace{I, <:SectorD
             end
         end
     end
-    ks = sort!(collect(keys(acc))) #TODO: sortperm?
-    vs = [acc[k] for k in ks]
-    return typeof(V₁)(SectorDict{I, Int}(ks, vs), false)
+    ks0 = collect(keys(acc))
+    vs0 = collect(values(acc))
+    perm = sortperm(ks0)
+    return typeof(V₁)(SectorDict{I, Int}(ks0[perm], vs0[perm]), false)
 end
 function fuse(V₁::GradedSpace{I, NTuple{N, Int}}, V₂::GradedSpace{I, NTuple{N, Int}}) where {I <: Sector, N}
     vals = values(I)
