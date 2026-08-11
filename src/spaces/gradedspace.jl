@@ -140,28 +140,7 @@ zerospace(S::Type{<:GradedSpace}) = S()
 function ⊕(V₁::GradedSpace{I, <:SectorDict}, V₂::GradedSpace{I, <:SectorDict}) where {I <: Sector}
     dual1 = isdual(V₁)
     dual1 == isdual(V₂) || throw(SpaceMismatch("Direct sum of a vector space and a dual space does not exist"))
-    k1, k2 = V₁.dims.keys, V₂.dims.keys # already sorted
-    v1, v2 = V₁.dims.values, V₂.dims.values
-    n1, n2 = length(k1), length(k2)
-    ks, vs = Vector{I}(), Vector{Int}()
-    sizehint!(ks, n1 + n2)
-    sizehint!(vs, n1 + n2)
-    i, j = 1, 1
-    @inbounds while i <= n1 && j <= n2
-        if k1[i] == k2[j]
-            push!(ks, k1[i]); push!(vs, v1[i] + v2[j]); i += 1; j += 1
-        elseif k1[i] < k2[j]
-            push!(ks, k1[i]); push!(vs, v1[i]); i += 1
-        else
-            push!(ks, k2[j]); push!(vs, v2[j]); j += 1
-        end
-    end
-    @inbounds while i <= n1
-        push!(ks, k1[i]); push!(vs, v1[i]); i += 1
-    end
-    @inbounds while j <= n2
-        push!(ks, k2[j]); push!(vs, v2[j]); j += 1
-    end
+    ks, vs = _sortedmerge(V₁.dims.keys, V₁.dims.values, V₂.dims.keys, V₂.dims.values, +, identity, identity)
     return typeof(V₁)(SectorDict{I, Int}(ks, vs), dual1)
 end
 function ⊕(V₁::GradedSpace{I, <:Tuple}, V₂::GradedSpace{I, <:Tuple}) where {I <: Sector}
@@ -180,23 +159,7 @@ end
 function ⊖(V::GradedSpace{I, <:SectorDict}, W::GradedSpace{I, <:SectorDict}) where {I <: Sector}
     dualV = isdual(V)
     V ≿ W && dualV == isdual(W) || throw(SpaceMismatch("$(W) is not a subspace of $(V)"))
-    kv, kw = V.dims.keys, W.dims.keys # already sorted
-    vv, vw = V.dims.values, W.dims.values
-    ks, vs = Vector{I}(), Vector{Int}()
-    nv, nw = length(kv), length(kw)
-    sizehint!(ks, nv)
-    sizehint!(vs, nv)
-    j = 1
-    @inbounds for i in eachindex(kv) # keys(W) ⊆ keys(V)
-        d = vv[i]
-        if j <= nw && kw[j] == kv[i]
-            d -= vw[j]
-            j += 1
-        end
-        if !iszero(d)
-            push!(ks, kv[i]); push!(vs, d)
-        end
-    end
+    ks, vs = _sortedmerge(V.dims.keys, V.dims.values, W.dims.keys, W.dims.values, -, identity, nothing)
     return typeof(V)(SectorDict{I, Int}(ks, vs), dualV)
 end
 
@@ -217,14 +180,14 @@ function fuse(V₁::GradedSpace{I, <:SectorDict}, V₂::GradedSpace{I, <:SectorD
             end
         end
     end
-    ks = sort!(collect(keys(acc)))
+    ks = sort!(collect(keys(acc))) #TODO: sortperm?
     vs = [acc[k] for k in ks]
     return typeof(V₁)(SectorDict{I, Int}(ks, vs), false)
 end
 function fuse(V₁::GradedSpace{I, NTuple{N, Int}}, V₂::GradedSpace{I, NTuple{N, Int}}) where {I <: Sector, N}
     vals = values(I)
     dual1, dual2 = isdual(V₁), isdual(V₂)
-    newdims = zeros(Int, N) #TODO: is there a way to avoid dense storage even for sparse results?
+    newdims = zeros(Int, N)
     @inbounds for n1 in 1:N
         d1 = V₁.dims[n1]
         iszero(d1) && continue
@@ -254,24 +217,7 @@ end
 function infimum(V₁::GradedSpace{I, <:SectorDict}, V₂::GradedSpace{I, <:SectorDict}) where {I <: Sector}
     Visdual = isdual(V₁)
     Visdual == isdual(V₂) || throw(SpaceMismatch("Infimum of space and dual space does not exist"))
-    k1, k2 = V₁.dims.keys, V₂.dims.keys
-    v1, v2 = V₁.dims.values, V₂.dims.values
-    n1, n2 = length(k1), length(k2)
-    ks, vs = Vector{I}(), Vector{Int}()
-    i, j = 1, 1
-    @inbounds while i <= n1 && j <= n2
-        if k1[i] == k2[j]
-            m = min(v1[i], v2[j])
-            if !iszero(m)
-                push!(ks, k1[i]); push!(vs, m)
-            end
-            i += 1; j += 1
-        elseif k1[i] < k2[j]
-            i += 1
-        else
-            j += 1
-        end
-    end
+    ks, vs = _sortedmerge(V₁.dims.keys, V₁.dims.values, V₂.dims.keys, V₂.dims.values, min, nothing, nothing)
     return typeof(V₁)(SectorDict{I, Int}(ks, vs), Visdual)
 end
 function supremum(V₁::GradedSpace{I, <:Tuple}, V₂::GradedSpace{I, <:Tuple}) where {I <: Sector}
@@ -283,28 +229,7 @@ end
 function supremum(V₁::GradedSpace{I, <:SectorDict}, V₂::GradedSpace{I, <:SectorDict}) where {I <: Sector}
     Visdual = isdual(V₁)
     Visdual == isdual(V₂) || throw(SpaceMismatch("Supremum of space and dual space does not exist"))
-    k1, k2 = V₁.dims.keys, V₂.dims.keys
-    v1, v2 = V₁.dims.values, V₂.dims.values
-    n1, n2 = length(k1), length(k2)
-    ks, vs = Vector{I}(), Vector{Int}()
-    sizehint!(ks, n1 + n2)
-    sizehint!(vs, n1 + n2)
-    i, j = 1, 1
-    @inbounds while i <= n1 && j <= n2
-        if k1[i] == k2[j]
-            push!(ks, k1[i]); push!(vs, max(v1[i], v2[j])); i += 1; j += 1
-        elseif k1[i] < k2[j]
-            push!(ks, k1[i]); push!(vs, v1[i]); i += 1
-        else
-            push!(ks, k2[j]); push!(vs, v2[j]); j += 1
-        end
-    end
-    @inbounds while i <= n1
-        push!(ks, k1[i]); push!(vs, v1[i]); i += 1
-    end
-    @inbounds while j <= n2
-        push!(ks, k2[j]); push!(vs, v2[j]); j += 1
-    end
+    ks, vs = _sortedmerge(V₁.dims.keys, V₁.dims.values, V₂.dims.keys, V₂.dims.values, max, identity, identity)
     return typeof(V₁)(SectorDict{I, Int}(ks, vs), Visdual)
 end
 
