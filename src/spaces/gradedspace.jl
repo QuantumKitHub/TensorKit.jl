@@ -200,14 +200,49 @@ function ⊖(V::GradedSpace{I, <:SectorDict}, W::GradedSpace{I, <:SectorDict}) w
     return typeof(V)(SectorDict{I, Int}(ks, vs), dualV)
 end
 
-function fuse(V₁::GradedSpace{I}, V₂::GradedSpace{I}) where {I <: Sector}
-    dims = SectorDict{I, Int}()
-    for a in sectors(V₁), b in sectors(V₂)
-        for c in a ⊗ b
-            dims[c] = get(dims, c, 0) + Nsymbol(a, b, c) * dim(V₁, a) * dim(V₂, b)
+function fuse(V₁::GradedSpace{I, <:SectorDict}, V₂::GradedSpace{I, <:SectorDict}) where {I <: Sector}
+    dual1, dual2 = isdual(V₁), isdual(V₂)
+    acc = Dict{I, Int}() # SectorDict `get` within the double for loop accumulates O(N^2) ` findindex` calls -> sort afterwards
+    k1, k2 = V₁.dims.keys, V₂.dims.keys
+    v1, v2 = V₁.dims.values, V₂.dims.values
+    @inbounds for n1 in eachindex(k1)
+        a0 = k1[n1]; d1 = v1[n1]
+        a = dual1 ? dual(a0) : a0
+        for n2 in eachindex(k2)
+            b0 = k2[n2]; d2 = v2[n2]
+            b = dual2 ? dual(b0) : b0
+            dab = d1 * d2
+            for c in a ⊗ b
+                acc[c] = get(acc, c, 0) + Nsymbol(a, b, c) * dab
+            end
         end
     end
-    return typeof(V₁)(dims)
+    ks = sort!(collect(keys(acc)))
+    vs = [acc[k] for k in ks]
+    return typeof(V₁)(SectorDict{I, Int}(ks, vs), false)
+end
+function fuse(V₁::GradedSpace{I, NTuple{N, Int}}, V₂::GradedSpace{I, NTuple{N, Int}}) where {I <: Sector, N}
+    vals = values(I)
+    dual1, dual2 = isdual(V₁), isdual(V₂)
+    newdims = zeros(Int, N) #TODO: is there a way to avoid dense storage even for sparse results?
+    @inbounds for n1 in 1:N
+        d1 = V₁.dims[n1]
+        iszero(d1) && continue
+        a0 = vals[n1] # avoid call to sectors(V₁)
+        a = dual1 ? dual(a0) : a0
+        for n2 in 1:N
+            d2 = V₂.dims[n2]
+            iszero(d2) && continue
+            b0 = vals[n2] # idem for V₂
+            b = dual2 ? dual(b0) : b0
+            dab = d1 * d2
+            for c in a ⊗ b
+                nc = findindex(vals, c)
+                newdims[nc] += Nsymbol(a, b, c) * dab
+            end
+        end
+    end
+    return typeof(V₁)(ntuple(i -> newdims[i], Val(N)), false)
 end
 
 function infimum(V₁::GradedSpace{I, <:Tuple}, V₂::GradedSpace{I, <:Tuple}) where {I <: Sector}
