@@ -30,17 +30,17 @@ end
 sectortype(::Type{<:GradedSpace{I}}) where {I <: Sector} = I
 
 function GradedSpace{I, NTuple{N, Int}}(dims; dual::Bool = false) where {I, N}
-    d = ntuple(n -> 0, N)
-    isset = ntuple(n -> false, N)
+    d = zeros(Int, N)
+    isset = falses(N)
     for (c, dc) in dims
         k = convert(I, c)
         i = findindex(values(I), k)
-        k = dc < 0 && throw(ArgumentError(lazy"Sector $k has negative dimension $dc"))
+        dc < 0 && throw(ArgumentError(lazy"Sector $k has negative dimension $dc"))
         isset[i] && throw(ArgumentError(lazy"Sector $c appears multiple times"))
-        isset = TupleTools.setindex(isset, true, i)
-        d = TupleTools.setindex(d, dc, i)
+        isset[i] = true
+        d[i] = dc
     end
-    return GradedSpace{I, NTuple{N, Int}}(d, dual)
+    return GradedSpace{I, NTuple{N, Int}}((d...,)::NTuple{N, Int}, dual)
 end
 function GradedSpace{I, NTuple{N, Int}}(dims::Pair; dual::Bool = false) where {I, N}
     return GradedSpace{I, NTuple{N, Int}}((dims,); dual = dual)
@@ -206,7 +206,7 @@ function fuse(V₁::GradedSpace{I, NTuple{N, Int}}, V₂::GradedSpace{I, NTuple{
             end
         end
     end
-    return typeof(V₁)(ntuple(i -> newdims[i], Val(N)), false)
+    return typeof(V₁)((newdims...,)::NTuple{N, Int}, false)
 end
 
 function infimum(V₁::GradedSpace{I, <:Tuple}, V₂::GradedSpace{I, <:Tuple}) where {I <: Sector}
