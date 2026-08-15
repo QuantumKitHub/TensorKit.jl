@@ -11,9 +11,12 @@ const GLOBAL_CACHES = Pair{Symbol, Any}[]
     empty_globalcaches!()
 
 Empty every global cache in [`GLOBAL_CACHES`](@ref).
+These mostly contain bookkeeping for various different index manipulations and tensor structures,
+so clearing this out can free up some memory whenever you have a workflow that involves a large variety of structures.
+For example, you may want to clear the cache when working with different symmetries, or in algorithms that dynamically alter the sizes of tensors.
 Since everything is recomputed on demand, this is purely a memory measure.
 
-See also [`global_cache_info`](@ref).
+See also [`global_cache_info`](@ref) to display the status.
 """
 function empty_globalcaches!()
     foreach(empty! ∘ last, GLOBAL_CACHES)
