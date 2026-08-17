@@ -7,10 +7,11 @@ using GPUArrays.KernelAbstractions: @kernel, @index, get_backend
 using Strided: StridedViews
 using MatrixAlgebraKit, Adapt
 using TensorKit
+using TensorKit.TensorOperations: linearize
 using TensorKit.Factorizations
 using TensorKit.Factorizations: AbstractAlgorithm
 using TensorKit: SectorDict, tensormaptype, scalar, similarstoragetype, AdjointTensorMap, scalartype, project_symmetric_and_check
-import TensorKit: randisometry, rand, randn, fill_braidingsubblock!
+import TensorKit: randisometry, rand, randn, fill_braidingsubblock!, add_transform_kernel!
 
 function TensorKit.fill_braidingsubblock!(data::TD, val) where {T, TD <: Union{<:AnyGPUMatrix{T}, <:StridedViews.StridedView{T, 4, <:AnyGPUArray{T}}}}
     # COV_EXCL_START
@@ -121,5 +122,30 @@ function TensorKit.scalar(t::TensorMap{T, S, 0, 0, <:AnyGPUArray}) where {T, S}
     return isempty(inds) ? zero(scalartype(t)) : @allowscalar @inbounds t.data[only(inds)]
 end
 
+# COV_EXCL_START
+# kernels are not reachable by coverage
+@kernel function abelian_batched_permute!(data_dst::AbstractArray{T}, data_src, transformer_data, p, α, β, ::Val{N}) where {T, N}
+    idx = @index(Global, Linear)
+    if idx <= length(transformer_data)
+        coeff, struct_dst, struct_src = @inbounds transformer_data[idx]
+        dst_view = StridedViews.StridedView(data_dst, struct_dst...)
+        sz_src, st_src, offs_src = struct_src
+        psz = ntuple(n -> sz_src[p[n]], Val(N))
+        pst = ntuple(n -> st_src[p[n]], Val(N))
+        p_src_view = StridedViews.StridedView(data_src, psz, pst, offs_src)
+        for ix in 1:length(dst_view)
+            @inbounds dst_view[ix] = α * coeff * p_src_view[ix] + β * dst_view[ix]
+        end
+    end
+end
+# COV_EXCL_STOP
+
+function TensorKit.add_transform_kernel!(data_dst::A, data_src::A, p, transformer::TensorKit.AbelianTreeTransformer{T, N}, α, β, backend, allocator, scheduler) where {T, N, A <: AnyGPUArray}
+    new_typ = similar(data_dst, Tuple{T, TensorKit.StridedStructure{N}, TensorKit.StridedStructure{N}}, 0)
+    device_data = adapt(typeof(new_typ), transformer.data)
+    p_ = linearize(p)
+    abelian_batched_permute!(get_backend(data_dst))(data_dst, data_src, device_data, p_, α, β, Val(N); ndrange = length(device_data))
+    return
+end
 
 end
