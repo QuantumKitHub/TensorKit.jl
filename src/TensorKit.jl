@@ -98,6 +98,9 @@ export catdomain, catcodomain, absorb, absorb!
 export @tensor, @tensoropt, @ncon, ncon, @planar, @plansor
 export scalar, add!, contract!
 
+# backends
+export CuTENSORBlockSparse, blocksparse_compatible, plan_contract
+
 # truncation schemes
 export notrunc, truncrank, trunctol, truncfilter, truncspace, truncerror
 
@@ -261,6 +264,7 @@ include("tensors/adjoint.jl")
 include("tensors/linalg.jl")
 include("tensors/vectorinterface.jl")
 include("tensors/tensoroperations.jl")
+include("tensors/blocksparse.jl")
 include("tensors/treetransformers.jl")
 include("tensors/indexmanipulations.jl")
 include("tensors/diagonal.jl")
