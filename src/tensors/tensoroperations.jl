@@ -136,6 +136,43 @@ function TO.tensorcontract!(
     )
     pAB′ = _canonicalize(pAB, C)
     @boundscheck spacecheck_contract(C, A, pA, conjA, B, pB, conjB, pAB′)
+    return _tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB′, α, β, backend, allocator)
+end
+
+"""
+    _tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, backend, allocator)
+
+Backend-dispatchable core of [`TensorOperations.tensorcontract!`](@extref), called after
+`pAB` has been canonicalized and the spaces have been checked. This is the designated hook
+for a backend implementing a contraction by another route than the default
+fusion-tree/BLAS path: specialize on `backend`, and call [`_generic_tensorcontract!`](@ref)
+to fall back. Hooking here keeps `conjA`/`conjB` available as plain `Bool`s.
+"""
+function _tensorcontract!(
+        C::AbstractTensorMap,
+        A::AbstractTensorMap, pA::Index2Tuple, conjA::Bool,
+        B::AbstractTensorMap, pB::Index2Tuple, conjB::Bool,
+        pAB::Index2Tuple, α::Number, β::Number,
+        backend, allocator
+    )
+    return _generic_tensorcontract!(
+        C, A, pA, conjA, B, pB, conjB, pAB, α, β, backend, allocator
+    )
+end
+
+"""
+    _generic_tensorcontract!(C, A, pA, conjA, B, pB, conjB, pAB, α, β, backend, allocator)
+
+The default contraction implementation: resolve `conjA`/`conjB` into adjoints and hand off
+to [`contract!`](@ref), substituting a backend the default path understands.
+"""
+function _generic_tensorcontract!(
+        C::AbstractTensorMap,
+        A::AbstractTensorMap, pA::Index2Tuple, conjA::Bool,
+        B::AbstractTensorMap, pB::Index2Tuple, conjB::Bool,
+        pAB′::Index2Tuple, α::Number, β::Number,
+        backend, allocator
+    )
     if has_array_view(C) && has_array_view(A) && has_array_view(B)
         TO.tensorcontract!(C[], A[], pA, conjA, B[], pB, conjB, pAB′, α, β, backend, allocator)
         return C
