@@ -22,13 +22,24 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 ### Added
 
+- `CuTENSORBlockSparse`, an opt-in backend that carries out a contraction of CUDA-backed tensors with abelian symmetry, fermionic ones included, as a single cuTENSOR block-sparse contraction, without any fusion tree transformation or permutation. Selected with `@tensor backend = CuTENSORBlockSparse()`; unsupported contractions fall back to the default path. Requires `CUDA.jl` and `cuTENSOR.jl`.
+- `plan_contract`, to hoist a reusable block-sparse contraction plan out of a hot loop. Plans are also cached automatically.
+- `blocksparse_compatible`, a trait for the sector types whose raw block data may be contracted directly, possibly up to a per-block scalar. This holds for the irreps of abelian groups, for `FermionParity`, and for products thereof — so `FermionNumber` qualifies but `FermionSpin` does not. Note that `FusionStyle(I) === UniqueFusion()` is *not* sufficient: `ZNElement` has anyonic R-symbols, which are genuine phases rather than signs, and is deliberately excluded.
+- `TensorKit.blocksparse_contract_signs`, which is what makes the fermionic case work. A raw block-wise contraction differs from the categorical one by a sign per fusion tree pair, contributed both by the permutations the default path performs and by the twist it inserts for a dual contracted leg. The correction is derived in factorized form, as one scalar per block of each of the three tensors, and applied by scaling blocks. It is precomputed with the contraction plan, for all four conjugation combinations, so it costs nothing per call beyond the scaling itself. That scaling costs one temporary per operand whose correction is non-trivial; a contraction whose output already has the codomain/domain partition the contraction produces naturally needs no correction of the result.
+- A new manual page documenting backends, plan reuse and block schedulers.
+
 ### Changed
+
+- `TensorOperations.tensorcontract!` for `AbstractTensorMap` now delegates to the internal `TensorKit._tensorcontract!`, which is the designated hook for backends that implement a contraction by a different route than the default fusion-tree/BLAS path.
 
 ### Deprecated
 
 ### Removed
 
 ### Fixed
+
+- `@planar` and `@plansor` silently ignored the `backend =` keyword: the backend was inserted with `TensorOperations.insertbackend`, which only matches calls into `TensorOperations`, whereas the planar operations had already been rewritten to `TensorKit.planaradd!`/`planartrace!`/`planarcontract!`.
+- `benchmark/benchmarks.jl` threw on any `--modules=` argument, and could not accept a comma-separated list.
 
 ### Performance
 

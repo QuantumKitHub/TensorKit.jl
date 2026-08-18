@@ -177,7 +177,7 @@ Indeed, the empty product space is the unit object of the monoidal category, equ
 
 The matrices created by `f` are the matrices ``B_c`` discussed above, i.e. those returned by `block(t, c)`.
 Only numerical matrices of type `DenseMatrix` are accepted, which in practice just means Julia's intrinsic `Matrix{T}` for some `T <: Number`.
-Ongoing work extends this to support for `CuMatrix` from [CuArrays.jl](https://github.com/JuliaGPU/CuArrays.jl) to harness GPU computing power, and future work might include distributed arrays.
+GPU storage is supported by loading [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl) or [AMDGPU.jl](https://github.com/JuliaGPU/AMDGPU.jl), which makes the corresponding device array types available as tensor storage; see also [Backends](@ref). Future work might include distributed arrays.
 
 Support for static or sparse data is currently unavailable, and if it would be implemented, it would likely lead to new subtypes of `AbstractTensorMap` which are distinct from `TensorMap`.
 Future implementations of e.g. `SparseTensorMap` or `StaticTensorMap` could be useful.
