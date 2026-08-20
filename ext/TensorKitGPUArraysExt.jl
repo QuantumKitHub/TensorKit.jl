@@ -459,9 +459,4 @@ function TensorKit.add_transform_kernel!(
     return nothing
 end
 
-function TensorKit.TensorOperations.tensorfree!(C::AnyGPUArray, ::DefaultAllocator)
-    GPUArrays.unsafe_free!(C)
-    return nothing
-end
-
 end
