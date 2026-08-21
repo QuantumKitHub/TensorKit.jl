@@ -168,13 +168,13 @@ function fuse(V₁::GradedSpace{I, <:SectorDict}, V₂::GradedSpace{I, <:SectorD
     acc = Dict{I, Int}() # SectorDict `get` within the double for loop accumulates O(N^2) ` findindex` calls -> sort afterwards
     k1, k2 = V₁.dims.keys, V₂.dims.keys
     v1, v2 = V₁.dims.values, V₂.dims.values
-    @inbounds for n1 in eachindex(k1)
-        a0 = k1[n1]; d1 = v1[n1]
-        a = dual1 ? dual(a0) : a0
-        for n2 in eachindex(k2)
-            b0 = k2[n2]; d2 = v2[n2]
-            b = dual2 ? dual(b0) : b0
-            dab = d1 * d2
+    @inbounds for na in eachindex(k1)
+        a₀, da = k1[na], v1[na]
+        a = dual1 ? dual(a₀) : a₀
+        for nb in eachindex(k2)
+            b₀, db = k2[nb], v2[nb]
+            b = dual2 ? dual(b₀) : b₀
+            dab = da * db
             for c in a ⊗ b
                 acc[c] = get(acc, c, 0) + Nsymbol(a, b, c) * dab
             end
@@ -189,17 +189,17 @@ function fuse(V₁::GradedSpace{I, NTuple{N, Int}}, V₂::GradedSpace{I, NTuple{
     vals = values(I)
     dual1, dual2 = isdual(V₁), isdual(V₂)
     newdims = zeros(Int, N)
-    @inbounds for n1 in 1:N
-        d1 = V₁.dims[n1]
-        iszero(d1) && continue
-        a0 = vals[n1] # avoid call to sectors(V₁)
-        a = dual1 ? dual(a0) : a0
-        for n2 in 1:N
-            d2 = V₂.dims[n2]
-            iszero(d2) && continue
-            b0 = vals[n2] # idem for V₂
-            b = dual2 ? dual(b0) : b0
-            dab = d1 * d2
+    @inbounds for na in 1:N
+        da = V₁.dims[na]
+        iszero(da) && continue
+        a₀ = vals[na] # avoid call to sectors(V₁)
+        a = dual1 ? dual(a₀) : a₀
+        for nb in 1:N
+            db = V₂.dims[nb]
+            iszero(db) && continue
+            b₀ = vals[nb] # idem for V₂
+            b = dual2 ? dual(b₀) : b₀
+            dab = da * db
             for c in a ⊗ b
                 nc = findindex(vals, c)
                 newdims[nc] += Nsymbol(a, b, c) * dab
