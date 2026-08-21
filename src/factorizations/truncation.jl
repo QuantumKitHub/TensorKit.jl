@@ -46,7 +46,7 @@ function truncate_space(V::GradedSpace{I, NTuple{N, Int}}, inds) where {I <: Sec
         n_write = findindex(vals, c) # output is never dual, so c is fine as-is
         newdims[n_write] = _blocklength(V.dims[n_read], ind) # dim(c) = dim(dual(c))
     end
-    return typeof(V)((newdims...,)::NTuple{N, Int}, false)
+    return typeof(V)(NTuple{N, Int}(newdims), false)
 end
 function truncate_space(V::GradedSpace{I, <:SectorDict}, inds) where {I <: Sector}
     dualV = isdual(V)
