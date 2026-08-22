@@ -25,6 +25,7 @@ using MatrixAlgebraKit: diagview
 
 include("utility.jl")
 include("matrixalgebrakit.jl")
+include("batched.jl")
 include("truncation.jl")
 include("adjoint.jl")
 include("diagonal.jl")
