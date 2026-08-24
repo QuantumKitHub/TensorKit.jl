@@ -15,6 +15,12 @@ using Base: rand, randn
 
 using Random
 
+function TensorKit.Factorizations.batched_algorithm(
+        alg::MatrixAlgebraKit.QRIteration, ::Type{<:ROCArray}
+    )
+    return MatrixAlgebraKit.QRIterationBatched(; alg.kwargs...)
+end
+
 include("roctensormap.jl")
 
 end
