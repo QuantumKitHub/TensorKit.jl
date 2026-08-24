@@ -24,6 +24,12 @@ TensorKit.Factorizations.max_batched_blocksize(
     ::TensorKit.Factorizations.BatchedSVDAlgorithm, ::Type{<:CuArray}
 ) = 32
 
+function TensorKit.Factorizations.batched_algorithm(
+        alg::MatrixAlgebraKit.Jacobi, ::Type{<:CuArray}
+    )
+    return MatrixAlgebraKit.JacobiBatched(; alg.kwargs...)
+end
+
 include("cutensormap.jl")
 
 end

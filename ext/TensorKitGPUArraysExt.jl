@@ -459,12 +459,4 @@ function TensorKit.add_transform_kernel!(
     return nothing
 end
 
-# Override the default algorithm here specifically for GPU backed TensorMaps, whose
-# solver libraries *do* offer batched versions.
-function TensorKit.Factorizations.batched_algorithm(
-        alg::MatrixAlgebraKit.QRIteration, ::Type{<:AnyGPUArray}
-    )
-    return MatrixAlgebraKit.QRIterationBatched(; alg.kwargs...)
-end
-
 end
