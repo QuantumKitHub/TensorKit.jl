@@ -97,10 +97,8 @@ function dim(V::GradedSpace{I, NTuple{N, Int}}) where {I <: Sector, N}
     init = zero(dimscalartype(I))
     D = init
     vals = values(I)
-    @inbounds for n in 1:N
-        d = V.dims[n]
-        iszero(d) && continue
-        D += dim(vals[n]) * d # dim(c) = dim(dual(c))
+    @inbounds for (c, d) in zip(values(I), V.dims)
+        D += dim(c) * d
     end
     return D
 end
