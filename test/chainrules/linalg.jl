@@ -15,20 +15,6 @@ using MatrixAlgebraKit
 
 ChainRulesTestUtils.test_method_tables()
 
-# Not every partition of every space admits a `repartition`: for categories such as
-# `IsingBimodule ⊠ Irrep[A₄]` some cuts leave no valid fusion channel, and TensorKit signals
-# this with an `ArgumentError`. Only that is treated as "skip"; anything else propagates, so
-# a genuine regression cannot be silently swallowed by this guard.
-function isvalid_repartition(t, k)
-    try
-        repartition(t, k)
-    catch e
-        e isa ArgumentError && return false
-        rethrow()
-    end
-    return true
-end
-
 spacelist = ad_spacelist(fast_tests)
 
 for V in spacelist
@@ -141,15 +127,12 @@ for V in spacelist
             # `repartition` has no rrule of its own: it is differentiated by AD-ing through
             # its body down to the `transpose` rrule, so it has to be tested end-to-end
             # rather than with `test_rrule`
-            ks = filter(k -> isvalid_repartition(A, k), 0:numind(A))
-            for k in ks
+            for k in 0:numind(A)
                 test_ad_rrule(repartition, A, k)
             end
-            if !isempty(ks)
-                k = last(ks)
-                test_ad_rrule(repartition, A, k, numind(A) - k)
-                test_ad_rrule(repartition, A, k; fkwargs = (; copy = true))
-            end
+            # also cover the explicit-`N₂` arity and the `copy` keyword
+            test_ad_rrule(repartition, A, 2, numind(A) - 2)
+            test_ad_rrule(repartition, A, 2; fkwargs = (; copy = true))
 
             hasbraiding && test_rrule(twist, A, 1)
             hasbraiding && test_rrule(twist, A, [1, 3])
