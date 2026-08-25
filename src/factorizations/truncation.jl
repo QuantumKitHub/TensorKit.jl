@@ -39,20 +39,18 @@ function truncate_space(V::ElementarySpace, inds)
 end
 function truncate_space(V::GradedSpace{I, NTuple{N, Int}}, inds) where {I <: Sector, N}
     vals = values(I)
-    dualV = isdual(V)
     newdims = zeros(Int, N)
     for (c, ind) in pairs(inds)
-        n_read = findindex(vals, dualV ? dual(c) : c) # dual-adjusted index for reading V.dims
-        n_write = findindex(vals, c) # output is never dual, so c is fine as-is
-        newdims[n_write] = _blocklength(V.dims[n_read], ind) # dim(c) = dim(dual(c))
+        d = dim(V, c)
+        n_write = findindex(vals, c)
+        newdims[n_write] = _blocklength(d, ind)
     end
     return typeof(V)(NTuple{N, Int}(newdims), false)
 end
 function truncate_space(V::GradedSpace{I, <:SectorDict}, inds) where {I <: Sector}
-    dualV = isdual(V)
     ks, vs = Vector{I}(), Vector{Int}() # accumulate and sort once at the end
     for (c, ind) in pairs(inds)
-        d = get(V.dims, dualV ? dual(c) : c, 0)
+        d = dim(V, c)
         len = _blocklength(d, ind)
         if !iszero(len)
             push!(ks, c)
