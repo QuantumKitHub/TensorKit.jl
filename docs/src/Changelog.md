@@ -22,6 +22,8 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 ### Added
 
+- Versioned `save` and `load` support for `TensorMap`, `DiagonalTensorMap`, and `BraidingTensor` objects.
+
 ### Changed
 
 ### Deprecated

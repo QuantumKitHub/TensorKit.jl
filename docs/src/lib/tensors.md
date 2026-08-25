@@ -20,6 +20,12 @@ AdjointTensorMap
 BraidingTensor
 ```
 
+Tensor maps can be stored and restored with:
+```@docs
+save
+load
+```
+
 Of those, `TensorMap` provides the generic instantiation of our tensor concept. It supports various constructors, which are discussed in the next subsection.
 
 Furthermore, some aliases are provided for convenience:

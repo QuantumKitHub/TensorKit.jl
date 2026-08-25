@@ -29,6 +29,7 @@ export FusionTree
 export IndexSpace, HomSpace, TensorSpace, TensorMapSpace
 export AbstractTensorMap, AbstractTensor, TensorMap, Tensor # tensors and tensor properties
 export DiagonalTensorMap, BraidingTensor
+export save, load
 export SpaceMismatch, SectorMismatch, IndexError # error types
 
 # Export general vector space methods
@@ -121,6 +122,7 @@ using MatrixAlgebraKit
 
 using Dictionaries: Dictionaries, Dictionary, Indices, gettoken, gettokenvalue
 using LRUCache
+import JLD2
 using OhMyThreads
 using ScopedValues
 
@@ -265,6 +267,7 @@ include("tensors/treetransformers.jl")
 include("tensors/indexmanipulations.jl")
 include("tensors/diagonal.jl")
 include("tensors/braidingtensor.jl")
+include("tensors/io.jl")
 
 include("factorizations/factorizations.jl")
 using .Factorizations
