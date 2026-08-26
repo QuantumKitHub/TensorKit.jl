@@ -243,7 +243,10 @@ function trace_permute!(
     return tdst
 end
 
-function _trace_permute!(::UniqueFusion, tdst, tsrc, (p₁, p₂), (q₁, q₂), α, β, backend)
+function _trace_permute!(
+        ::UniqueFusion, tdst::AbstractTensorMap, tsrc::AbstractTensorMap,
+        (p₁, p₂), (q₁, q₂), α, β, backend
+    )
     scale!(tdst, β)
     r₁, r₂ = (p₁..., q₁...), (p₂..., q₂...)
     N₁, N₂ = length(p₁), length(p₂)
@@ -268,7 +271,10 @@ function _trace_permute!(::UniqueFusion, tdst, tsrc, (p₁, p₂), (q₁, q₂),
     return tdst
 end
 
-function _trace_permute!(::FusionStyle, tdst, tsrc, (p₁, p₂), (q₁, q₂), α, β, backend)
+function _trace_permute!(
+        ::FusionStyle, tdst::AbstractTensorMap, tsrc::AbstractTensorMap,
+        (p₁, p₂), (q₁, q₂), α, β, backend
+    )
     scale!(tdst, β)
     r₁, r₂ = (p₁..., q₁...), (p₂..., q₂...)
     N₁, N₂ = length(p₁), length(p₂)

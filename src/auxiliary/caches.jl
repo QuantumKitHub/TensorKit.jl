@@ -53,18 +53,16 @@ macro cached(ex)
         error("cached macro can only be used on function definitions")
     fcall = ex.args[1]
     if Meta.isexpr(fcall, :where)
-        hasparams = true
         params = fcall.args[2:end]
         fcall = fcall.args[1]
     else
-        hasparams = false
+        params = nothing
     end
     if Meta.isexpr(fcall, :(::))
-        typed = true
         typeex = fcall.args[2]
         fcall = fcall.args[1]
     else
-        typed = false
+        typeex = nothing
     end
     Meta.isexpr(fcall, :call) ||
         error("cached macro can only be used on function definitions")
@@ -82,14 +80,14 @@ macro cached(ex)
     # actual implenetation, with underscore name
     _fname = Symbol(:_, fname)
     _fcall = Expr(:call, _fname, fargs...)
-    if hasparams
+    if !isnothing(params)
         _fcall = Expr(:where, _fcall, params...)
     end
     _fex = Expr(:function, _fcall, _fbody)
 
     # implementation that chooses the cache style
     newfcall = fcall
-    if hasparams
+    if !isnothing(params)
         newfcall = Expr(:where, newfcall, params...)
     end
     cachestylevar = gensym(:cachestyle)
@@ -103,11 +101,11 @@ macro cached(ex)
 
     # nocache implementation
     fnocachecall = Expr(:call, fname, fargs..., :(::NoCache))
-    if hasparams
+    if !isnothing(params)
         fnocachecall = Expr(:where, fnocachecall, params...)
     end
     fnocachebody = Expr(:call, _fname, fargnames...)
-    if typed
+    if !isnothing(typeex)
         T = gensym(:T)
         fnocachebody = Expr(:block, Expr(:(=), T, typeex), Expr(:(::), fnocachebody, T))
     end
@@ -116,7 +114,7 @@ macro cached(ex)
     # tasklocal cache implementation
     Dvar = gensym(:D)
     flocalcachecall = Expr(:call, fname, fargs..., :(::TaskLocalCache{$Dvar}))
-    if hasparams
+    if !isnothing(params)
         flocalcachecall = Expr(:where, flocalcachecall, params..., Dvar)
     else
         flocalcachecall = Expr(:where, flocalcachecall, Dvar)
@@ -139,7 +137,7 @@ macro cached(ex)
             return $_fname($(fargnames...))
         end
     )
-    if typed
+    if !isnothing(typeex)
         T = gensym(:T)
         flocalcachebody = Expr(
             :block,
@@ -160,12 +158,12 @@ macro cached(ex)
 
     # # global cache implementation
     fglobalcachecall = Expr(:call, fname, fargs..., :(::GlobalLRUCache))
-    if hasparams
+    if !isnothing(params)
         fglobalcachecall = Expr(:where, fglobalcachecall, params...)
     end
     globalcachename = Symbol(:GLOBAL_, uppercase(string(fname)), :_CACHE)
     getglobalcachex = Expr(:(=), cachevar, globalcachename)
-    if typed
+    if !isnothing(typeex)
         T = gensym(:T)
         fglobalcachebody = Expr(
             :block,

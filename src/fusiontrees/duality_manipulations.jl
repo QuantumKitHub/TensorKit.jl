@@ -653,7 +653,7 @@ function planar_trace(f::FusionTree, (q₁, q₂)::Index2Tuple)
     # We thus handle the total trace recursively, by first looking for and
     # tracing away neighbouring pairs.
     k = 1
-    local i, j
+    i = j = 0
     while k <= length(q₁)
         if mod1(q₁[k] + 1, length(f)) == q₂[k]
             i = q₁[k]

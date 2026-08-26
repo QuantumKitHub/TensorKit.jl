@@ -166,22 +166,18 @@ function _construct_braidingtensors!(ex, preargs, indexmap, non_braiding) # ex i
                 i1a, i2a, = rightind
             end
 
-            foundV1, foundV2 = false, false
+            V1 = V2 = nothing
             if haskey(indexmap, i1a)
                 V1 = indexmap[i1a]
-                foundV1 = true
             elseif haskey(indexmap, i1b)
                 V1 = Expr(:call, :dual, indexmap[i1b])
-                foundV1 = true
             end
             if haskey(indexmap, i2a)
                 V2 = indexmap[i2a]
-                foundV2 = true
             elseif haskey(indexmap, i2b)
                 V2 = Expr(:call, :dual, indexmap[i2b])
-                foundV2 = true
             end
-            if foundV1 && foundV2
+            if !isnothing(V1) && !isnothing(V2)
                 s = gensym(:τ)
                 storageex = Expr(:call, GlobalRef(TensorKit, :promote_storagetype), non_braiding...)
                 braidingex = Expr(:call, GlobalRef(TensorKit, :braidingtensortype), V1, V2, storageex)
