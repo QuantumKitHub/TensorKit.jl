@@ -146,7 +146,7 @@ that make up the `ProductSpace` instance.
 """
 function blocksectors(P::ProductSpace{S, N}) where {S, N}
     I = sectortype(S)
-    if I == Trivial
+    if I === Trivial
         return OneOrNoneIterator(dim(P) != 0, Trivial())
     end
     bs = Vector{I}()

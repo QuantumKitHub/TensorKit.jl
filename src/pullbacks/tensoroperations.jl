@@ -1,5 +1,5 @@
 function blas_contract_pullback_ΔA!(
-        ΔA, ΔC, A, pA, B, pB, pAB, α, backend, allocator
+        ΔA, ΔC, A::AbstractTensorMap, pA, B::AbstractTensorMap, pB, pAB, α, backend, allocator
     )
     ipAB = invperm(linearize(pAB))
     pΔC = TO.repartition(ipAB, TO.numout(pA))
@@ -23,7 +23,7 @@ function blas_contract_pullback_ΔA!(
 end
 
 function blas_contract_pullback_ΔB!(
-        ΔB, ΔC, A, pA, B, pB, pAB, α, backend, allocator
+        ΔB, ΔC, A::AbstractTensorMap, pA, B::AbstractTensorMap, pB, pAB, α, backend, allocator
     )
     ipAB = invperm(linearize(pAB))
     pΔC = TO.repartition(ipAB, TO.numout(pA))
@@ -48,7 +48,7 @@ function blas_contract_pullback_ΔB!(
 end
 
 function trace_permute_pullback_ΔA!(
-        ΔA, ΔC, A, p, q, α, backend
+        ΔA, ΔC, A::AbstractTensorMap, p, q, α, backend
     )
     ip = invperm((linearize(p)..., q[1]..., q[2]...))
     pdA = TO.repartition(ip, numout(A))
