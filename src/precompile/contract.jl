@@ -1,21 +1,23 @@
 """
-    precompile_contract(V::IndexSpace; eltypes=[Float64, ComplexF64], ndims=4)
+    precompile_contract(S::Type{<:IndexSpace}; eltypes=[Float64, ComplexF64], ndims=4)
 
 Run a small, representative set of contraction, trace, and permutation operations on tensors built
-from the space `V`, for each element type in `eltypes` and each tensor arity (number of legs) in `1:ndims`.
+from the space `V = unitspace(S)`, for each element type in `eltypes` and each tensor arity (number of
+legs) in `1:ndims`.
 
 Note that it can be beneficial to put a more comprehensive set of relevant symmetries in a startup file,
 for example by adding:
 
 ```julia
 @compile_workload begin
-    TensorKit.precompile_contract(Vect[MyAnyon](s₀ => 1, s₁ => 1))
+    TensorKit.precompile_contract(Vect[MySector])
 end
 ```
 
 See also [`precompile_indexmanipulations`](@ref TensorKit.precompile_indexmanipulations), [`precompile_factorizations`](@ref TensorKit.precompile_factorizations).
 """
-function precompile_contract(V::IndexSpace; eltypes = PRECOMPILE_ELTYPES, ndims = PRECOMPILE_NDIMS)
+function precompile_contract(::Type{S}; eltypes = PRECOMPILE_ELTYPES, ndims = PRECOMPILE_NDIMS) where {S <: IndexSpace}
+    V = unitspace(S)
     backend = TO.DefaultBackend()
     allocator = TO.DefaultAllocator()
     for T in eltypes

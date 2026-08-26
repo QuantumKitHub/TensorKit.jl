@@ -1,22 +1,23 @@
 """
-    precompile_factorizations(V::IndexSpace; eltypes=[Float64, ComplexF64])
+    precompile_factorizations(S::Type{<:IndexSpace}; eltypes=[Float64, ComplexF64])
 
 Run a small, representative set of tensor-factorization operations (singular value, QR, LQ,
-eigenvalue, orthogonal/null-space and polar decompositions) on tensors built from the space `V`,
-for each element type in `eltypes`.
+eigenvalue, orthogonal/null-space and polar decompositions) on tensors built from the space
+`V = unitspace(S)`, for each element type in `eltypes`.
 
 Note that it can be beneficial to put a more comprehensive set of relevant symmetries in a startup file,
 for example by adding:
 
 ```julia
 @compile_workload begin
-    TensorKit.precompile_factorizations(Vect[MyAnyon](s₀ => 1, s₁ => 1))
+    TensorKit.precompile_factorizations(Vect[MySector])
 end
 ```
 
 See also [`precompile_contract`](@ref TensorKit.precompile_contract), [`precompile_indexmanipulations`](@ref TensorKit.precompile_indexmanipulations).
 """
-function precompile_factorizations(V::IndexSpace; eltypes = PRECOMPILE_ELTYPES)
+function precompile_factorizations(::Type{S}; eltypes = PRECOMPILE_ELTYPES) where {S <: IndexSpace}
+    V = unitspace(S)
     for T in eltypes
         # Three representative shapes: a square tensor for the bulk of the decompositions, a
         # hermitian one for the `eigh` path, and rectangular ones so the null-space kernels

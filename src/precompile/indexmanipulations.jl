@@ -1,21 +1,22 @@
 """
-    precompile_indexmanipulations(V::IndexSpace; eltypes=[Float64, ComplexF64], ndims=4)
+    precompile_indexmanipulations(S::Type{<:IndexSpace}; eltypes=[Float64, ComplexF64], ndims=4)
 
-Run a small, representative set of index-manipulation operations on tensors built from the space `V`,
-for each element type in `eltypes` and each tensor arity (number of legs) in `1:ndims`.
+Run a small, representative set of index-manipulation operations on tensors built from the space
+`V = unitspace(S)`, for each element type in `eltypes` and each tensor arity (number of legs) in `1:ndims`.
 
 Note that it can be beneficial to put a more comprehensive set of relevant symmetries in a startup file,
 for example by adding:
 
 ```julia
 @compile_workload begin
-    TensorKit.precompile_indexmanipulations(Vect[MyAnyon](s₀ => 1, s₁ => 1))
+    TensorKit.precompile_indexmanipulations(Vect[MySector])
 end
 ```
 
 See also [`precompile_contract`](@ref TensorKit.precompile_contract), [`precompile_factorizations`](@ref TensorKit.precompile_factorizations).
 """
-function precompile_indexmanipulations(V::IndexSpace; eltypes = PRECOMPILE_ELTYPES, ndims = PRECOMPILE_NDIMS)
+function precompile_indexmanipulations(::Type{S}; eltypes = PRECOMPILE_ELTYPES, ndims = PRECOMPILE_NDIMS) where {S <: IndexSpace}
+    V = unitspace(S)
     for T in eltypes
         # `Val(N)`/`ntuple` keep the index tuples concrete so the machinery specializes per arity
         for N in 1:ndims

@@ -12,7 +12,7 @@ The workload can be tuned or disabled through [Preferences](https://github.com/J
 ```julia
 using TensorKit, Preferences, PrecompileTools
 # disable the workload entirely (fastest precompilation, no TTFX benefit)
-PrecompileTools.set_preferences!(TensorKit, "precompile_workloads" => false; force=true)
+PrecompileTools.set_preferences!(TensorKit, "precompile_workload" => false; force=true)
 # disable individual suites (each defaults to `true`)
 set_preferences!(TensorKit, "precompile_contract" => false; force=true)
 set_preferences!(TensorKit, "precompile_indexmanipulations" => false; force=true)
@@ -33,7 +33,7 @@ calling the `precompile_*` helpers inside their own `PrecompileTools.@compile_wo
 ```julia
 using TensorKit, PrecompileTools
 @compile_workload begin
-    TensorKit.precompile_contract(Vect[MyAnyon](s₀ => 1, s₁ => 1))
+    TensorKit.Precompilation.precompile_contract(Vect[MySector])
 end
 ```
 

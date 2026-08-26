@@ -13,11 +13,11 @@ using Preferences: @load_preference
 # -----------
 function _validate_precompile_eltypes(eltypes)
     eltypes isa Vector{String} ||
-        throw(ArgumentError("`precompile_eltypes` should be a vector of strings, got $(typeof(eltypes)) instead"))
+        throw(ArgumentError(lazy"`precompile_eltypes` should be a vector of strings, got $(typeof(eltypes)) instead"))
     return map(eltypes) do Tstr
         T = eval(Meta.parse(Tstr))
         (T isa DataType && T <: Number) ||
-            error("Invalid precompile_eltypes entry: `$Tstr`")
+            throw(ArgumentError(lazy"Invalid precompile_eltypes entry: `$Tstr`"))
         return T
     end
 end
@@ -28,22 +28,22 @@ const PRECOMPILE_ELTYPES = _validate_precompile_eltypes(
 
 const PRECOMPILE_NDIMS = let n = @load_preference("precompile_ndims", 4)
     (n isa Int && n ≥ 1) ||
-        throw(ArgumentError("`precompile_ndims` should be a positive `Int`, got `$n`"))
+        throw(ArgumentError(lazy"`precompile_ndims` should be a positive `Int`, got `$n`"))
     n
 end
 
-function _precompile_space(name::AbstractString)
+function _precompile_spacetype(name::AbstractString)
     I = Base.eval(TensorKit, Meta.parse(name))
     (I isa DataType && I <: Sector) ||
-        error("invalid `precompile_sectors` entry `$name`; expected a `Sector` type")
-    return oneunit(Vect[I])
+        throw(ArgumentError(lazy"invalid `precompile_sectors` entry `$name`; expected a `Sector` type"))
+    return Vect[I]
 end
 
 const PRECOMPILE_SECTORS = let s = @load_preference(
         "precompile_sectors", map(x -> repr(x; context = :module => TensorKit), [Trivial, Z2Irrep, SU2Irrep, FermionParity])
     )
     s isa Vector{String} ||
-        throw(ArgumentError("`precompile_sectors` should be a vector of strings, got $(typeof(s))"))
+        throw(ArgumentError(lazy"`precompile_sectors` should be a vector of strings, got $(typeof(s))"))
     s
 end
 
@@ -59,11 +59,11 @@ include("precompile/factorizations.jl")
 
 @setup_workload begin
     for name in PRECOMPILE_SECTORS
-        V = _precompile_space(name)
+        S = _precompile_spacetype(name)
         @compile_workload begin
-            PRECOMPILE_INDEXMANIPULATIONS && precompile_indexmanipulations(V; eltypes = PRECOMPILE_ELTYPES)
-            PRECOMPILE_CONTRACT && precompile_contract(V; eltypes = PRECOMPILE_ELTYPES)
-            PRECOMPILE_FACTORIZATIONS && precompile_factorizations(V; eltypes = PRECOMPILE_ELTYPES)
+            PRECOMPILE_INDEXMANIPULATIONS && precompile_indexmanipulations(S; eltypes = PRECOMPILE_ELTYPES)
+            PRECOMPILE_CONTRACT && precompile_contract(S; eltypes = PRECOMPILE_ELTYPES)
+            PRECOMPILE_FACTORIZATIONS && precompile_factorizations(S; eltypes = PRECOMPILE_ELTYPES)
         end
     end
 end
