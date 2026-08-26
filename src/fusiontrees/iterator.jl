@@ -46,6 +46,7 @@ _fusiondim(iters::NTuple{1}, c::I) where {I <: Sector} = Int(c ∈ iters[1])
 function _fusiondim(iters::NTuple{2}, c::I) where {I <: Sector}
     d = 0
     for a in iters[1], b in iters[2]
+        c ∈ a ⊗ b || continue
         d += Int(Nsymbol(a, b, c))
     end
     return d
@@ -104,7 +105,7 @@ function _fusiontree_iterate(uncoupledsectors::NTuple{2}, c::I) where {I <: Sect
     nextout1 = iterate(outiter1)
     nextout1 === nothing && return nothing
     a, outstate1 = nextout1
-    while Nsymbol(a, b, c) == 0
+    while c ∉ a ⊗ b
         nextout1 = iterate(outiter1, outstate1)
         if isnothing(nextout1)
             nextout2 = iterate(outiter2, outstate2)
@@ -133,7 +134,7 @@ function _fusiontree_iterate(uncoupledsectors::NTuple{2}, c::I, out, lines, vert
         nextout1 = iterate(outiter1)
     end
     a, outstate1 = nextout1
-    while Nsymbol(a, b, c) == 0
+    while c ∉ a ⊗ b
         nextout1 = iterate(outiter1, outstate1)
         if isnothing(nextout1)
             nextout2 = iterate(outiter2, outstate2)
