@@ -591,7 +591,7 @@ function _extract_contraction_pairs(rhs, lhs, pre, temporaries)
         newarg = _extract_contraction_pairs(rhs.args[3], lhs, pre, temporaries)
         return Expr(:call, :\, rhs.args[2], newarg)
     else
-        throw(ArgumentError("unknown tensor expression $ex"))
+        throw(ArgumentError("unknown tensor expression $rhs"))
     end
 end
 

@@ -575,7 +575,7 @@ tdst[sub_axes...] .= tsrc[sub_axes...]
 absorb(tdst::AbstractTensorMap, tsrc::AbstractTensorMap) = absorb!(copy(tdst), tsrc)
 function absorb!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap)
     numin(tdst) == numin(tsrc) && numout(tdst) == numout(tsrc) ||
-        throw(DimensionError("Incompatible number of indices for source and destination"))
+        throw(IndexError("Incompatible number of indices for source and destination"))
     S = check_spacetype(tdst, tsrc)
     dom = mapreduce(infimum, ⊗, domain(tdst), domain(tsrc); init = one(S))
     cod = mapreduce(infimum, ⊗, codomain(tdst), codomain(tsrc); init = one(S))
