@@ -35,9 +35,11 @@ _blocklength(ax::Base.OneTo, ind::AbstractVector{<:Integer}) = length(ind)
 _blocklength(ax::Base.OneTo, ind::AbstractVector{Bool}) = count(ind)
 
 function truncate_space(V::ElementarySpace, inds)
+    @assert !isdual(V)
     return spacetype(V)(c => _blocklength(dim(V, c), ind) for (c, ind) in pairs(inds))
 end
 function truncate_space(V::GradedSpace{I, NTuple{N, Int}}, inds) where {I <: Sector, N}
+    @assert !isdual(V)
     vals = values(I)
     newdims = zeros(Int, N)
     for (c, ind) in pairs(inds)
@@ -48,6 +50,7 @@ function truncate_space(V::GradedSpace{I, NTuple{N, Int}}, inds) where {I <: Sec
     return typeof(V)(NTuple{N, Int}(newdims), false)
 end
 function truncate_space(V::GradedSpace{I, <:SectorDict}, inds) where {I <: Sector}
+    @assert !isdual(V)
     ks, vs = Vector{I}(), Vector{Int}() # accumulate and sort once at the end
     for (c, ind) in pairs(inds)
         d = dim(V, c)
