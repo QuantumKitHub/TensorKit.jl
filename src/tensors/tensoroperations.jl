@@ -52,9 +52,23 @@ function TO.tensoradd!(
         return C
     end
     if conjA
-        A′ = adjoint(A)
         pA′ = adjointtensorindices(A, _canonicalize(pA, C))
-        permute!(C, A′, pA′, α, β, backend, allocator)
+        if C isa TensorMap && A isa TensorMap
+            # Both operands have a flat data buffer, so the adjoint never has to be
+            # materialised: `conj_treebraider` yields a memoized transformer whose source
+            # strides address `A`'s own storage. Materialising `adjoint(A)` here would push
+            # a perfectly ordinary TensorMap onto the uncached tree-transformation path.
+            n₁ = numin(A)                       # == numout(adjoint(A))
+            levels = ntuple(identity, numind(A))
+            levels′ = (
+                TupleTools.getindices(levels, ntuple(identity, n₁)),
+                TupleTools.getindices(levels, n₁ .+ ntuple(identity, numout(A))),
+            )
+            transformer = conj_treebraider(space(C), space(A), pA′, levels′)
+            @inbounds add_conj_transform!(C, A, pA′, transformer, α, β, backend, allocator)
+        else
+            permute!(C, adjoint(A), pA′, α, β, backend, allocator)
+        end
     else
         permute!(C, A, _canonicalize(pA, C), α, β, backend, allocator)
     end
