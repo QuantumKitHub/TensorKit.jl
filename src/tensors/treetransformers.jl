@@ -13,10 +13,10 @@ struct AbelianTreeTransformer{T, N} <: TreeTransformer
     data::Vector{AbelianTransformerData{T, N}}
 end
 
-function AbelianTreeTransformer(transform, p, Vdst, Vsrc)
+function AbelianTreeTransformer(transform, p, Vdst, Vsrc; srcstructure = subblockstructure(Vsrc))
     t₀ = Base.time()
     permute(Vsrc, p) == Vdst || throw(SpaceMismatch("Incompatible spaces for permuting."))
-    fts_src = subblockstructure(Vsrc)
+    fts_src = srcstructure
     fts_dst = subblockstructure(Vdst)
     L = length(fts_src)
     T = sectorscalartype(sectortype(Vdst))
@@ -51,11 +51,11 @@ struct GenericTreeTransformer{T, N} <: TreeTransformer
     data::Vector{GenericTransformerData{T, N}}
 end
 
-function GenericTreeTransformer(transform, p, Vdst, Vsrc)
+function GenericTreeTransformer(transform, p, Vdst, Vsrc; srcstructure = subblockstructure(Vsrc))
     t₀ = Base.time()
     permute(Vsrc, p) == Vdst || throw(SpaceMismatch("Incompatible spaces for permuting."))
     fusionstructure_dst = subblockstructure(Vdst)
-    fusionstructure_src = subblockstructure(Vsrc)
+    fusionstructure_src = srcstructure
     I = sectortype(Vsrc)
     T = sectorscalartype(I)
     N = numind(Vdst)
@@ -139,7 +139,8 @@ function treetransformertype(Vdst, Vsrc)
 end
 
 function TreeTransformer(
-        transform::Function, p, Vdst::HomSpace{S}, Vsrc::HomSpace{S}
+        transform::Function, p, Vdst::HomSpace{S}, Vsrc::HomSpace{S};
+        srcstructure = subblockstructure(Vsrc)
     ) where {S}
     permute(Vsrc, p) == Vdst ||
         throw(SpaceMismatch("Incompatible spaces for permuting"))
@@ -148,8 +149,8 @@ function TreeTransformer(
     I === Trivial && return TrivialTreeTransformer()
 
     return FusionStyle(I) == UniqueFusion() ?
-        AbelianTreeTransformer(transform, p, Vdst, Vsrc) :
-        GenericTreeTransformer(transform, p, Vdst, Vsrc)
+        AbelianTreeTransformer(transform, p, Vdst, Vsrc; srcstructure) :
+        GenericTreeTransformer(transform, p, Vdst, Vsrc; srcstructure)
 end
 
 # braid is special because it has levels
@@ -159,11 +160,33 @@ end
 function treebraider(tdst::TensorMap, tsrc::TensorMap, p::Index2Tuple, levels)
     return treebraider(space(tdst), space(tsrc), p, levels)
 end
+# The adjoint of a plain TensorMap can use a memoized transformer too: it shares its parent's
+# data, so `conj_treebraider` supplies one whose source strides address the parent's buffer.
+function treebraider(
+        tdst::TensorMap, tsrc::AdjointTensorMap{<:Any, <:Any, <:Any, <:Any, <:TensorMap},
+        p::Index2Tuple, levels
+    )
+    return conj_treebraider(space(tdst), space(parent(tsrc)), p, levels)
+end
 @cached function treebraider(
         Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, levels
     )::treetransformertype(Vdst, Vsrc)
     fusiontreebraider(f) = braid(f, p, levels)
     return TreeTransformer(fusiontreebraider, p, Vdst, Vsrc)
+end
+
+# Transformer for braiding `adjoint(t)` while reading `t`'s own data buffer: the tree
+# transformation is that of `Vparent'`, but the source strides address the parent's storage
+# (see `adjoint_subblockstructure`). Kept as a separate cached function so that its entries
+# cannot collide with the plain `treebraider` ones for the same pair of spaces.
+@cached function conj_treebraider(
+        Vdst::TensorMapSpace, Vparent::TensorMapSpace, p::Index2Tuple, levels
+    )::treetransformertype(Vdst, Vparent')
+    fusiontreebraider(f) = braid(f, p, levels)
+    return TreeTransformer(
+        fusiontreebraider, p, Vdst, Vparent';
+        srcstructure = adjoint_subblockstructure(Vparent)
+    )
 end
 
 function treetransposer(::AbstractTensorMap, ::AbstractTensorMap, p::Index2Tuple)
@@ -172,11 +195,29 @@ end
 function treetransposer(tdst::TensorMap, tsrc::TensorMap, p::Index2Tuple)
     return treetransposer(space(tdst), space(tsrc), p)
 end
+# As for `treebraider`: the adjoint of a plain TensorMap shares its parent's buffer, so it can
+# use a memoized transformer whose source strides address that buffer.
+function treetransposer(
+        tdst::TensorMap, tsrc::AdjointTensorMap{<:Any, <:Any, <:Any, <:Any, <:TensorMap},
+        p::Index2Tuple
+    )
+    return conj_treetransposer(space(tdst), space(parent(tsrc)), p)
+end
 @cached function treetransposer(
         Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple
     )::treetransformertype(Vdst, Vsrc)
     fusiontreetransform(f) = transpose(f, p)
     return TreeTransformer(fusiontreetransform, p, Vdst, Vsrc)
+end
+
+@cached function conj_treetransposer(
+        Vdst::TensorMapSpace, Vparent::TensorMapSpace, p::Index2Tuple
+    )::treetransformertype(Vdst, Vparent')
+    fusiontreetransform(f) = transpose(f, p)
+    return TreeTransformer(
+        fusiontreetransform, p, Vdst, Vparent';
+        srcstructure = adjoint_subblockstructure(Vparent)
+    )
 end
 
 # default cachestyle is GlobalLRUCache

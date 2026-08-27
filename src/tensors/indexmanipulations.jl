@@ -570,6 +570,17 @@ Base.@deprecate(
             scheduler = ntasks == 1 ? SerialScheduler() : DynamicScheduler(; ntasks, split = :roundrobin)
             if tdst isa TensorMap && tsrc isa TensorMap # unpack data fields to avoid specializing
                 add_transform_kernel!(tdst.data, tsrc.data, p, transformer, α, β, backend, allocator, scheduler)
+            elseif tdst isa TensorMap && tsrc isa AdjointTensorMap &&
+                    parent(tsrc) isa TensorMap &&
+                    transformer isa Union{AbelianTreeTransformer, GenericTreeTransformer}
+                # An adjoint shares its parent's buffer. `conj_treebraider` builds a
+                # transformer whose source strides already address that buffer, so the data
+                # can be read directly and conjugated on the fly, instead of falling back to
+                # the uncached per-fusion-block path.
+                add_transform_kernel!(
+                    tdst.data, parent(tsrc).data, p, transformer, α, β, backend, allocator,
+                    scheduler; conjsrc = true
+                )
             else
                 add_transform_kernel!(tdst, tsrc, p, transformer, α, β, backend, allocator, scheduler)
             end
@@ -587,14 +598,15 @@ function use_threaded_transform(t::AbstractTensorMap, transformer)
 end
 
 function add_transform_kernel!(
-        tdst, tsrc, p, transformer, α, β, backend, allocator, scheduler
+        tdst, tsrc, p, transformer, α, β, backend, allocator, scheduler;
+        conjsrc::Bool = false
     )
     I = sectortype(tdst)
     if FusionStyle(I) === UniqueFusion()
         tforeach(fusiontrees(tsrc); scheduler) do (f₁, f₂)
             (f₁′, f₂′), coeff = transformer((f₁, f₂))
             @inbounds TO.tensoradd!(
-                tdst[f₁′, f₂′], tsrc[f₁, f₂], p, false, α * coeff, β, backend, allocator
+                tdst[f₁′, f₂′], tsrc[f₁, f₂], p, conjsrc, α * coeff, β, backend, allocator
             )
         end
         return nothing
@@ -629,7 +641,7 @@ function add_transform_kernel!(
             @inbounds for (i, (f₁, f₂)) in enumerate(fusiontrees(src))
                 TO.tensoradd!(
                     sreshape(view(buffer_src, :, i), sz_src), tsrc[f₁, f₂],
-                    ptriv, false, One(), Zero(), backend, allocator
+                    ptriv, conjsrc, One(), Zero(), backend, allocator
                 )
             end
 
@@ -657,19 +669,19 @@ end
 # repeated specialization -- this only depends on `numind` and `eltype`.
 function add_transform_kernel!(
         data_dst::DenseVector, data_src::DenseVector, p, transformer::AbelianTreeTransformer,
-        α, β, backend, allocator, scheduler
+        α, β, backend, allocator, scheduler; conjsrc::Bool = false
     )
     tforeach(transformer.data; scheduler) do (coeff, struct_dst, struct_src)
         TO.tensoradd!(
             StridedView(data_dst, struct_dst...), StridedView(data_src, struct_src...),
-            p, false, α * coeff, β, backend, allocator
+            p, conjsrc, α * coeff, β, backend, allocator
         )
     end
     return nothing
 end
 function add_transform_kernel!(
         data_dst::DenseVector, data_src::DenseVector, p, transformer::GenericTreeTransformer,
-        α, β, backend, allocator, scheduler
+        α, β, backend, allocator, scheduler; conjsrc::Bool = false
     )
     cp = TO.allocator_checkpoint!(allocator)
 
@@ -686,7 +698,7 @@ function add_transform_kernel!(
             TO.tensoradd!(
                 StridedView(data_dst, sz_dst, only(structs_dst)...),
                 StridedView(data_src, sz_src, only(structs_src)...),
-                p, false, α * coeff, β, backend, allocator
+                p, conjsrc, α * coeff, β, backend, allocator
             )
         else # Multi-tree block: pack → recoupling matmul → unpack.
             rows, cols = size(U)
@@ -701,7 +713,7 @@ function add_transform_kernel!(
             @inbounds for (i, struct_src_i) in enumerate(structs_src)
                 TO.tensoradd!(
                     sreshape(view(buffer_src, :, i), sz_src), StridedView(data_src, sz_src, struct_src_i...),
-                    ptriv, false, One(), Zero(), backend, allocator
+                    ptriv, conjsrc, One(), Zero(), backend, allocator
                 )
             end
 
