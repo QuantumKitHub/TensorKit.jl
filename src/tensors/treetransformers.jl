@@ -195,29 +195,11 @@ end
 function treetransposer(tdst::TensorMap, tsrc::TensorMap, p::Index2Tuple)
     return treetransposer(space(tdst), space(tsrc), p)
 end
-# As for `treebraider`: the adjoint of a plain TensorMap shares its parent's buffer, so it can
-# use a memoized transformer whose source strides address that buffer.
-function treetransposer(
-        tdst::TensorMap, tsrc::AdjointTensorMap{<:Any, <:Any, <:Any, <:Any, <:TensorMap},
-        p::Index2Tuple
-    )
-    return conj_treetransposer(space(tdst), space(parent(tsrc)), p)
-end
 @cached function treetransposer(
         Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple
     )::treetransformertype(Vdst, Vsrc)
     fusiontreetransform(f) = transpose(f, p)
     return TreeTransformer(fusiontreetransform, p, Vdst, Vsrc)
-end
-
-@cached function conj_treetransposer(
-        Vdst::TensorMapSpace, Vparent::TensorMapSpace, p::Index2Tuple
-    )::treetransformertype(Vdst, Vparent')
-    fusiontreetransform(f) = transpose(f, p)
-    return TreeTransformer(
-        fusiontreetransform, p, Vdst, Vparent';
-        srcstructure = adjoint_subblockstructure(Vparent)
-    )
 end
 
 # default cachestyle is GlobalLRUCache
