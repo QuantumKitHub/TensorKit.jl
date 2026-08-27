@@ -170,6 +170,30 @@ See also [`degeneracystructure`](@ref), [`blockstructure`](@ref).
 subblockstructure(W::HomSpace) = Dictionary(fusiontrees(W), degeneracystructure(W).subblockstructure)
 
 """
+    adjoint_subblockstructure(W::HomSpace) -> Dictionary
+
+Subblock structure of `W'`, expressed as strides into a buffer laid out for `W`.
+
+This mirrors the relation used by `subblock(::AdjointTensorMap, ...)`: the adjoint shares its
+parent's data, with the tree pair swapped and sizes and strides permuted by
+`(domainind..., codomainind...)`. Permuting `adjoint(t)` can therefore read `t`'s own buffer
+directly, instead of materialising an `AdjointTensorMap` and falling back to the uncached
+tree-transformation path.
+
+See also [`subblockstructure`](@ref).
+"""
+function adjoint_subblockstructure(W::HomSpace)
+    N₁, N₂ = numout(W), numin(W)
+    swap = (ntuple(i -> N₁ + i, N₂)..., ntuple(identity, N₁)...)
+    structs = subblockstructure(W)
+    newkeys = map(((f₁, f₂),) -> (f₂, f₁), collect(keys(structs)))
+    newvals = map(collect(values(structs))) do (sz, str, off)
+        return (TupleTools.getindices(sz, swap), TupleTools.getindices(str, swap), off)
+    end
+    return Dictionary(newkeys, newvals)
+end
+
+"""
     fusionblocks(W::HomSpace)
 
 Return the [`FusionTreeBlock`](@ref)s corresponding to all valid fusion channels of a given `HomSpace`,
