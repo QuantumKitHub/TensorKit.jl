@@ -138,8 +138,7 @@ zerospace(S::Type{<:GradedSpace}) = S()
 function ⊕(V₁::GradedSpace{I, <:SectorDict}, V₂::GradedSpace{I, <:SectorDict}) where {I <: Sector}
     dual1 = isdual(V₁)
     dual1 == isdual(V₂) || throw(SpaceMismatch("Direct sum of a vector space and a dual space does not exist"))
-    ks, vs = _sortedmerge(V₁.dims.keys, V₁.dims.values, V₂.dims.keys, V₂.dims.values, +, identity, identity)
-    return typeof(V₁)(SectorDict{I, Int}(ks, vs), dual1)
+    return typeof(V₁)(mergewith(+, V₁.dims, V₂.dims), dual1)
 end
 function ⊕(V₁::GradedSpace{I, <:Tuple}, V₂::GradedSpace{I, <:Tuple}) where {I <: Sector}
     dual1 = isdual(V₁)
@@ -157,8 +156,7 @@ end
 function ⊖(V::GradedSpace{I, <:SectorDict}, W::GradedSpace{I, <:SectorDict}) where {I <: Sector}
     dualV = isdual(V)
     V ≿ W && dualV == isdual(W) || throw(SpaceMismatch("$(W) is not a subspace of $(V)"))
-    ks, vs = _sortedmerge(V.dims.keys, V.dims.values, W.dims.keys, W.dims.values, -, identity, nothing)
-    return typeof(V)(SectorDict{I, Int}(ks, vs), dualV)
+    return typeof(V)(mergewith(-, V.dims, W.dims), dualV)
 end
 
 function fuse(V₁::GradedSpace{I, <:SectorDict}, V₂::GradedSpace{I, <:SectorDict}) where {I <: Sector}
@@ -216,8 +214,7 @@ end
 function infimum(V₁::GradedSpace{I, <:SectorDict}, V₂::GradedSpace{I, <:SectorDict}) where {I <: Sector}
     Visdual = isdual(V₁)
     Visdual == isdual(V₂) || throw(SpaceMismatch("Infimum of space and dual space does not exist"))
-    ks, vs = _sortedmerge(V₁.dims.keys, V₁.dims.values, V₂.dims.keys, V₂.dims.values, min, nothing, nothing)
-    return typeof(V₁)(SectorDict{I, Int}(ks, vs), Visdual)
+    return typeof(V₁)(_sortedintersect(min, V₁.dims, V₂.dims), Visdual)
 end
 function supremum(V₁::GradedSpace{I, <:Tuple}, V₂::GradedSpace{I, <:Tuple}) where {I <: Sector}
     Visdual = isdual(V₁)
@@ -228,8 +225,7 @@ end
 function supremum(V₁::GradedSpace{I, <:SectorDict}, V₂::GradedSpace{I, <:SectorDict}) where {I <: Sector}
     Visdual = isdual(V₁)
     Visdual == isdual(V₂) || throw(SpaceMismatch("Supremum of space and dual space does not exist"))
-    ks, vs = _sortedmerge(V₁.dims.keys, V₁.dims.values, V₂.dims.keys, V₂.dims.values, max, identity, identity)
-    return typeof(V₁)(SectorDict{I, Int}(ks, vs), Visdual)
+    return typeof(V₁)(mergewith(max, V₁.dims, V₂.dims), Visdual)
 end
 
 hassector(V::GradedSpace{I}, s::I) where {I <: Sector} = dim(V, s) != 0

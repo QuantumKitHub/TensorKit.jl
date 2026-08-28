@@ -186,17 +186,19 @@ function Base.:(==)(d1::SortedVectorDict, d2::SortedVectorDict)
     return true
 end
 
-# merge over two SORTED vector pairs representing keys and values
-# - combine(v1,v2): value for a key present in both operands
-# - only1(v1) / only2(v2): value for a key present in only one operand;
-# pass `nothing` to drop such keys entirely (e.g. for an intersection)
-# zero results are dropped (either from `combine` or `only1`/`only2`), matching how GradedSpace never stores an explicit zero dimension
-# k1 and k2 originate from GradedSpace.dims.keys, which are guaranteed to be sorted
-function _sortedmerge(k1::Vector{I}, v1::Vector{Int}, k2::Vector{I}, v2::Vector{Int}, combine, only1, only2) where {I}
+# merge over two SectorDicts
+# the intersect case for infimum is kind of tricky, so there's an extra bool
+# to indicate keeping keys that are only present in one of the two dicts
+# zero results are dropped, matching how GradedSpace never stores an explicit zero dimension
+function _sortedmerge(
+        combine, ::Val{keepunique}, d1::SortedVectorDict{K, V}, d2::SortedVectorDict{K, V}
+    ) where {keepunique, K, V}
+    k1, v1 = d1.keys, d1.values
+    k2, v2 = d2.keys, d2.values
     n1, n2 = length(k1), length(k2)
-    ks, vs = Vector{I}(), Vector{Int}()
-    sizehint!(ks, n1 + n2)
-    sizehint!(vs, n1 + n2)
+    ks, vs = Vector{K}(), Vector{V}()
+    sizehint!(ks, keepunique ? n1 + n2 : min(n1, n2))
+    sizehint!(vs, keepunique ? n1 + n2 : min(n1, n2))
     i, j = 1, 1
     @inbounds while i <= n1 && j <= n2
         if k1[i] == k2[j]
@@ -208,32 +210,39 @@ function _sortedmerge(k1::Vector{I}, v1::Vector{Int}, k2::Vector{I}, v2::Vector{
             i += 1
             j += 1
         elseif k1[i] < k2[j]
-            _mergeonly!(ks, vs, k1[i], v1[i], only1)
+            if keepunique
+                push!(ks, k1[i])
+                push!(vs, v1[i])
+            end
             i += 1
         else
-            _mergeonly!(ks, vs, k2[j], v2[j], only2)
+            if keepunique
+                push!(ks, k2[j])
+                push!(vs, v2[j])
+            end
             j += 1
         end
     end
-    @inbounds while i <= n1
-        _mergeonly!(ks, vs, k1[i], v1[i], only1)
-        i += 1
+    if keepunique
+        @inbounds while i <= n1
+            push!(ks, k1[i])
+            push!(vs, v1[i])
+            i += 1
+        end
+        @inbounds while j <= n2
+            push!(ks, k2[j])
+            push!(vs, v2[j])
+            j += 1
+        end
     end
-    @inbounds while j <= n2
-        _mergeonly!(ks, vs, k2[j], v2[j], only2)
-        j += 1
-    end
-    return ks, vs
+    return SortedVectorDict{K, V}(ks, vs)
 end
-@inline _mergeonly!(ks, vs, k, v, ::Nothing) = nothing
-@inline function _mergeonly!(ks, vs, k, v, f)
-    d = f(v)
-    if !iszero(d)
-        push!(ks, k)
-        push!(vs, d)
-    end
-    return nothing
-end
+
+Base.mergewith(combine, d1::SortedVectorDict{K, V}, d2::SortedVectorDict{K, V}) where {K, V} =
+    _sortedmerge(combine, Val(true), d1, d2)
+
+_sortedintersect(combine, d1::SortedVectorDict{K, V}, d2::SortedVectorDict{K, V}) where {K, V} =
+    _sortedmerge(combine, Val(false), d1, d2)
 
 """
     Hashed(value, hashfunction = Base.hash, isequal = Base.isequal)
