@@ -323,12 +323,20 @@ specify `D`.
 const Vect = SpaceTable()
 Base.getindex(::SpaceTable) = ComplexSpace
 Base.getindex(::SpaceTable, ::Type{Trivial}) = ComplexSpace
-function Base.getindex(::SpaceTable, I::Type{<:Sector})
+Base.getindex(::SpaceTable, I::Type{<:Sector}) = GradedSpace{I, sectorstoragetype(I)}
+
+"""
+    sectorstoragetype(I::Type{<:Sector}) -> Type
+
+The storage type `D` used for the `dims` field of `GradedSpace{I, D}`.
+This is `NTuple{N,Int}` with `N = length(values(I))` if `I` has a finite, known length,
+or `SectorDict{I,Int}` otherwise.
+"""
+Base.@assume_effects :foldable function sectorstoragetype(::Type{I}) where {I <: Sector}
     if Base.IteratorSize(values(I)) isa Union{HasLength, HasShape}
-        N = length(values(I))
-        return GradedSpace{I, NTuple{N, Int}}
+        return NTuple{length(values(I)), Int}
     else
-        return GradedSpace{I, SectorDict{I, Int}}
+        return SectorDict{I, Int}
     end
 end
 
