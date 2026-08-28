@@ -24,16 +24,22 @@ for pullback! in (:qr_null_pullback!, :lq_null_pullback!)
         return Δt
     end
 end
-_notrunc_ind(t) = SectorDict(c => Colon() for c in blocksectors(t))
+function _notrunc_ind(t)
+    I = sectortype(t)
+    return _builddensemap(sectorstoragetype(I), I, blocks(t), Colon) do _, _
+        Colon()
+    end
+end
 
 for pullback! in (:svd_pullback!, :eig_pullback!, :eigh_pullback!)
     @eval function MAK.$pullback!(
             Δt::AbstractTensorMap, t::AbstractTensorMap, F, ΔF, inds = _notrunc_ind(t);
             kwargs...
         )
+        Isec = sectortype(t)
         foreachblock(Δt, t) do c, (Δb, b)
-            haskey(inds, c) || return nothing
-            ind = inds[c]
+            ind = _denseget(inds, Isec, c)
+            isnothing(ind) && return nothing
             Fc = block.(F, Ref(c))
             ΔFc = block.(ΔF, Ref(c))
             MAK.$pullback!(Δb, b, Fc, ΔFc, ind; kwargs...)
