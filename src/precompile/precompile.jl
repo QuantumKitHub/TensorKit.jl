@@ -53,9 +53,9 @@ const PRECOMPILE_FACTORIZATIONS = @load_preference("precompile_factorizations", 
 
 # Workload
 # --------
-include("precompile/indexmanipulations.jl")
-include("precompile/contract.jl")
-include("precompile/factorizations.jl")
+include("indexmanipulations.jl")
+include("contract.jl")
+include("factorizations.jl")
 
 @setup_workload begin
     for name in PRECOMPILE_SECTORS

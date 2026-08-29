@@ -287,6 +287,6 @@ include("auxiliary/ad.jl")
 include("pullbacks/tensoroperations.jl")
 include("pullbacks/indexmanipulations.jl")
 
-include("precompile.jl")
+include("precompile/precompile.jl")
 
 end
