@@ -51,6 +51,27 @@ struct GenericTreeTransformer{T, N} <: TreeTransformer
     data::Vector{GenericTransformerData{T, N}}
 end
 
+"""
+    buffersize(transformer::GenericTreeTransformer) -> Int
+    buffersize(t::AbstractTensorMap, fblocks) -> Int
+
+Compute the workspace size required to pack, recouple and unpack the largest multi-tree
+block, i.e. `prod(sz_src) * (rows + cols)` where `(rows, cols) = size(U)` is the size of
+the recoupling matrix. The second form computes this from the fusion-tree blocks of a
+tensor instead, using the fact that the recoupling matrix is square.
+"""
+function buffersize(transformer::GenericTreeTransformer)
+    return maximum(transformer.data; init = 0) do (U, _, (sz_src, _))
+        return length(U) == 1 ? 0 : prod(sz_src) * sum(size(U))
+    end
+end
+function buffersize(t::AbstractTensorMap, fblocks)
+    return maximum(fblocks; init = 0) do src
+        n = length(src)
+        return n == 1 ? 0 : 2 * n * length(t[first(fusiontrees(src))...])
+    end
+end
+
 function GenericTreeTransformer(transform, p, Vdst, Vsrc)
     t₀ = Base.time()
     permute(Vsrc, p) == Vdst || throw(SpaceMismatch("Incompatible spaces for permuting."))
@@ -67,41 +88,19 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
     data = Vector{GenericTransformerData{T, N}}(undef, nblocks)
 
     nthreads = get_num_manipulation_threads()
-    if nthreads > 1
-        counter = Threads.Atomic{Int}(1)
-        Threads.@sync for _ in 1:min(nthreads, nblocks)
-            Threads.@spawn begin
-                while true
-                    local_counter = Threads.atomic_add!(counter, 1)
-                    local_counter > nblocks && break
-                    fs_src = fblocks[local_counter]
-                    fs_dst, U = transform(fs_src)
-                    sz_src, newstructs_src = repack_transformer_structure(fusionstructure_src, fusiontrees(fs_src))
-                    sz_dst, newstructs_dst = repack_transformer_structure(fusionstructure_dst, fusiontrees(fs_dst))
-                    data[local_counter] = U, (sz_dst, newstructs_dst), (sz_src, newstructs_src)
+    taskforeach(1:nblocks, nthreads) do i
+        fs_src = fblocks[i]
+        fs_dst, U = transform(fs_src)
+        sz_src, newstructs_src = repack_transformer_structure(fusionstructure_src, fusiontrees(fs_src))
+        sz_dst, newstructs_dst = repack_transformer_structure(fusionstructure_dst, fusiontrees(fs_dst))
+        data[i] = U, (sz_dst, newstructs_dst), (sz_src, newstructs_src)
 
-                    @debug(
-                        lazy"Created recoupling block for uncoupled: $(fs_src.uncoupled)",
-                        sz = size(U), sparsity = count(!iszero, U) / length(U)
-                    )
-                end
-            end
-        end
-        transformer = GenericTreeTransformer{T, N}(data)
-    else
-        for (i, fs_src) in enumerate(fblocks)
-            fs_dst, U = transform(fs_src)
-            sz_src, newstructs_src = repack_transformer_structure(fusionstructure_src, fusiontrees(fs_src))
-            sz_dst, newstructs_dst = repack_transformer_structure(fusionstructure_dst, fusiontrees(fs_dst))
-            data[i] = U, (sz_dst, newstructs_dst), (sz_src, newstructs_src)
-
-            @debug(
-                lazy"Created recoupling block for uncoupled: $(fs_src.uncoupled)",
-                sz = size(U), sparsity = count(!iszero, U) / length(U)
-            )
-        end
-        transformer = GenericTreeTransformer{T, N}(data)
+        @debug(
+            lazy"Created recoupling block for uncoupled: $(fs_src.uncoupled)",
+            sz = size(U), sparsity = count(!iszero, U) / length(U)
+        )
     end
+    transformer = GenericTreeTransformer{T, N}(data)
 
     # sort by (approximate) weight to facilitate multi-threading strategies
     sort!(transformer)
@@ -190,6 +189,14 @@ function Base.sort!(
     sort!(transformer.data; by, rev)
     return transformer
 end
+
+# For CPU arrays the recoupling matrix can be used as is, also when the scalar types
+# do not match, since Strided handles mixed-eltype mul! without the copy that
+# Adapt.adapt would make (which additionally dispatches dynamically). Other storage
+# types (e.g. GPU arrays) do require the conversion.
+# TODO: transformers with dedicated storagetypes
+_adapt_recoupling(::Type{<:Array}, U::Matrix) = StridedView(U)
+_adapt_recoupling(::Type{A}, U::Matrix) where {A} = Adapt.adapt(A, StridedView(U))
 
 function _transformer_weight((coeff, struct_dst, struct_src)::AbelianTransformerData)
     return prod(struct_dst[1])
