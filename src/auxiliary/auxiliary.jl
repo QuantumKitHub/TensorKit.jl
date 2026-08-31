@@ -94,38 +94,40 @@ end
 end
 
 """
-    taskforeach(f, items, ntasks::Int) -> Nothing
-    taskforeach(f, items, resources::Vector) -> Nothing
+    taskforeach(f, items, ntasks::Integer) -> Nothing
+    taskforeach(f, items, resources) -> Nothing
 
-Apply `f(item)` (respectively `f(item, resource)`) to all elements of `items`,
-distributing the work over at most `ntasks` workers (respectively one worker per entry
-of `resources`), with dynamic load balancing through an atomic counter. The calling
-thread acts as one of the workers, so at most `ntasks - 1` tasks are spawned, and none
-at all for a single worker.
+Apply `f(item)` (respectively `f(item, resource)`) to all elements of `items`, distributing the work over at most `ntasks` workers
+(respectively one worker per entry of the indexable collection `resources`), with dynamic load balancing through an atomic counter.
+The calling thread acts as the first of the workers, so at most `ntasks - 1` tasks are spawned, and none at all for a single worker.
 """
-function taskforeach(f, items, ntasks::Int)
+function taskforeach(f, items, ntasks::Integer)
     items′ = items isa AbstractArray ? items : collect(items)
     n = length(items′)
+    nworkers = min(ntasks, n)
+    nworkers == 0 && return nothing
     counter = Threads.Atomic{Int}(1)
     Threads.@sync begin
-        for _ in 2:min(ntasks, n)
+        for _ in 2:nworkers
             Threads.@spawn _taskforeach_worker(f, items′, counter, n)
         end
         _taskforeach_worker(f, items′, counter, n)
     end
     return nothing
 end
-function taskforeach(f, items, resources::Vector)
-    isempty(resources) && return nothing
+function taskforeach(f, items, resources)
     items′ = items isa AbstractArray ? items : collect(items)
     n = length(items′)
+    nworkers = min(length(resources), n)
+    nworkers == 0 && return nothing
     counter = Threads.Atomic{Int}(1)
     Threads.@sync begin
-        for j in 2:min(length(resources), n)
-            local r = resources[j]
-            Threads.@spawn _taskforeach_worker(Base.Fix2(f, r), items′, counter, n)
+        for j in 2:nworkers
+            let r = @inbounds resources[j]
+                Threads.@spawn _taskforeach_worker(Base.Fix2(f, r), items′, counter, n)
+            end
         end
-        _taskforeach_worker(Base.Fix2(f, first(resources)), items′, counter, n)
+        _taskforeach_worker(Base.Fix2(f, @inbounds(resources[1])), items′, counter, n)
     end
     return nothing
 end
