@@ -214,7 +214,8 @@ function Base.hash(f::FusionTree{I}, h::UInt) where {I}
     end
     return h
 end
-Base.hash(b::FusionTreeBlock, h::UInt) = hash(fusiontrees(b), h)
+Base.hash(b::FusionTreeBlock, h::UInt) = isempty(b) ? h : hash(b.uncoupled, hash(b.isdual, h))
+
 function Base.:(==)(f₁::FusionTree{I, N}, f₂::FusionTree{I, N}) where {I <: Sector, N}
     f₁.coupled == f₂.coupled || return false
     @inbounds for i in 1:N
