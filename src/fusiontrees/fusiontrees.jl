@@ -214,7 +214,9 @@ function Base.hash(f::FusionTree{I}, h::UInt) where {I}
     end
     return h
 end
-Base.hash(b::FusionTreeBlock, h::UInt) = isempty(b) ? h : hash(b.uncoupled, hash(b.isdual, h))
+# Hashing the first tree pair covers the block's defining data `(uncoupled, isdual)`, while
+# also disambiguating the ad-hoc single-pair blocks constructed in `planar_trace`
+Base.hash(b::FusionTreeBlock, h::UInt) = isempty(b) ? h : hash(first(fusiontrees(b)), h)
 
 function Base.:(==)(f₁::FusionTree{I, N}, f₂::FusionTree{I, N}) where {I <: Sector, N}
     f₁.coupled == f₂.coupled || return false
