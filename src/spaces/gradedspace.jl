@@ -31,7 +31,7 @@ sectortype(::Type{<:GradedSpace{I}}) where {I <: Sector} = I
 
 function GradedSpace{I, NTuple{N, Int}}(dims; dual::Bool = false) where {I, N}
     d = zeros(Int, N)
-    isset = falses(N)
+    isset = falses(N) # see if this is still needed if we're restricting to small N
     for (c, dc) in dims
         k = convert(I, c)
         i = findindex(values(I), k)
@@ -111,9 +111,9 @@ end
 Base.axes(V::GradedSpace) = Base.OneTo(dim(V))
 function Base.axes(V::GradedSpace{I}, c::I) where {I <: Sector}
     offset = 0
-    for c′ in sectors(V)
+    for (c′, d′) in blockdims(V)
         c′ == c && break
-        offset += dim(c′) * dim(V, c′)
+        offset += dim(c′) * d′
     end
     return (offset + 1):(offset + dim(c) * dim(V, c))
 end
@@ -124,9 +124,9 @@ isdual(V::GradedSpace) = V.dual
 isconj(V::GradedSpace) = isdual(V)
 function flip(V::GradedSpace{I}) where {I <: Sector}
     return if isdual(V)
-        typeof(V)(c => dim(V, c) for c in sectors(V))
+        typeof(V)(blockdims(V))
     else
-        typeof(V)(dual(c) => dim(V, c) for c in sectors(V))'
+        typeof(V)(dual(c) => d for (c, d) in blockdims(V))'
     end
 end
 
@@ -160,20 +160,11 @@ function ⊖(V::GradedSpace{I, <:SectorDict}, W::GradedSpace{I, <:SectorDict}) w
 end
 
 function fuse(V₁::GradedSpace{I, <:SectorDict}, V₂::GradedSpace{I, <:SectorDict}) where {I <: Sector}
-    dual1, dual2 = isdual(V₁), isdual(V₂)
-    acc = Dict{I, Int}() # SectorDict `get` within the double for loop accumulates O(N^2) ` findindex` calls -> sort afterwards
-    k1, k2 = V₁.dims.keys, V₂.dims.keys
-    v1, v2 = V₁.dims.values, V₂.dims.values
-    @inbounds for na in eachindex(k1)
-        a₀, da = k1[na], v1[na]
-        a = dual1 ? dual(a₀) : a₀
-        for nb in eachindex(k2)
-            b₀, db = k2[nb], v2[nb]
-            b = dual2 ? dual(b₀) : b₀
-            dab = da * db
-            for c in a ⊗ b
-                acc[c] = get(acc, c, 0) + Nsymbol(a, b, c) * dab
-            end
+    acc = Dict{I, Int}() # SectorDict `get` within the double for loop accumulates O(N^2) `findindex` calls -> sort afterwards
+    for (a, da) in blockdims(V₁), (b, db) in blockdims(V₂)
+        dab = da * db
+        for c in a ⊗ b
+            acc[c] = get(acc, c, 0) + Nsymbol(a, b, c) * dab
         end
     end
     ks0 = collect(keys(acc))
@@ -238,6 +229,24 @@ function sectors(V::GradedSpace{I, NTuple{N, Int}}) where {I <: Sector, N}
     end
 end
 
+"""
+    blockdims(V::GradedSpace)
+
+Return an iterator over the non-zero blocks of the graded space `V`.
+These blocks contain the `Sector`s and their corresponding degeneracy,
+i.e. the number of times the sector appears in the direct sum decomposition of `V`.
+"""
+function blockdims(V::GradedSpace{I, <:AbstractDict}) where {I <: Sector}
+    return ((isdual(V) ? dual(c) : c) => d for (c, d) in V.dims)
+end
+function blockdims(V::GradedSpace{I, NTuple{N, Int}}) where {I <: Sector, N}
+    vals = values(I)
+    return (
+        (isdual(V) ? dual(vals[n]) : vals[n]) => V.dims[n]
+            for n in 1:N if !iszero(V.dims[n])
+    )
+end
+
 Base.hash(V::GradedSpace, h::UInt) = hash(V.dual, hash(V.dims, h))
 function Base.:(==)(V₁::GradedSpace, V₂::GradedSpace)
     return sectortype(V₁) == sectortype(V₂) && (V₁.dims == V₂.dims) && V₁.dual == V₂.dual
@@ -270,7 +279,7 @@ function Base.show(io::IO, V::GradedSpace)
         cls = ")"
     end
 
-    v = [c => dim(V, c) for c in sectors(V)]
+    v = collect(blockdims(V))
 
     # logic stolen from Base.show_vector
     limited = get(io, :limit, false)::Bool
@@ -301,7 +310,7 @@ function Base.show(io::IO, ::MIME"text/plain", V::GradedSpace)
     # print detailed sector information - hijack Base.Vector printing
     print(io, ":\n")
     isdual(V) && (V = dual(V))
-    print_data = [c => dim(V, c) for c in sectors(V)]
+    print_data = collect(blockdims(V))
     ioc = IOContext(io, :typeinfo => eltype(print_data))
     Base.print_matrix(ioc, print_data)
 
