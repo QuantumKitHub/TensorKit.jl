@@ -88,6 +88,7 @@ strides that depend on the degeneracy (multiplicity) dimensions. Specific to a g
   same order as [`sectorstructure`](@ref)`.blocksectors`.
 - `subblockstructure`: `Vector` of [`StridedStructure`](@ref) `(sizes, strides, offset)`
   values, one per fusion tree pair, in the same order as [`sectorstructure`](@ref)`.fusiontrees`.
+  The strides of extent-1 axes are normalized, so that every stride tuple is monotone.
 
 See also [`degeneracystructure`](@ref), [`SectorStructure`](@ref).
 """
@@ -192,7 +193,9 @@ function _subblock_strides(subsz, sz, str)
     strides = Strided.StridedViews._computereshapestrides(subsz, sz_simplify...)
     isnothing(strides) &&
         throw(ArgumentError("unexpected error in computing subblock strides"))
-    return strides
+    # normalize the unobservable strides of extent-1 axes, so that every stored stride
+    # tuple is monotone -- which is what block-sparse backends require
+    return Strided.StridedViews._normalizestrides(subsz, strides)
 end
 
 CacheStyle(::typeof(degeneracystructure), ::HomSpace) = GlobalLRUCache()

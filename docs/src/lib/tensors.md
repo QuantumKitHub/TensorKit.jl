@@ -194,6 +194,25 @@ contract!
 ⊗(::AbstractTensorMap, ::AbstractTensorMap)
 ```
 
+## Backends and caches
+
+Backends select how an operation is carried out; see [Backends](@ref) for the discussion.
+
+```@docs
+CuTENSORBlockSparse
+blocksparse_compatible
+plan_contract
+TensorKit.blocksparsestructure
+TensorKit.BlockSparseStructure
+TensorKit.blocksparse_contract_signs
+TensorKit.BlockSparseSigns
+TensorKit.BlockSparseUnsupported
+TensorKit.blockscheduler
+TensorKit.with_blockscheduler
+empty_globalcaches!
+TensorKit.global_cache_info
+```
+
 ## `TensorMap` factorizations
 
 The factorization methods are powered by [MatrixAlgebraKit.jl](https://github.com/QuantumKitHub/MatrixAlgebraKit.jl) and all follow the same strategy.
