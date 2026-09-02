@@ -7,7 +7,22 @@ Only tensor products between [`ElementarySpace`](@ref) objects of the same type 
 """
 struct ProductSpace{S <: ElementarySpace, N} <: CompositeSpace{S}
     spaces::NTuple{N, S}
-    ProductSpace{S, N}(spaces::NTuple{N, S}) where {S <: ElementarySpace, N} = new{S, N}(spaces)
+    function ProductSpace{S, N}(spaces::NTuple{N, S}) where {S <: ElementarySpace, N}
+        _check_unit_compatibility(S, spaces)
+        return new{S, N}(spaces)
+    end
+end
+
+# check that every product of elementary spaces is compatible color-wise
+function _check_unit_compatibility(::Type{S}, spaces::NTuple{N, S}) where {N, S <: ElementarySpace}
+    UnitStyle(sectortype(S)) isa GenericUnit || return nothing
+    N == 0 && return nothing
+
+    @inbounds for i in 1:(N - 1)
+        _rightunit(spaces[i]) == _leftunit(spaces[i + 1]) ||
+            throw(ArgumentError(lazy"spaces $(i) and $(i + 1) have incompatible coloring"))
+    end
+    return nothing
 end
 
 function ProductSpace{S, N}(spaces::Vararg{S, N}) where {S <: ElementarySpace, N}
@@ -64,7 +79,7 @@ Base.axes(P::ProductSpace) = map(axes, P)
 Base.axes(P::ProductSpace, n::Int) = axes(P[n])
 
 dual(P::ProductSpace{<:ElementarySpace, 0}) = P
-dual(P::ProductSpace) = ProductSpace(map(dual, reverse(P)))
+dual(P::ProductSpace) = ProductSpace(map(dual, reverse(P.spaces)))
 Base.conj(P::ProductSpace{<:ElementarySpace, 0}) = P
 Base.conj(P::ProductSpace) = ProductSpace(map(conj, P))
 
