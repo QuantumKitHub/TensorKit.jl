@@ -330,19 +330,22 @@ Base.getindex(::SpaceTable) = ComplexSpace
 Base.getindex(::SpaceTable, ::Type{Trivial}) = ComplexSpace
 Base.getindex(::SpaceTable, I::Type{<:Sector}) = GradedSpace{I, sectorstoragetype(I)}
 
+# based on Julia tuple unrolling range
+const _ntuple_storage_threshold = 32
+
 """
     sectorstoragetype(I::Type{<:Sector}) -> Type
 
 The storage type `D` used for the `dims` field of `GradedSpace{I, D}`.
-This is `NTuple{N,Int}` with `N = length(values(I))` if `I` has a finite, known length,
-or `SectorDict{I,Int}` otherwise.
+This is `NTuple{N,Int}` with `N = length(values(I))` if `I` has a finite, known length
+of at most `$_ntuple_storage_threshold`, or `SectorDict{I,Int}` otherwise.
 """
 Base.@assume_effects :foldable function sectorstoragetype(::Type{I}) where {I <: Sector}
     if Base.IteratorSize(values(I)) isa Union{HasLength, HasShape}
-        return NTuple{length(values(I)), Int}
-    else
-        return SectorDict{I, Int}
+        N = length(values(I))
+        N <= _ntuple_storage_threshold && return NTuple{N, Int}
     end
+    return SectorDict{I, Int}
 end
 
 Base.getindex(::ComplexNumbers, I::Type{<:Sector}) = Vect[I]
