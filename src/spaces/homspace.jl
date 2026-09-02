@@ -9,6 +9,43 @@ to denote categories and their objects, and keep `HomSpace` distinct.
 struct HomSpace{S <: ElementarySpace, P1 <: CompositeSpace{S}, P2 <: CompositeSpace{S}}
     codomain::P1
     domain::P2
+    function HomSpace{S, P1, P2}(codomain::P1, domain::P2) where {S <: ElementarySpace, P1 <: CompositeSpace{S}, P2 <: CompositeSpace{S}}
+        _check_unit_compatibility(codomain, domain)
+        return new{S, P1, P2}(codomain, domain)
+    end
+end
+function HomSpace(codomain::P1, domain::P2) where {S, P1 <: CompositeSpace{S}, P2 <: CompositeSpace{S}}
+    return HomSpace{S, P1, P2}(codomain, domain)
+end
+
+function _check_unit_compatibility(codomain::ProductSpace{S}, domain::ProductSpace{S}) where {S <: ElementarySpace}
+    UnitStyle(sectortype(S)) isa GenericUnit || return nothing
+    N₁, N₂ = length(codomain), length(domain)
+    N₁ == N₂ == 0 && return nothing # one() ← one()
+
+    # product spaces themselves already check that their factors are compatible
+    if N₁ == 0 # codomain is empty, domain is non-empty
+        VdomL, VdomR = domain[1], domain[N₂]
+        _leftunit(VdomL) == _rightunit(VdomR) ||
+            throw(ArgumentError("cannot construct HomSpace: domain has incompatible left and right units"))
+        return nothing
+    elseif N₂ == 0 # domain is empty, codomain is non-empty
+        VcodL, VcodR = codomain[1], codomain[N₁]
+        _leftunit(VcodL) == _rightunit(VcodR) ||
+            throw(ArgumentError("cannot construct HomSpace: codomain has incompatible left and right units"))
+        return nothing
+    end
+
+    # codomain and domain are non-empty
+    # just need to check coupled charge compatibility
+    VcodL, VdomL = codomain[1], domain[1]
+    _leftunit(VcodL) == _leftunit(VdomL) ||
+        throw(ArgumentError("cannot construct HomSpace: codomain and domain have incompatible left units"))
+
+    VcodR, VdomR = codomain[N₁], domain[N₂]
+    _rightunit(VcodR) == _rightunit(VdomR) ||
+        throw(ArgumentError("cannot construct HomSpace: codomain and domain have incompatible right units"))
+    return nothing
 end
 
 function HomSpace(codomain::S, domain::CompositeSpace{S}) where {S <: ElementarySpace}
