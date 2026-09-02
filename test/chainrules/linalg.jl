@@ -112,6 +112,28 @@ for V in spacelist
 
             test_rrule(transpose, A, ((2, 5, 4), (1, 3)))
             symmetricbraiding && test_rrule(permute, A, ((1, 3, 2), (5, 4)))
+
+            # the rrules must accept every keyword the primal accepts: `repartition`
+            # forwards its own `backend`/`allocator` defaults on to `transpose`, so a
+            # `copy`-only rrule signature breaks AD for callers that pass no keywords at all
+            bakwargs = (;
+                backend = TensorOperations.DefaultBackend(),
+                allocator = TensorOperations.DefaultAllocator(),
+            )
+            test_rrule(transpose, A, ((2, 5, 4), (1, 3)); fkwargs = bakwargs)
+            symmetricbraiding &&
+                test_rrule(permute, A, ((1, 3, 2), (5, 4)); fkwargs = bakwargs)
+
+            # `repartition` has no rrule of its own: it is differentiated by AD-ing through
+            # its body down to the `transpose` rrule, so it has to be tested end-to-end
+            # rather than with `test_rrule`
+            for k in 0:numind(A)
+                test_ad_rrule(repartition, A, k)
+            end
+            # also cover the explicit-`N₂` arity and the `copy` keyword
+            test_ad_rrule(repartition, A, 2, numind(A) - 2)
+            test_ad_rrule(repartition, A, 2; fkwargs = (; copy = true))
+
             hasbraiding && test_rrule(twist, A, 1)
             hasbraiding && test_rrule(twist, A, [1, 3])
 

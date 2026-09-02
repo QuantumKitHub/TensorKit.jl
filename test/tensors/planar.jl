@@ -101,6 +101,33 @@ end
 @testset "@planar" verbose = true begin
     T = ComplexF64
 
+    @testset "backend and allocator insertion" begin
+        # trailing arguments of every `planar*!` call in `ex`
+        function planartrailing(ex, out = Any[])
+            ex isa Expr || return out
+            if Meta.isexpr(ex, :call) && ex.args[1] isa GlobalRef &&
+                    ex.args[1].name in (:planaradd!, :planartrace!, :planarcontract!)
+                push!(out, ex.args[end])
+            end
+            foreach(a -> planartrailing(a, out), ex.args)
+            return out
+        end
+
+        ex = @macroexpand @planar backend = MarkerBackend() C[i; j] := A[i; k l] *
+            τ[k l; m n] * B[m n; j]
+        trailing = planartrailing(ex)
+        @test !isempty(trailing)
+        @test all(==(:(MarkerBackend())), trailing)
+
+        # an allocator implies a default backend, and both land on the planar calls
+        ex = @macroexpand @planar allocator = MarkerAllocator() C[i; j] := A[i; k l] *
+            τ[k l; m n] * B[m n; j]
+        trailing = planartrailing(ex)
+        @test !isempty(trailing)
+        @test all(==(:(MarkerAllocator())), trailing)
+        @test occursin("DefaultBackend", string(ex))
+    end
+
     @testset "contractcheck" begin
         V = ℂ^2
         A = rand(T, V ⊗ V ← V)
