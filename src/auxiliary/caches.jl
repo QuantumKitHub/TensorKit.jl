@@ -69,6 +69,9 @@ macro cached(ex)
     Meta.isexpr(fcall, :call) ||
         error("cached macro can only be used on function definitions")
     fname = fcall.args[1]
+    # timer labels for the cache lookup and the miss-path construction
+    lookuplabel = string("bookkeeping: cache ", fname)
+    misslabel = string(_cached_category(fname), ": compute ", fname)
     fargs = fcall.args[2:end]
     fargnames = map(fargs) do arg
         if Meta.isexpr(arg, :(::))
@@ -106,7 +109,7 @@ macro cached(ex)
     if hasparams
         fnocachecall = Expr(:where, fnocachecall, params...)
     end
-    fnocachebody = Expr(:call, _fname, fargnames...)
+    fnocachebody = :(@timeit_debug GLOBAL_TIMER $misslabel $(Expr(:call, _fname, fargnames...)))
     if typed
         T = gensym(:T)
         fnocachebody = Expr(:block, Expr(:(=), T, typeex), Expr(:(::), fnocachebody, T))
@@ -135,8 +138,8 @@ macro cached(ex)
         key = Expr(:tuple, fargnames...)
     end
     getvalex = :(
-        get!($cachevar, $key) do
-            return $_fname($(fargnames...))
+        @timeit_debug GLOBAL_TIMER $lookuplabel get!($cachevar, $key) do
+            return @timeit_debug GLOBAL_TIMER $misslabel $_fname($(fargnames...))
         end
     )
     if typed

@@ -221,7 +221,9 @@ See also [`permute`](@ref) for creating a new tensor.
     )
     @boundscheck spacecheck_transform(permute, tdst, tsrc, p)
     levels = ntuple(identity, numind(tsrc))
-    return @inbounds braid!(tdst, tsrc, p, levels, α, β, backend, allocator)
+    return @timeit_debug GLOBAL_TIMER "permute!" @inbounds braid!(
+        tdst, tsrc, p, levels, α, β, backend, allocator
+    )
 end
 
 """
@@ -307,14 +309,16 @@ See also [`braid`](@ref) for creating a new tensor.
         backend::AbstractBackend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
     )
     @boundscheck spacecheck_transform(braid, tdst, tsrc, p, levels)
-    if has_array_view(tdst) && has_array_view(tsrc)
-        TO.tensoradd!(tdst[], tsrc[], p, false, α, β, backend, allocator)
-        return tdst
+    @timeit_debug GLOBAL_TIMER "braid!" begin
+        if has_array_view(tdst) && has_array_view(tsrc)
+            TO.tensoradd!(tdst[], tsrc[], p, false, α, β, backend, allocator)
+            return tdst
+        end
+        levels1 = TupleTools.getindices(levels, codomainind(tsrc))
+        levels2 = TupleTools.getindices(levels, domainind(tsrc))
+        transformer = treebraider(tdst, tsrc, p, (levels1, levels2))
+        return @inbounds add_transform!(tdst, tsrc, p, transformer, α, β, backend, allocator)
     end
-    levels1 = TupleTools.getindices(levels, codomainind(tsrc))
-    levels2 = TupleTools.getindices(levels, domainind(tsrc))
-    transformer = treebraider(tdst, tsrc, p, (levels1, levels2))
-    return @inbounds add_transform!(tdst, tsrc, p, transformer, α, β, backend, allocator)
 end
 
 """
@@ -383,12 +387,14 @@ end
         backend::AbstractBackend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
     )
     @boundscheck spacecheck_transform(transpose, tdst, tsrc, p)
-    if has_array_view(tdst) && has_array_view(tsrc)
-        TO.tensoradd!(tdst[], tsrc[], p, false, α, β, backend, allocator)
-        return tdst
+    @timeit_debug GLOBAL_TIMER "transpose!" begin
+        if has_array_view(tdst) && has_array_view(tsrc)
+            TO.tensoradd!(tdst[], tsrc[], p, false, α, β, backend, allocator)
+            return tdst
+        end
+        transformer = treetransposer(tdst, tsrc, p)
+        return @inbounds add_transform!(tdst, tsrc, p, transformer, α, β, backend, allocator)
     end
-    transformer = treetransposer(tdst, tsrc, p)
-    return @inbounds add_transform!(tdst, tsrc, p, transformer, α, β, backend, allocator)
 end
 
 """
@@ -564,7 +570,9 @@ Base.@deprecate(
         add!(tdst, tsrc, α, β)
     else
         if has_array_view(tdst) && has_array_view(tsrc)
-            TO.tensoradd!(tdst[], tsrc[], p, false, α, β, backend, allocator)
+            @timeit_debug GLOBAL_TIMER "dense: tensoradd" TO.tensoradd!(
+                tdst[], tsrc[], p, false, α, β, backend, allocator
+            )
         else
             ntasks = use_threaded_transform(tdst, transformer) ? get_num_transformer_threads() : 1
             if tdst isa TensorMap && tsrc isa TensorMap # unpack data fields to avoid specializing
@@ -590,23 +598,27 @@ function add_transform_kernel!(
     )
     I = sectortype(tdst)
     if FusionStyle(I) === UniqueFusion()
-        taskforeach(fusiontrees(tsrc), ntasks) do (f₁, f₂)
-            (f₁′, f₂′), coeff = transformer((f₁, f₂))
-            @inbounds TO.tensoradd!(
-                tdst[f₁′, f₂′], tsrc[f₁, f₂], p, false, α * coeff, β, backend, allocator
-            )
+        @timeit_debug GLOBAL_TIMER "dense: tensoradd" begin
+            taskforeach(fusiontrees(tsrc), ntasks) do (f₁, f₂)
+                (f₁′, f₂′), coeff = transformer((f₁, f₂))
+                @inbounds TO.tensoradd!(
+                    tdst[f₁′, f₂′], tsrc[f₁, f₂], p, false, α * coeff, β, backend, allocator
+                )
+            end
         end
         return nothing
     end
 
-    fblocks = fusionblocks(tsrc)
-    bufsize = buffersize(tsrc, fblocks)
+    @timeit_debug GLOBAL_TIMER "bookkeeping: fusionblocks" begin
+        fblocks = fusionblocks(tsrc)
+        bufsize = buffersize(tsrc, fblocks)
+    end
 
     # One max-sized workspace per task (a single one that is reused by all blocks when
     # serial), allocated on the calling thread before any task spawns, so that also
     # allocators that are not thread-safe can be used.
     cp = TO.allocator_checkpoint!(allocator)
-    buffers = [
+    @timeit_debug GLOBAL_TIMER "alloc: buffers" buffers = [
         TO.tensoralloc(storagetype(tdst), bufsize, Val(true), allocator)
             for _ in 1:clamp(length(fblocks), 1, ntasks)
     ]
@@ -626,11 +638,13 @@ function add_transform_kernel!(
         data_dst::DenseVector, data_src::DenseVector, p, transformer::AbelianTreeTransformer,
         α, β, backend, allocator, ntasks::Int
     )
-    taskforeach(transformer.data, ntasks) do (coeff, struct_dst, struct_src)
-        TO.tensoradd!(
-            StridedView(data_dst, struct_dst...), StridedView(data_src, struct_src...),
-            p, false, α * coeff, β, backend, allocator
-        )
+    @timeit_debug GLOBAL_TIMER "dense: tensoradd" begin
+        taskforeach(transformer.data, ntasks) do (coeff, struct_dst, struct_src)
+            TO.tensoradd!(
+                StridedView(data_dst, struct_dst...), StridedView(data_src, struct_src...),
+                p, false, α * coeff, β, backend, allocator
+            )
+        end
     end
     return nothing
 end
@@ -644,7 +658,7 @@ function add_transform_kernel!(
     # serial), allocated on the calling thread before any task spawns, so that also
     # allocators that are not thread-safe can be used.
     cp = TO.allocator_checkpoint!(allocator)
-    buffers = [
+    @timeit_debug GLOBAL_TIMER "alloc: buffers" buffers = [
         TO.tensoralloc(typeof(data_dst), bufsize, Val(true), allocator)
             for _ in 1:clamp(length(transformer.data), 1, ntasks)
     ]
@@ -667,7 +681,7 @@ function _add_transform_block!(
     if length(src) == 1 # Degenerate block with a single tree: no matmul needed.
         (f₁, f₂) = only(fusiontrees(src))
         (f₁′, f₂′) = only(fusiontrees(dst))
-        @inbounds TO.tensoradd!(
+        @timeit_debug GLOBAL_TIMER "dense: tensoradd" @inbounds TO.tensoradd!(
             tdst[f₁′, f₂′], tsrc[f₁, f₂], p, false, α * only(U), β, backend, allocator
         )
     else # Multi-tree block: pack → recoupling matmul → unpack.
@@ -682,7 +696,7 @@ function _add_transform_block!(
 
         # 1. Extract: copy each source block into column i of buffer_src as a flat vector,
         #    using a trivial permutation so the layout is canonical before the matmul.
-        @inbounds for (i, (f₁, f₂)) in enumerate(fusiontrees(src))
+        @timeit_debug GLOBAL_TIMER "dense: pack" @inbounds for (i, (f₁, f₂)) in enumerate(fusiontrees(src))
             TO.tensoradd!(
                 sreshape(view(buffer_src, :, i), sz_src), tsrc[f₁, f₂],
                 ptriv, false, One(), Zero(), backend, allocator
@@ -691,12 +705,14 @@ function _add_transform_block!(
 
         # 2. Recoupling: buffer_dst = α * buffer_src * U^T  (each output tree is a linear
         #    combination of input trees weighted by the recoupling coefficients).
-        U′ = _adapt_recoupling(storagetype(tdst), U)
-        mul!(buffer_dst, buffer_src, transpose(U′), α, Zero())
+        @timeit_debug GLOBAL_TIMER "dense: recouple mul!" begin
+            U′ = _adapt_recoupling(storagetype(tdst), U)
+            mul!(buffer_dst, buffer_src, transpose(U′), α, Zero())
+        end
 
         # 3. Insert: scatter column i of buffer_dst into the destination, applying the
         #    actual index permutation p in the same tensoradd! call.
-        @inbounds for (i, (f₃, f₄)) in enumerate(fusiontrees(dst))
+        @timeit_debug GLOBAL_TIMER "dense: unpack" @inbounds for (i, (f₃, f₄)) in enumerate(fusiontrees(dst))
             TO.tensoradd!(
                 tdst[f₃, f₄], sreshape(view(buffer_dst, :, i), sz_src),
                 p, false, One(), β, backend, allocator
@@ -713,7 +729,7 @@ function _add_transform_block!(
     )
     if length(U) == 1 # Degenerate block with a single tree: no matmul needed.
         coeff = only(U)
-        TO.tensoradd!(
+        @timeit_debug GLOBAL_TIMER "dense: tensoradd" TO.tensoradd!(
             StridedView(data_dst, sz_dst, only(structs_dst)...),
             StridedView(data_src, sz_src, only(structs_src)...),
             p, false, α * coeff, β, backend, allocator
@@ -727,7 +743,7 @@ function _add_transform_block!(
 
         # 1. Extract: copy each source block into column i of buffer_src as a flat vector,
         #    using a trivial permutation so the layout is canonical before the matmul.
-        @inbounds for (i, struct_src_i) in enumerate(structs_src)
+        @timeit_debug GLOBAL_TIMER "dense: pack" @inbounds for (i, struct_src_i) in enumerate(structs_src)
             TO.tensoradd!(
                 sreshape(view(buffer_src, :, i), sz_src), StridedView(data_src, sz_src, struct_src_i...),
                 ptriv, false, One(), Zero(), backend, allocator
@@ -736,12 +752,14 @@ function _add_transform_block!(
 
         # 2. Recoupling: buffer_dst = α * buffer_src * U^T  (each output tree is a linear
         #    combination of input trees weighted by the recoupling coefficients).
-        U′ = _adapt_recoupling(typeof(data_dst), U)
-        mul!(buffer_dst, buffer_src, transpose(U′), α, Zero())
+        @timeit_debug GLOBAL_TIMER "dense: recouple mul!" begin
+            U′ = _adapt_recoupling(typeof(data_dst), U)
+            mul!(buffer_dst, buffer_src, transpose(U′), α, Zero())
+        end
 
         # 3. Insert: scatter column i of buffer_dst into the destination, applying the
         #    actual index permutation p in the same tensoradd! call.
-        @inbounds for (i, struct_dst_i) in enumerate(structs_dst)
+        @timeit_debug GLOBAL_TIMER "dense: unpack" @inbounds for (i, struct_dst_i) in enumerate(structs_dst)
             TO.tensoradd!(
                 StridedView(data_dst, sz_dst, struct_dst_i...), sreshape(view(buffer_dst, :, i), sz_src),
                 p, false, One(), β, backend, allocator

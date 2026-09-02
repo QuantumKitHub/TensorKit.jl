@@ -91,20 +91,22 @@ function planartrace!(
                     q1 = $(q₁), q2 = $(q₂)"))
     end
 
-    if iszero(β)
-        fill!(C, β)
-    elseif !isone(β)
-        rmul!(C, β)
-    end
-    β′ = One()
-    for (f₁, f₂) in fusiontrees(A)
-        for ((f₁′, f₂′), coeff) in planar_trace((f₁, f₂), (p₁, p₂), (q₁, q₂))
-            TO.tensortrace!(
-                C[f₁′, f₂′],
-                A[f₁, f₂], (p₁, p₂), (q₁, q₂), false,
-                α * coeff, β′,
-                backend, allocator
-            )
+    @timeit_debug GLOBAL_TIMER "planartrace!" begin
+        if iszero(β)
+            fill!(C, β)
+        elseif !isone(β)
+            rmul!(C, β)
+        end
+        β′ = One()
+        @timeit_debug GLOBAL_TIMER "dense: trace" for (f₁, f₂) in fusiontrees(A)
+            for ((f₁′, f₂′), coeff) in planar_trace((f₁, f₂), (p₁, p₂), (q₁, q₂))
+                TO.tensortrace!(
+                    C[f₁′, f₂′],
+                    A[f₁, f₂], (p₁, p₂), (q₁, q₂), false,
+                    α * coeff, β′,
+                    backend, allocator
+                )
+            end
         end
     end
     return C
@@ -159,35 +161,36 @@ function planarcontract!(
         return contract!(C, A, pA, B, pB, pAB, α, β, backend, allocator)
     end
 
-    codA, domA = codomainind(A), domainind(A)
-    codB, domB = codomainind(B), domainind(B)
-    oindA, cindA = pA
-    cindB, oindB = pB
-    oindA, cindA, oindB, cindB = reorder_indices(
-        codA, domA, codB, domB, oindA, cindA, oindB, cindB, pAB...
-    )
-
-    if oindA == codA && cindA == domA
-        A′ = A
-    else
-        A′ = TO.tensoralloc_add(
-            scalartype(A), A, (oindA, cindA), false, Val(true), allocator
+    @timeit_debug GLOBAL_TIMER "planarcontract!" begin
+        codA, domA = codomainind(A), domainind(A)
+        codB, domB = codomainind(B), domainind(B)
+        oindA, cindA = pA
+        cindB, oindB = pB
+        oindA, cindA, oindB, cindB = reorder_indices(
+            codA, domA, codB, domB, oindA, cindA, oindB, cindB, pAB...
         )
-        transpose!(A′, A, (oindA, cindA), One(), Zero(), backend, allocator)
-    end
 
-    if cindB == codB && oindB == domB
-        B′ = B
-    else
-        B′ = TensorOperations.tensoralloc_add(
-            scalartype(B), B, (cindB, oindB), false, Val(true), allocator
-        )
-        transpose!(B′, B, (cindB, oindB), One(), Zero(), backend, allocator)
-    end
-    mul!(C, A′, B′, α, β)
-    (oindA == codA && cindA == domA) || TO.tensorfree!(A′, allocator)
-    (cindB == codB && oindB == domB) || TO.tensorfree!(B′, allocator)
+        if oindA == codA && cindA == domA
+            A′ = A
+        else
+            A′ = @timeit_debug GLOBAL_TIMER "alloc: buffers" TO.tensoralloc_add(
+                scalartype(A), A, (oindA, cindA), false, Val(true), allocator
+            )
+            transpose!(A′, A, (oindA, cindA), One(), Zero(), backend, allocator)
+        end
 
+        if cindB == codB && oindB == domB
+            B′ = B
+        else
+            B′ = @timeit_debug GLOBAL_TIMER "alloc: buffers" TensorOperations.tensoralloc_add(
+                scalartype(B), B, (cindB, oindB), false, Val(true), allocator
+            )
+            transpose!(B′, B, (cindB, oindB), One(), Zero(), backend, allocator)
+        end
+        mul!(C, A′, B′, α, β)
+        (oindA == codA && cindA == domA) || TO.tensorfree!(A′, allocator)
+        (cindB == codB && oindB == domB) || TO.tensorfree!(B′, allocator)
+    end
     return C
 end
 

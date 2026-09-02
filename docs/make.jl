@@ -34,6 +34,7 @@ pages = [
             "man/factorizations.md",
             "man/contractions.md",
         ],
+        "man/profiling.md",
     ],
     "Library" => [
         "lib/sectors.md", "lib/fusiontrees.md",
