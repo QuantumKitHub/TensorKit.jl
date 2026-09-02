@@ -23,7 +23,7 @@ function AbelianTreeTransformer(transform, p, Vdst, Vsrc)
     N = numind(Vsrc)
     data = Vector{Tuple{T, StridedStructure{N}, StridedStructure{N}}}(undef, L)
 
-    for (i, (f_src, stridestructure_src)) in enumerate(pairs(fts_src))
+    @timeit_debug GLOBAL_TIMER "symmetry: tree transform" for (i, (f_src, stridestructure_src)) in enumerate(pairs(fts_src))
         f_dst, coeff = transform(f_src)
         stridestructure_dst = fts_dst[f_dst]
         data[i] = (coeff, stridestructure_dst, stridestructure_src)
@@ -83,27 +83,31 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc)
     N₁ = numout(Vsrc)
     N₂ = numin(Vsrc)
 
-    fblocks = fusionblocks(Vsrc)
+    fblocks = @timeit_debug GLOBAL_TIMER "bookkeeping: fusionblocks" fusionblocks(Vsrc)
     nblocks = length(fblocks)
     data = Vector{GenericTransformerData{T, N}}(undef, nblocks)
 
     nthreads = get_num_manipulation_threads()
-    taskforeach(1:nblocks, nthreads) do i
-        fs_src = fblocks[i]
-        fs_dst, U = transform(fs_src)
-        sz_src, newstructs_src = repack_transformer_structure(fusionstructure_src, fusiontrees(fs_src))
-        sz_dst, newstructs_dst = repack_transformer_structure(fusionstructure_dst, fusiontrees(fs_dst))
-        data[i] = U, (sz_dst, newstructs_dst), (sz_src, newstructs_src)
+    @timeit_debug GLOBAL_TIMER "symmetry: recoupling matrices" begin
+        taskforeach(1:nblocks, nthreads) do i
+            fs_src = fblocks[i]
+            fs_dst, U = transform(fs_src)
+            @timeit_debug GLOBAL_TIMER "bookkeeping: repack" begin
+                sz_src, newstructs_src = repack_transformer_structure(fusionstructure_src, fusiontrees(fs_src))
+                sz_dst, newstructs_dst = repack_transformer_structure(fusionstructure_dst, fusiontrees(fs_dst))
+            end
+            data[i] = U, (sz_dst, newstructs_dst), (sz_src, newstructs_src)
 
-        @debug(
-            lazy"Created recoupling block for uncoupled: $(fs_src.uncoupled)",
-            sz = size(U), sparsity = count(!iszero, U) / length(U)
-        )
+            @debug(
+                lazy"Created recoupling block for uncoupled: $(fs_src.uncoupled)",
+                sz = size(U), sparsity = count(!iszero, U) / length(U)
+            )
+        end
     end
     transformer = GenericTreeTransformer{T, N}(data)
 
     # sort by (approximate) weight to facilitate multi-threading strategies
-    sort!(transformer)
+    @timeit_debug GLOBAL_TIMER "bookkeeping: sort" sort!(transformer)
 
     Δt = Base.time() - t₀
 

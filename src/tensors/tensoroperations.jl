@@ -234,10 +234,12 @@ function trace_permute!(
                     q₁ = $(q₁), q₂ = $(q₂)"))
     end
 
-    if has_array_view(tdst) && has_array_view(tsrc)
-        TO.tensortrace!(tdst[], tsrc[], (p₁, p₂), (q₁, q₂), false, α, β, backend)
-    else
-        _trace_permute!(FusionStyle(I), tdst, tsrc, (p₁, p₂), (q₁, q₂), α, β, backend)
+    @timeit_debug GLOBAL_TIMER "trace_permute!" begin
+        if has_array_view(tdst) && has_array_view(tsrc)
+            TO.tensortrace!(tdst[], tsrc[], (p₁, p₂), (q₁, q₂), false, α, β, backend)
+        else
+            _trace_permute!(FusionStyle(I), tdst, tsrc, (p₁, p₂), (q₁, q₂), α, β, backend)
+        end
     end
 
     return tdst
@@ -248,7 +250,7 @@ function _trace_permute!(::UniqueFusion, tdst, tsrc, (p₁, p₂), (q₁, q₂),
     r₁, r₂ = (p₁..., q₁...), (p₂..., q₂...)
     N₁, N₂ = length(p₁), length(p₂)
 
-    for (f₁, f₂) in fusiontrees(tsrc)
+    @timeit_debug GLOBAL_TIMER "dense: trace" for (f₁, f₂) in fusiontrees(tsrc)
         (f₁′, f₂′), coeff = permute((f₁, f₂), (r₁, r₂))
         f₁′′, g₁ = split(f₁′, N₁)
         f₂′′, g₂ = split(f₂′, N₂)
@@ -275,7 +277,7 @@ function _trace_permute!(::FusionStyle, tdst, tsrc, (p₁, p₂), (q₁, q₂), 
 
     for src in fusionblocks(tsrc)
         dst, U = permute(src, (r₁, r₂))
-        for (i, (f₁, f₂)) in enumerate(fusiontrees(src))
+        @timeit_debug GLOBAL_TIMER "dense: trace" for (i, (f₁, f₂)) in enumerate(fusiontrees(src))
             for (j, (f₁′, f₂′)) in enumerate(fusiontrees(dst))
                 coeff = U[j, i]
                 iszero(coeff) && continue
@@ -325,33 +327,37 @@ function contract!(
     length(pA[2]) == length(pB[1]) ||
         throw(IndexError("number of contracted indices does not match"))
 
-    # find optimal contraction scheme by checking the following options:
-    # - sorting the contracted inds of A or B to avoid permutations
-    # - contracting B with A instead to avoid permutations
-    pA′, pB′, pA″, pB″, pAB′ = _contract_candidates(pA, pB, pAB)
+    @timeit_debug GLOBAL_TIMER "contract!" begin
+        @timeit_debug GLOBAL_TIMER "bookkeeping: planning" begin
+            # find optimal contraction scheme by checking the following options:
+            # - sorting the contracted inds of A or B to avoid permutations
+            # - contracting B with A instead to avoid permutations
+            pA′, pB′, pA″, pB″, pAB′ = _contract_candidates(pA, pB, pAB)
 
-    # dims are permutation-invariant, so compute them once here rather than in every memcost call
-    dA, dB, dC = dim(A), dim(B), dim(C)
+            # dims are permutation-invariant, so compute them once here rather than in every memcost call
+            dA, dB, dC = dim(A), dim(B), dim(C)
 
-    # keep order A en B, check possibilities for cind
-    memcost1 = _contract_memcost(dA, dB, dC, C, A, pA′, B, pB′, pAB)
-    memcost2 = _contract_memcost(dA, dB, dC, C, A, pA″, B, pB″, pAB)
+            # keep order A en B, check possibilities for cind
+            memcost1 = _contract_memcost(dA, dB, dC, C, A, pA′, B, pB′, pAB)
+            memcost2 = _contract_memcost(dA, dB, dC, C, A, pA″, B, pB″, pAB)
 
-    # reverse order A en B, check possibilities for cind
-    memcost3 = _contract_memcost(dB, dA, dC, C, B, reverse(pB′), A, reverse(pA′), pAB′)
-    memcost4 = _contract_memcost(dB, dA, dC, C, B, reverse(pB″), A, reverse(pA″), pAB′)
-
-    return if min(memcost1, memcost2) <= min(memcost3, memcost4)
-        if memcost1 <= memcost2
-            return blas_contract!(C, A, pA′, B, pB′, pAB, α, β, backend, allocator)
-        else
-            return blas_contract!(C, A, pA″, B, pB″, pAB, α, β, backend, allocator)
+            # reverse order A en B, check possibilities for cind
+            memcost3 = _contract_memcost(dB, dA, dC, C, B, reverse(pB′), A, reverse(pA′), pAB′)
+            memcost4 = _contract_memcost(dB, dA, dC, C, B, reverse(pB″), A, reverse(pA″), pAB′)
         end
-    else
-        if memcost3 <= memcost4
-            return blas_contract!(C, B, reverse(pB′), A, reverse(pA′), pAB′, α, β, backend, allocator)
+
+        return if min(memcost1, memcost2) <= min(memcost3, memcost4)
+            if memcost1 <= memcost2
+                return blas_contract!(C, A, pA′, B, pB′, pAB, α, β, backend, allocator)
+            else
+                return blas_contract!(C, A, pA″, B, pB″, pAB, α, β, backend, allocator)
+            end
         else
-            return blas_contract!(C, B, reverse(pB″), A, reverse(pA″), pAB′, α, β, backend, allocator)
+            if memcost3 <= memcost4
+                return blas_contract!(C, B, reverse(pB′), A, reverse(pA′), pAB′, α, β, backend, allocator)
+            else
+                return blas_contract!(C, B, reverse(pB″), A, reverse(pA″), pAB′, α, β, backend, allocator)
+            end
         end
     end
 end
@@ -423,7 +429,7 @@ function blas_contract!(
 
     # Bring A in the correct form for BLAS contraction
     if copyA
-        Anew = TO.tensoralloc_add(TC, A, pA, false, Val(true), allocator)
+        Anew = @timeit_debug GLOBAL_TIMER "alloc: buffers" TO.tensoralloc_add(TC, A, pA, false, Val(true), allocator)
         Anew = TO.tensoradd!(Anew, A, pA, false, One(), Zero(), backend, allocator)
         twistA && twist!(Anew, filter(!isdual ∘ Base.Fix1(space, Anew), domainind(Anew)))
     else
@@ -433,7 +439,7 @@ function blas_contract!(
 
     # Bring B in the correct form for BLAS contraction
     if copyB
-        Bnew = TO.tensoralloc_add(TC, B, pB, false, Val(true), allocator)
+        Bnew = @timeit_debug GLOBAL_TIMER "alloc: buffers" TO.tensoralloc_add(TC, B, pB, false, Val(true), allocator)
         Bnew = TO.tensoradd!(Bnew, B, pB, false, One(), Zero(), backend, allocator)
         twistB && twist!(Bnew, filter(isdual ∘ Base.Fix1(space, Bnew), codomainind(Bnew)))
     else
@@ -446,7 +452,7 @@ function blas_contract!(
     copyC = !TO.isblasdestination(C, ipAB)
 
     if copyC
-        Cnew = TO.tensoralloc_add(TC, C, ipAB, false, Val(true), allocator)
+        Cnew = @timeit_debug GLOBAL_TIMER "alloc: buffers" TO.tensoralloc_add(TC, C, ipAB, false, Val(true), allocator)
         mul!(Cnew, Anew, Bnew)
         TO.tensoradd!(C, Cnew, pAB, false, α, β, backend, allocator)
         TO.tensorfree!(Cnew, allocator)
