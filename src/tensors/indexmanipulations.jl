@@ -220,8 +220,13 @@ See also [`permute`](@ref) for creating a new tensor.
         backend::AbstractBackend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
     )
     @boundscheck spacecheck_transform(permute, tdst, tsrc, p)
-    levels = ntuple(identity, numind(tsrc))
-    return @inbounds braid!(tdst, tsrc, p, levels, α, β, backend, allocator)
+    if has_array_view(tdst) && has_array_view(tsrc)
+        TO.tensoradd!(tdst[], tsrc[], p, false, α, β, backend, allocator)
+        return tdst
+    end
+    tdst′, tsrc′, p′, _, conjsrc, α′, β′ = unwrap_adjoints(tdst, tsrc, p, nothing, false, α, β)
+    @inbounds _braid!(tdst′, tsrc′, p′, conjsrc, allind(tsrc′), α′, β′, backend, allocator)
+    return tdst
 end
 
 """
@@ -311,10 +316,9 @@ See also [`braid`](@ref) for creating a new tensor.
         TO.tensoradd!(tdst[], tsrc[], p, false, α, β, backend, allocator)
         return tdst
     end
-    levels1 = TupleTools.getindices(levels, codomainind(tsrc))
-    levels2 = TupleTools.getindices(levels, domainind(tsrc))
-    transformer = treebraider(tdst, tsrc, p, (levels1, levels2))
-    return @inbounds add_transform!(tdst, tsrc, p, transformer, α, β, backend, allocator)
+    tdst′, tsrc′, p′, levels′, conjsrc, α′, β′ = unwrap_adjoints(tdst, tsrc, p, levels, false, α, β)
+    @inbounds _braid!(tdst′, tsrc′, p′, conjsrc, levels′, α′, β′, backend, allocator)
+    return tdst
 end
 
 """
@@ -387,8 +391,10 @@ end
         TO.tensoradd!(tdst[], tsrc[], p, false, α, β, backend, allocator)
         return tdst
     end
-    transformer = treetransposer(tdst, tsrc, p)
-    return @inbounds add_transform!(tdst, tsrc, p, transformer, α, β, backend, allocator)
+    tdst′, tsrc′, p′, _, conjsrc, α′, β′ = unwrap_adjoints(tdst, tsrc, p, nothing, false, α, β)
+    transformer = treetransposer(tdst′, tsrc′, p′, conjsrc)
+    @inbounds add_transform!(tdst′, tsrc′, p′, conjsrc, transformer, α′, β′, backend, allocator)
+    return tdst
 end
 
 """
@@ -554,28 +560,90 @@ Base.@deprecate(
 
 # Kernel implementation
 # ---------------------
+# Index manipulations are expressed as `tdst = β * tdst + α * permutedims(conjsrc ? conj(tsrc) : tsrc, p)`,
+# with `p` indexing the legs of `tsrc`. Adjoint wrappers are absorbed into `conjsrc`, `p`, `levels`
+# and the scalars, such that the actual work always happens on the subblocks of the parent tensors.
+
+# levels are attached to the legs: relabel them from the legs of `t'` to those of `t`
+_adjoint_levels(t, ::Nothing) = nothing
+_adjoint_levels(t, levels::IndexTuple) = TupleTools.getindices(levels, adjointtensorindices(t, allind(t)))
+
+_unwrap_source(tsrc::AbstractTensorMap, p, levels, conjsrc::Bool) = (tsrc, p, levels, conjsrc)
+function _unwrap_source(tsrc::AdjointTensorMap, p, levels, conjsrc::Bool)
+    tp = parent(tsrc)
+    return (tp, adjointtensorindices(tsrc, p), _adjoint_levels(tp, levels), !conjsrc)
+end
+
+_unwrap_destination(tdst::AbstractTensorMap, p, conjsrc::Bool, α, β) = (tdst, p, conjsrc, α, β)
+function _unwrap_destination(tdst::AdjointTensorMap, p, conjsrc::Bool, α, β)
+    return (parent(tdst), (p[2], p[1]), !conjsrc, conj(α), conj(β))
+end
+
+"""
+    unwrap_adjoints(tdst, tsrc, p, levels, conjsrc::Bool, α, β) -> (tdst′, tsrc′, p′, levels′, conjsrc′, α′, β′)
+
+Rewrite the operation `tdst = β * tdst + α * braid(conjsrc ? conj(tsrc) : tsrc, p, levels)` such that
+neither `tdst′` nor `tsrc′` is an `AdjointTensorMap`, by absorbing the adjoints into the conjugation
+flag, the permutation, the `levels` (which may be `nothing`) and the scalars.
+"""
+function unwrap_adjoints(tdst, tsrc, p::Index2Tuple, levels, conjsrc::Bool, α, β)
+    tsrc′, p′, levels′, conjsrc′ = _unwrap_source(tsrc, p, levels, conjsrc)
+    tdst′, p″, conjsrc″, α′, β′ = _unwrap_destination(tdst, p′, conjsrc′, α, β)
+    return (tdst′, tsrc′, p″, levels′, conjsrc″, α′, β′)
+end
+
+# shared by `permute!`, `braid!` and `TO.tensoradd!` after the adjoints have been unwrapped
+@propagate_inbounds function _braid!(
+        tdst, tsrc, p::Index2Tuple, conjsrc::Bool, levels::IndexTuple, α, β, backend, allocator
+    )
+    @boundscheck spacecheck_transform(permute, tdst, tsrc, p, conjsrc)
+    transformer = treebraider(tdst, tsrc, p, conjsrc, levels)
+    return @inbounds add_transform!(tdst, tsrc, p, conjsrc, transformer, α, β, backend, allocator)
+end
+
+# space check for `tdst = permutedims(conjsrc ? conj(tsrc) : tsrc, p)`
+function spacecheck_transform(f, tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, conjsrc::Bool)
+    Vsrc′, p′ = transform_source(space(tsrc), p, conjsrc)
+    return spacecheck_transform(f, space(tdst), Vsrc′, p′)
+end
+
+"""
+    add_transform!(tdst, tsrc, p, conjsrc::Bool, transformer, α, β, backend, allocator) -> tdst
+
+Compute `tdst = β * tdst + α * permutedims(conjsrc ? conj(tsrc) : tsrc, p)`, where `p` indexes the legs
+of `tsrc`, using the fusion tree transformation encoded in `transformer` (see [`TreeTransformer`](@ref)).
+"""
 @propagate_inbounds function add_transform!(
-        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, transformer,
+        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, conjsrc::Bool, transformer,
         α::Number, β::Number, backend, allocator
     )
-    @boundscheck spacecheck_transform(permute, tdst, tsrc, p)
+    @boundscheck spacecheck_transform(permute, tdst, tsrc, p, conjsrc)
 
-    if p[1] === codomainind(tsrc) && p[2] === domainind(tsrc)
+    if !conjsrc && p[1] === codomainind(tsrc) && p[2] === domainind(tsrc)
         add!(tdst, tsrc, α, β)
+    elseif has_array_view(tdst) && has_array_view(tsrc)
+        TO.tensoradd!(tdst[], tsrc[], p, conjsrc, α, β, backend, allocator)
     else
-        if has_array_view(tdst) && has_array_view(tsrc)
-            TO.tensoradd!(tdst[], tsrc[], p, false, α, β, backend, allocator)
+        ntasks = use_threaded_transform(tdst, transformer) ? get_num_transformer_threads() : 1
+        # resolve the conjugation flag into the view type here, with a statically typed call per branch
+        if conjsrc
+            dst, src = _transform_subblocks(tdst, tsrc, transformer, conj)
+            add_transform_kernel!(dst, src, p, transformer, α, β, backend, allocator, ntasks)
         else
-            ntasks = use_threaded_transform(tdst, transformer) ? get_num_transformer_threads() : 1
-            if tdst isa TensorMap && tsrc isa TensorMap # unpack data fields to avoid specializing
-                add_transform_kernel!(tdst.data, tsrc.data, p, transformer, α, β, backend, allocator, ntasks)
-            else
-                add_transform_kernel!(tdst, tsrc, p, transformer, α, β, backend, allocator, ntasks)
-            end
+            dst, src = _transform_subblocks(tdst, tsrc, transformer, identity)
+            add_transform_kernel!(dst, src, p, transformer, α, β, backend, allocator, ntasks)
         end
     end
 
     return tdst
+end
+
+# TensorMaps address their flat data directly, other tensor types go through `subblock`
+function _transform_subblocks(tdst::TensorMap, tsrc::TensorMap, transformer, op)
+    return StridedSubblocks(tdst, transformer.structure_dst), StridedSubblocks(tsrc, transformer.structure_src, op)
+end
+function _transform_subblocks(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, transformer, op)
+    return TreeSubblocks(tdst), TreeSubblocks(tsrc, op)
 end
 
 function use_threaded_transform(t::TensorMap, transformer)
@@ -585,141 +653,50 @@ function use_threaded_transform(t::AbstractTensorMap, transformer)
     return get_num_transformer_threads() > 1 && dim(space(t)) > Strided.MINTHREADLENGTH
 end
 
+# The kernel operates on the subblocks addressed by position, so that for `TensorMap`s this only
+# depends on `numind`, `eltype` and the transformer data, not on the sectortype.
+const TransformSubblocks = Union{StridedSubblocks, TreeSubblocks}
 function add_transform_kernel!(
-        tdst, tsrc, p, transformer, α, β, backend, allocator, ntasks::Int
-    )
-    I = sectortype(tdst)
-    if FusionStyle(I) === UniqueFusion()
-        taskforeach(fusiontrees(tsrc), ntasks) do (f₁, f₂)
-            (f₁′, f₂′), coeff = transformer((f₁, f₂))
-            @inbounds TO.tensoradd!(
-                tdst[f₁′, f₂′], tsrc[f₁, f₂], p, false, α * coeff, β, backend, allocator
-            )
-        end
-        return nothing
-    end
-
-    fblocks = fusionblocks(tsrc)
-    bufsize = buffersize(tsrc, fblocks)
-
-    # One max-sized workspace per task (a single one that is reused by all blocks when
-    # serial), allocated on the calling thread before any task spawns, so that also
-    # allocators that are not thread-safe can be used.
-    cp = TO.allocator_checkpoint!(allocator)
-    buffers = [
-        TO.tensoralloc(storagetype(tdst), bufsize, Val(true), allocator)
-            for _ in 1:clamp(length(fblocks), 1, ntasks)
-    ]
-    taskforeach(fblocks, buffers) do src, buffer
-        _add_transform_block!(
-            tdst, tsrc, p, src, transformer, buffer, α, β, backend, allocator
-        )
-    end
-    foreach(Base.Fix2(TO.tensorfree!, allocator), buffers)
-    TO.allocator_reset!(allocator, cp)
-    return nothing
-end
-
-# TensorMap specializations: operate directly on the flat data vector to avoid
-# repeated specialization -- this only depends on `numind` and `eltype`.
-function add_transform_kernel!(
-        data_dst::DenseVector, data_src::DenseVector, p, transformer::AbelianTreeTransformer,
-        α, β, backend, allocator, ntasks::Int
-    )
-    taskforeach(transformer.data, ntasks) do (coeff, struct_dst, struct_src)
-        TO.tensoradd!(
-            StridedView(data_dst, struct_dst...), StridedView(data_src, struct_src...),
-            p, false, α * coeff, β, backend, allocator
-        )
-    end
-    return nothing
-end
-function add_transform_kernel!(
-        data_dst::DenseVector, data_src::DenseVector, p, transformer::GenericTreeTransformer,
+        dst::TransformSubblocks, src::TransformSubblocks, p,
+        transformer::Union{AbelianTreeTransformer, GenericTreeTransformer},
         α, β, backend, allocator, ntasks::Int
     )
     bufsize = buffersize(transformer)
-
-    # One max-sized workspace per task (a single one that is reused by all blocks when
-    # serial), allocated on the calling thread before any task spawns, so that also
-    # allocators that are not thread-safe can be used.
-    cp = TO.allocator_checkpoint!(allocator)
-    buffers = [
-        TO.tensoralloc(typeof(data_dst), bufsize, Val(true), allocator)
-            for _ in 1:clamp(length(transformer.data), 1, ntasks)
-    ]
-    taskforeach(transformer.data, buffers) do subtransformer, buffer
-        _add_transform_block!(
-            data_dst, data_src, p, subtransformer, buffer, α, β, backend, allocator
-        )
+    if bufsize == 0 # no recoupling needed: every block consists of a single tree
+        taskforeach(transformer.data, ntasks) do (U, inds_dst, inds_src)
+            _add_transform_block!(dst, src, p, U, inds_dst, inds_src, nothing, α, β, backend, allocator)
+        end
+    else
+        # One max-sized workspace per task (a single one that is reused by all blocks when
+        # serial), allocated on the calling thread before any task spawns, so that also
+        # allocators that are not thread-safe can be used.
+        cp = TO.allocator_checkpoint!(allocator)
+        buffers = [
+            TO.tensoralloc(storagetype(dst), bufsize, Val(true), allocator)
+                for _ in 1:clamp(length(transformer.data), 1, ntasks)
+        ]
+        taskforeach(transformer.data, buffers) do (U, inds_dst, inds_src), buffer
+            _add_transform_block!(dst, src, p, U, inds_dst, inds_src, buffer, α, β, backend, allocator)
+        end
+        foreach(Base.Fix2(TO.tensorfree!, allocator), buffers)
+        TO.allocator_reset!(allocator, cp)
     end
-    foreach(Base.Fix2(TO.tensorfree!, allocator), buffers)
-    TO.allocator_reset!(allocator, cp)
     return nothing
 end
 
+# `U` is either a scalar coefficient with integer positions (abelian), or a recoupling matrix
+# with vectors of positions (generic).
 function _add_transform_block!(
-        tdst, tsrc, p, src::FusionTreeBlock, transformer, buffer,
+        dst::TransformSubblocks, src::TransformSubblocks, p, U, inds_dst, inds_src, buffer,
         α, β, backend, allocator
     )
-    dst, U = transformer(src)
-
-    if length(src) == 1 # Degenerate block with a single tree: no matmul needed.
-        (f₁, f₂) = only(fusiontrees(src))
-        (f₁′, f₂′) = only(fusiontrees(dst))
+    if length(U) == 1 # single tree: no matmul needed
         @inbounds TO.tensoradd!(
-            tdst[f₁′, f₂′], tsrc[f₁, f₂], p, false, α * only(U), β, backend, allocator
+            dst[only(inds_dst)], src[only(inds_src)], p, false, α * only(U), β, backend, allocator
         )
     else # Multi-tree block: pack → recoupling matmul → unpack.
         rows, cols = size(U)
-        sz_src = size(tsrc[first(fusiontrees(src))...])
-        blocksize = prod(sz_src)
-        # the buffer was sized assuming a square recoupling matrix
-        rows == cols || throw(DimensionMismatch(lazy"recoupling matrix is not square: $(size(U))"))
-        ptriv = (ntuple(identity, length(sz_src)), ())
-        buffer_dst = StridedView(buffer, (blocksize, rows), (1, blocksize), 0)
-        buffer_src = StridedView(buffer, (blocksize, cols), (1, blocksize), blocksize * rows)
-
-        # 1. Extract: copy each source block into column i of buffer_src as a flat vector,
-        #    using a trivial permutation so the layout is canonical before the matmul.
-        @inbounds for (i, (f₁, f₂)) in enumerate(fusiontrees(src))
-            TO.tensoradd!(
-                sreshape(view(buffer_src, :, i), sz_src), tsrc[f₁, f₂],
-                ptriv, false, One(), Zero(), backend, allocator
-            )
-        end
-
-        # 2. Recoupling: buffer_dst = α * buffer_src * U^T  (each output tree is a linear
-        #    combination of input trees weighted by the recoupling coefficients).
-        U′ = _adapt_recoupling(storagetype(tdst), U)
-        mul!(buffer_dst, buffer_src, transpose(U′), α, Zero())
-
-        # 3. Insert: scatter column i of buffer_dst into the destination, applying the
-        #    actual index permutation p in the same tensoradd! call.
-        @inbounds for (i, (f₃, f₄)) in enumerate(fusiontrees(dst))
-            TO.tensoradd!(
-                tdst[f₃, f₄], sreshape(view(buffer_dst, :, i), sz_src),
-                p, false, One(), β, backend, allocator
-            )
-        end
-    end
-    return nothing
-end
-
-function _add_transform_block!(
-        data_dst::DenseVector, data_src::DenseVector, p,
-        ((U, (sz_dst, structs_dst), (sz_src, structs_src)))::GenericTransformerData,
-        buffer, α, β, backend, allocator
-    )
-    if length(U) == 1 # Degenerate block with a single tree: no matmul needed.
-        coeff = only(U)
-        TO.tensoradd!(
-            StridedView(data_dst, sz_dst, only(structs_dst)...),
-            StridedView(data_src, sz_src, only(structs_src)...),
-            p, false, α * coeff, β, backend, allocator
-        )
-    else # Multi-tree block: pack → recoupling matmul → unpack.
-        rows, cols = size(U)
+        sz_src = size(@inbounds(src[first(inds_src)]))
         blocksize = prod(sz_src)
         ptriv = (ntuple(identity, length(sz_src)), ())
         buffer_dst = StridedView(buffer, (blocksize, rows), (1, blocksize), 0)
@@ -727,23 +704,23 @@ function _add_transform_block!(
 
         # 1. Extract: copy each source block into column i of buffer_src as a flat vector,
         #    using a trivial permutation so the layout is canonical before the matmul.
-        @inbounds for (i, struct_src_i) in enumerate(structs_src)
+        @inbounds for (i, isrc) in enumerate(inds_src)
             TO.tensoradd!(
-                sreshape(view(buffer_src, :, i), sz_src), StridedView(data_src, sz_src, struct_src_i...),
+                sreshape(view(buffer_src, :, i), sz_src), src[isrc],
                 ptriv, false, One(), Zero(), backend, allocator
             )
         end
 
         # 2. Recoupling: buffer_dst = α * buffer_src * U^T  (each output tree is a linear
         #    combination of input trees weighted by the recoupling coefficients).
-        U′ = _adapt_recoupling(typeof(data_dst), U)
+        U′ = _adapt_recoupling(storagetype(dst), U)
         mul!(buffer_dst, buffer_src, transpose(U′), α, Zero())
 
-        # 3. Insert: scatter column i of buffer_dst into the destination, applying the
+        # 3. Insert: scatter column j of buffer_dst into the destination, applying the
         #    actual index permutation p in the same tensoradd! call.
-        @inbounds for (i, struct_dst_i) in enumerate(structs_dst)
+        @inbounds for (j, idst) in enumerate(inds_dst)
             TO.tensoradd!(
-                StridedView(data_dst, sz_dst, struct_dst_i...), sreshape(view(buffer_dst, :, i), sz_src),
+                dst[idst], sreshape(view(buffer_dst, :, j), sz_src),
                 p, false, One(), β, backend, allocator
             )
         end

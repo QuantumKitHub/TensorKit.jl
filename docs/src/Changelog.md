@@ -24,13 +24,19 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 ### Changed
 
+- Index manipulations use a single kernel operating on subblocks addressed by position: `StridedSubblocks` (sector-independent views into the flat data of a `TensorMap`) or `TreeSubblocks` (any `AbstractTensorMap`, through `subblock`), both able to carry a lazy conjugation. The `TreeTransformer`s store the mapping between subblock positions and recoupling coefficients and are cached for every tensor type; conjugated and adjoint operands are handled through this mechanism instead of through `AdjointTensorMap` wrappers (internal) ([#516](https://github.com/QuantumKitHub/TensorKit.jl/issues/516))
+
 ### Deprecated
 
 ### Removed
 
 ### Fixed
 
+- `braid!`, `permute!` and `transpose!` with a `BraidingTensor` source now use the cached fusion tree transformers ([#516](https://github.com/QuantumKitHub/TensorKit.jl/issues/516))
+
 ### Performance
+
+- In-place `permute!`, `braid!` and `transpose!` with `AdjointTensorMap` sources or destinations, as well as `@tensor` expressions with `conj`, now use the same cached and sector-independent kernel as plain `TensorMap`s; other tensor types (e.g. `DiagonalTensorMap`) also use the cached fusion tree transformers, and `subblocks(::TensorMap)` iterates without hashing fusion trees ([#516](https://github.com/QuantumKitHub/TensorKit.jl/issues/516), [#519](https://github.com/QuantumKitHub/TensorKit.jl/pull/519), [#520](https://github.com/QuantumKitHub/TensorKit.jl/pull/520))
 
 ## [0.17.1](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.0...v0.17.1) - 2026-07-13
 

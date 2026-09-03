@@ -496,6 +496,26 @@ end
 
 # Getting and setting the data at the subblock level
 # --------------------------------------------------
+function StridedSubblocks(t::TensorMap, op::SubblockOp = identity)
+    return StridedSubblocks(t, degeneracystructure(space(t)).subblockstructure, op)
+end
+function StridedSubblocks(t::TensorMap, structure::Vector{<:StridedStructure}, op::SubblockOp = identity)
+    return StridedSubblocks(t.data, structure, scalartype(t) <: Real ? identity : op)
+end
+
+# iterate the subblock views in canonical order alongside the fusion trees, without hashing
+function subblocks(t::TensorMap)
+    return sectortype(t) === Trivial ? SubblockIterator(t, fusiontrees(t)) :
+        SubblockIterator(t, StridedSubblocks(t))
+end
+function Base.iterate(iter::SubblockIterator{<:TensorMap, <:StridedSubblocks}, i::Int = 1)
+    i > length(iter.structure) && return nothing
+    @inbounds begin
+        f = gettokenvalue(fusiontrees(iter.t), i)
+        return f => iter.structure[i], i + 1
+    end
+end
+
 function subblock(
         t::TensorMap{T, S, N₁, N₂}, (f₁, f₂)::Tuple{FusionTree{I, N₁}, FusionTree{I, N₂}}
     ) where {T, S, N₁, N₂, I <: Sector}

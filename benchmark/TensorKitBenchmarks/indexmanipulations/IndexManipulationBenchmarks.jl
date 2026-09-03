@@ -12,9 +12,9 @@ const all_parameters = TOML.parsefile(joinpath(@__DIR__, "benchparams.toml"))
 
 # permute!
 # --------
-function init_permute_tensors(T, W, p)
+function init_permute_tensors(T, W, p, adjoint::Bool)
     C = randn(T, permute(W, p))
-    A = randn(T, W)
+    A = adjoint ? randn(T, W')' : randn(T, W)
     return C, A
 end
 function benchmark_permute!(benchgroup, params::Dict)
@@ -25,7 +25,9 @@ function benchmark_permute!(benchgroup, params::Dict)
     end
     return nothing
 end
-function benchmark_permute!(bench; sigmas = nothing, T = "Float64", I = "Trivial", dims, p)
+function benchmark_permute!(
+        bench; sigmas = nothing, T = "Float64", I = "Trivial", dims, p, adjoint = false
+    )
     T_ = parse_type(T)
     I_ = parse_type(I)
 
@@ -34,9 +36,10 @@ function benchmark_permute!(bench; sigmas = nothing, T = "Float64", I = "Trivial
 
     codomain = mapreduce(Base.Fix1(getindex, Vs), ⊗, p_[1]; init = one(eltype(Vs)))
     domain = mapreduce(Base.Fix1(getindex, Vs), ⊗, p_[2]; init = one(eltype(Vs)))
-    init() = init_permute_tensors(T_, codomain ← domain, p_)
+    init() = init_permute_tensors(T_, codomain ← domain, p_, adjoint)
 
-    bench[T, I, dims, sigmas, p] = @benchmarkable permute!(C, A, $p_) setup = ((C, A) = $init())
+    key = adjoint ? (T, I, dims, sigmas, p, "adjoint") : (T, I, dims, sigmas, p)
+    bench[key...] = @benchmarkable permute!(C, A, $p_) setup = ((C, A) = $init())
     return nothing
 end
 

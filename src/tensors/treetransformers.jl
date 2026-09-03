@@ -2,193 +2,191 @@
     TreeTransformer
 
 Supertype for structures containing the data for a tree transformation.
+
+The transformers only store how subblocks map onto each other in terms of their positions in
+[`StridedSubblocks`](@ref) (the canonical order of `fusiontrees`), together with the recoupling
+coefficients, and are therefore independent of the sectortype once constructed. The
+transformation is that of `permutedims(op(tsrc), p)` where `p` indexes the legs of `tsrc` itself and
+`op` is either `identity` or `conj`; in the latter case the fusion trees that are transformed are
+those of `adjoint(space(tsrc))`, which read the subblocks of `tsrc` with the tree pair swapped.
 """
 abstract type TreeTransformer end
 
-struct TrivialTreeTransformer <: TreeTransformer end
+# (coefficient, destination position, source position)
+const AbelianTransformerData{T} = Tuple{T, Int, Int}
 
-const AbelianTransformerData{T, N} = Tuple{T, StridedStructure{N}, StridedStructure{N}}
+"""
+    AbelianTreeTransformer{T, N} <: TreeTransformer
 
+Tree transformation for `UniqueFusion` sectors, where every source subblock maps onto a single
+destination subblock with a scalar coefficient, stored as `(coeff, idst, isrc)`. The subblock
+structures of the destination and source spaces are kept alongside, such that the
+[`StridedSubblocks`](@ref) of both tensors can be created without further lookups.
+"""
 struct AbelianTreeTransformer{T, N} <: TreeTransformer
-    data::Vector{AbelianTransformerData{T, N}}
+    data::Vector{AbelianTransformerData{T}}
+    structure_dst::Vector{StridedStructure{N}}
+    structure_src::Vector{StridedStructure{N}}
 end
 
-function AbelianTreeTransformer(transform, p, Vdst, Vsrc)
-    t₀ = Base.time()
-    permute(Vsrc, p) == Vdst || throw(SpaceMismatch("Incompatible spaces for permuting."))
-    fts_src = subblockstructure(Vsrc)
-    fts_dst = subblockstructure(Vdst)
-    L = length(fts_src)
-    T = sectorscalartype(sectortype(Vdst))
-    N = numind(Vsrc)
-    data = Vector{Tuple{T, StridedStructure{N}, StridedStructure{N}}}(undef, L)
+# (recoupling matrix, destination positions, source positions): U[j, i] maps source i onto destination j
+const GenericTransformerData{T} = Tuple{Matrix{T}, Vector{Int}, Vector{Int}}
 
-    for (i, (f_src, stridestructure_src)) in enumerate(pairs(fts_src))
+"""
+    GenericTreeTransformer{T, N} <: TreeTransformer
+
+Tree transformation for sectors with multiple fusion channels, where the subblocks of a
+[`FusionTreeBlock`](@ref) map onto the subblocks of the transformed block through a recoupling
+matrix, stored as `(U, inds_dst, inds_src)`. The subblock structures of the destination and
+source spaces are kept alongside, such that the [`StridedSubblocks`](@ref) of both tensors can be
+created without further lookups.
+"""
+struct GenericTreeTransformer{T, N} <: TreeTransformer
+    data::Vector{GenericTransformerData{T}}
+    structure_dst::Vector{StridedStructure{N}}
+    structure_src::Vector{StridedStructure{N}}
+end
+
+# Space and permutation as seen by the tree manipulations: for a conjugated source these are
+# those of the adjoint space, whose tree pairs `(f₁, f₂)` address the subblock `(f₂, f₁)` of the source.
+function transform_source(Vsrc::HomSpace, p::Index2Tuple, conjsrc::Bool)
+    return conjsrc ? (adjoint(Vsrc), adjointtensorindices(Vsrc, p)) : (Vsrc, p)
+end
+source_tree((f₁, f₂)::FusionTreePair, conjsrc::Bool) = conjsrc ? (f₂, f₁) : (f₁, f₂)
+
+function AbelianTreeTransformer(transform, p, Vdst, Vsrc, conjsrc::Bool)
+    t₀ = Base.time()
+    Vsrc′, p′ = transform_source(Vsrc, p, conjsrc)
+    spacecheck_transform(permute, Vdst, Vsrc′, p′)
+    srcindices = fusiontreeindices(Vsrc)
+    dstindices = fusiontreeindices(Vdst)
+    trees_src = fusiontrees(Vsrc′)
+    L = length(trees_src)
+    T = sectorscalartype(sectortype(Vdst))
+    data = Vector{AbelianTransformerData{T}}(undef, L)
+
+    for (i, f_src) in enumerate(trees_src)
         f_dst, coeff = transform(f_src)
-        stridestructure_dst = fts_dst[f_dst]
-        data[i] = (coeff, stridestructure_dst, stridestructure_src)
+        data[i] = (coeff, dstindices[f_dst], srcindices[source_tree(f_src, conjsrc)])
     end
 
-    transformer = AbelianTreeTransformer(data)
-
-    # sort by (approximate) weight to facilitate multi-threading strategies
-    # sort!(transformer)
+    structure_dst = degeneracystructure(Vdst).subblockstructure
+    structure_src = degeneracystructure(Vsrc).subblockstructure
+    transformer = AbelianTreeTransformer(data, structure_dst, structure_src)
 
     Δt = Base.time() - t₀
-
-    @debug(lazy"Treetransformer for $Vsrc to $Vdst via $p", nblocks = L, Δt)
+    @debug(lazy"Treetransformer for $Vsrc to $Vdst via $p", conjsrc, nblocks = L, Δt)
 
     return transformer
 end
 
-const GenericTransformerData{T, N} = Tuple{
-    Matrix{T},
-    Tuple{NTuple{N, Int}, Vector{Tuple{NTuple{N, Int}, Int}}},
-    Tuple{NTuple{N, Int}, Vector{Tuple{NTuple{N, Int}, Int}}},
-}
-
-struct GenericTreeTransformer{T, N} <: TreeTransformer
-    data::Vector{GenericTransformerData{T, N}}
-end
-
-"""
-    buffersize(transformer::GenericTreeTransformer) -> Int
-    buffersize(t::AbstractTensorMap, fblocks) -> Int
-
-Compute the workspace size required to pack, recouple and unpack the largest multi-tree
-block, i.e. `prod(sz_src) * (rows + cols)` where `(rows, cols) = size(U)` is the size of
-the recoupling matrix. The second form computes this from the fusion-tree blocks of a
-tensor instead, using the fact that the recoupling matrix is square.
-"""
-function buffersize(transformer::GenericTreeTransformer)
-    return maximum(transformer.data; init = 0) do (U, _, (sz_src, _))
-        return length(U) == 1 ? 0 : prod(sz_src) * sum(size(U))
-    end
-end
-function buffersize(t::AbstractTensorMap, fblocks)
-    return maximum(fblocks; init = 0) do src
-        n = length(src)
-        return n == 1 ? 0 : 2 * n * length(t[first(fusiontrees(src))...])
-    end
-end
-
-function GenericTreeTransformer(transform, p, Vdst, Vsrc)
+function GenericTreeTransformer(transform, p, Vdst, Vsrc, conjsrc::Bool)
     t₀ = Base.time()
-    permute(Vsrc, p) == Vdst || throw(SpaceMismatch("Incompatible spaces for permuting."))
-    fusionstructure_dst = subblockstructure(Vdst)
-    fusionstructure_src = subblockstructure(Vsrc)
-    I = sectortype(Vsrc)
-    T = sectorscalartype(I)
-    N = numind(Vdst)
-    N₁ = numout(Vsrc)
-    N₂ = numin(Vsrc)
+    Vsrc′, p′ = transform_source(Vsrc, p, conjsrc)
+    spacecheck_transform(permute, Vdst, Vsrc′, p′)
+    srcindices = fusiontreeindices(Vsrc)
+    dstindices = fusiontreeindices(Vdst)
+    structure_dst = degeneracystructure(Vdst).subblockstructure
+    structure_src = degeneracystructure(Vsrc).subblockstructure
+    T = sectorscalartype(sectortype(Vsrc))
 
-    fblocks = fusionblocks(Vsrc)
+    fblocks = fusionblocks(Vsrc′)
     nblocks = length(fblocks)
-    data = Vector{GenericTransformerData{T, N}}(undef, nblocks)
+    data = Vector{GenericTransformerData{T}}(undef, nblocks)
+    weights = Vector{Int}(undef, nblocks)
 
     nthreads = get_num_manipulation_threads()
     taskforeach(1:nblocks, nthreads) do i
         fs_src = fblocks[i]
         fs_dst, U = transform(fs_src)
-        sz_src, newstructs_src = repack_transformer_structure(fusionstructure_src, fusiontrees(fs_src))
-        sz_dst, newstructs_dst = repack_transformer_structure(fusionstructure_dst, fusiontrees(fs_dst))
-        data[i] = U, (sz_dst, newstructs_dst), (sz_src, newstructs_src)
+        inds_src = map(f -> srcindices[source_tree(f, conjsrc)], fusiontrees(fs_src))
+        inds_dst = map(f -> dstindices[f], fusiontrees(fs_dst))
+        data[i] = (U, inds_dst, inds_src)
+        # cost model: L input blocks each going to L output blocks of a given length
+        weights[i] = length(U) * prod(structure_dst[first(inds_dst)][1])
 
         @debug(
             lazy"Created recoupling block for uncoupled: $(fs_src.uncoupled)",
             sz = size(U), sparsity = count(!iszero, U) / length(U)
         )
     end
-    transformer = GenericTreeTransformer{T, N}(data)
 
     # sort by (approximate) weight to facilitate multi-threading strategies
-    sort!(transformer)
+    Base.permute!(data, sortperm(weights; rev = true))
+    transformer = GenericTreeTransformer(data, structure_dst, structure_src)
 
     Δt = Base.time() - t₀
-
     @debug(
-        lazy"TreeTransformer for $Vsrc to $Vdst via $p",
-        nblocks = length(transformer.data),
-        sz_median = size(transformer.data[cld(end, 2)][1], 1),
-        sz_max = size(transformer.data[1][1], 1),
+        lazy"TreeTransformer for $Vsrc to $Vdst via $p", conjsrc,
+        nblocks = nblocks,
+        sz_median = nblocks > 0 ? size(data[cld(end, 2)][1], 1) : 0,
+        sz_max = nblocks > 0 ? size(data[1][1], 1) : 0,
         Δt
     )
 
     return transformer
 end
 
-function repack_transformer_structure(structures::Dictionary, trees)
-    sz = structures[first(trees)][1]
-    strides_offsets = map(trees) do f
-        _, stride, offset = structures[f]
-        return stride, offset
-    end
-    return sz, strides_offsets
-end
+"""
+    buffersize(transformer::TreeTransformer) -> Int
 
+Compute the workspace size required to pack, recouple and unpack the largest multi-tree
+block, i.e. `prod(sz_src) * (rows + cols)` where `(rows, cols) = size(U)` is the size of
+the recoupling matrix.
+"""
+buffersize(::AbelianTreeTransformer) = 0
+function buffersize(transformer::GenericTreeTransformer)
+    structure_src = transformer.structure_src
+    return maximum(transformer.data; init = 0) do (U, _, inds_src)
+        return length(U) == 1 ? 0 : prod(structure_src[first(inds_src)][1]) * sum(size(U))
+    end
+end
 
 function treetransformertype(Vdst, Vsrc)
     I = sectortype(Vdst)
-    I === Trivial && return TrivialTreeTransformer
-
     T = sectorscalartype(I)
     N = numind(Vdst)
     return FusionStyle(I) == UniqueFusion() ? AbelianTreeTransformer{T, N} : GenericTreeTransformer{T, N}
 end
 
 function TreeTransformer(
-        transform::Function, p, Vdst::HomSpace{S}, Vsrc::HomSpace{S}
+        transform::Function, p, Vdst::HomSpace{S}, Vsrc::HomSpace{S}, conjsrc::Bool
     ) where {S}
-    permute(Vsrc, p) == Vdst ||
-        throw(SpaceMismatch("Incompatible spaces for permuting"))
-
     I = sectortype(Vdst)
-    I === Trivial && return TrivialTreeTransformer()
-
     return FusionStyle(I) == UniqueFusion() ?
-        AbelianTreeTransformer(transform, p, Vdst, Vsrc) :
-        GenericTreeTransformer(transform, p, Vdst, Vsrc)
+        AbelianTreeTransformer(transform, p, Vdst, Vsrc, conjsrc) :
+        GenericTreeTransformer(transform, p, Vdst, Vsrc, conjsrc)
 end
 
 # braid is special because it has levels
-function treebraider(::AbstractTensorMap, ::AbstractTensorMap, p::Index2Tuple, levels)
-    return fusiontreetransform(f) = braid(f, p, levels)
-end
-function treebraider(tdst::TensorMap, tsrc::TensorMap, p::Index2Tuple, levels)
-    return treebraider(space(tdst), space(tsrc), p, levels)
+function treebraider(
+        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, conjsrc::Bool, levels::IndexTuple
+    )
+    return treebraider(space(tdst), space(tsrc), p, conjsrc, levels)
 end
 @cached function treebraider(
-        Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, levels
+        Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool, levels::IndexTuple
     )::treetransformertype(Vdst, Vsrc)
-    fusiontreebraider(f) = braid(f, p, levels)
-    return TreeTransformer(fusiontreebraider, p, Vdst, Vsrc)
+    Vsrc′, p′ = transform_source(Vsrc, p, conjsrc)
+    # levels are attached to the legs, so they follow the same relabeling as the permutation
+    levels′ = conjsrc ? TupleTools.getindices(levels, adjointtensorindices(Vsrc′, allind(Vsrc′))) : levels
+    levels″ = (TupleTools.getindices(levels′, codomainind(Vsrc′)), TupleTools.getindices(levels′, domainind(Vsrc′)))
+    fusiontreebraider(f) = braid(f, p′, levels″)
+    return TreeTransformer(fusiontreebraider, p, Vdst, Vsrc, conjsrc)
 end
 
-function treetransposer(::AbstractTensorMap, ::AbstractTensorMap, p::Index2Tuple)
-    return fusiontreetransform(f) = transpose(f, p)
-end
-function treetransposer(tdst::TensorMap, tsrc::TensorMap, p::Index2Tuple)
-    return treetransposer(space(tdst), space(tsrc), p)
+function treetransposer(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, conjsrc::Bool)
+    return treetransposer(space(tdst), space(tsrc), p, conjsrc)
 end
 @cached function treetransposer(
-        Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple
+        Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
     )::treetransformertype(Vdst, Vsrc)
-    fusiontreetransform(f) = transpose(f, p)
-    return TreeTransformer(fusiontreetransform, p, Vdst, Vsrc)
+    Vsrc′, p′ = transform_source(Vsrc, p, conjsrc)
+    fusiontreetransform(f) = transpose(f, p′)
+    return TreeTransformer(fusiontreetransform, p, Vdst, Vsrc, conjsrc)
 end
 
 # default cachestyle is GlobalLRUCache
-
-# Sorting based on cost model
-# ---------------------------
-function Base.sort!(
-        transformer::Union{AbelianTreeTransformer, GenericTreeTransformer};
-        by = _transformer_weight, rev::Bool = true
-    )
-    sort!(transformer.data; by, rev)
-    return transformer
-end
 
 # For CPU arrays the recoupling matrix can be used as is, also when the scalar types
 # do not match, since Strided handles mixed-eltype mul! without the copy that
@@ -197,16 +195,3 @@ end
 # TODO: transformers with dedicated storagetypes
 _adapt_recoupling(::Type{<:Array}, U::Matrix) = StridedView(U)
 _adapt_recoupling(::Type{A}, U::Matrix) where {A} = Adapt.adapt(A, StridedView(U))
-
-function _transformer_weight((coeff, struct_dst, struct_src)::AbelianTransformerData)
-    return prod(struct_dst[1])
-end
-
-# Cost model for transforming a set of subblocks with fixed uncoupled sectors:
-# L x L x length(subblock) where L is the number of subblocks
-# this is L input blocks each going to L output blocks of given length
-# Note that it might be the case that the permutations are dominant, in which case the
-# actual cost model would scale like L x length(subblock)
-function _transformer_weight((mat, structs_dst, structs_src)::GenericTransformerData)
-    return length(mat) * prod(structs_dst[1])
-end

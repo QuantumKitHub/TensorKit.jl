@@ -170,6 +170,20 @@ See also [`degeneracystructure`](@ref), [`blockstructure`](@ref).
 subblockstructure(W::HomSpace) = Dictionary(fusiontrees(W), degeneracystructure(W).subblockstructure)
 
 """
+    fusiontreeindices(W::HomSpace) -> Dictionary
+
+Return a `Dictionary` mapping each fusion tree pair `(f₁, f₂)` to its position in
+[`fusiontrees`](@ref)`(W)`, which coincides with its position in
+[`subblockstructure`](@ref)`(W)` and in the subblocks of a `TensorMap` on `W`.
+
+See also [`fusiontrees`](@ref), [`subblockstructure`](@ref).
+"""
+function fusiontreeindices(W::HomSpace)
+    trees = fusiontrees(W)
+    return Dictionary(trees, 1:length(trees))
+end
+
+"""
     fusionblocks(W::HomSpace)
 
 Return the [`FusionTreeBlock`](@ref)s corresponding to all valid fusion channels of a given `HomSpace`,

@@ -195,16 +195,8 @@ end
 # Index manipulations
 # -------------------
 has_shared_permute(t::BraidingTensor, ::Index2Tuple) = false
-function add_transform!(
-        tdst::AbstractTensorMap,
-        tsrc::BraidingTensor, (p₁, p₂)::Index2Tuple,
-        fusiontreetransform,
-        α::Number, β::Number, backend::AbstractBackend...
-    )
-    return add_transform!(
-        tdst, TensorMap(tsrc), (p₁, p₂), fusiontreetransform, α, β,
-        backend...
-    )
+function unwrap_adjoints(tdst, tsrc::BraidingTensor, p::Index2Tuple, levels, conjsrc::Bool, α, β)
+    return unwrap_adjoints(tdst, TensorMap(tsrc), p, levels, conjsrc, α, β)
 end
 
 function planarcontract!(

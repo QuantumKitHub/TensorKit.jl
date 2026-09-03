@@ -129,6 +129,76 @@ for V in spacelist
             @tensor tb[a, b] := flip(t1, (1, 3))[x, y, a, z] * flip(t2, (2, 4))[y, b, z, x]
             @test flip(ta, (1, 2)) ≈ tb
         end
+        symmetricbraiding && @timedtestset "Permutations: adjoint operands" begin
+            W = V1 ⊗ V2 ← V3 ⊗ V4
+            for T in (Float64, ComplexF64)
+                t = rand(T, W)
+                tref = copy(t') # genuine TensorMap on W'
+                α = T <: Complex ? T(2.1 + 0.3im) : T(2.1)
+                β = T <: Complex ? T(-0.7im) : T(-0.7)
+                for p in (((1, 2), (3, 4)), ((2, 3), (4, 1)), ((3,), (1, 2, 4)), ((), (4, 3, 2, 1)))
+                    tdst = rand(T, permute(space(tref), p))
+                    ref = permute!(copy(tdst), tref, p, α, β)
+                    # adjoint source
+                    @test permute!(copy(tdst), t', p, α, β) ≈ ref
+                    @test @constinferred(permute!(copy(tdst), t', p)) ≈ permute(tref, p)
+                    # adjoint destination
+                    D = copy(tdst')
+                    permute!(D', tref, p, α, β)
+                    @test D' ≈ ref
+                    # adjoint source and destination
+                    D = copy(tdst')
+                    permute!(D', t', p, α, β)
+                    @test D' ≈ ref
+                end
+                p = ((2, 4), (1, 3)) # cyclic
+                tdst = rand(T, transpose(space(tref), p))
+                ref = transpose!(copy(tdst), tref, p, α, β)
+                @test transpose!(copy(tdst), t', p, α, β) ≈ ref
+                D = copy(tdst')
+                transpose!(D', t', p, α, β)
+                @test D' ≈ ref
+
+                # conjugation through TensorOperations
+                A = rand(T, W)
+                Aref = copy(A')
+                @tensor C[a, b; c, d] := conj(A[c, a; d, b])
+                @test C ≈ permute(Aref, ((4, 2), (3, 1)))
+                B = rand(T, W)
+                @tensor C2[a, b; c, d] := conj(A[x, y; a, b]) * B[x, y; c, d]
+                @tensor C2ref[a, b; c, d] := Aref[a, b; x, y] * B[x, y; c, d]
+                @test C2 ≈ C2ref
+                if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
+                    @test convert(Array, C) ≈ permutedims(conj(convert(Array, A)), (2, 4, 1, 3))
+                end
+            end
+        end
+        symmetricbraiding && @timedtestset "Permutations: BraidingTensor source" begin
+            τ = BraidingTensor(V1, V2)
+            p = ((2, 1), (3, 4))
+            levels = (1, 2, 3, 4)
+            tdst = rand(ComplexF64, braid(space(τ), p, levels))
+            @test braid!(copy(tdst), τ, p, levels) ≈ braid!(copy(tdst), TensorMap(τ), p, levels)
+        end
+        @timedtestset "Adjoint operands: isometry" begin
+            # independent of the adjoint convention: a wrongly conjugated recoupling matrix U
+            # would break dot(U * x', U * y) == dot(x', y) whenever U is genuinely complex
+            W = V1 ⊗ V2 ← V3 ⊗ V4
+            x = rand(ComplexF64, W)
+            y = rand(ComplexF64, W')
+            if hasbraiding
+                p = ((2,), (1, 3, 4))
+                levels = (1, 3, 2, 4)
+                bx = braid(x', p, levels)
+                by = braid(y, p, levels)
+                @test dot(bx, by) ≈ dot(x', y)
+                D = similar(y, braid(space(y), p, levels)')
+                braid!(D', x', p, levels)
+                @test dot(D', by) ≈ dot(x', y)
+            end
+            pc = ((2, 4), (1, 3))
+            @test dot(transpose(x', pc), transpose(y, pc)) ≈ dot(x', y)
+        end
         hasbraiding && !symmetricbraiding && @timedtestset "Braid AdjointTensorMap: adjoint identity" begin
             t = rand(ComplexF64, V1 ⊗ V2 ← V3)
             p = ((2,), (1, 3))
@@ -136,6 +206,18 @@ for V in spacelist
             t1 = copy(braid(t', p, levels))
             t2 = braid(copy(t'), p, levels)
             @test t1 ≈ t2
+
+            tref = copy(t')
+            α, β = 1.5im, 0.3
+            tdst = rand(ComplexF64, braid(space(tref), p, levels))
+            ref = braid!(copy(tdst), tref, p, levels, α, β)
+            @test braid!(copy(tdst), t', p, levels, α, β) ≈ ref
+            D = copy(tdst')
+            braid!(D', tref, p, levels, α, β)
+            @test D' ≈ ref
+            D = copy(tdst')
+            braid!(D', t', p, levels, α, β)
+            @test D' ≈ ref
         end
         hasbraiding && !symmetricbraiding && @timedtestset "Braid: invalid levels" begin
             t = rand(ComplexF64, V1 ⊗ V2 ← V3)
