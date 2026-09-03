@@ -40,7 +40,7 @@ function _precompile_spacetype(name::AbstractString)
 end
 
 const PRECOMPILE_SECTORS = let s = @load_preference(
-        "precompile_sectors", map(x -> repr(x; context = :module => TensorKit), [Trivial, Z2Irrep, SU2Irrep, FermionParity])
+        "precompile_sectors", map(x -> repr(x; context = :module => TensorKit), [Trivial, Z2Irrep, U1Irrep, SU2Irrep, FermionParity])
     )
     s isa Vector{String} ||
         throw(ArgumentError(lazy"`precompile_sectors` should be a vector of strings, got $(typeof(s))"))
