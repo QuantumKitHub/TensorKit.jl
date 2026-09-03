@@ -51,13 +51,8 @@ function TO.tensoradd!(
         TO.tensoradd!(C[], A[], pA, conjA, α, β, backend, allocator)
         return C
     end
-    if conjA
-        A′ = adjoint(A)
-        pA′ = adjointtensorindices(A, _canonicalize(pA, C))
-        permute!(C, A′, pA′, α, β, backend, allocator)
-    else
-        permute!(C, A, _canonicalize(pA, C), α, β, backend, allocator)
-    end
+    tdst, tsrc, p, _, conjA′, α′, β′ = unwrap_adjoints(C, A, _canonicalize(pA, C), nothing, conjA, α, β)
+    _braid!(tdst, tsrc, p, conjA′, allind(tsrc), α′, β′, backend, allocator)
     return C
 end
 
