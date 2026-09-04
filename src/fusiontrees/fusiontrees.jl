@@ -338,8 +338,7 @@ function fusiontensor((f₁, f₂)::FusionTreePair)
     d1 = TupleTools.front(sz1)
     d2 = TupleTools.front(sz2)
     return reshape(
-        reshape(F₁, TupleTools.prod(d1), sz1[end]) *
-            reshape(F₂, TupleTools.prod(d2), sz2[end])', (d1..., d2...)
+        reshape(F₁, :, sz1[end]) * reshape(F₂, :, sz2[end])', (d1..., d2...)
     )
 end
 fusiontensor(src::FusionTreeBlock) = sum(fusiontensor, fusiontrees(src))

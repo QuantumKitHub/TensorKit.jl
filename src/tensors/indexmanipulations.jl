@@ -587,7 +587,8 @@ function use_threaded_transform(t::AbstractTensorMap, transformer)
 end
 
 function add_transform_kernel!(
-        tdst, tsrc, p, transformer, α, β, backend, allocator, ntasks::Int
+        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p, transformer,
+        α, β, backend, allocator, ntasks::Int
     )
     I = sectortype(tdst)
     if FusionStyle(I) === UniqueFusion()

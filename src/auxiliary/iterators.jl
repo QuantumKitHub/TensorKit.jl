@@ -4,7 +4,7 @@ struct OneOrNoneIterator{T}
 end
 
 function Base.iterate(it::OneOrNoneIterator, state = true)
-    if state && it.cond
+    if isone(state) && it.cond
         return (it.first, false)
     else
         return nothing

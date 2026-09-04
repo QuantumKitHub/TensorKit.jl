@@ -1,8 +1,8 @@
 # TensorKit.jl test suite
 
-Tests use [ParallelTestRunner.jl](https://github.com/vchuravy/ParallelTestRunner.jl) for parallel
-execution. Each test file runs in its own worker process. Shared helpers are loaded automatically
-via `init_code` — test files do not need to include `setup.jl` themselves.
+Tests use [ParallelTestRunner.jl](https://github.com/vchuravy/ParallelTestRunner.jl) for parallel execution.
+Each test file runs in its own worker process.
+Shared helpers are loaded automatically via `init_code` — test files do not need to include `setup.jl` themselves.
 
 ## Running tests
 
@@ -37,17 +37,25 @@ julia --project=test test/runtests.jl --jobs=4
 |-------|----------|
 | `symmetries` | Spaces and fusion trees |
 | `tensors` | Core tensor operations, factorizations, planar tensors, diagonal tensors |
-| `other` | Aqua code-quality checks, bug-fix regressions |
+| `other` | Aqua code-quality checks, JET static analysis, bug-fix regressions |
 | `chainrules` | ChainRulesCore AD tests |
 | `mooncake` | Mooncake AD tests |
 | `cuda` | CUDA GPU tests (only run when a functional GPU is present) |
+
+JET only functions on the Julia versions it supports, which it reports through `JET.JET_AVAILABLE`.
+`runtests.jl` drops the JET-dependent files from the testsuite when that is `false`:
+`other/jet` (whole-package analysis, which additionally requires the JET 0.12 generation)
+and `mooncake/tangent` (reaches JET through Mooncake's extension).
+
+Mooncake caps which JET versions it accepts, so the `Mooncake = "0.5.45"` floor in
+`test/Project.toml` is what lets JET 0.12 be resolved at all — with an older Mooncake the
+resolver settles on JET 0.11 and `other/jet` is silently dropped.
 
 ## Fast mode (`--fast`)
 
 Skips `chainrules` and `mooncake` groups entirely, and reduces coverage in the remaining tests:
 
-- **Sector types**: tests only `Z2Irrep`, `SU2Irrep`, `FermionParity ⊠ U1Irrep ⊠ SU2Irrep`,
-  and `FibonacciAnyon` (instead of the full `sectorlist`)
+- **Sector types**: tests only `Z2Irrep`, `SU2Irrep`, `FermionParity ⊠ U1Irrep ⊠ SU2Irrep`, and `FibonacciAnyon` (instead of the full `sectorlist`)
 - **Space lists**: tests only `(Vtr, Vℤ₂, VSU₂)` (trivial, abelian, non-abelian)
 - **Scalar types**: tests only `Float64` and `ComplexF64` (instead of all integer/float variants)
 

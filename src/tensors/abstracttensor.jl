@@ -237,7 +237,11 @@ See also [`numin`](@ref) and [`numind`](@ref).
 """ numout
 
 numout(x) = numout(typeof(x))
-numout(T::Type) = throw(MethodError(numout, T)) # avoid infinite recursion
+numout(T::Type) = throw(MethodError(numout, (T,))) # avoid infinite recursion
+# `typeintersect(Type{<:AbstractTensorMap}, Type{<:Union{FusionTreePair, FusionTreeBlock}})` is
+# `Type{Union{}}`, which leaves the parametric methods mutually ambiguous. Resolve it explicitly so
+# the intended `MethodError` is thrown instead of an ambiguity error.
+numout(::Type{Union{}}) = throw(MethodError(numout, (Union{},)))
 numout(::Type{<:AbstractTensorMap{T, S, N₁}}) where {T, S, N₁} = N₁
 
 @doc """
@@ -251,7 +255,8 @@ See also [`numout`](@ref) and [`numind`](@ref).
 """ numin
 
 numin(x) = numin(typeof(x))
-numin(T::Type) = throw(MethodError(numin, T)) # avoid infinite recursion
+numin(T::Type) = throw(MethodError(numin, (T,))) # avoid infinite recursion
+numin(::Type{Union{}}) = throw(MethodError(numin, (Union{},))) # see `numout(::Type{Union{}})`
 numin(::Type{<:AbstractTensorMap{T, S, N₁, N₂}}) where {T, S, N₁, N₂} = N₂
 
 """
@@ -496,8 +501,8 @@ $_doc_subblock
     As a result, modifying the view will modify the data in the tensor.
 
 See also [`subblock`](@ref), [`subblocks`](@ref) and [`fusiontrees`](@ref).
-""" Base.getindex(::AbstractTensorMap, ::Tuple{I, Vararg{I}}) where {I <: Sector},
-    Base.getindex(::AbstractTensorMap, ::FusionTree, ::FusionTree)
+""" Base.getindex(t::AbstractTensorMap, sectors::Tuple{I, Vararg{I}}) where {I <: Sector},
+    Base.getindex(t::AbstractTensorMap, f₁::FusionTree, f₂::FusionTree)
 
 @inline Base.getindex(t::AbstractTensorMap, sectors::Tuple{I, Vararg{I}}) where {I <: Sector} =
     subblock(t, sectors)
@@ -514,8 +519,8 @@ Copies `v` into the data slice of `t` corresponding to the splitting - fusion tr
 By default, `v` can be any object that can be copied into the view associated with `t[f₁, f₂]`.
 
 See also [`subblock`](@ref), [`subblocks`](@ref) and [`fusiontrees`](@ref).
-""" Base.setindex!(::AbstractTensorMap, ::Any, ::Tuple{I, Vararg{I}}) where {I <: Sector},
-    Base.setindex!(::AbstractTensorMap, ::Any, ::FusionTree, ::FusionTree)
+""" Base.setindex!(t::AbstractTensorMap, v, sectors::Tuple{I, Vararg{I}}) where {I <: Sector},
+    Base.setindex!(t::AbstractTensorMap, v, f₁::FusionTree, f₂::FusionTree)
 
 @inline Base.setindex!(t::AbstractTensorMap, v, sectors::Tuple{I, Vararg{I}}) where {I <: Sector} =
     copy!(subblock(t, sectors), v)

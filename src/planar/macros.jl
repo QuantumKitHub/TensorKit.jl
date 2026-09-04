@@ -51,7 +51,7 @@ function planarparser(planarexpr, kwargs...)
         if name == :order
             isexpr(val, :tuple) ||
                 throw(ArgumentError("Invalid use of `order`, should be `order=(...,)`"))
-            indexorder = map(normalizeindex, val.args)
+            indexorder = map(TO.normalizeindex, val.args)
             parser.contractiontreebuilder = network -> TO.indexordertree(
                 network, indexorder
             )
