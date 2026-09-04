@@ -89,21 +89,12 @@ end
 Base.empty(::SortedVectorDict, ::Type{K}, ::Type{V}) where {K, V} = SortedVectorDict{K, V}()
 Base.empty!(d::SortedVectorDict) = (empty!(d.keys); empty!(d.values); return d)
 
-_searchsortedfirst(v::Vector, k) = searchsortedfirst(v, k)
-# function _searchsortedfirst(v::Vector, k)
-#     i = 1
-#     @inbounds while i <= length(v) && isless(v[i], k)
-#         i += 1
-#     end
-#     return i
-# end
-
 function Base.delete!(d::SortedVectorDict{K}, k) where {K}
     key = convert(K, k)
     if !isequal(k, key)
         return d
     end
-    i = _searchsortedfirst(d.keys, key)
+    i = searchsortedfirst(d.keys, key)
     if i <= length(d) && isequal(d.keys[i], key)
         deleteat!(d.keys, i)
         deleteat!(d.values, i)
@@ -118,7 +109,7 @@ function Base.haskey(d::SortedVectorDict{K}, k) where {K}
     if !isequal(k, key)
         return false
     end
-    i = _searchsortedfirst(d.keys, key)
+    i = searchsortedfirst(d.keys, key)
     return (i <= length(d) && isequal(d.keys[i], key))
 end
 function Base.getindex(d::SortedVectorDict{K}, k) where {K}
@@ -126,7 +117,7 @@ function Base.getindex(d::SortedVectorDict{K}, k) where {K}
     if !isequal(k, key)
         throw(KeyError(k))
     end
-    i = _searchsortedfirst(d.keys, key)
+    i = searchsortedfirst(d.keys, key)
     @inbounds if (i <= length(d) && isequal(d.keys[i], key))
         return d.values[i]
     else
@@ -138,7 +129,7 @@ function Base.setindex!(d::SortedVectorDict{K}, v, k) where {K}
     if !isequal(k, key)
         throw(ArgumentError("$k is not a valid key for type $K"))
     end
-    i = _searchsortedfirst(d.keys, key)
+    i = searchsortedfirst(d.keys, key)
     if i <= length(d) && isequal(d.keys[i], key)
         d.values[i] = v
     else
@@ -153,7 +144,7 @@ function Base.get(d::SortedVectorDict{K}, k, default) where {K}
     if !isequal(k, key)
         return default
     end
-    i = _searchsortedfirst(d.keys, key)
+    i = searchsortedfirst(d.keys, key)
     @inbounds begin
         return (i <= length(d) && isequal(d.keys[i], key)) ? d.values[i] : default
     end
@@ -163,7 +154,7 @@ function Base.get(f::Union{Function, Type}, d::SortedVectorDict{K}, k) where {K}
     if !isequal(k, key)
         return f()
     end
-    i = _searchsortedfirst(d.keys, key)
+    i = searchsortedfirst(d.keys, key)
     @inbounds begin
         return (i <= length(d) && isequal(d.keys[i], key)) ? d.values[i] : f()
     end
