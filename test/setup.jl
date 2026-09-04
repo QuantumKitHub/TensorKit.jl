@@ -7,6 +7,7 @@ export random_fusion
 export sectorlist, fast_sectorlist
 # export dim_isapprox
 export default_spacelist, factorization_spacelist, ad_spacelist
+export VIBM, VIBMRepA4
 export test_ad_rrule
 export _isunitary, _isone
 

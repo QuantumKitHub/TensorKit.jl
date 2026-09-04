@@ -122,6 +122,8 @@ function flip(V::GradedSpace{I}) where {I <: Sector}
 end
 
 function unitspace(S::Type{<:GradedSpace{I}}) where {I <: Sector}
+    UnitStyle(I) isa GenericUnit &&
+        throw(ArgumentError("Cannot construct unit space for sector types with semisimple unit structure."))
     return S(unit => 1 for unit in allunits(I))
 end
 zerospace(S::Type{<:GradedSpace}) = S()

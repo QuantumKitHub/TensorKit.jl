@@ -233,12 +233,13 @@ end
     @test_throws ArgumentError("Sector $(randunit) appears multiple times") GradedSpace(randunit => 1, randunit => 3)
 
     @test isunitspace(W)
-    @test @constinferred(unitspace(V)) == W == unitspace(typeof(V))
     if UnitStyle(I) isa SimpleUnit
+        @test @constinferred(unitspace(V)) == W == unitspace(typeof(V))
         @test @constinferred(leftunitspace(V)) == W == @constinferred(rightunitspace(V))
     else
         @test_throws ArgumentError leftunitspace(V)
         @test_throws ArgumentError rightunitspace(V)
+        @test_throws ArgumentError unitspace(V)
     end
     @test eval_show(W) == W
     @test isa(V, VectorSpace)
@@ -261,8 +262,10 @@ end
     @test @constinferred(⊕(V, zerospace(V))) == V
     @test @constinferred(⊕(V, V)) == Vect[I](c => 2dim(V, c) for c in sectors(V))
     @test @constinferred(⊕(V, V, V, V)) == Vect[I](c => 4dim(V, c) for c in sectors(V))
-    @test @constinferred(⊕(V, unitspace(V))) == Vect[I](c => isunit(c) + dim(V, c) for c in sectors(V))
-    @test @constinferred(fuse(V, unitspace(V))) == V
+    if UnitStyle(I) isa SimpleUnit
+        @test @constinferred(⊕(V, unitspace(V))) == Vect[I](c => isunit(c) + dim(V, c) for c in sectors(V))
+        @test @constinferred(fuse(V, unitspace(V))) == V
+    end
     d = Dict{I, Int}()
     for a in sectors(V), b in sectors(V)
         for c in a ⊗ b
@@ -470,13 +473,42 @@ end
             @test @constinferred(insertrightunit(one(V1) ← V1, 0)) == (unitspace(V1) ← V1)
             @test_throws BoundsError insertleftunit(one(V1) ← V1, 0)
         else
-            @test_throws ArgumentError insertrightunit(one(V1) ← V1, 0)
-            @test_throws ArgumentError insertleftunit(one(V1) ← V1, 0)
+            errmsg = "cannot insert a sensible unit space in the empty product space"
+            @test_throws ArgumentError(errmsg) insertrightunit(one(V1) ← V1, 0)
+            @test_throws ArgumentError(errmsg) insertleftunit(one(V1) ← V1, 0)
         end
         @test (V1 ⊗ V2 ← V1 ⊗ V2) == @constinferred TensorKit.compose(W, W')
         @test W == @constinferred permute(W, ((1, 2), (3, 4, 5)))
         @test permute(W, ((2, 5, 4), (1, 3))) == (V2 ⊗ V3 ⊗ V4 ← V1' ⊗ V5') # cyclic permutation
     end
+end
+
+@timedtestset "ProductSpace and HomSpace: GenericUnit coloring" for V in (VIBM, VIBMRepA4)
+    @test UnitStyle(sectortype(V[1])) isa GenericUnit
+    V1, V2, V3, V4, V5 = V
+
+    @test @constinferred(one(V1)) == ProductSpace{typeof(V1)}(())
+
+    @test rightunitspace(V1) == leftunitspace(V2)
+    P1 = @constinferred ProductSpace(V1, V2)
+    @test @constinferred(⊗(V1, V2)) == P1
+
+    @test rightunitspace(V2) != leftunitspace(V1)
+    @test_throws ArgumentError (⊗(V2, V1))
+
+    @test rightunitspace(V3) == leftunitspace(V4)
+    @test rightunitspace(V4) == leftunitspace(V5)
+    P2 = @constinferred ProductSpace(V3, V4, V5)
+
+    @test leftunitspace(P1[1]) == rightunitspace(dual(P2[length(P2)]))
+    @test HomSpace(P1, P2') isa HomSpace
+    @test_throws ArgumentError P1 ← P2
+
+    @test (V1 ← one(V1)) isa HomSpace
+    @test (one(V1) ← one(V1)) isa HomSpace
+
+    @test leftunitspace(V2) != rightunitspace(V2)
+    @test_throws ArgumentError V2 ← one(V2)
 end
 
 @timedtestset "show and friends" begin
