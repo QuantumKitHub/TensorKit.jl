@@ -221,12 +221,6 @@ See also [`permute`](@ref) for creating a new tensor.
     )
     @boundscheck spacecheck_transform(permute, tdst, tsrc, p)
     @timeit_debug GLOBAL_TIMER "permute!/braid!" begin
-        if has_array_view(tdst) && has_array_view(tsrc)
-            @timeit_debug GLOBAL_TIMER "dense: tensoradd" TO.tensoradd!(
-                tdst[], tsrc[], p, false, α, β, backend, allocator
-            )
-            return tdst
-        end
         tdst′, tsrc′, p′, _, conjsrc, α′, β′ = unwrap_adjoints(tdst, tsrc, p, nothing, false, α, β)
         @inbounds _braid!(tdst′, tsrc′, p′, conjsrc, allind(tsrc′), α′, β′, backend, allocator)
     end
@@ -317,12 +311,6 @@ See also [`braid`](@ref) for creating a new tensor.
     )
     @boundscheck spacecheck_transform(braid, tdst, tsrc, p, levels)
     @timeit_debug GLOBAL_TIMER "permute!/braid!" begin
-        if has_array_view(tdst) && has_array_view(tsrc)
-            @timeit_debug GLOBAL_TIMER "dense: tensoradd" TO.tensoradd!(
-                tdst[], tsrc[], p, false, α, β, backend, allocator
-            )
-            return tdst
-        end
         tdst′, tsrc′, p′, levels′, conjsrc, α′, β′ = unwrap_adjoints(tdst, tsrc, p, levels, false, α, β)
         @inbounds _braid!(tdst′, tsrc′, p′, conjsrc, levels′, α′, β′, backend, allocator)
     end
@@ -396,15 +384,8 @@ end
     )
     @boundscheck spacecheck_transform(transpose, tdst, tsrc, p)
     @timeit_debug GLOBAL_TIMER "transpose!" begin
-        if has_array_view(tdst) && has_array_view(tsrc)
-            @timeit_debug GLOBAL_TIMER "dense: tensoradd" TO.tensoradd!(
-                tdst[], tsrc[], p, false, α, β, backend, allocator
-            )
-            return tdst
-        end
         tdst′, tsrc′, p′, _, conjsrc, α′, β′ = unwrap_adjoints(tdst, tsrc, p, nothing, false, α, β)
-        transformer = treetransposer(tdst′, tsrc′, p′, conjsrc)
-        @inbounds add_transform!(tdst′, tsrc′, p′, conjsrc, transformer, α′, β′, backend, allocator)
+        @inbounds _transpose!(tdst′, tsrc′, p′, conjsrc, α′, β′, backend, allocator)
     end
     return tdst
 end
@@ -604,19 +585,38 @@ function unwrap_adjoints(tdst, tsrc, p::Index2Tuple, levels, conjsrc::Bool, α, 
     return (tdst′, tsrc′, p″, levels′, conjsrc″, α′, β′)
 end
 
-# shared by `permute!`, `braid!` and `TO.tensoradd!` after the adjoints have been unwrapped
-@propagate_inbounds function _braid!(
-        tdst, tsrc, p::Index2Tuple, conjsrc::Bool, levels::IndexTuple, α, β, backend, allocator
+# dense transform that bypasses overhead
+function _dense_transform!(tdst, tsrc, p::Index2Tuple, conjsrc::Bool, α, β, backend, allocator)
+    p2 = (linearize(p), ()) # only the linear permutation matters for the array kernels
+    @timeit_debug GLOBAL_TIMER "dense: tensoradd" TO.tensoradd!(
+        tdst[], tsrc[], p2, conjsrc, α, β, backend, allocator
     )
-    @boundscheck spacecheck_transform(permute, tdst, tsrc, p, conjsrc)
-    transformer = treebraider(tdst, tsrc, p, conjsrc, levels)
-    return @inbounds add_transform!(tdst, tsrc, p, conjsrc, transformer, α, β, backend, allocator)
+    return tdst
 end
 
 # space check for `tdst = permutedims(conjsrc ? conj(tsrc) : tsrc, p)`
 function spacecheck_transform(f, tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, conjsrc::Bool)
     Vsrc′, p′ = transform_source(space(tsrc), p, conjsrc)
     return spacecheck_transform(f, space(tdst), Vsrc′, p′)
+end
+
+@propagate_inbounds function _braid!(
+        tdst, tsrc, p::Index2Tuple, conjsrc::Bool, levels::IndexTuple, α, β, backend, allocator
+    )
+    @boundscheck spacecheck_transform(permute, tdst, tsrc, p, conjsrc)
+    has_array_view(tdst, tsrc) && return _dense_transform!(tdst, tsrc, p, conjsrc, α, β, backend, allocator)
+    transformer = treebraider(tdst, tsrc, p, conjsrc, levels)
+    return @inbounds add_transform!(tdst, tsrc, p, conjsrc, transformer, α, β, backend, allocator)
+end
+
+# counterpart of `_braid!` for `transpose!`; the cyclicity of `p` is checked by the caller
+@propagate_inbounds function _transpose!(
+        tdst, tsrc, p::Index2Tuple, conjsrc::Bool, α, β, backend, allocator
+    )
+    @boundscheck spacecheck_transform(permute, tdst, tsrc, p, conjsrc)
+    has_array_view(tdst, tsrc) && return _dense_transform!(tdst, tsrc, p, conjsrc, α, β, backend, allocator)
+    transformer = treetransposer(tdst, tsrc, p, conjsrc)
+    return @inbounds add_transform!(tdst, tsrc, p, conjsrc, transformer, α, β, backend, allocator)
 end
 
 """
@@ -635,20 +635,14 @@ of `tsrc`, using the fusion tree transformation encoded in `transformer` (see [`
         add!(tdst, tsrc, α, β)
     else
         p2 = (linearize(p), ()) # only the linear permutation matters for the array kernels
-        if has_array_view(tdst) && has_array_view(tsrc)
-            @timeit_debug GLOBAL_TIMER "dense: tensoradd" TO.tensoradd!(
-                tdst[], tsrc[], p2, conjsrc, α, β, backend, allocator
-            )
+        ntasks = use_threaded_transform(tdst, transformer) ? get_num_transformer_threads() : 1
+        # resolve the conjugation flag into the view type here, with a statically typed call per branch
+        if conjsrc
+            dst, src = _transform_subblocks(tdst, tsrc, transformer, conj)
+            add_transform_kernel!(dst, src, p2, transformer, α, β, backend, allocator, ntasks)
         else
-            ntasks = use_threaded_transform(tdst, transformer) ? get_num_transformer_threads() : 1
-            # resolve the conjugation flag into the view type here, with a statically typed call per branch
-            if conjsrc
-                dst, src = _transform_subblocks(tdst, tsrc, transformer, conj)
-                add_transform_kernel!(dst, src, p2, transformer, α, β, backend, allocator, ntasks)
-            else
-                dst, src = _transform_subblocks(tdst, tsrc, transformer, identity)
-                add_transform_kernel!(dst, src, p2, transformer, α, β, backend, allocator, ntasks)
-            end
+            dst, src = _transform_subblocks(tdst, tsrc, transformer, identity)
+            add_transform_kernel!(dst, src, p2, transformer, α, β, backend, allocator, ntasks)
         end
     end
 
@@ -656,19 +650,15 @@ of `tsrc`, using the fusion tree transformation encoded in `transformer` (see [`
 end
 
 # TensorMaps address their flat data directly, other tensor types go through `subblock`
-function _transform_subblocks(tdst::TensorMap, tsrc::TensorMap, transformer, op)
-    return StridedSubblocks(tdst, transformer.structure_dst), StridedSubblocks(tsrc, transformer.structure_src, op)
-end
-function _transform_subblocks(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, transformer, op)
-    return TreeSubblocks(tdst), TreeSubblocks(tsrc, op)
-end
+_transform_subblocks(tdst::TensorMap, tsrc::TensorMap, transformer, op) =
+    StridedSubblocks(tdst, transformer.structure_dst), StridedSubblocks(tsrc, transformer.structure_src, op)
+_transform_subblocks(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, transformer, op) =
+    TreeSubblocks(tdst), TreeSubblocks(tsrc, op)
 
-function use_threaded_transform(t::TensorMap, transformer)
-    return get_num_transformer_threads() > 1 && length(t.data) > Strided.MINTHREADLENGTH
-end
-function use_threaded_transform(t::AbstractTensorMap, transformer)
-    return get_num_transformer_threads() > 1 && dim(space(t)) > Strided.MINTHREADLENGTH
-end
+use_threaded_transform(t::TensorMap, transformer) =
+    get_num_transformer_threads() > 1 && length(t.data) > Strided.MINTHREADLENGTH
+use_threaded_transform(t::AbstractTensorMap, transformer) =
+    get_num_transformer_threads() > 1 && dim(space(t)) > Strided.MINTHREADLENGTH
 
 # The kernel operates on the subblocks addressed by position, so that for `TensorMap`s this only
 # depends on `numind`, `eltype` and the transformer data, not on the sectortype.
