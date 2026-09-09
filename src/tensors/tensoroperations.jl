@@ -39,6 +39,7 @@ has_array_view(t) = has_array_view(typeof(t))
 has_array_view(::Type) = false
 has_array_view(::Type{T}) where {T <: TensorMap} = sectortype(T) === Trivial
 has_array_view(::Type{T}) where {T <: AdjointTensorMap} = has_array_view(parenttype(T))
+has_array_view(t, ts...) = has_array_view(t) && has_array_view(ts...)
 
 # tensoradd!
 function TO.tensoradd!(
@@ -47,10 +48,6 @@ function TO.tensoradd!(
         α::Number, β::Number,
         backend, allocator
     )
-    if has_array_view(C) && has_array_view(A)
-        TO.tensoradd!(C[], A[], pA, conjA, α, β, backend, allocator)
-        return C
-    end
     tdst, tsrc, p, _, conjA′, α′, β′ = unwrap_adjoints(C, A, _canonicalize(pA, C), nothing, conjA, α, β)
     _braid!(tdst, tsrc, p, conjA′, allind(tsrc), α′, β′, backend, allocator)
     return C
