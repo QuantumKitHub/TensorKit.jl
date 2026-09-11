@@ -198,6 +198,8 @@ function ChainRulesCore.rrule(
     return C′, pullback
 end
 
+@non_differentiable TensorKit.planaralloc_contract(args...)
+
 function ChainRulesCore.rrule(::typeof(TensorKit.scalar), t::AbstractTensorMap)
     val = scalar(t)
     function scalar_pullback(Δval)

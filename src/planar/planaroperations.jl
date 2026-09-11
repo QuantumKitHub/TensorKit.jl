@@ -162,15 +162,11 @@ function planarcontract!(
     end
 
     @timeit_debug GLOBAL_TIMER "planarcontract!" begin
-        codA, domA = codomainind(A), domainind(A)
-        codB, domB = codomainind(B), domainind(B)
-        oindA, cindA = pA
-        cindB, oindB = pB
-        oindA, cindA, oindB, cindB = reorder_indices(
-            codA, domA, codB, domB, oindA, cindA, oindB, cindB, pAB...
-        )
+        (oindA, cindA), (cindB, oindB), pAB′ = planar_contract_indices(A, pA, B, pB, pAB)
+        A_in_layout = (oindA, cindA) == (codomainind(A), domainind(A))
+        B_in_layout = (cindB, oindB) == (codomainind(B), domainind(B))
 
-        if oindA == codA && cindA == domA
+        if A_in_layout
             A′ = A
         else
             A′ = @timeit_debug GLOBAL_TIMER "alloc: buffers" TO.tensoralloc_add(
@@ -179,76 +175,117 @@ function planarcontract!(
             transpose!(A′, A, (oindA, cindA), One(), Zero(), backend, allocator)
         end
 
-        if cindB == codB && oindB == domB
+        if B_in_layout
             B′ = B
         else
-            B′ = @timeit_debug GLOBAL_TIMER "alloc: buffers" TensorOperations.tensoralloc_add(
+            B′ = @timeit_debug GLOBAL_TIMER "alloc: buffers" TO.tensoralloc_add(
                 scalartype(B), B, (cindB, oindB), false, Val(true), allocator
             )
             transpose!(B′, B, (cindB, oindB), One(), Zero(), backend, allocator)
         end
-        mul!(C, A′, B′, α, β)
-        (oindA == codA && cindA == domA) || TO.tensorfree!(A′, allocator)
-        (cindB == codB && oindB == domB) || TO.tensorfree!(B′, allocator)
+
+        if _isdirectoutput(pAB′, length(oindA))
+            mul!(C, A′, B′, α, β)
+        else # as in `blas_contract!`, a non-trivial `pAB` requires an intermediate
+            AB = @timeit_debug GLOBAL_TIMER "alloc: buffers" TO.tensoralloc_contract(
+                scalartype(C), A′, (codomainind(A′), domainind(A′)), false,
+                B′, (codomainind(B′), domainind(B′)), false,
+                TO.trivialpermutation(length(oindA), length(oindB)), Val(true), allocator
+            )
+            mul!(AB, A′, B′, One(), Zero())
+            transpose!(C, AB, pAB′, α, β, backend, allocator)
+            TO.tensorfree!(AB, allocator)
+        end
+
+        A_in_layout || TO.tensorfree!(A′, allocator)
+        B_in_layout || TO.tensorfree!(B′, allocator)
     end
     return C
 end
 
 # auxiliary routines
-_cyclicpermute(t::Tuple) = (Base.tail(t)..., t[1])
-_cyclicpermute(t::Tuple{}) = ()
-
-function reorder_indices(codA, domA, codB, domB, oindA, oindB, p1, p2)
-    N₁ = length(oindA)
-    N₂ = length(oindB)
-    @assert length(p1) == N₁ && all(in(p1), 1:N₁)
-    @assert length(p2) == N₂ && all(in(p2), N₁ .+ (1:N₂))
-    oindA2 = TupleTools.getindices(oindA, p1)
-    oindB2 = TupleTools.getindices(oindB, p2 .- N₁)
-    indA = (codA..., reverse(domA)...)
-    indB = (codB..., reverse(domB)...)
-    # cycle indA to be of the form (oindA2..., reverse(cindA2)...)
-    while length(oindA2) > 0 && indA[1] != oindA2[1]
-        indA = _cyclicpermute(indA)
-    end
-    # cycle indB to be of the form (cindB2..., reverse(oindB2)...)
-    while length(oindB2) > 0 && indB[end] != oindB2[1]
-        indB = _cyclicpermute(indB)
-    end
-    for i in 2:N₁
-        @assert indA[i] == oindA2[i]
-    end
-    for j in 2:N₂
-        @assert indB[end + 1 - j] == oindB2[j]
-    end
-    Nc = length(indA) - N₁
-    @assert Nc == length(indB) - N₂
-    pc = ntuple(identity, Nc)
-    cindA2 = reverse(TupleTools.getindices(indA, N₁ .+ pc))
-    cindB2 = TupleTools.getindices(indB, pc)
-    return oindA2, cindA2, oindB2, cindB2
+# whether a contraction with `N₁` open indices on `A` directly yields the destination
+function _isdirectoutput(pAB::Index2Tuple, N₁::Int)
+    return length(pAB[1]) == N₁ && pAB == TO.trivialpermutation(pAB)
 end
 
-function reorder_indices(codA, domA, codB, domB, oindA, cindA, oindB, cindB, p1, p2)
-    oindA2, cindA2, oindB2, cindB2 = reorder_indices(
-        codA, domA, codB, domB, oindA, oindB, p1, p2
-    )
+# rotate `t` such that `x` comes first
+_rotate_to(t::Tuple, x) = TupleTools.circshift(t, 1 - something(findfirst(==(x), t)))
 
-    #if oindA or oindB are empty, then reorder indices can only order it correctly up to a cyclic permutation!
-    if isempty(oindA2) && !isempty(cindA)
-        # isempty(cindA) is a cornercase which I'm not sure if we can encounter
-        hit = cindA[findfirst(==(first(cindB2)), cindB)]
-        while hit != first(cindA2)
-            cindA2 = _cyclicpermute(cindA2)
-        end
+# rotate the cycle `indx` into `(head′..., reverse(tail′)...)`
+function _planar_rotate(indx::IndexTuple, head::IndexTuple, tail::IndexTuple)
+    N₁, N = length(head), length(indx)
+    # rotate the arc of `head` indices in front; note that `indx` cannot be reassigned
+    # without boxing it in the closures below
+    rot = if 0 < N₁ < N
+        i = findfirst(ntuple(n -> indx[n] ∈ head && indx[mod1(n - 1, N)] ∉ head, Val(N)))
+        TupleTools.circshift(indx, 1 - something(i))
+    else
+        indx
     end
-    if isempty(oindB2) && !isempty(cindB)
-        hit = cindB[findfirst(==(first(cindA2)), cindA)]
-        while hit != first(cindB2)
-            cindB2 = _cyclicpermute(cindB2)
-        end
+    head′ = ntuple(n -> rot[n], Val(N₁))
+    tail′ = reverse(ntuple(n -> rot[N₁ + n], Val(length(tail))))
+    TupleTools.sort(head′) == TupleTools.sort(head) ||
+        throw(ArgumentError(lazy"$head and $tail do not partition the cycle $indx planarly"))
+    return head′, tail′
+end
+
+"""
+    planar_contract_indices(A, pA, B, pB, pAB) -> pA′, pB′, pAB′
+
+Bring the index tuples of a planar contraction into canonical form, such that `pA′` and `pB′`
+are cyclic partitions of the indices of `A` and `B`, i.e. such that
+
+    C = transpose(transpose(A, pA′) * transpose(B, pB′), pAB′)
+
+For sector types with `GenericUnit()` these are the only partitions with valid intermediate
+spaces, so all space computations should use them. `A` and `B` can be anything supporting
+`codomainind` and `domainind`, in particular `AbstractTensorMap`s and `HomSpace`s.
+
+See also [`planarcontract!`](@ref) and [`planaralloc_contract`](@ref).
+"""
+function planar_contract_indices(
+        A, (oindA, cindA)::Index2Tuple,
+        B, (cindB, oindB)::Index2Tuple,
+        pAB::Index2Tuple
+    )
+    indA = (codomainind(A)..., reverse(domainind(A))...)
+    indB = (codomainind(B)..., reverse(domainind(B))...)
+    oindA′, cindA′ = _planar_rotate(indA, oindA, cindA)
+    cindB′, oindB′ = _planar_rotate(indB, cindB, oindB)
+
+    # if all indices are contracted, fix the residual rotation using the other tensor
+    if isempty(oindA′) && !isempty(cindA)
+        cindA′ = _rotate_to(cindA′, cindA[something(findfirst(==(first(cindB′)), cindB))])
     end
-    @assert TupleTools.sort(cindA) == TupleTools.sort(cindA2)
-    @assert TupleTools.sort(tuple.(cindA2, cindB2)) == TupleTools.sort(tuple.(cindA, cindB))
-    return oindA2, cindA2, oindB2, cindB2
+    if isempty(oindB′) && !isempty(cindB)
+        cindB′ = _rotate_to(cindB′, cindB[something(findfirst(==(first(cindA′)), cindA))])
+    end
+    TupleTools.sort(tuple.(cindA′, cindB′)) == TupleTools.sort(tuple.(cindA, cindB)) ||
+        throw(ArgumentError(lazy"contraction of $cindA with $cindB is not planar"))
+
+    # re-express `pAB` in terms of the reordered open indices
+    remap = (
+        map(something, TupleTools.indexin(oindA, oindA′))...,
+        (length(oindA) .+ map(something, TupleTools.indexin(oindB, oindB′)))...,
+    )
+    pAB′ = (TupleTools.getindices(remap, pAB[1]), TupleTools.getindices(remap, pAB[2]))
+    return (oindA′, cindA′), (cindB′, oindB′), pAB′
+end
+
+"""
+    planaralloc_contract(TC, A, pA, B, pB, pAB, [istemp, allocator])
+
+Allocate the destination of `planarcontract!(C, A, pA, B, pB, pAB, α, β)`.
+
+The planar counterpart of `TensorOperations.tensoralloc_contract`: the index tuples are
+canonicalized with [`planar_contract_indices`](@ref) first, such that the space computation
+only involves valid intermediate spaces.
+"""
+function planaralloc_contract(
+        TC, A, pA::Index2Tuple, B, pB::Index2Tuple, pAB::Index2Tuple,
+        istemp::Val = Val(false), allocator = TO.DefaultAllocator()
+    )
+    pA′, pB′, pAB′ = planar_contract_indices(A, pA, B, pB, pAB)
+    return TO.tensoralloc_contract(TC, A, pA′, false, B, pB′, false, pAB′, istemp, allocator)
 end
