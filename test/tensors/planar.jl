@@ -192,6 +192,22 @@ end
         @test !isempty(alloc_trailing)
     end
 
+    @testset "canonical index tuples" begin
+        # the emitted partitions are planar, unlike the raw ones of the decomposition
+        function planarindices(ex, out = Any[])
+            ex isa Expr || return out
+            if Meta.isexpr(ex, :call) && ex.args[1] isa GlobalRef &&
+                    ex.args[1].name === :planarcontract!
+                push!(out, (ex.args[4], ex.args[6], ex.args[7]))
+            end
+            foreach(a -> planarindices(a, out), ex.args)
+            return out
+        end
+        ex = @macroexpand @planar ρ[a; b] := t[a c d; e f] * u[e f; b c d]
+        @test planarindices(ex) ==
+            [(((1,), (4, 5, 3, 2)), ((1, 2, 5, 4), (3,)), ((1,), (2,)))]
+    end
+
     @testset "allocator is rewound" begin
         # A `BufferAllocator` hands out slices of a single buffer and reclaims them only
         # by rewinding its offset -- `tensorfree!` is a no-op for it. The temporaries a
