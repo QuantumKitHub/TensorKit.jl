@@ -231,6 +231,19 @@ function _planar_rotate(indx::IndexTuple, head::IndexTuple, tail::IndexTuple)
 end
 
 """
+    IndexPartition(numout, numin)
+
+Stand-in for a tensor with `numout` outgoing and `numin` incoming indices, to canonicalize
+index tuples with [`planar_contract_indices`](@ref) at macro-expansion time.
+"""
+struct IndexPartition
+    numout::Int
+    numin::Int
+end
+numout(p::IndexPartition) = p.numout
+numin(p::IndexPartition) = p.numin
+
+"""
     planar_contract_indices(A, pA, B, pB, pAB) -> pA′, pB′, pAB′
 
 Bring the index tuples of a planar contraction into canonical form, such that `pA′` and `pB′`
@@ -240,7 +253,8 @@ are cyclic partitions of the indices of `A` and `B`, i.e. such that
 
 For sector types with `GenericUnit()` these are the only partitions with valid intermediate
 spaces, so all space computations should use them. `A` and `B` can be anything supporting
-`codomainind` and `domainind`, in particular `AbstractTensorMap`s and `HomSpace`s.
+`codomainind` and `domainind`, in particular `AbstractTensorMap`s, `HomSpace`s and
+[`IndexPartition`](@ref)s.
 
 See also [`planarcontract!`](@ref) and [`planaralloc_contract`](@ref).
 """
