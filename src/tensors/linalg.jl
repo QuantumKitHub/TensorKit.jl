@@ -602,7 +602,7 @@ is `domain(t1) ⊗ domain(t2)`.
 function ⊗(A::AbstractTensorMap, B::AbstractTensorMap)
     check_spacetype(A, B)
 
-    # allocate destination with correct scalartype
+    # index tuples for the blockwise tensor product
     pA = ((codomainind(A)..., domainind(A)...), ())
     pB = ((), (codomainind(B)..., domainind(B)...))
     NA = numind(A)
@@ -610,8 +610,12 @@ function ⊗(A::AbstractTensorMap, B::AbstractTensorMap)
         (codomainind(A)..., (codomainind(B) .+ NA)...),
         (domainind(A)..., (domainind(B) .+ NA)...),
     )
+    # note that we don't use `tensoralloc_contract`: its intermediate spaces are not
+    # cyclically ordered, which is not allowed for `GenericUnit` sectors
     TC = TO.promote_contract(scalartype(A), scalartype(B))
-    C = TO.tensoralloc_contract(TC, A, pA, false, B, pB, false, pAB, Val(false))
+    TTC = TO.tensorcontract_type(TC, A, pA, false, B, pB, false, pAB)
+    structure = (codomain(A) ⊗ codomain(B)) ← (domain(A) ⊗ domain(B))
+    C = TO.tensoralloc(TTC, structure, Val(false))
     zerovector!(C)
 
     # implement tensor product

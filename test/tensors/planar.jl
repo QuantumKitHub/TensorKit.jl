@@ -4,6 +4,7 @@ using TensorKit
 using TensorKit: type_repr
 using TensorKit: PlanarTrivial, ℙ
 using TensorKit: planaradd!, planartrace!, planarcontract!
+using TensorKit: planar_contract_indices, SpaceMismatch
 using TensorOperations
 
 spacelist = default_spacelist(fast_tests)
@@ -95,6 +96,64 @@ end
 
         @test force_planar(tensorcontract!(C, A, pA, false, B, pB, false, pAB, true, true)) ≈
             planarcontract!(C′, A′, pA, B′, pB, pAB, true, true)
+
+        # an output permutation that is not absorbed by the cyclic reordering
+        pAB2 = ((2, 1), (3, 4, 5))
+        D = randn((ℂ^2)' ⊗ ℂ^2 ← ℂ^5 ⊗ (ℂ^2)' ⊗ ℂ^4)
+        D′ = force_planar(D)
+        @test force_planar(tensorcontract!(D, A, pA, false, B, pB, false, pAB2, true, true)) ≈
+            planarcontract!(D′, A′, pA, B′, pB, pAB2, true, true)
+
+        # an output permutation that is not cyclic is not planar
+        pAB3 = ((1, 2), (3, 4, 5))
+        E′ = force_planar(randn(ℂ^2 ⊗ (ℂ^2)' ← ℂ^5 ⊗ (ℂ^2)' ⊗ ℂ^4))
+        @test_throws ArgumentError planarcontract!(E′, A′, pA, B′, pB, pAB3, true, true)
+    end
+
+    @testset "planar_contract_indices" begin
+        V1, V2, V3, V4, V5 = VIBM
+        W = V1 ⊗ V2 ⊗ V3 ← (V4 ⊗ V5)'
+        pA, pB = ((1,), (2, 3, 4, 5)), ((4, 5, 1, 2), (3,))
+        pAB = ((1,), (2,))
+
+        # the partitions of a planar contraction need not be planar by themselves
+        @test_throws SpaceMismatch permute(W, pA)
+        @test_throws SpaceMismatch permute(W', pB)
+
+        pA′, pB′, pAB′ = @constinferred planar_contract_indices(W, pA, W', pB, pAB)
+        @test permute(W, pA′) isa TensorKit.HomSpace
+        @test permute(W', pB′) isa TensorKit.HomSpace
+        @test TensorOperations.tensorcontract(W, pA′, false, W', pB′, false, pAB′) ==
+            (V1 ← V1)
+
+        # all indices contracted: the rotations are only fixed by the other factor
+        pA0, pB0 = ((), (1, 2, 3, 4, 5)), ((3, 4, 5, 1, 2), ())
+        pA0′, pB0′, pAB0′ = @constinferred planar_contract_indices(
+            W, pA0, W', pB0, ((), ())
+        )
+        @test permute(W, pA0′) isa TensorKit.HomSpace
+        @test permute(W', pB0′) isa TensorKit.HomSpace
+        @test numind(
+            TensorOperations.tensorcontract(W, pA0′, false, W', pB0′, false, pAB0′)
+        ) == 0
+
+        # not a planar contraction
+        @test_throws ArgumentError planar_contract_indices(
+            W, ((1,), (3, 2, 4, 5)), W', pB, pAB
+        )
+        @test_throws ArgumentError planar_contract_indices(
+            W, ((2,), (1, 3, 4, 5)), W', pB, pAB
+        )
+
+        # the output permutation is remapped along with the reordered open indices
+        WA = ℂ^2 ⊗ ℂ^3 ← ℂ^2 ⊗ ℂ^5 ⊗ ℂ^4
+        WB = ℂ^2 ⊗ ℂ^4 ← ℂ^4 ⊗ ℂ^3
+        pA2, pB2 = ((1, 3, 4), (5, 2)), ((2, 4), (1, 3))
+        pA2′, pB2′, pAB2′ = planar_contract_indices(WA, pA2, WB, pB2, ((3, 2, 1), (4, 5)))
+        @test (pA2′, pB2′) == (((4, 3, 1), (5, 2)), ((2, 4), (1, 3)))
+        @test pAB2′ == ((1, 2, 3), (4, 5))
+        @test last(planar_contract_indices(WA, pA2, WB, pB2, ((2, 1), (3, 4, 5)))) ==
+            ((2, 3), (1, 4, 5))
     end
 end
 
@@ -102,30 +161,35 @@ end
     T = ComplexF64
 
     @testset "backend and allocator insertion" begin
-        # trailing arguments of every `planar*!` call in `ex`
-        function planartrailing(ex, out = Any[])
+        # trailing arguments of every call in `ex` whose name is in `names`
+        function planartrailing(ex, names, out = Any[])
             ex isa Expr || return out
             if Meta.isexpr(ex, :call) && ex.args[1] isa GlobalRef &&
-                    ex.args[1].name in (:planaradd!, :planartrace!, :planarcontract!)
+                    ex.args[1].name in names
                 push!(out, ex.args[end])
             end
-            foreach(a -> planartrailing(a, out), ex.args)
+            foreach(a -> planartrailing(a, names, out), ex.args)
             return out
         end
 
         ex = @macroexpand @planar backend = MarkerBackend() C[i; j] := A[i; k l] *
             τ[k l; m n] * B[m n; j]
-        trailing = planartrailing(ex)
+        trailing = planartrailing(ex, (:planaradd!, :planartrace!, :planarcontract!))
         @test !isempty(trailing)
         @test all(==(:(MarkerBackend())), trailing)
 
         # an allocator implies a default backend, and both land on the planar calls
         ex = @macroexpand @planar allocator = MarkerAllocator() C[i; j] := A[i; k l] *
             τ[k l; m n] * B[m n; j]
-        trailing = planartrailing(ex)
+        trailing = planartrailing(
+            ex, (:planaradd!, :planartrace!, :planarcontract!, :planaralloc_contract)
+        )
         @test !isempty(trailing)
         @test all(==(:(MarkerAllocator())), trailing)
         @test occursin("DefaultBackend", string(ex))
+
+        alloc_trailing = planartrailing(ex, (:planaralloc_contract,))
+        @test !isempty(alloc_trailing)
     end
 
     @testset "allocator is rewound" begin

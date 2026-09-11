@@ -22,8 +22,11 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 ### Added
 
+- `planarcontract!` now supports an arbitrary (cyclic) output permutation `pAB`, in the same way as the non-planar `tensorcontract!`, along with the new internal helpers `TensorKit.planar_contract_indices` and `TensorKit.planaralloc_contract`. ([#531](https://github.com/QuantumKitHub/TensorKit.jl/pull/531))
+
 ### Changed
 - For sector types with `GenericUnit` such that colorings are not unique, `GradedSpace`, `ProductSpace` and `HomSpace` now check for this compatibility. In particular, this prevents the construction of `TensorMap`s with incompatible colorings, which previously either errored or produced empty tensors inconsistently. ([#515](https://github.com/QuantumKitHub/TensorKit.jl/pull/515))
+- `TensorOperations.tensorcontract_structure` now requires the index tuples `pA` and `pB` to be planar (cyclic) partitions for sector types with `GenericUnit()`; planar code should allocate through `TensorKit.planaralloc_contract`, which canonicalizes them. ([#531](https://github.com/QuantumKitHub/TensorKit.jl/pull/531))
 
 ### Deprecated
 

@@ -219,13 +219,18 @@ function planarcontract!(
     length.(pA) == (2, 2) ||
         return planarcontract!(C, TensorMap(A), pA, B, pB, pAB, α, β, backend, allocator)
 
-    spacecheck_contract(C, A, pA, false, B, pB, false, pAB)
+    pA′, pB′, pAB′ = planar_contract_indices(A, pA, B, pB, pAB)
+    # a destination that needs an additional transposition is left to the generic
+    # implementation: the braid below would resolve the cyclic move as crossings
+    _isdirectoutput(pAB′, length(pA′[1])) ||
+        return planarcontract!(C, TensorMap(A), pA, B, pB, pAB, α, β, backend, allocator)
+
+    spacecheck_contract(C, A, pA′, false, B, pB′, false, pAB′)
 
     codA, domA = codomainind(A), domainind(A)
     codB, domB = codomainind(B), domainind(B)
-    oindA, cindA, oindB, cindB = reorder_indices(
-        codA, domA, codB, domB, pA..., reverse(pB)..., pAB...
-    )
+    oindA, cindA = pA′
+    cindB, oindB = pB′
 
     I = sectortype(C)
     BraidingStyle(I) isa Bosonic &&
@@ -272,13 +277,18 @@ function planarcontract!(
     length.(pB) == (2, 2) ||
         return planarcontract!(C, A, pA, TensorMap(B), pB, pAB, α, β, backend, allocator)
 
-    spacecheck_contract(C, A, pA, false, B, pB, false, pAB)
+    pA′, pB′, pAB′ = planar_contract_indices(A, pA, B, pB, pAB)
+    # a destination that needs an additional transposition is left to the generic
+    # implementation: the braid below would resolve the cyclic move as crossings
+    _isdirectoutput(pAB′, length(pA′[1])) ||
+        return planarcontract!(C, A, pA, TensorMap(B), pB, pAB, α, β, backend, allocator)
+
+    spacecheck_contract(C, A, pA′, false, B, pB′, false, pAB′)
 
     codA, domA = codomainind(A), domainind(A)
     codB, domB = codomainind(B), domainind(B)
-    oindA, cindA, oindB, cindB = reorder_indices(
-        codA, domA, codB, domB, pA..., reverse(pB)..., pAB...
-    )
+    oindA, cindA = pA′
+    cindB, oindB = pB′
 
     I = sectortype(C)
     BraidingStyle(I) isa Bosonic &&
