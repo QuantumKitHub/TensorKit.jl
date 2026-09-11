@@ -53,6 +53,7 @@ end
 
 # TODO: replace _planarmethod with planarmethod in everything below
 const _PLANAR_OPERATIONS = (:planaradd!, :planartrace!, :planarcontract!)
+const _PLANAR_ALLOCATIONS = (:planaralloc_contract,)
 
 function _insert_planar_operations(ex)
     if isexpr(ex, :call)
@@ -76,6 +77,14 @@ function _insert_planar_operations(ex)
             @assert !conjA "conj flag should be disabled"
             return Expr(
                 ex.head, GlobalRef(TensorKit, Symbol(:planartrace!)),
+                map(_insert_planar_operations, ex.args[2:end])...
+            )
+        elseif ex.args[1] == GlobalRef(TensorOperations, :tensoralloc_contract)
+            conjB = popat!(ex.args, 8)
+            conjA = popat!(ex.args, 5)
+            @assert !conjA && !conjB "conj flags should be disabled ($conjA), ($conjB)"
+            return Expr(
+                ex.head, GlobalRef(TensorKit, Symbol(:planaralloc_contract)),
                 map(_insert_planar_operations, ex.args[2:end])...
             )
         elseif ex.args[1] in TensorOperations.tensoroperationsfunctions
@@ -116,10 +125,11 @@ end
 """
     insertplanarallocator(ex, allocator)
 
-Insert the allocator argument into the tensor operation methods `planaradd!`, `planartrace!`, and `planarcontract!`.
+Insert the allocator argument into the tensor operation methods `planaradd!`, `planartrace!`,
+`planarcontract!`, and `planaralloc_contract`.
 
 See also: [`TensorOperations.insertallocator`](@ref).
 """
 function insertplanarallocator(ex, allocator)
-    return _insertargument(ex, allocator, _PLANAR_OPERATIONS)
+    return _insertargument(ex, allocator, (_PLANAR_OPERATIONS..., _PLANAR_ALLOCATIONS...))
 end
