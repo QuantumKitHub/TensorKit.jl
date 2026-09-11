@@ -21,6 +21,9 @@ function planarparser(planarexpr, kwargs...)
     push!(parser.postprocessors, ex -> _free_temporaries(ex, temporaries))
     push!(parser.postprocessors, _insert_planar_operations)
 
+    partitions = Dict{Any, Union{Nothing, IndexPartition}}()
+    push!(parser.postprocessors, ex -> canonicalizeplanarindices(ex, partitions))
+
     # braiding tensors need to be instantiated before kwargs are processed
     push!(parser.preprocessors, _construct_braidingtensors)
 
@@ -91,6 +94,7 @@ function planarparser(planarexpr, kwargs...)
     parser.contractioncostcheck = nothing
     push!(parser.preprocessors, ex -> _check_planarity(ex))
     push!(parser.preprocessors, ex -> _decompose_planar_contractions(ex, temporaries))
+    push!(parser.preprocessors, ex -> _index_partitions!(partitions, ex))
 
     return parser
 end
