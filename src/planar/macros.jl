@@ -19,10 +19,10 @@ function planarparser(planarexpr, kwargs...)
     temporaries = Vector{Symbol}()
     push!(parser.postprocessors, ex -> _annotate_temporaries(ex, temporaries))
     push!(parser.postprocessors, ex -> _free_temporaries(ex, temporaries))
-    push!(parser.postprocessors, _insert_planar_operations)
 
     partitions = Dict{Any, Union{Nothing, IndexPartition}}()
     push!(parser.postprocessors, ex -> canonicalizeplanarindices(ex, partitions))
+    push!(parser.postprocessors, _insert_planar_operations)
 
     # braiding tensors need to be instantiated before kwargs are processed
     push!(parser.preprocessors, _construct_braidingtensors)

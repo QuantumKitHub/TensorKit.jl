@@ -256,7 +256,7 @@ spaces, so all space computations should use them. `A` and `B` can be anything s
 `codomainind` and `domainind`, in particular `AbstractTensorMap`s, `HomSpace`s and
 [`IndexPartition`](@ref)s.
 
-See also [`planarcontract!`](@ref) and [`planaralloc_contract`](@ref).
+See also [`planarcontract!`](@ref).
 """
 function planar_contract_indices(
         A, (oindA, cindA)::Index2Tuple,
@@ -285,21 +285,4 @@ function planar_contract_indices(
     )
     pAB′ = (TupleTools.getindices(remap, pAB[1]), TupleTools.getindices(remap, pAB[2]))
     return (oindA′, cindA′), (cindB′, oindB′), pAB′
-end
-
-"""
-    planaralloc_contract(TC, A, pA, B, pB, pAB, [istemp, allocator])
-
-Allocate the destination of `planarcontract!(C, A, pA, B, pB, pAB, α, β)`.
-
-The planar counterpart of `TensorOperations.tensoralloc_contract`: the index tuples are
-canonicalized with [`planar_contract_indices`](@ref) first, such that the space computation
-only involves valid intermediate spaces.
-"""
-function planaralloc_contract(
-        TC, A, pA::Index2Tuple, B, pB::Index2Tuple, pAB::Index2Tuple,
-        istemp::Val = Val(false), allocator = TO.DefaultAllocator()
-    )
-    pA′, pB′, pAB′ = planar_contract_indices(A, pA, B, pB, pAB)
-    return TO.tensoralloc_contract(TC, A, pA′, false, B, pB′, false, pAB′, istemp, allocator)
 end
