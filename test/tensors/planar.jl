@@ -161,6 +161,7 @@ end
     T = ComplexF64
 
     @testset "backend and allocator insertion" begin
+        PLANAR_OPERATIONS = (:planaradd!, :planartrace!, :planarcontract!)
         # trailing arguments of every call in `ex` whose name is in `names`
         function planartrailing(ex, names, out = Any[])
             ex isa Expr || return out
@@ -174,22 +175,17 @@ end
 
         ex = @macroexpand @planar backend = MarkerBackend() C[i; j] := A[i; k l] *
             τ[k l; m n] * B[m n; j]
-        trailing = planartrailing(ex, (:planaradd!, :planartrace!, :planarcontract!))
+        trailing = planartrailing(ex, PLANAR_OPERATIONS)
         @test !isempty(trailing)
         @test all(==(:(MarkerBackend())), trailing)
 
         # an allocator implies a default backend, and both land on the planar calls
         ex = @macroexpand @planar allocator = MarkerAllocator() C[i; j] := A[i; k l] *
             τ[k l; m n] * B[m n; j]
-        trailing = planartrailing(
-            ex, (:planaradd!, :planartrace!, :planarcontract!, :planaralloc_contract)
-        )
+        trailing = planartrailing(ex, PLANAR_OPERATIONS)
         @test !isempty(trailing)
         @test all(==(:(MarkerAllocator())), trailing)
         @test occursin("DefaultBackend", string(ex))
-
-        alloc_trailing = planartrailing(ex, (:planaralloc_contract,))
-        @test !isempty(alloc_trailing)
     end
 
     @testset "canonical index tuples" begin

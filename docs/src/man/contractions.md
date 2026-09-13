@@ -291,7 +291,7 @@ Any layout the macro cannot identify as planar is rejected at parse time with `A
 
 For users writing their own planar kernels, it is important to note that the index tuples `pA = (oindA, cindA)` and `pB = (cindB, oindB)` handed to `planarcontract!` need not individually be planar partitions of the operands, even when the overall diagram is planar; only a cyclic rotation of them is.
 The function `TensorKit.planar_contract_indices(A, pA, B, pB, pAB)` returns the canonical `pA′`, `pB′` and the remaining output permutation `pAB′`, and these canonical tuples are the only ones for which the intermediate spaces exist for sector types with multiple units (i.e. multifusion categories with `GenericUnit()`).
-Consequently, destinations for planar contractions must be allocated with `TensorKit.planaralloc_contract` — which is what the `@planar` macro emits — rather than with `TensorOperations.tensoralloc_contract`.
+The `@planar` macro applies it to the tuples it emits, so hand-written planar kernels should do the same before allocating a destination with `TensorOperations.tensoralloc_contract`.
 
 To make this concrete, consider the contraction `A * B` for two anyonic tensors, written in a manifestly planar fashion:
 
