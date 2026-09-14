@@ -456,7 +456,7 @@ function TensorKit.add_transform_kernel!(
 end
 
 function TensorKit.add_transform_kernel!(
-        data_dst::GPUStridedSubblocks, data_src::GPUStridedSubblocks, p, conjsrc::Bool,
+        dst::GPUStridedSubblocks, src::GPUStridedSubblocks, p, conjsrc::Bool,
         transformer::GenericTreeTransformer{T, N}, α, β, backend, allocator, ntasks::Int 
     ) where {T, N}
     # GPU-side object to hold the treetransformer information
