@@ -14,6 +14,7 @@ end
 for f in
     [
         :svd_compact, :svd_full, :svd_vals,
+        :batched_svd_compact, :batched_svd_full, :batched_svd_vals,
         :qr_compact, :qr_full, :qr_null,
         :lq_compact, :lq_full, :lq_null,
         :eig_full, :eig_vals, :eigh_full, :eigh_vals,
@@ -69,7 +70,7 @@ end
 
 # Handle these separately because single output instead of tuple
 for f! in (
-        :qr_null!, :lq_null!,
+        :qr_null!, :lq_null!, :batched_svd_vals,
         :svd_vals!, :eig_vals!, :eigh_vals!,
         :project_hermitian!, :project_antihermitian!, :project_isometric!,
         :exponential!,
@@ -118,6 +119,7 @@ for f in [
         :eig_full, :eig_vals, :eig_trunc, :eig_trunc_no_error,
         :eigh_full, :eigh_vals, :eigh_trunc, :eigh_trunc_no_error,
         :svd_full, :svd_compact, :svd_trunc, :svd_trunc_no_error, :svd_vals,
+        :batched_svd_full, :batched_svd_compact, :batched_svd_vals,
         :left_polar, :right_polar,
         :left_orth, :right_orth, :left_null, :right_null,
         :project_hermitian, :project_antihermitian, :project_isometric,
@@ -172,6 +174,41 @@ function MAK.initialize_output(::typeof(svd_compact!), t::AbstractTensorMap, ::A
 end
 
 function MAK.initialize_output(::typeof(svd_vals!), t::AbstractTensorMap, alg::AbstractAlgorithm)
+    @timeit_debug GLOBAL_TIMER "alloc: initialize_output" begin
+        V_cod = infimum(fuse(codomain(t)), fuse(domain(t)))
+        T = real(scalartype(t))
+        A = similarstoragetype(t, T)
+        return SectorVector{T, sectortype(t), A}(undef, V_cod)
+    end
+end
+
+# Batched singular value decomposition
+# ------------------------------------
+# We should be able to just reuse the
+# above and handle the actual batched
+# object filling deeper down
+function MAK.initialize_output(::typeof(batched_svd_full!), t::AbstractTensorMap, ::AbstractAlgorithm)
+    @timeit_debug GLOBAL_TIMER "alloc: initialize_output" begin
+        V_cod = fuse(codomain(t))
+        V_dom = fuse(domain(t))
+        U = similar(t, codomain(t) ← V_cod)
+        S = similar(t, real(scalartype(t)), V_cod ← V_dom)
+        Vᴴ = similar(t, V_dom ← domain(t))
+        return U, S, Vᴴ
+    end
+end
+
+function MAK.initialize_output(::typeof(batched_svd_compact!), t::AbstractTensorMap, ::AbstractAlgorithm)
+    @timeit_debug GLOBAL_TIMER "alloc: initialize_output" begin
+        V_cod = V_dom = infimum(fuse(codomain(t)), fuse(domain(t)))
+        U = similar(t, codomain(t) ← V_cod)
+        S = similar_diagonal(t, real(scalartype(t)), V_cod)
+        Vᴴ = similar(t, V_dom ← domain(t))
+        return U, S, Vᴴ
+    end
+end
+
+function MAK.initialize_output(::typeof(batched_svd_vals!), t::AbstractTensorMap, alg::AbstractAlgorithm)
     @timeit_debug GLOBAL_TIMER "alloc: initialize_output" begin
         V_cod = infimum(fuse(codomain(t)), fuse(domain(t)))
         T = real(scalartype(t))

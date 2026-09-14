@@ -21,14 +21,8 @@ using Random
 # only accepts matrices up to 32x32. Anything larger has to go through
 # the regular Jacobi solver one block at a time.
 TensorKit.Factorizations.max_batched_blocksize(
-    ::TensorKit.Factorizations.BatchedSVDAlgorithm, ::Type{<:CuArray}
+    ::TensorKit.Factorizations.AbstractAlgorithm, ::Type{<:CuArray}
 ) = 32
-
-function TensorKit.Factorizations.batched_algorithm(
-        alg::MatrixAlgebraKit.Jacobi, ::Type{<:CuArray}
-    )
-    return MatrixAlgebraKit.JacobiBatched(; alg.kwargs...)
-end
 
 include("cutensormap.jl")
 
