@@ -2,9 +2,10 @@ using Adapt, AMDGPU
 using Test, TestExtras
 using TensorKit
 using LinearAlgebra: LinearAlgebra
-using MatrixAlgebraKit: MatrixAlgebraKit, DivideAndConquer, DivideAndConquerBatched,
-    QRIterationBatched, JacobiBatched, QRIteration, svd_compact, svd_compact!, svd_vals,
-    svd_vals!, svd_full, svd_full!
+using MatrixAlgebraKit: MatrixAlgebraKit, DivideAndConquer, QRIteration, Jacobi,
+    svd_compact, svd_compact!, svd_vals, svd_vals!, svd_full, svd_full!,
+    batched_svd_compact, batched_svd_compact!, batched_svd_vals,
+    batched_svd_vals!, batched_svd_full, batched_svd_full!
 
 const Factorizations = TensorKit.Factorizations
 
@@ -29,7 +30,6 @@ _id(t, V) = TensorKit.id(TensorKit.storagetype(t), V)
 @timedtestset "batched SVD on ROCArray" verbose = true begin
     @testset "block-count dispatch" begin
         @test Factorizations.BATCHED_SVD_THRESHOLD == 4
-        @test Factorizations.unbatched(DivideAndConquerBatched()) isa DivideAndConquer
     end
 
     @testset "many blocks: $T" for T in (Float64, ComplexF64)
@@ -38,7 +38,7 @@ _id(t, V) = TensorKit.id(TensorKit.storagetype(t), V)
         @test nblocks >= Factorizations.BATCHED_SVD_THRESHOLD
         t = adapt(ROCArray, t_cpu)
 
-        U, S, Vᴴ = svd_compact(t; alg = DivideAndConquerBatched())
+        U, S, Vᴴ = batched_svd_compact(t; alg = DivideAndConquer())
         Ur, Sr, Vr = svd_compact(t; alg = DivideAndConquer())
 
         # singular values agree with the unbatched path
@@ -47,7 +47,7 @@ _id(t, V) = TensorKit.id(TensorKit.storagetype(t), V)
         @test norm(U' * U - _id(U, domain(U))) < 1.0e-10
         @test norm(Vᴴ * Vᴴ' - _id(Vᴴ, codomain(Vᴴ))) < 1.0e-10
 
-        Sv = svd_vals(t; alg = DivideAndConquerBatched())
+        Sv = batched_svd_vals(t; alg = DivideAndConquer())
         @test specdiff(Sv, Sr) < 1.0e-10
     end
 
@@ -56,16 +56,16 @@ _id(t, V) = TensorKit.id(TensorKit.storagetype(t), V)
         V = ComplexSpace(6)
         t = adapt(ROCArray, randn(T, V ⊗ V ← V))
         @test length(TensorKit.blocksectors(t)) < Factorizations.BATCHED_SVD_THRESHOLD
-        U, S, Vᴴ = svd_compact(t; alg = DivideAndConquerBatched())
+        U, S, Vᴴ = batched_svd_compact(t; alg = DivideAndConquer())
         Ur, Sr, Vr = svd_compact(t; alg = DivideAndConquer())
         @test specdiff(S, Sr) < 1.0e-10
         @test norm(U * S * Vᴴ - t) / norm(t) < 1.0e-10
     end
 
-    @testset "other batched algorithms" for alg in (QRIterationBatched(), JacobiBatched())
+    @testset "other batched algorithms" for alg in (QRIteration(), Jacobi())
         t_cpu = randn(Float64, Vsu2 ⊗ Vsu2 ← Vsu2)
         t = adapt(ROCArray, t_cpu)
-        U, S, Vᴴ = svd_compact(t; alg)
+        U, S, Vᴴ = batched_svd_compact(t; alg)
         _, Sr, _ = svd_compact(t; alg = DivideAndConquer())
         @test specdiff(S, Sr) < 1.0e-8
         @test norm(U * S * Vᴴ - t) / norm(t) < 1.0e-8
@@ -79,10 +79,10 @@ _id(t, V) = TensorKit.id(TensorKit.storagetype(t), V)
         szs = [size(TensorKit.block(t, c)) for c in TensorKit.blocksectors(t)]
         @test length(szs) >= Factorizations.BATCHED_SVD_THRESHOLD
         @test all(isequal(first(szs)), szs)
-        cs, _ = Factorizations._batchable(t, QRIterationBatched(), true)
+        cs, _ = Factorizations._batchable(t, QRIteration(), true)
         @test !isempty(cs)
 
-        U, S, Vᴴ = svd_full(t; alg = QRIterationBatched())
+        U, S, Vᴴ = batched_svd_full(t; alg = QRIteration())
         Ur, Sr, Vr = svd_full(t; alg = QRIteration())
         @test specdiff(S, Sr) < 1.0e-10
         @test norm(U * S * Vᴴ - t) / norm(t) < 1.0e-10
@@ -95,9 +95,9 @@ _id(t, V) = TensorKit.id(TensorKit.storagetype(t), V)
         t = adapt(ROCArray, randn(T, Vsu2 ⊗ Vsu2 ← Vsu2))
         szs = [size(TensorKit.block(t, c)) for c in TensorKit.blocksectors(t)]
         @test !all(isequal(first(szs)), szs)
-        cs, _ = Factorizations._batchable(t, QRIterationBatched(), true)
+        cs, _ = Factorizations._batchable(t, QRIteration(), true)
         @test isempty(cs)
-        U, S, Vᴴ = svd_full(t; alg = QRIterationBatched())
+        U, S, Vᴴ = batched_svd_full(t; alg = QRIteration())
         Ur, Sr, Vr = svd_full(t; alg = QRIteration())
         @test specdiff(S, Sr) < 1.0e-10
         @test norm(U * S * Vᴴ - t) / norm(t) < 1.0e-10
@@ -110,9 +110,9 @@ _id(t, V) = TensorKit.id(TensorKit.storagetype(t), V)
         t = adapt(ROCArray, randn(T, Vbig ← Vsml))
         szs = [size(TensorKit.block(t, c)) for c in TensorKit.blocksectors(t)]
         @test all(isequal((4, 2)), szs)
-        cs, _ = Factorizations._batchable(t, QRIterationBatched(), true)
+        cs, _ = Factorizations._batchable(t, QRIteration(), true)
         @test !isempty(cs)
-        U, S, Vᴴ = svd_full(t; alg = QRIterationBatched())
+        U, S, Vᴴ = batched_svd_full(t; alg = QRIteration())
         Ur, Sr, Vr = svd_full(t; alg = QRIteration())
         @test specdiff(S, Sr) < 1.0e-10
         @test norm(U * S * Vᴴ - t) / norm(t) < 1.0e-10

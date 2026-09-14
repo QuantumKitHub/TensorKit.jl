@@ -2,9 +2,10 @@ using Adapt, CUDA
 using Test, TestExtras
 using TensorKit
 using LinearAlgebra: LinearAlgebra
-using MatrixAlgebraKit: MatrixAlgebraKit, Jacobi, JacobiBatched,
-                        QRIteration, svd_compact, svd_compact!, svd_vals,
-                        svd_vals!, svd_full, svd_full!
+using MatrixAlgebraKit: MatrixAlgebraKit, Jacobi, QRIteration,
+    svd_compact, svd_compact!, svd_vals, svd_vals!, svd_full, svd_full!,
+    batched_svd_compact, batched_svd_compact!, batched_svd_vals,
+    batched_svd_vals!, batched_svd_full, batched_svd_full!
 
 const Factorizations = TensorKit.Factorizations
 
@@ -29,7 +30,6 @@ _id(t, V) = TensorKit.id(TensorKit.storagetype(t), V)
 @timedtestset "batched SVD on CuArray" verbose = true begin
     @testset "block-count dispatch" begin
         @test Factorizations.BATCHED_SVD_THRESHOLD == 4
-        @test Factorizations.unbatched(JacobiBatched()) isa Jacobi
     end
 
     @testset "many blocks: $T" for T in (Float64, ComplexF64)
@@ -38,7 +38,7 @@ _id(t, V) = TensorKit.id(TensorKit.storagetype(t), V)
         @test nblocks >= Factorizations.BATCHED_SVD_THRESHOLD
         t = adapt(CuArray, t_cpu)
 
-        U, S, Vᴴ = svd_compact(t; alg = JacobiBatched())
+        U, S, Vᴴ = batched_svd_compact(t; alg = Jacobi())
         Ur, Sr, Vr = svd_compact(t; alg = Jacobi())
 
         # singular values agree with the unbatched path
@@ -47,7 +47,7 @@ _id(t, V) = TensorKit.id(TensorKit.storagetype(t), V)
         @test norm(U' * U - _id(U, domain(U))) < 1.0e-10
         @test norm(Vᴴ * Vᴴ' - _id(Vᴴ, codomain(Vᴴ))) < 1.0e-10
 
-        Sv = svd_vals(t; alg = JacobiBatched())
+        Sv = batched_svd_vals(t; alg = Jacobi())
         @test specdiff(Sv, Sr) < 1.0e-10
     end
 
@@ -56,7 +56,7 @@ _id(t, V) = TensorKit.id(TensorKit.storagetype(t), V)
         V = ComplexSpace(6)
         t = adapt(CuArray, randn(T, V ⊗ V ← V))
         @test length(TensorKit.blocksectors(t)) < Factorizations.BATCHED_SVD_THRESHOLD
-        U, S, Vᴴ = svd_compact(t; alg = JacobiBatched())
+        U, S, Vᴴ = batched_svd_compact(t; alg = Jacobi())
         Ur, Sr, Vr = svd_compact(t; alg = Jacobi())
         @test specdiff(S, Sr) < 1.0e-10
         @test norm(U * S * Vᴴ - t) / norm(t) < 1.0e-10
@@ -70,10 +70,10 @@ _id(t, V) = TensorKit.id(TensorKit.storagetype(t), V)
         szs = [size(TensorKit.block(t, c)) for c in TensorKit.blocksectors(t)]
         @test length(szs) >= Factorizations.BATCHED_SVD_THRESHOLD
         @test all(isequal(first(szs)), szs)
-        cs, _ = Factorizations._batchable(t, JacobiBatched(), true)
+        cs, _ = Factorizations._batchable(t, Jacobi(), true)
         @test !isempty(cs)
 
-        U, S, Vᴴ = svd_full(t; alg = JacobiBatched())
+        U, S, Vᴴ = batched_svd_full(t; alg = Jacobi())
         Ur, Sr, Vr = svd_full(t; alg = Jacobi())
         @test specdiff(S, Sr) < 1.0e-10
         @test norm(U * S * Vᴴ - t) / norm(t) < 1.0e-10
@@ -86,9 +86,9 @@ _id(t, V) = TensorKit.id(TensorKit.storagetype(t), V)
         t = adapt(CuArray, randn(T, Vsu2 ⊗ Vsu2 ← Vsu2))
         szs = [size(TensorKit.block(t, c)) for c in TensorKit.blocksectors(t)]
         @test !all(isequal(first(szs)), szs)
-        cs, _ = Factorizations._batchable(t, JacobiBatched(), true)
+        cs, _ = Factorizations._batchable(t, Jacobi(), true)
         @test isempty(cs)
-        U, S, Vᴴ = svd_full(t; alg = JacobiBatched())
+        U, S, Vᴴ = batched_svd_full(t; alg = Jacobi())
         Ur, Sr, Vr = svd_full(t; alg = Jacobi())
         @test specdiff(S, Sr) < 1.0e-10
         @test norm(U * S * Vᴴ - t) / norm(t) < 1.0e-10
@@ -101,9 +101,9 @@ _id(t, V) = TensorKit.id(TensorKit.storagetype(t), V)
         t = adapt(CuArray, randn(T, Vbig ← Vsml))
         szs = [size(TensorKit.block(t, c)) for c in TensorKit.blocksectors(t)]
         @test all(isequal((4, 2)), szs)
-        cs, _ = Factorizations._batchable(t, JacobiBatched(), true)
+        cs, _ = Factorizations._batchable(t, Jacobi(), true)
         @test !isempty(cs)
-        U, S, Vᴴ = svd_full(t; alg = JacobiBatched())
+        U, S, Vᴴ = batched_svd_full(t; alg = Jacobi())
         Ur, Sr, Vr = svd_full(t; alg = Jacobi())
         @test specdiff(S, Sr) < 1.0e-10
         @test norm(U * S * Vᴴ - t) / norm(t) < 1.0e-10
