@@ -176,9 +176,9 @@ function TO.tensorcontract_structure(
         B::AbstractTensorMap, pB::Index2Tuple, conjB::Bool,
         pAB::Index2Tuple{N₁, N₂}
     ) where {N₁, N₂}
-    VA, pA′ = conjA ? (space(A)', adjointtensorindices(A, pA)) : (space(A), pA)
-    VB, pB′ = conjB ? (space(B)', adjointtensorindices(B, pB)) : (space(B), pB)
-    return _contractedspace(VA, pA′, VB, pB′, pAB)
+    sA = TO.tensoradd_structure(A, pA, conjA)
+    sB = TO.tensoradd_structure(B, pB, conjB)
+    return permute(compose(sA, sB), pAB)
 end
 
 function TO.checkcontractible(

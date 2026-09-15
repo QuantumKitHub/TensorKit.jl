@@ -75,6 +75,20 @@ function _extract_tensormap_objects(ex)
     )
     return Expr(:block, pre, pre2, ex, post)
 end
+# used by `@planar`: record the index partition of every tensor in `ex`, keyed by its object.
+# Objects that occur with conflicting partitions are recorded as `nothing`. Note that
+# `_extract_tensormap_objects` checks these partitions against the actual tensors at runtime.
+function _index_partitions!(partitions, ex)
+    if TO.istensor(ex)
+        obj, leftind, rightind = TO.decomposetensor(ex)
+        p = IndexPartition(length(leftind), length(rightind))
+        partitions[obj] = get(partitions, obj, p) == p ? p : nothing
+    elseif ex isa Expr
+        foreach(a -> _index_partitions!(partitions, a), ex.args)
+    end
+    return ex
+end
+
 _is_adjoint(ex) = isexpr(ex, TO.prime)
 _remove_adjoint(ex) = _is_adjoint(ex) ? ex.args[1] : ex
 _add_adjoint(ex) = Expr(TO.prime, ex)

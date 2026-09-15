@@ -54,6 +54,10 @@ end
 # TODO: replace _planarmethod with planarmethod in everything below
 const _PLANAR_OPERATIONS = (:planaradd!, :planartrace!, :planarcontract!)
 
+# `TO.instantiate` emits these with the same argument layout, i.e. with the index tuples of
+# the contraction at positions 3 (`A`), 4 (`pA`), 6 (`B`), 7 (`pB`) and 9 (`pAB`)
+const _CONTRACTION_INSTANTIATIONS = (:tensorcontract!, :tensoralloc_contract)
+
 function _insert_planar_operations(ex)
     if isexpr(ex, :call)
         if ex.args[1] == GlobalRef(TensorOperations, :tensoradd!)
@@ -88,6 +92,30 @@ function _insert_planar_operations(ex)
         return Expr(ex.head, (_insert_planar_operations(e) for e in ex.args)...)
     end
     return ex
+end
+
+"""
+    canonicalizeplanarindices(ex, partitions)
+
+Replace the index tuples of every contraction in `ex` by their canonical form, as obtained
+from [`planar_contract_indices`](@ref) and the index partitions in `partitions`. Contractions
+whose operands have no known partition are left untouched.
+"""
+function canonicalizeplanarindices(ex, partitions)
+    if isexpr(ex, :call) && length(ex.args) ≥ 9 && ex.args[1] isa GlobalRef &&
+            ex.args[1].mod === TensorOperations &&
+            ex.args[1].name ∈ _CONTRACTION_INSTANTIATIONS
+        A, pA, B, pB, pAB = ex.args[3], ex.args[4], ex.args[6], ex.args[7], ex.args[9]
+        WA, WB = get(partitions, A, nothing), get(partitions, B, nothing)
+        if !isnothing(WA) && !isnothing(WB) && pA isa Index2Tuple &&
+                pB isa Index2Tuple && pAB isa Index2Tuple
+            args = copy(ex.args)
+            args[4], args[7], args[9] = planar_contract_indices(WA, pA, WB, pB, pAB)
+            return Expr(:call, args...)
+        end
+    end
+    return ex isa Expr ?
+        Expr(ex.head, (canonicalizeplanarindices(a, partitions) for a in ex.args)...) : ex
 end
 
 # like `TO.insertargument`, but matching `GlobalRef`s into `TensorKit`
