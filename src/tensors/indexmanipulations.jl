@@ -221,8 +221,8 @@ See also [`permute`](@ref) for creating a new tensor.
     )
     @boundscheck spacecheck_transform(permute, tdst, tsrc, p)
     @timeit_debug GLOBAL_TIMER "permute!/braid!" begin
-        tdst′, tsrc′, p′, _, conjsrc, α′, β′ = unwrap_adjoints(tdst, tsrc, p, nothing, false, α, β)
-        @inbounds _braid!(tdst′, tsrc′, p′, conjsrc, allind(tsrc′), α′, β′, backend, allocator)
+        tdst′, tsrc′, p′, _, conjsrc′, α′, β′ = unwrap_adjoints(tdst, tsrc, p, nothing, false, α, β)
+        @inbounds _braid!(tdst′, tsrc′, p′, conjsrc′, allind(tsrc′), α′, β′, backend, allocator)
     end
     return tdst
 end
@@ -311,8 +311,8 @@ See also [`braid`](@ref) for creating a new tensor.
     )
     @boundscheck spacecheck_transform(braid, tdst, tsrc, p, levels)
     @timeit_debug GLOBAL_TIMER "permute!/braid!" begin
-        tdst′, tsrc′, p′, levels′, conjsrc, α′, β′ = unwrap_adjoints(tdst, tsrc, p, levels, false, α, β)
-        @inbounds _braid!(tdst′, tsrc′, p′, conjsrc, levels′, α′, β′, backend, allocator)
+        tdst′, tsrc′, p′, levels′, conjsrc′, α′, β′ = unwrap_adjoints(tdst, tsrc, p, levels, false, α, β)
+        @inbounds _braid!(tdst′, tsrc′, p′, conjsrc′, levels′, α′, β′, backend, allocator)
     end
     return tdst
 end
@@ -384,8 +384,8 @@ end
     )
     @boundscheck spacecheck_transform(transpose, tdst, tsrc, p)
     @timeit_debug GLOBAL_TIMER "transpose!" begin
-        tdst′, tsrc′, p′, _, conjsrc, α′, β′ = unwrap_adjoints(tdst, tsrc, p, nothing, false, α, β)
-        @inbounds _transpose!(tdst′, tsrc′, p′, conjsrc, α′, β′, backend, allocator)
+        tdst′, tsrc′, p′, _, conjsrc′, α′, β′ = unwrap_adjoints(tdst, tsrc, p, nothing, false, α, β)
+        @inbounds _transpose!(tdst′, tsrc′, p′, conjsrc′, α′, β′, backend, allocator)
     end
     return tdst
 end
