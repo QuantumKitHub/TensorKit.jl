@@ -55,8 +55,9 @@ Base.keys(v::SectorVector) = keys(v.structure)
 Base.values(v::SectorVector) = (v[c] for c in keys(v))
 function Base.pairs(v::SectorVector)
     # `structure` is already sorted, so the dict can be built without repeated insertion
-    vals = valtype(v)[view(parent(v), r) for r in values(v.structure)]
-    return SectorDict{keytype(v), valtype(v)}(copy(v.structure.keys), vals)
+    # note: `view` need not produce `valtype(v)`, e.g. for GPU arrays
+    vals = map(Base.Fix1(view, parent(v)), values(v.structure))
+    return SectorDict{keytype(v), eltype(vals)}(copy(v.structure.keys), vals)
 end
 
 Base.get(v::SectorVector{<:Any, I}, key::I, default) where {I} = haskey(v, key) ? v[key] : default
