@@ -178,27 +178,33 @@ function Base.:(==)(d1::SortedVectorDict, d2::SortedVectorDict)
 end
 
 # merge two SortedVectorDicts of `GradedSpace` dimensions, applying `combine` to keys present in
-# both; keys present in only one dict are kept as is or dropped according to `_keepunmatched(combine)`
-# zero results are dropped since `GradedSpace` never stores an explicit zero dimension
-_keepunmatched(::Any) = true
-_keepunmatched(::typeof(min)) = false # infimum: a missing sector has dimension zero, so min drops it
+# both, and `_unmatched1`/`_unmatched2` to keys present in only the first/second dict, which may
+# keep the value, drop the entry by returning `nothing`, or throw. Zero results are always dropped,
+# since `GradedSpace` never stores an explicit zero dimension.
+_unmatched1(::Any, v) = v
+_unmatched2(::Any, v) = v
+_unmatched1(::typeof(min), v) = nothing # infimum: a missing sector has dimension zero
+_unmatched2(::typeof(min), v) = nothing
+
+# upper bound on the number of entries the merge can produce
+_mergelength(::Any, n1, n2) = n1 + n2
+_mergelength(::typeof(min), n1, n2) = min(n1, n2)
 
 function _sortedmerge(combine::F, d1::SortedVectorDict{K, V}, d2::SortedVectorDict{K, V}) where {F, K, V <: Integer}
-    keep = _keepunmatched(combine)
     k1, v1 = d1.keys, d1.values
     k2, v2 = d2.keys, d2.values
     n1, n2 = length(k1), length(k2)
-    len = keep ? n1 + n2 : min(n1, n2)
+    len = _mergelength(combine, n1, n2)
     ks = Vector{K}(undef, len)
     vs = Vector{V}(undef, len)
     i, j, n = 1, 1, 0
     @inbounds while i <= n1 && j <= n2
         a, b = k1[i], k2[j]
         if isless(a, b)
-            keep && (n = _mergestore!(ks, vs, n, a, v1[i]))
+            n = _mergestore!(ks, vs, n, a, _unmatched1(combine, v1[i]))
             i += 1
         elseif isless(b, a)
-            keep && (n = _mergestore!(ks, vs, n, b, v2[j]))
+            n = _mergestore!(ks, vs, n, b, _unmatched2(combine, v2[j]))
             j += 1
         else
             n = _mergestore!(ks, vs, n, a, combine(v1[i], v2[j]))
@@ -206,15 +212,13 @@ function _sortedmerge(combine::F, d1::SortedVectorDict{K, V}, d2::SortedVectorDi
             j += 1
         end
     end
-    if keep
-        @inbounds while i <= n1
-            n = _mergestore!(ks, vs, n, k1[i], v1[i])
-            i += 1
-        end
-        @inbounds while j <= n2
-            n = _mergestore!(ks, vs, n, k2[j], v2[j])
-            j += 1
-        end
+    @inbounds while i <= n1
+        n = _mergestore!(ks, vs, n, k1[i], _unmatched1(combine, v1[i]))
+        i += 1
+    end
+    @inbounds while j <= n2
+        n = _mergestore!(ks, vs, n, k2[j], _unmatched2(combine, v2[j]))
+        j += 1
     end
     resize!(ks, n)
     resize!(vs, n)
@@ -226,120 +230,10 @@ end
     @inbounds vs[n + 1] = d
     return n + !iszero(d)
 end
+@inline _mergestore!(ks, vs, n, k, ::Nothing) = n
 
 Base.mergewith(combine, d1::SortedVectorDict{K, V}, d2::SortedVectorDict{K, V}) where {K, V <: Integer} =
     _sortedmerge(combine, d1, d2)
-
-"""
-    FullVectorDict{K<:Sector,V} <: AbstractDict{K,V}
-
-Dictionary-like type that reserves one slot for every possible sector `c::K`, indexed
-through `findindex(values(K), c)`. Absent entries are stored as `nothing`.
-This is the counterpart of `SectorDict` for `NTuple{N,Int}`-backed storage.
-Both are needed to build a "sector => value" map over some value type `V`.
-"""
-struct FullVectorDict{K <: Sector, V} <: AbstractDict{K, V}
-    slots::Vector{Union{Nothing, V}}
-    function FullVectorDict{K, V}(slots::Vector{Union{Nothing, V}}) where {K <: Sector, V}
-        @assert length(slots) == length(values(K))
-        return new{K, V}(slots)
-    end
-end
-FullVectorDict{K, V}() where {K <: Sector, V} =
-    FullVectorDict{K, V}(Vector{Union{Nothing, V}}(nothing, length(values(K))))
-function FullVectorDict{K, V}(kv) where {K <: Sector, V}
-    d = FullVectorDict{K, V}()
-    for (k, v) in kv
-        d[k] = v
-    end
-    return d
-end
-FullVectorDict{K, V}(kv::Pair{K, V}...) where {K <: Sector, V} = FullVectorDict{K, V}(kv)
-
-Base.length(d::FullVectorDict) = count(!isnothing, d.slots)
-
-Base.copy(d::FullVectorDict{K, V}) where {K, V} = FullVectorDict{K, V}(copy(d.slots))
-Base.empty(::FullVectorDict{K}, ::Type{K}, ::Type{V}) where {K <: Sector, V} = FullVectorDict{K, V}()
-Base.empty!(d::FullVectorDict) = (fill!(d.slots, nothing); return d)
-
-function Base.delete!(d::FullVectorDict{K}, k) where {K}
-    key = convert(K, k)
-    isequal(k, key) && (d.slots[findindex(values(K), key)] = nothing)
-    return d
-end
-
-function Base.haskey(d::FullVectorDict{K}, k) where {K}
-    key = convert(K, k)
-    return isequal(k, key) && !isnothing(d.slots[findindex(values(K), key)])
-end
-function Base.getindex(d::FullVectorDict{K}, k) where {K}
-    key = convert(K, k)
-    isequal(k, key) || throw(KeyError(k))
-    v = d.slots[findindex(values(K), key)]
-    return isnothing(v) ? throw(KeyError(key)) : v
-end
-function Base.setindex!(d::FullVectorDict{K}, v, k) where {K}
-    key = convert(K, k)
-    isequal(k, key) || throw(ArgumentError("$k is not a valid key for type $K"))
-    d.slots[findindex(values(K), key)] = v
-    return d
-end
-
-function Base.get(d::FullVectorDict{K}, k, default) where {K}
-    key = convert(K, k)
-    isequal(k, key) || return default
-    v = d.slots[findindex(values(K), key)]
-    return isnothing(v) ? default : v
-end
-function Base.get(f::Union{Function, Type}, d::FullVectorDict{K}, k) where {K}
-    key = convert(K, k)
-    isequal(k, key) || return f()
-    v = d.slots[findindex(values(K), key)]
-    return isnothing(v) ? f() : v
-end
-
-function Base.iterate(d::FullVectorDict{K}, i = 1) where {K}
-    vals = values(K)
-    n = length(d.slots)
-    @inbounds while i <= n
-        v = d.slots[i]
-        isnothing(v) || return (vals[i] => v), i + 1
-        i += 1
-    end
-    return nothing
-end
-
-# the dense sector map is backed by a `FullVectorDict` or a `SortedVectorDict`, mirroring the
-# `NTuple`/`SortedVectorDict` storage choice that `sectorstoragetype` makes for `GradedSpace`
-_densemaptype(::Type{<:Tuple}, ::Type{I}, ::Type{V}) where {I <: Sector, V} = FullVectorDict{I, V}
-_densemaptype(::Type{<:SortedVectorDict}, ::Type{I}, ::Type{V}) where {I <: Sector, V} =
-    SortedVectorDict{I, V}
-
-"""
-    sectormaptype(::Type{I}, ::Type{V}) where {I <: Sector, V} -> Type
-
-The dense `AbstractDict{I, V}` type used to map sectors of type `I` onto values of type `V`,
-chosen to match the storage type of `GradedSpace{I}`, see [`sectorstoragetype`](@ref).
-"""
-sectormaptype(::Type{I}, ::Type{V}) where {I <: Sector, V} =
-    _densemaptype(sectorstoragetype(I), I, V)
-
-"""
-    sectormap(f, [V::Type, ] pairsiter)
-
-Map `f(c, v)` over an iterator `pairsiter` of `c => v` pairs, collecting the results into the
-dense sector map returned by [`sectormaptype`](@ref). The value type `V` of the result is
-inferred from `f` unless it is given explicitly.
-"""
-sectormap(f, pairsiter) = _sectormap(f, pairsiter, eltype(pairsiter))
-sectormap(f, ::Type{V}, pairsiter) where {V} = _sectormap(f, V, pairsiter, eltype(pairsiter))
-
-function _sectormap(f, pairsiter, ::Type{<:Pair{I, W}}) where {I <: Sector, W}
-    return _sectormap(f, Base.promote_op(f, I, W), pairsiter, Pair{I, W})
-end
-function _sectormap(f, ::Type{V}, pairsiter, ::Type{<:Pair{I}}) where {V, I <: Sector}
-    return sectormaptype(I, V)(c => f(c, v) for (c, v) in pairsiter)
-end
 
 """
     Hashed(value, hashfunction = Base.hash, isequal = Base.isequal)

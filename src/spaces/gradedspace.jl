@@ -1,3 +1,6 @@
+# budget on how many sectors are worth specializing the compiler on
+const _NTUPLE_STORAGE_THRESHOLD = 8
+
 """
     struct GradedSpace{I<:Sector, D} <: ElementarySpace
     GradedSpace{I,D}(dims; dual::Bool = false) where {I<:Sector, D}
@@ -12,13 +15,13 @@ and pivotal (pre-, multi-) fusion category.
 Here `dims` represents the degeneracy or multiplicity of every sector.
 
 The data structure `D` of `dims` will depend on the result `Base.IteratorSize(values(I))`.
-If the result is of type `HasLength` or `HasShape`, `dims` will be stored in a
-`NTuple{N,Int}` with `N = length(values(I))`. This requires that a sector `s::I` can be
-transformed into an index via `s == getindex(values(I), i)` and
-`i == findindex(values(I), s)`. If `Base.IteratorElsize(values(I))` results `IsInfinite()`
-or `SizeUnknown()`, a `SectorDict{I,Int}` is used to store the non-zero degeneracy
-dimensions with the corresponding sector as key. The parameter `D` is hidden from the user
-and should typically be of no concern.
+If the result is of type `HasLength` or `HasShape` and `N = length(values(I))` does not exceed
+`$_NTUPLE_STORAGE_THRESHOLD`, `dims` will be stored in a `NTuple{N,Int}`. This requires that a
+sector `s::I` can be transformed into an index via `s == getindex(values(I), i)` and
+`i == findindex(values(I), s)`. Otherwise, i.e. for more sectors than that or if
+`Base.IteratorSize(values(I))` results `IsInfinite()` or `SizeUnknown()`, a `SectorDict{I,Int}`
+is used to store the non-zero degeneracy dimensions with the corresponding sector as key.
+The parameter `D` is hidden from the user and should typically be of no concern.
 
 The concrete type `GradedSpace{I,D}` with correct `D` can be obtained as `Vect[I]`, or if
 `I == Irrep[G]` for some `G<:Group`, as `Rep[G]`.
@@ -172,36 +175,21 @@ function ⊖(V::GradedSpace{I, <:Tuple}, W::GradedSpace{I, <:Tuple}) where {I <:
     newdims = map((dV, dW) -> dV < dW ? _throw_not_subspace(V, W) : dV - dW, V.dims, W.dims)
     return typeof(V)(newdims, dualV)
 end
+
+# combiner for `⊖`, carrying the spaces to report which subspace condition was violated
+struct SubtractDims{S}
+    V::S
+    W::S
+end
+(f::SubtractDims)(dV, dW) = dV < dW ? _throw_not_subspace(f.V, f.W) : dV - dW
+_unmatched1(::SubtractDims, d) = d                              # sector only in `V`: keep
+_unmatched2(f::SubtractDims, d) = _throw_not_subspace(f.V, f.W) # sector only in `W`: not a subspace
+_mergelength(::SubtractDims, n1, n2) = n1
+
 function ⊖(V::GradedSpace{I, <:SectorDict}, W::GradedSpace{I, <:SectorDict}) where {I <: Sector}
     dualV = isdual(V)
     dualV == isdual(W) || _throw_not_subspace(V, W)
-    k1, v1 = keys(V.dims), values(V.dims)
-    k2, v2 = keys(W.dims), values(W.dims)
-    n1, n2 = length(k1), length(k2)
-    ks, vs = Vector{I}(undef, n1), Vector{Int}(undef, n1)
-    i, j, n = 1, 1, 0
-    @inbounds while i <= n1 && j <= n2
-        a, b = k1[i], k2[j]
-        if isless(a, b)
-            n = _mergestore!(ks, vs, n, a, v1[i])
-            i += 1
-        elseif isless(b, a)
-            _throw_not_subspace(V, W) # sector of `W` absent from `V`
-        else
-            v1[i] < v2[j] && _throw_not_subspace(V, W)
-            n = _mergestore!(ks, vs, n, a, v1[i] - v2[j])
-            i += 1
-            j += 1
-        end
-    end
-    j <= n2 && _throw_not_subspace(V, W) # leftover sectors of `W` absent from `V`
-    @inbounds while i <= n1
-        n = _mergestore!(ks, vs, n, k1[i], v1[i])
-        i += 1
-    end
-    resize!(ks, n)
-    resize!(vs, n)
-    return typeof(V)(SectorDict{I, Int}(ks, vs), dualV)
+    return typeof(V)(mergewith(SubtractDims(V, W), V.dims, W.dims), dualV)
 end
 
 function fuse(V₁::GradedSpace{I, <:SectorDict}, V₂::GradedSpace{I, <:SectorDict}) where {I <: Sector}
@@ -375,20 +363,17 @@ Base.getindex(::SpaceTable) = ComplexSpace
 Base.getindex(::SpaceTable, ::Type{Trivial}) = ComplexSpace
 Base.getindex(::SpaceTable, I::Type{<:Sector}) = GradedSpace{I, sectorstoragetype(I)}
 
-# based on Julia tuple unrolling range
-const _ntuple_storage_threshold = 32
-
 """
     sectorstoragetype(I::Type{<:Sector}) -> Type
 
 The storage type `D` used for the `dims` field of `GradedSpace{I, D}`.
 This is `NTuple{N,Int}` with `N = length(values(I))` if `I` has a finite, known length
-of at most `$_ntuple_storage_threshold`, or `SectorDict{I,Int}` otherwise.
+of at most `$_NTUPLE_STORAGE_THRESHOLD`, or `SectorDict{I,Int}` otherwise.
 """
 Base.@assume_effects :foldable function sectorstoragetype(::Type{I}) where {I <: Sector}
     if Base.IteratorSize(values(I)) isa Union{HasLength, HasShape}
         N = length(values(I))
-        N <= _ntuple_storage_threshold && return NTuple{N, Int}
+        N <= _NTUPLE_STORAGE_THRESHOLD && return NTuple{N, Int}
     end
     return SectorDict{I, Int}
 end
@@ -426,17 +411,33 @@ function type_repr(::Type{<:GradedSpace{ProductSector{T}}}) where
 end
 
 # Specific constructors for Z_N
+"""
+    const ZNSpace{N}
+
+Type alias for the tuple-backed `GradedSpace{ZNIrrep{N}, NTuple{N,Int}}`.
+
+!!! warning "Deprecated"
+    A type alias cannot compute the storage type from `N`, so this only coincides with
+    `Vect[ZNIrrep{N}]` while `N <= $_NTUPLE_STORAGE_THRESHOLD`. Use `Vect[ZNIrrep{N}]` instead.
+"""
 const ZNSpace{N} = GradedSpace{ZNIrrep{N}, NTuple{N, Int}}
-ZNSpace{N}(dims::NTuple{N, Int}; dual::Bool = false) where {N} = ZNSpace{N}(dims, dual)
-ZNSpace{N}(dims::Vararg{Int, N}; dual::Bool = false) where {N} = ZNSpace{N}(dims, dual)
-ZNSpace(dims::NTuple{N, Int}; dual::Bool = false) where {N} = ZNSpace{N}(dims, dual)
-ZNSpace(dims::Vararg{Int, N}; dual::Bool = false) where {N} = ZNSpace{N}(dims, dual)
+@noinline function _throw_znspace_storage(N)
+    msg = lazy"`ZNSpace{$N}` is not the canonical space type for `ZNIrrep{$N}`, which stores more than $(_NTUPLE_STORAGE_THRESHOLD) sectors in a `SectorDict`; use `Vect[ZNIrrep{$N}]` instead"
+    return throw(ArgumentError(msg))
+end
+function ZNSpace{N}(dims::NTuple{N, Int}; dual::Bool = false) where {N}
+    N <= _NTUPLE_STORAGE_THRESHOLD || _throw_znspace_storage(N)
+    return ZNSpace{N}(dims, dual)
+end
+ZNSpace{N}(dims::Vararg{Int, N}; dual::Bool = false) where {N} = ZNSpace{N}(dims; dual)
+ZNSpace(dims::NTuple{N, Int}; dual::Bool = false) where {N} = ZNSpace{N}(dims; dual)
+ZNSpace(dims::Vararg{Int, N}; dual::Bool = false) where {N} = ZNSpace{N}(dims; dual)
 
 # TODO: Do we still need all of those
 # ASCII type aliases
-const Z2Space = ZNSpace{2}
-const Z3Space = ZNSpace{3}
-const Z4Space = ZNSpace{4}
+const Z2Space = Vect[ZNIrrep{2}]
+const Z3Space = Vect[ZNIrrep{3}]
+const Z4Space = Vect[ZNIrrep{4}]
 const U1Space = Rep[U₁]
 const CU1Space = Rep[CU₁]
 const SU2Space = Rep[SU₂]

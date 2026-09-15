@@ -24,7 +24,7 @@ for pullback! in (:qr_null_pullback!, :lq_null_pullback!)
         return Δt
     end
 end
-_notrunc_ind(t) = sectormap(Returns(Colon()), blocks(t))
+_notrunc_ind(t) = SectorDict(c => Colon() for c in blocksectors(t))
 
 for pullback! in (:svd_pullback!, :eig_pullback!, :eigh_pullback!)
     @eval function MAK.$pullback!(
