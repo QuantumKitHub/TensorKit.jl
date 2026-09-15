@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Sectors, representation spaces and fusion trees · TensorKit.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link href="../../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>TensorKit.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../../">Home</a></li><li><span class="toctext">Manual</span><ul><li><a class="toctext" href="../intro/">Introduction</a></li><li><a class="toctext" href="../spaces/">Vector spaces</a></li><li class="current"><a class="toctext" href>Sectors, representation spaces and fusion trees</a><ul class="internal"><li><a class="toctext" href="#Representation-theory-and-unitary-fusion-categories-1">Representation theory and unitary fusion categories</a></li><li><a class="toctext" href="#Sectors-1">Sectors</a></li><li><a class="toctext" href="#Representation-spaces-1">Representation spaces</a></li><li><a class="toctext" href="#Fusion-trees-1">Fusion trees</a></li><li><a class="toctext" href="#Fermions-1">Fermions</a></li><li><a class="toctext" href="#Bibliography-1">Bibliography</a></li></ul></li><li><a class="toctext" href="../tensors/">Tensors and the <code>TensorMap</code> type</a></li></ul></li><li><span class="toctext">Library</span><ul><li><a class="toctext" href="../../lib/spaces/">Vector spaces</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Manual</li><li><a href>Sectors, representation spaces and fusion trees</a></li></ul><a class="edit-page" href="https://github.com/Jutho/TensorKit.jl/blob/master/docs/src/man/sectors.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Sectors, representation spaces and fusion trees</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Sectors,-representation-spaces-and-fusion-trees-1" href="#Sectors,-representation-spaces-and-fusion-trees-1">Sectors, representation spaces and fusion trees</a></h1><div></div><p>Symmetries in a physical system often result in tensors which are invariant under the action of the symmetry group, where this group acts as a tensor product of group actions on every tensor index separately. The group action on a single index, or thus, on the corresponding vector space, can be decomposed into irreducible representations (irreps). Here, we restrict to unitary representations, such that the corresponding vector spaces also have a natural Euclidean inner product. In particular, the Euclidean inner product between two vectors is invariant under the group action, i.e. the scalar field corresponds to the trivial representation of the group.</p><p>The corresponding vector spaces will be canonically represented as <span>$V = ⨁_a ℂ^{n_a} ⊗ R_{a}$</span>, where <span>$a$</span> labels the different irreps, <span>$n_a$</span> is the number of times irrep <span>$a$</span> appears and <span>$R_a$</span> is the vector space associated with irrep <span>$a$</span>. Irreps are also known as spin sectors (in the case of <span>$\mathsf{SU}_2$</span>) or charge sectors (in the case of <code>\mathsf{U}_1</code>), and we henceforth refer to <code>a</code> as a sector. As is briefly discussed below, the approach we follow doesin fact go beyond the case of irreps of groups, and sectors would more generally correspond to simple objects in a (ribbon) fusion category. Nonetheless, every step can be appreciated by using the representation theory of <span>$\mathsf{SU}_2$</span> or <span>$\mathsf{SU}_3$</span> as example. The vector space <span>$V$</span> is completely specified by the values of <span>$n_a$</span>.</p><p>The gain in efficiency (both in memory occupation and computation time) obtained from using symmetric tensor maps is that, by Schur&#39;s lemma, they are block diagonal in the basis of coupled sectors. To exploit this block diagonal form, it is however essential that we know the basis transform from the individual (uncoupled) sectors appearing in the tensor product form of the domain and codomain, to the totally coupled sectors that label the different blocks. We refer to the latter as block sectors. The transformation from the uncoupled sectors in the domain (or codomain) of the tensor map to the block sector is encoded in a fusion tree (or splitting tree). Essentially, it is a sequential application of pairwise fusion as described by the group&#39;s <a href="https://en.wikipedia.org/wiki/Clebsch–Gordan_coefficients">Clebsch-Gordan (CG) coefficients</a>. However, it turns out that we do not need the actual CG coefficients, but only how they transform under transformations such as interchanging the order of the incoming irreps or interchanging incoming and outgoing irreps. This information is known as the topological data of the group, i.e. mainly the F-symbols, which are also known as recoupling coefficients or <a href="https://en.wikipedia.org/wiki/6-j_symbol">6j-symbols</a> (more accurately, it&#39;s actually <a href="https://en.wikipedia.org/wiki/Racah_W-coefficient">Racah&#39;s W-coefficients</a>) in the case of <span>$\mathsf{SU}_2$</span>.</p><p>Below, we describe how to specify a certain type of sector what information about them needs to be implemented. Then, we describe how to build a space <code>V</code> composed of a direct sum of different sectors. In the last section, we explain the details of fusion trees, i.e. their construction and manipulation. But first, we provide a quick theoretical overview of the required data of the representation theory of a group.</p><h2><a class="nav-anchor" id="Representation-theory-and-unitary-fusion-categories-1" href="#Representation-theory-and-unitary-fusion-categories-1">Representation theory and unitary fusion categories</a></h2><p>Let the different irreps or sectors be labeled as <span>$a$</span>, <span>$b$</span>, <span>$c$</span>, … First and foremost, we need to specify the <em>fusion rules</em> <span>$a ⊗ b = ⨁ N_{a,b}^{c} c$</span> with <code>N_{a,b}^c</code> some non-negative integers. There should always exists a unique trivial sector <span>$u$</span> such that <span>$a ⊗ u = a = u ⊗ a$</span>. Furthermore, there should exist a unique sector <span>$\overline{a}$</span> such that <span>$N_{a,\overline{a}}^{u} = 1$</span>, whereas for all <span>$b ≂̸ \overline{a}$</span>, <span>$N_{a,b}^{u} = 0$</span>. For example, for the representations of <span>$\mathsf{SU}_2$</span>, all irreps are self-dual (i.e. <span>$a = \overline{a}$</span>) and the trivial sector corresponds to spin zero.</p><p>The meaning of the fusion rules is that the space of transformations <span>$R_a ⊗ R_b → R_c$</span> (or vice versa) has dimension <span>$N_{a,b}^c$</span>. In particular, we assume the existence of a basis consisting of unitary tensor maps <span>$X_{a,b}^{c,μ} : R_c → R_a ⊗ R_b$</span> with <span>$μ = 1, \ldots, N_{a,b}^c$</span> such that</p><p><span>$(X_{a,b}^{c,μ})^† X_{a,b}^{c,μ} = \mathrm{id}_{R_c}$</span></p><p>and</p><p><span>$\sum_{c} \sum_{μ = 1}^{N_{a,b}^c} X_{a,b}^{c,μ} (X_{a,b}^{c,μ})^\dagger = \mathrm{id}_{R_a ⊗ R_b}$</span></p><p>The tensors <span>$X_{a,b}^{c,μ}$</span> are the splitting tensors, their hermitian conjugate are the fusion tensors. They are only determined up to a unitary basis transform within the space, i.e. acting on the multiplicity label <span>$μ$</span>. For <span>$\mathsf{SU}_2$</span>, where <span>$N_{a,b}^c$</span> is zero or one and the multiplicity labels are absent, the entries of <span>$X_{a,b}^{c}$</span> are precisely given by the CG coefficients. The point is that we do not need to know the tensors <span>$X_{a,b}^{c,μ}$</span>, the topological data of (the representation category of) the group describes the following transformation:</p><ul><li><p>F-move or recoupling: the transformation between <span>$(a ⊗ b) ⊗ c$</span> to <span>$a ⊗ (b ⊗ c)$</span>:</p><p><span>$(X_{a,b}^{e,μ} ⊗ \mathrm{id}_c) ∘ X_{e,c}^{d,ν} = ∑_{f,κ,λ} [F^{a,b,c}_{d}]^{e,μν}_{f,κλ} (X_{a,b}^{e,μ} ⊗ \mathrm{id}_c) X_{e,c}^{d,ν} (\mathrm{id}_a ⊗ X_{b,c}^{f,κ}) ∘ X_{a,f}^{d,λ}$</span></p></li><li><p><a href="../intro/#Braiding-1">Braiding</a> or permuting as defined by <span>$σ_{a,b}: R_a ⊗ R_b → R_b ⊗ R_a$</span>:</p><p>``σ<em>{R</em>a,R<em>b} ∘ X</em>{a,b}^{c,μ} = ∑<em>{ν} [R</em>{a,b}^c]^μ<em>ν X</em>{b,a}^{c,ν}</p></li></ul><p>The dimensions of the spaces <span>$R_a$</span> on which representation <span>$a$</span> acts are denoted as <span>$d_a$</span> and referred to as quantum dimensions. In particular <span>$d_u = 1$</span> and <span>$d_a = d_{\overline{a}}$</span>. This information is also encoded in the F-symbol as <span>$d_a = | [F^{a \overline{a} a}_a]^u_u |^{-1}$</span>. Note that there are no multiplicity labels in that particular F-symbol as <code>N_{a,\overline{a}}^u = 1</code>.</p><p>If, for every <span>$a$</span> and <span>$b$</span>, there is a unique <span>$c$</span> such that <span>$a ⊗ b = c$</span> (i.e. <span>$N_{a,b}^{c} = 1$</span> and <span>$N_{a,b}^{c′} = 0$</span> for all other <span>$c′$</span>), the category is abelian. Indeed, the representations of a group have this property if and only if the group multiplication law is commutative. In that case, all spaces <span>$R_{a}$</span> associated with the representation are one-dimensional and thus trivial. In all other cases, the category is nonabelian. We find it useful to further finegrain between categories which have all <span>$N_{a,b}^c$</span> equal to zero or one (such that no multiplicity labels are needed), e.g. the representations of <span>$\mathsf{SU}_2$</span>, and those where some <span>$N_{a,b}^c$</span> are larger than one, e.g. the representations of <span>$\mathsf{SU}_3$</span>.</p><p>Using <span>$R_u ≂ ℂ$</span>, <span>$λ_{R_}$</span> <span>$η_{R_{\overline{a}}}$</span></p><p>If, for every <span>$a$</span> and <span>$b$</span>, there is a unique <span>$c$</span> such that <span>$a ⊗ b = c$</span> (i.e. <span>$N_{a,b}^{c} = 1$</span> and <span>$N_{a,b}^{c′} = 0$</span> for all other <span>$c′$</span>), the category is Abelian. Indeed, the representations of a group have this property if and only if the group multiplication law is commutative. In that case, all spaces <span>$R_{a}$</span> associated with the representation are one-dimensional and thus trivial.</p><p>Furthermore, there is a relation between splitting vertices and fusion vertices given by the B-symbol, but we refer to the section on <a href="#Fusion-trees-1">Fusion trees</a> for the precise definition and further information. The required data is completely encoded in the the F-symbol, and corresponding Julia function <code>Bsymbol(a,b,c)</code></p><p>There should always exists a unique trivial sector <span>$u$</span> such that <span>$a ⊗ u = a = u ⊗ a$</span>. Furthermore, there should exist a unique sector <span>$\overline{a}$</span> such that <span>$N_{a,\overline{a}}^{u} = 1$</span>, whereas for all <span>$b ≂̸ \overline{a}$</span>, <span>$N_{a,b}^{u} = 0$</span>. For example, for the representations of <span>$\mathsf{SU}_2$</span>, all irreps are self-dual (i.e. <span>$a = \overline{a}$</span>) and the trivial sector corresponds to spin zero.</p><p>The dimensions of the spaces <span>$R_a$</span> on which representation <span>$a$</span> acts are denoted as <span>$d_a$</span> and referred to as quantum dimensions. In particular <span>$d_u = 1$</span> and <span>$d_a = d_{\overline{a}}$</span>.</p><h2><a class="nav-anchor" id="Sectors-1" href="#Sectors-1">Sectors</a></h2><p>We introduce a new abstract type to represent different possible sectors</p><pre><code class="language-julia">abstract type Sector end</code></pre><p>Any concrete subtype of <code>Sector</code> should be such that it instances represent a consistent set of sectors, corresponding to the irreps of some group, or, more generally, the simple objects of a (unitary) fusion category. We refer to Appendix E of <a href="#footnote-kitaev">[kitaev]</a> for a good reference.</p><p>The minimal data to completely specify a type of sector are</p><ul><li>the fusion rules, i.e. <span>$a ⊗ b = ⨁ N_{a,b}^{c} c$</span>; this is implemented by a function   <a href="man/@ref"><code>Nsymbol(a,b,c)</code></a></li><li>the list of fusion outputs from <span>$a ⊗ b$</span>; while this information is contained in <span>$N_{a,b}^c$</span>,   it might be costly or impossible to iterate over all possible values of <code>c</code> and test <code>Nsymbol(a,b,c)</code>;   instead we implement for <code>a ⊗ b</code> to return an iterable object (e.g. tuple, array or a custom   Julia type that listens to <code>Base.iterate</code>) and which generates all <code>c</code> for which <span>$N_{a,b}^c ≂̸ 0$</span></li><li>the identity object <code>u</code>, such that <span>$a ⊗ u = a = u ⊗ a$</span>; this is implemented by the function   <code>one(a)</code> (and also in type domain) from Julia Base</li><li>the dual or conjugate representation <span>$\overline{a}$</span> for which <code>N_{a,\overline{a}}^{u} = 1</code>;   this is implemented by <code>conj(a)</code> from Julia Base; <code>dual(a)</code> also works as alias, but <code>conj(a)</code>   is the method that should be defined</li><li>the F-symbol or recoupling coefficients <span>$[F^{a,b,c}_{d}]^e_f$</span>, implemented as the function   <a href="man/@ref"><code>Fsymbol(a,b,c,d,e,f)</code></a></li><li>the R-symbol <span>$R_{a,b}^c$</span>, implemented as the function <a href="man/@ref"><code>Rsymbol(a,b,c)</code></a></li></ul><p>Further information, such as the quantum dimensions <span>$d_a$</span> and Frobenius-Schur indicator <span>$χ_a$</span> (only if <span>$a == \overline{a}$</span>) are encoded in the F-symbol. They are obtained as <code>dim(a)</code> and <a href="man/@ref"><code>frobeniusschur(a)</code></a>. These functions have default definitions which extract the requested data from <code>Fsymbol(a,conj(a),a,a,one(a),one(a))</code>, but they can be overloaded in case the value can be computed more efficiently.</p><p>It is useful to distinguish between three cases with respect to the fusion rules. For irreps of Abelian groups, we have that for every <span>$a$</span> and <span>$b$</span>, there exists a unique <span>$c$</span> such that <span>$a ⊗ b = c$</span>, i.e. there is only a single fusion channel. This follows simply from the fact that all irreps are one-dimensional. All other cases are referred to as non-abelian, i.e. the irreps of a non-abelian group or some more general fusion category. We still distinguish between the case where all entries of <span>$N_{a,b}^c ≦ 1$</span>, i.e. they are zero or one. In that case, <span>$[F^{a,b,c}_{d}]^e_f$</span> and <span>$R_{a,b}^c$</span> are scalars. If some <span>$N_{a,b}^c &gt; 1$</span>, it means that the same sector <span>$c$</span> can appear more than once in the fusion product of <span>$a$</span> and <span>$b$</span>, and we need to introduce some multiplicity label <span>$μ$</span> for the different copies. We implement a &quot;trait&quot; (similar to <code>IndexStyle</code> for <code>AbstractArray</code>s in Julia Base), i.e. a type hierarchy</p><pre><code class="language-julia">abstract type FusionStyle end
+struct Abelian &lt;: FusionStyle
+end
+abstract type NonAbelian &lt;: FusionStyle end
+struct SimpleNonAbelian &lt;: NonAbelian # non-abelian fusion but multiplicity free
+end
+struct DegenerateNonAbelian &lt;: NonAbelian # non-abelian fusion with multiplicities
+end</code></pre><p>New sector types <code>G&lt;:Sector</code> should then indicate which fusion style they have by defining <code>FusionStyle(::Type{G})</code>.</p><p>In the representation and manipulation of symmetric tensors, it will be important to couple or fuse different sectors together into a single block sector. The section on <a href="man/@ref">fusion trees</a> describes the details of this process, which consists of pairwise fusing two sectors into a single coupled sector, which is then fused with the next uncoupled sector. For this, we assume the existence of unitary tensor maps <span>$X_{a,b}^{c,μ} : R_c → R_a ⊗ R_b$</span> such that <span>$(X_{a,b}^{c,μ})^† X_{a,b}^{c,μ} = \mathrm{id}_{R_c}$</span> and</p><p><span>$\sum_{c} \sum_{μ = 1}^{N_{a,b}^c} X_{a,b}^{c,μ} (X_{a,b}^{c,μ})^\dagger = \mathrm{id}_{R_a ⊗ R_b}$</span></p><p>The tensors <span>$X_{a,b}^{c,μ}$</span> are the splitting tensors, their hermitian conjugate are the fusion tensors. For <span>$\mathsf{SU}_2$</span>, their entries are precisely given by the CG coefficients. The point is that we do not need to know the tensors <span>$X_{a,b}^{c,μ}$</span>, the topological data of (the representation category of) the group describes the following transformation:</p><ul><li><p>F-move or recoupling: the transformation between <span>$(a ⊗ b) ⊗ c$</span> to <span>$a ⊗ (b ⊗ c)$</span>:</p><p><span>$(X_{a,b}^{e,μ} ⊗ \mathrm{id}_c) ∘ X_{e,c}^{d,ν} = ∑_{f,κ,λ} [F^{a,b,c}_{d}]^{e,μν}_{f,κλ} (X_{a,b}^{e,μ} ⊗ \mathrm{id}_c) X_{e,c}^{d,ν} (\mathrm{id}_a ⊗ X_{b,c}^{f,κ}) ∘ X_{a,f}^{d,λ}$</span></p></li><li><p><a href="../intro/#Braiding-1">Braiding</a> or permuting as defined by <span>$σ_{a,b}: R_a ⊗ R_b → R_b ⊗ R_a$</span>:</p><p>``σ<em>{a,b} ∘ X</em>{a,b}^{c,μ} = ∑<em>{ν} [R</em>{a,b}^c]^μ<em>ν X</em>{b,a}^{c,ν}</p></li></ul><p>Furthermore, there is a relation between splitting vertices and fusion vertices given by the B-symbol, but we refer to the section on <a href="#Fusion-trees-1">Fusion trees</a> for the precise definition and further information. The required data is completely encoded in the the F-symbol, and corresponding Julia function <code>Bsymbol(a,b,c)</code> is implemented as</p><pre><code class="language-julia">function Bsymbol(a::G, b::G, c::G) where {G&lt;:Sector}
+    if FusionStyle(G) isa Abelian || FusionStyle(G) isa SimpleNonAbelian
+        Fsymbol(a, b, dual(b), a, c, one(a))
+    else
+        reshape(Fsymbol(a,b,dual(b),a,c,one(a)), (Nsymbol(a,b,c), Nsymbol(c,dual(b),a)))
+    end
+end</code></pre><p>but a more efficient implementation may be provided.</p><p>Before discussing in more detail how a new sector type should be implemented, let us study the cases which have already been implemented. Currently, they all correspond to the irreps of groups</p><h3><a class="nav-anchor" id="Existing-group-representations-1" href="#Existing-group-representations-1">Existing group representations</a></h3><p>The first sector type is called <code>Trivial</code>, and corresponds to the case where there is actually no symmetry, or thus, the symmetry is the trivial group with only an identity operation and a trivial representation. Its representation theory is particularly simple:</p><pre><code class="language-julia">struct Trivial &lt;: Sector
+end
+Base.one(a::Sector) = one(typeof(a))
+Base.one(::Type{Trivial}) = Trivial()
+Base.conj(::Trivial) = Trivial()
+⊗(::Trivial, ::Trivial) = (Trivial(),)
+Nsymbol(::Trivial, ::Trivial, ::Trivial) = true
+FusionStyle(::Type{Trivial}) = Abelian()
+Fsymbol(::Trivial, ::Trivial, ::Trivial, ::Trivial, ::Trivial, ::Trivial) = 1
+Rsymbol(::Trivial, ::Trivial, ::Trivial) = 1</code></pre><p>For all abelian groups, we gather a number of common definitions</p><pre><code class="language-julia">abstract type AbelianIrrep &lt;: Sector end
+
+Base.@pure FusionStyle(::Type{&lt;:AbelianIrrep}) = Abelian()
+Base.@pure BraidingStyle(::Type{&lt;:AbelianIrrep}) = Bosonic()
+
+Nsymbol(a::G, b::G, c::G) where {G&lt;:AbelianIrrep} = c == first(a ⊗ b)
+Fsymbol(a::G, b::G, c::G, d::G, e::G, f::G) where {G&lt;:AbelianIrrep} =
+    Int(Nsymbol(a,b,e)*Nsymbol(e,c,d)*Nsymbol(b,c,f)*Nsymbol(a,f,d))
+frobeniusschur(a::AbelianIrrep) = 1
+Bsymbol(a::G, b::G, c::G) where {G&lt;:AbelianIrrep} = Float64(Nsymbol(a, b, c))
+Rsymbol(a::G, b::G, c::G) where {G&lt;:AbelianIrrep} = Float64(Nsymbol(a, b, c))</code></pre><p>With these common definition, we implement the representation theory of the two most common Abelian groups</p><pre><code class="language-julia">struct ZNIrrep{N} &lt;: AbelianIrrep
+    n::Int8
+    function ZNIrrep{N}(n::Integer) where {N}
+        new{N}(mod(n, N))
+    end
+end
+Base.one(::Type{ZNIrrep{N}}) where {N} =ZNIrrep{N}(0)
+Base.conj(c::ZNIrrep{N}) where {N} = ZNIrrep{N}(-c.n)
+⊗(c1::ZNIrrep{N}, c2::ZNIrrep{N}) where {N} = (ZNIrrep{N}(c1.n+c2.n),)
+
+struct U1Irrep &lt;: AbelianIrrep
+    charge::HalfInteger
+end
+Base.one(::Type{U1Irrep}) = U1Irrep(0)
+Base.conj(c::U1Irrep) = U1Irrep(-c.charge)
+⊗(c1::U1Irrep, c2::U1Irrep) = (U1Irrep(c1.charge+c2.charge),)</code></pre><p>together with some abbreviated Unicode aliases</p><pre><code class="language-julia">const ℤ₂ = ZNIrrep{2}
+const ℤ₃ = ZNIrrep{3}
+const ℤ₄ = ZNIrrep{4}
+const U₁ = U1Irrep</code></pre><p>In the definition of <code>U1Irrep</code>, <code>HalfInteger&lt;:Number</code> is a Julia type defined in <a href="https://github.com/Jutho/WignerSymbols.jl">WignerSymbols.jl</a>, which is also used for <code>SU2Irrep</code> below, that stores integer or half integer numbers using twice their value. Strictly speaking, the linear representations of <code>U₁</code> can only have integer charges, and fractional charges lead to a projective representation. It can be useful to allow half integers in order to describe spin 1/2 systems with an axis rotation symmetry. As a user, you should not worry about the details of <code>HalfInteger</code>, and additional methods for automatic conversion and pretty printing are provided, as illustrated by the following example</p><pre><code class="language-julia-repl">julia&gt; U₁(0.5)
+U₁(1//2)
+
+julia&gt; U₁(0.4)
+ERROR: MethodError: no method matching InexactError()
+Closest candidates are:
+  InexactError(!Matched::Symbol, !Matched::Any, !Matched::Any) at boot.jl:269
+
+julia&gt; U₁(1) ⊗ U₁(1//2)
+(U₁(3//2),)
+
+julia&gt; u = first(U₁(1) ⊗ U₁(1//2))
+U₁(3//2)
+
+julia&gt; Nsymbol(u, conj(u), one(u))
+true
+
+julia&gt; z = ℤ₃(1)
+ℤ₃(1)
+
+julia&gt; z ⊗ z
+(ℤ₃(2),)
+
+julia&gt; conj(z)
+ℤ₃(2)
+
+julia&gt; one(z)
+ℤ₃(0)</code></pre><p>For <code>ZNIrrep{N}</code>, we use an <code>Int8</code> for compact storage, assuming that this type will not be used with <code>N&gt;64</code> (we need <code>2*(N-1) &lt;= 127</code> in order for <code>a ⊗ b</code> to work correctly).</p><p>As a further remark, even in the abelian case where <code>a ⊗ b</code> is equivalent to a single new label <code>c</code>, we return it as an iterable container, in this case a one-element tuple <code>(c,)</code>.</p><p>And finally, we also show the following definitions</p><pre><code class="language-julia">Base.hash(c::ZNIrrep{N}, h::UInt64) where {N} = hash(c.n, h)
+Base.hash(c::U1Irrep, h::UInt64) = hash(c.charge, h)</code></pre><p>Since sectors or objects made out of tuples of sectors (see the section on <a href="man/@ref">Fusion Trees</a> below) are often used as keys in look-up tables (known as <code>Associative</code> or <code>Dictionary</code> in Julia), it is important that they can be hashed efficiently. We just hash the sectors above based on their numerical value. Note that hashes will only be used to compare sectors of the same type.</p><p>The first example of a non-abelian representation category is that of <span>$\mathsf{SU}_2$</span>, the implementation of which is summarized by</p><pre><code class="language-julia">struct SU2Irrep &lt;: Sector
+    j::HalfInteger
+end
+Base.one(::Type{SU2Irrep}) = SU2Irrep(zero(HalfInteger))
+Base.conj(s::SU2Irrep) = s
+⊗(s1::SU2Irrep, s2::SU2Irrep) = SectorSet{SU2Irrep}(HalfInteger, abs(s1.j.num-s2.j.num):2:(s1.j.num+s2.j.num) )
+dim(s::SU2Irrep) = s.j.num+1
+Base.@pure FusionStyle(::Type{SU2Irrep}) = SimpleNonAbelian()
+Nsymbol(sa::SU2Irrep, sb::SU2Irrep, sc::SU2Irrep) = WignerSymbols.δ(sa.j, sb.j, sc.j)
+Fsymbol(s1::SU2Irrep, s2::SU2Irrep, s3::SU2Irrep, s4::SU2Irrep, s5::SU2Irrep, s6::SU2Irrep) =
+    WignerSymbols.racahW(s1.j, s2.j, s4.j, s3.j, s5.j, s6.j)*sqrt(dim(s5)*dim(s6))
+function Rsymbol(sa::SU2Irrep, sb::SU2Irrep, sc::SU2Irrep)
+    Nsymbol(sa, sb, sc) || return 0.
+    iseven(convert(Int, sa.j+sb.j-sc.j)) ? 1.0 : -1.0
+end
+Base.hash(s::SU2Irrep, h::UInt64) = hash(s.j, h)
+const SU₂ = SU2Irrep</code></pre><p>and some methods for pretty printing and converting from real numbers to irrep labels. As one can notice, the topological data (i.e. <code>Nsymbol</code> and <code>Fsymbol</code>) are provided by the package <a href="https://github.com/Jutho/WignerSymbols.jl">WignerSymbols.jl</a>. The iterable <code>a ⊗ b</code> is a custom type, that the user does not need to care about. Some examples</p><pre><code class="language-julia-repl">julia&gt; s = SU₂(3//2)
+SU₂(3//2)
+
+julia&gt; conj(s)
+SU₂(3//2)
+
+julia&gt; dim(s)
+4
+
+julia&gt; collect(s ⊗ s)
+4-element Array{SU₂,1}:
+ SU₂(0//1)
+ SU₂(1//1)
+ SU₂(2//1)
+ SU₂(3//1)
+
+julia&gt; for s′ in s ⊗ s
+           @show Nsymbol(s, s, s′)
+           @show Rsymbol(s, s, s′)
+       end
+Nsymbol(s, s, s′) = true
+Rsymbol(s, s, s′) = -1.0
+Nsymbol(s, s, s′) = true
+Rsymbol(s, s, s′) = 1.0
+Nsymbol(s, s, s′) = true
+Rsymbol(s, s, s′) = -1.0
+Nsymbol(s, s, s′) = true
+Rsymbol(s, s, s′) = 1.0</code></pre><p>A final non-abelian representation theory is that of the semidirect product <span>$\mathsf{U}₁ ⋉ ℤ_2$</span>, where in the context of quantum systems, this occurs in the case of systems with particle hole symmetry and the non-trivial element of <span>$ℤ_2$</span> acts as charge conjugation <code>C</code>. It has the effect of interchaning <span>$\mathsf{U}_1$</span> irreps <span>$n$</span> and <span>$-n$</span>, and turns them together in a joint 2-dimensional index, except for the case <span>$n=0$</span>. Irreps are therefore labeled by integers <code>n ≧ 0</code>, however for <code>n=0</code> the <span>$ℤ₂$</span> symmetry can be realized trivially or non-trivially, resulting in an even and odd one-dimensional irrep with <span>$\mathsf{U})_1$</span> charge <span>$0$</span>. Given <span>$\mathsf{U}_1 ≂ \mathsf{SO}_2$</span>, this group is also simply known as <span>$\mathsf{O}_2$</span>, and the two representations with <span>$n = 0$</span> are the scalar and pseudo-scalar, respectively. However, because we also allow for half integer representations, we refer to it as <code>CU₁</code> or <code>CU1Irrep</code> in full.</p><pre><code class="language-julia">struct CU1Irrep &lt;: Sector
+    j::HalfInteger # value of the U1 charge
+    s::Int # rep of charge conjugation: if j == 0, s = 0 (trivial) or s = 1 (non-trivial), else s = 2 (two-dimensional representation)
+    # Let constructor take the actual half integer value j
+    CU1Irrep(j::HalfInteger, s::Int = ifelse(j&gt;0, 2, 0)) = ((j &gt; 0 &amp;&amp; s == 2) || (j == 0 &amp;&amp; (s == 0 || s == 1))) ? new(j, s) : error(&quot;Not a valid CU₁ irrep&quot;)
+end
+Base.one(::Type{CU1Irrep}) = CU1Irrep(zero(HalfInteger), 0)
+Base.conj(c::CU1Irrep) = c
+dim(c::CU1Irrep) = ifelse(c.j == zero(HalfInteger), 1, 2)
+Base.@pure FusionStyle(::Type{CU1Irrep}) = SimpleNonAbelian()
+...
+const CU₁ = CU1Irrep</code></pre><p>The rest of the implementation can be read in the source code, but is rather long due to all the different cases for the arguments of <code>Fsymbol</code>.</p><p>So far, no sectors have been implemented with <code>FusionStyle(G) == DegenerateNonAbelian()</code>, though an example would be the representation theory of <span>$\mathsf{SU}_3$</span>. Such sectors are not yet fully supported; certain operations remain to be implemented.</p><h3><a class="nav-anchor" id="Combining-different-sectors-1" href="#Combining-different-sectors-1">Combining different sectors</a></h3><p>It is also possible to define two or more different types of symmetries, e.g. when the total symmetry group is a direct product of individual simple groups. Such sectors are obtained using the binary operator <code>×</code>, which can be entered as <code>\times</code>+TAB. Some examples</p><pre><code class="language-julia-repl">julia&gt; a = ℤ₃(1) × U₁(1)
+(ℤ₃(1) × U₁(1//1))
+
+julia&gt; typeof(a)
+(ℤ₃ × U₁)
+
+julia&gt; conj(a)
+(ℤ₃(2) × U₁(-1//1))
+
+julia&gt; one(a)
+(ℤ₃(0) × U₁(0//1))
+
+julia&gt; dim(a)
+1
+
+julia&gt; collect(a ⊗ a)
+1×1 Array{(ℤ₃ × U₁),2}:
+ (ℤ₃(2) × U₁(2//1))
+
+julia&gt; FusionStyle(a)
+Abelian()
+
+julia&gt; b = ℤ₃(1) × SU₂(3//2)
+(ℤ₃(1) × SU₂(3//2))
+
+julia&gt; typeof(b)
+(ℤ₃ × SU₂)
+
+julia&gt; conj(b)
+(ℤ₃(2) × SU₂(3//2))
+
+julia&gt; one(b)
+(ℤ₃(0) × SU₂(0//1))
+
+julia&gt; dim(b)
+4
+
+julia&gt; collect(b ⊗ b)
+1×4 Array{(ℤ₃ × SU₂),2}:
+ (2, 0//1)  (2, 1//1)  (2, 2//1)  (2, 3//1)
+
+julia&gt; FusionStyle(c)
+ERROR: UndefVarError: c not defined
+
+julia&gt; c = SU₂(1) × SU₂(3//2)
+(SU₂(1//1) × SU₂(3//2))
+
+julia&gt; typeof(c)
+(SU₂ × SU₂)
+
+julia&gt; conj(c)
+(SU₂(1//1) × SU₂(3//2))
+
+julia&gt; one(c)
+(SU₂(0//1) × SU₂(0//1))
+
+julia&gt; dim(c)
+12
+
+julia&gt; collect(c ⊗ c)
+3×4 Array{(SU₂ × SU₂),2}:
+ (0//1, 0//1)  (0//1, 1//1)  (0//1, 2//1)  (0//1, 3//1)
+ (1//1, 0//1)  (1//1, 1//1)  (1//1, 2//1)  (1//1, 3//1)
+ (2//1, 0//1)  (2//1, 1//1)  (2//1, 2//1)  (2//1, 3//1)
+
+julia&gt; FusionStyle(c)
+SimpleNonAbelian()</code></pre><p>We refer to the source file of <a href="man/@ref"><code>ProductSector</code></a> for implementation details.</p><h3><a class="nav-anchor" id="Defining-a-new-type-of-sector-1" href="#Defining-a-new-type-of-sector-1">Defining a new type of sector</a></h3><p>By know, it should be clear how to implement a new <code>Sector</code> subtype. Ideally, a new <code>G&lt;:Sector</code> type is a <code>struct G ... end</code> (immutable) that has <code>isbitstype(G) == true</code> (see Julia&#39;s manual), and implements the following minimal set of methods</p><pre><code class="language-julia">Base.one(::Type{G}) = G(...)
+Base.conj(a::G) = G(...)
+TensorKit.FusionStyle(::Type{G}) = ... # choose one: Abelian(), SimpleNonAbelian(), DegenerateNonAbelian()
+TensorKit.Nsymbol(a::G, b::G, c::G) = ... # Bool or Integer if FusionStyle(G) == DegenerateNonAbelian()
+Base.:⊗(a::G, b::G) = ... # some iterable object that generates all possible fusion outputs
+TensorKit.Fsymbol(a::G, b::G, c::G, d::G, e::G, f::G)
+TensorKit.Rsymbol(a::G, b::G, c::G)</code></pre><p>Additionally, suitable definitions can be given for</p><pre><code class="language-julia">TensorKit.dim(a::G) = ...
+TensorKit.frobeniusschur(a::G) = ...
+TensorKit.Bsymbol(a::G, b::G, c::G) = ...</code></pre><p>If <code>FusionStyle(G) == DegenerateNonAbelian()</code>, then the multiple outputs <code>c</code> in the tensor product of <code>a</code> and <code>b</code> will be labeled as <code>i=1</code>, <code>2</code>, …, <code>Nsymbol(a,b,c)</code>. Optionally, a different label can be provided by defining</p><pre><code class="language-julia">TensorKit.vertex_ind2label(i::Int, a::G, b::G, c::G) = ... # some label, e.g. a `Char` or `Symbol`</code></pre><p>The following function will then automatically determine the corresponding label type (which should not vary, i.e. <code>vertex_ind2label</code> should be type stable)</p><pre><code class="language-julia">Base.@pure vertex_labeltype(G::Type{&lt;:Sector}) = typeof(vertex_ind2label(1, one(G), one(G), one(G)))</code></pre><p>The following type, which already appeared in the implementation of <code>SU2Irrep</code> above, can be useful for providing the return type of <code>a ⊗ b</code></p><pre><code class="language-julia">struct SectorSet{G&lt;:Sector,F,S}
+    f::F
+    set::S
+end
+...
+function Base.iterate(s::SectorSet{G}, args...) where {G&lt;:Sector}
+    next = iterate(s.set, args...)
+    next === nothing &amp;&amp; return nothing
+    val, state = next
+    return convert(G, s.f(val)), state
+end</code></pre><p>That is, <code>SectorSet(f, set)</code> behaves as an iterator that applies <code>x-&gt;convert(G, f(x))</code> on the elements of <code>set</code>; if <code>f</code> is not provided it is just taken as the function <code>identity</code>.</p><h3><a class="nav-anchor" id="Generalizations-1" href="#Generalizations-1">Generalizations</a></h3><p>As mentioned before, the framework for sectors outlined above depends is in one-to-one correspondence to the topological data for specifying a unitary <a href="https://en.wikipedia.org/wiki/Fusion_category">fusion category</a>. In fact, because we also need a braiding (corresponding to <code>Rsymbol(a,b,c)</code>) it is a so-called ribbon fusion category. However, the category does not need to be modular.  The category of representations of a finite group<a href="#footnote-1">[1]</a> corresponds to a typical example (which is not modular and which have a symmetric braiding). Other examples are the representation of quasi-triangular Hopf algebras, which are typically known as anyon theories in the physics literature, e.g. Fibonicci anyons, Ising anyons, … In those cases, quantum dimensions <code>d_a</code> are complex, and there is no vector space interpretation to objects <span>$R_a$</span> (which we can identify with just <code>a</code>) in the decomposition <span>$V = ⨁_a ℂ^{n_a} ⊗ R_{a}$</span>. The different sectors <code>a</code>, … just represent abstract objects. However, there is still a vector space associated with the homomorphisms <code>a ⊗ b → c</code>, whose dimension is <code>N_{a,b}^c</code>. The objects <code>X_{a,b}^{c,μ}</code> for <code>μ = 1,…,N_{a,b}^c</code> serve as an abstract basis for this space and from there on the discussion is completely equivalent.</p><p>So far, none of these cases have been implemented, but it is a simple exercise to do so.</p><h2><a class="nav-anchor" id="Representation-spaces-1" href="#Representation-spaces-1">Representation spaces</a></h2><p>We have introduced <code>Sector</code> subtypes as a way to label the irreps or sectors in the decomposition <span>$V = ⨁_a ℂ^{n_a} ⊗ R_{a}$</span>. To actually represent such spaces, we now also introduce a corresponding type <code>RepresentationSpace</code>, which is a subtype of <code>EuclideanSpace{ℂ}</code>, i.e.</p><pre><code class="language-julia">abstract type RepresentationSpace{G&lt;:Sector} &lt;: EuclideanSpace{ℂ} end</code></pre><p>Note that this is still an abstract type, nonetheless it will be the type name that the user calls to create specific instances.</p><h3><a class="nav-anchor" id="Types-1" href="#Types-1">Types</a></h3><p>The actual implementation comes in two flavors</p><pre><code class="language-julia">struct GenericRepresentationSpace{G&lt;:Sector} &lt;: RepresentationSpace{G}
+    dims::SectorDict{G,Int}
+    dual::Bool
+end
+struct ZNSpace{N} &lt;: RepresentationSpace{ZNIrrep{N}}
+    dims::NTuple{N,Int}
+    dual::Bool
+end</code></pre><p>The <code>GenericRepresentationSpace</code> is the default implementation and stores the different sectors <span>$a$</span> and their corresponding degeneracy <span>$n_a$</span> as key value pairs in an <code>Associative</code> array, i.e. a dictionary <code>dims::SectorDict</code>. <code>SectorDict</code> is a constant type alias for a specific dictionary implementation, either Julia&#39;s default <code>Dict</code> or the type <code>VectorDict</code> implemented in TensorKit.jl. Note that only sectors <span>$a$</span> with non-zero <span>$n_a$</span> are stored. The second implementation <code>ZNSpace{N}</code> is a dedicated implementation for <code>ZNIrrep{N}</code> symmetries, and just stores all <code>N</code> different values <span>$n_a$</span> in a tuple.</p><p>As mentioned, creating instances of these types goes via <code>RepresentationSpace</code>, using a list of pairs <code>a=&gt;n_a</code>, i.e. <code>V = RepresentationSpace(a=&gt;n_a, b=&gt;n_b, c=&gt;n_c)</code>. In this case, the sector type <code>G</code> is inferred from the sectors. However, it is often more convenient to specify the sector type explicitly, since then the sectors are automatically converted to the correct type, i.e. compare</p><pre><code class="language-julia-repl">julia&gt; RepresentationSpace{U1Irrep}(0=&gt;3, 1=&gt;2, -1=&gt;1) == RepresentationSpace(U1Irrep(0)=&gt;3, U1Irrep(1)=&gt;2, U1Irrep(-1)=&gt;1)
+true</code></pre><p>or using Unicode</p><pre><code class="language-julia-repl">julia&gt; RepresentationSpace{U₁}(0=&gt;3, 1=&gt;2, -1=&gt;1) == RepresentationSpace(U₁(0)=&gt;3, U₁(1)=&gt;2, U₁(-1)=&gt;1)
+true</code></pre><p>However, both are still to long for the most common cases. Therefore, we provide a number of type aliases, both in plain ASCII and in Unicode</p><pre><code class="language-julia">const ℤ₂Space = ZNSpace{2}
+const ℤ₃Space = ZNSpace{3}
+const ℤ₄Space = ZNSpace{4}
+const U₁Space = GenericRepresentationSpace{U₁}
+const CU₁Space = GenericRepresentationSpace{CU₁}
+const SU₂Space = GenericRepresentationSpace{SU₂}
+
+# non-Unicode alternatives
+const Z2Space = ℤ₂Space
+const Z3Space = ℤ₃Space
+const Z4Space = ℤ₄Space
+const U1Space = U₁Space
+const CU1Space = CU₁Space
+const SU2Space = SU₂Space</code></pre><h3><a class="nav-anchor" id="Methods-1" href="#Methods-1">Methods</a></h3><p>There are a number of methods to work with instances <code>V</code> of <code>RepresentationSpace</code>. The function <a href="../../lib/spaces/#TensorKit.sectortype"><code>sectortype</code></a> returns the type of the sector labels. It also works on other vector spaces, in which case it returns <a href="man/@ref"><code>Trivial</code></a>. The function <a href="../../lib/spaces/#TensorKit.sectors"><code>sectors</code></a> returns an iterator over the different sectors <code>a</code> with non-zero <code>n_a</code>, for other <code>ElementarySpace</code> types it returns <code>(Trivial,)</code>. The degeneracy dimensions <code>n_a</code> can be extracted as <code>dim(V, a)</code>, it properly returns <code>0</code> if sector <code>a</code> is not present in the decomposition of <code>V</code>. With <code>checksectors(V, a)</code> one can check if <code>V</code> contains a sector <code>a</code> with <code>dim(V,a)&gt;0</code>. Finally, <code>dim(V)</code> returns the total dimension of the space <code>V</code>, i.e. <span>$∑_a n_a d_a$</span> or thus <code>dim(V) = sum(dim(V,a) * dim(a) for a in sectors(V))</code>.</p><p>Other methods for <code>ElementarySpace</code>, such as <a href="man/@ref"><code>dual</code></a>, <a href="man/@ref"><code>fuse</code></a> and <a href="man/@ref"><code>flip</code></a> also work. In fact, <code>RepresentationSpace</code> is the reason <code>flip</code> exists, cause in this case it is different then <code>dual</code>. The existence of flip originates from the non-trivial isomorphism between <span>$R_{\overline{a}}$</span> and <span>$R_{a}^*$</span>, i.e. the representation space of the dual <span>$\overline{a}$</span> of sector <span>$a$</span> and the dual of the representation space of sector <span>$a$</span>.</p><p>In order for <code>flip(V)</code> to be isomorphic to <code>V</code>, it is such that, if <code>V = RepresentationSpace(a=&gt;n_a,...)</code> then <code>flip(V) = dual(RepresentationSpace(dual(a)=&gt;n_a,....))</code>. Furthermore, for two spaces <code>V1 = RepresentationSpace(a=&gt;n1_a, ...)</code> and <code>V2 = RepresentationSpace(a=&gt;n2_a, ...)</code>, we have <code>min(V1,V2) = RepresentationSpace(a=&gt;min(n1_a,n2_a), ....)</code> and similarly for <code>max</code>, i.e. they act on the degeneracy dimensions of every sector separately. Therefore, it can be that the return value of <code>min(V1,V2)</code> or <code>max(V1,V2)</code> is neither equal to <code>V1</code> or <code>V2</code>.</p><p>For <code>W</code> a <code>ProductSpace{&lt;:RepresentationSpace{G},N}</code>, <code>sectors(W)</code> returns an iterator that generates all possible combinations of sectors <code>as</code> represented as <code>NTuple{G,N}</code>. The function <code>dims(W, as)</code> returns the corresponding tuple with degeneracy dimensions, while <code>dim(W, as)</code> returns the product of these dimensions. <code>checksectors(W, as)</code> is equivalent to <code>dim(W, as)&gt;0</code>. Finally, there is the function <a href="../../lib/spaces/#TensorKit.blocksectors"><code>blocksectors(W)</code></a> which returns a list (of type <code>Vector</code>) with all possible &quot;block sectors&quot; or total/coupled sectors that can result from fusing the individual uncoupled sectors in <code>W</code>. Correspondingly, <a href="man/@ref"><code>blockdim(W, a)</code></a> counts the total dimension of coupled sector <code>a</code> in <code>W</code>. The machinery for computing this is the topic of the next section on <a href="#Fusion-trees-1">Fusion trees</a>, but first, it&#39;s time for some examples.</p><h3><a class="nav-anchor" id="Examples-1" href="#Examples-1">Examples</a></h3><p>Let&#39;s start with an example involving <span>$\mathsf{U}_1$</span>:</p><pre><code class="language-julia-repl">julia&gt; V1 = RepresentationSpace{U₁}(0=&gt;3, 1=&gt;2, -1=&gt;1)
+U₁Space(0//1=&gt;3, 1//1=&gt;2, -1//1=&gt;1)
+
+julia&gt; V1 == U1Space(0=&gt;3, 1=&gt;2, -1=&gt;1) == U₁Space(0=&gt;3, 1=&gt;2, -1=&gt;1)
+true
+
+julia&gt; (sectors(V1)...,)
+(U₁(0//1), U₁(1//1), U₁(-1//1))
+
+julia&gt; dim(V1, U₁(1))
+2
+
+julia&gt; dim(V1)
+6
+
+julia&gt; checksectors(V1, U₁(1))
+true
+
+julia&gt; checksectors(V1, U₁(2))
+false
+
+julia&gt; dual(V1)
+U₁Space(0//1=&gt;3, 1//1=&gt;2, -1//1=&gt;1)&#39;
+
+julia&gt; flip(V1)
+U₁Space(0//1=&gt;3, -1//1=&gt;2, 1//1=&gt;1)&#39;
+
+julia&gt; V2 = U1Space(0=&gt;2, 1=&gt;1, -1=&gt;1, 2=&gt;1, -2=&gt;1)
+U₁Space(0//1=&gt;2, 1//1=&gt;1, -1//1=&gt;1, 2//1=&gt;1, -2//1=&gt;1)
+
+julia&gt; min(V1,V2)
+U₁Space(0//1=&gt;2, 1//1=&gt;1, -1//1=&gt;1)
+
+julia&gt; max(V1,V2)
+U₁Space(0//1=&gt;3, 1//1=&gt;2, -1//1=&gt;1, 2//1=&gt;1, -2//1=&gt;1)
+
+julia&gt; ⊕(V1,V2)
+U₁Space(0//1=&gt;5, 1//1=&gt;3, -1//1=&gt;2, 2//1=&gt;1, -2//1=&gt;1)
+
+julia&gt; W = ⊗(V1,V2)
+(U₁Space(0//1=&gt;3, 1//1=&gt;2, -1//1=&gt;1) ⊗ U₁Space(0//1=&gt;2, 1//1=&gt;1, -1//1=&gt;1, 2//1=&gt;1, -2//1=&gt;1))
+
+julia&gt; (sectors(W)...,)
+((U₁(0//1), U₁(0//1)), (U₁(1//1), U₁(0//1)), (U₁(-1//1), U₁(0//1)), (U₁(0//1), U₁(1//1)), (U₁(1//1), U₁(1//1)), (U₁(-1//1), U₁(1//1)), (U₁(0//1), U₁(-1//1)), (U₁(1//1), U₁(-1//1)), (U₁(-1//1), U₁(-1//1)), (U₁(0//1), U₁(2//1)), (U₁(1//1), U₁(2//1)), (U₁(-1//1), U₁(2//1)), (U₁(0//1), U₁(-2//1)), (U₁(1//1), U₁(-2//1)), (U₁(-1//1), U₁(-2//1)))
+
+julia&gt; dims(W, (U₁(0), U₁(0)))
+(3, 2)
+
+julia&gt; dim(W, (U₁(0), U₁(0)))
+6
+
+julia&gt; checksectors(W, (U₁(0), U₁(0)))
+true
+
+julia&gt; checksectors(W, (U₁(2), U₁(0)))
+false
+
+julia&gt; fuse(W)
+U₁Space(0//1=&gt;9, 1//1=&gt;8, -1//1=&gt;7, 2//1=&gt;5, -2//1=&gt;4, 3//1=&gt;2, -3//1=&gt;1)
+
+julia&gt; (blocksectors(W)...,)
+(U₁(0//1), U₁(1//1), U₁(-1//1), U₁(2//1), U₁(-2//1), U₁(3//1), U₁(-3//1))
+
+julia&gt; blockdim(W, U₁(0))
+9</code></pre><p>and then with <span>$\mathsf{SU}_2$</span>:</p><pre><code class="language-julia-repl">julia&gt; V1 = RepresentationSpace{SU₂}(0=&gt;3, 1//2=&gt;2, 1=&gt;1)
+SU₂Space(0//1=&gt;3, 1//2=&gt;2, 1//1=&gt;1)
+
+julia&gt; V1 == SU2Space(0=&gt;3, 1//2=&gt;2, 1=&gt;1) == SU₂Space(0=&gt;3, 1//2=&gt;2, 1=&gt;1)
+true
+
+julia&gt; (sectors(V1)...,)
+(SU₂(0//1), SU₂(1//2), SU₂(1//1))
+
+julia&gt; dim(V1, SU₂(1))
+1
+
+julia&gt; dim(V1)
+10
+
+julia&gt; checksectors(V1, SU₂(1))
+true
+
+julia&gt; checksectors(V1, SU₂(2))
+false
+
+julia&gt; dual(V1)
+SU₂Space(0//1=&gt;3, 1//2=&gt;2, 1//1=&gt;1)&#39;
+
+julia&gt; flip(V1)
+SU₂Space(0//1=&gt;3, 1//2=&gt;2, 1//1=&gt;1)&#39;
+
+julia&gt; V2 = SU2Space(0=&gt;2, 1//2=&gt;1, 1=&gt;1, 3//2=&gt;1, 2=&gt;1)
+SU₂Space(0//1=&gt;2, 1//2=&gt;1, 1//1=&gt;1, 3//2=&gt;1, 2//1=&gt;1)
+
+julia&gt; min(V1,V2)
+SU₂Space(0//1=&gt;2, 1//2=&gt;1, 1//1=&gt;1)
+
+julia&gt; max(V1,V2)
+SU₂Space(0//1=&gt;3, 1//2=&gt;2, 1//1=&gt;1, 3//2=&gt;1, 2//1=&gt;1)
+
+julia&gt; ⊕(V1,V2)
+SU₂Space(0//1=&gt;5, 1//2=&gt;3, 1//1=&gt;2, 3//2=&gt;1, 2//1=&gt;1)
+
+julia&gt; W = ⊗(V1,V2)
+(SU₂Space(0//1=&gt;3, 1//2=&gt;2, 1//1=&gt;1) ⊗ SU₂Space(0//1=&gt;2, 1//2=&gt;1, 1//1=&gt;1, 3//2=&gt;1, 2//1=&gt;1))
+
+julia&gt; (sectors(W)...,)
+((SU₂(0//1), SU₂(0//1)), (SU₂(1//2), SU₂(0//1)), (SU₂(1//1), SU₂(0//1)), (SU₂(0//1), SU₂(1//2)), (SU₂(1//2), SU₂(1//2)), (SU₂(1//1), SU₂(1//2)), (SU₂(0//1), SU₂(1//1)), (SU₂(1//2), SU₂(1//1)), (SU₂(1//1), SU₂(1//1)), (SU₂(0//1), SU₂(3//2)), (SU₂(1//2), SU₂(3//2)), (SU₂(1//1), SU₂(3//2)), (SU₂(0//1), SU₂(2//1)), (SU₂(1//2), SU₂(2//1)), (SU₂(1//1), SU₂(2//1)))
+
+julia&gt; dims(W, (SU₂(0), SU₂(0)))
+(3, 2)
+
+julia&gt; dim(W, (SU₂(0), SU₂(0)))
+6
+
+julia&gt; checksectors(W, (SU₂(0), SU₂(0)))
+true
+
+julia&gt; checksectors(W, (SU₂(2), SU₂(0)))
+false
+
+julia&gt; fuse(W)
+SU₂Space(0//1=&gt;9, 1//2=&gt;11, 1//1=&gt;11, 3//2=&gt;9, 2//1=&gt;7, 5//2=&gt;3, 3//1=&gt;1)
+
+julia&gt; (blocksectors(W)...,)
+(SU₂(0//1), SU₂(1//2), SU₂(1//1), SU₂(3//2), SU₂(2//1), SU₂(5//2), SU₂(3//1))
+
+julia&gt; blockdim(W, SU₂(0))
+9</code></pre><h2><a class="nav-anchor" id="Fusion-trees-1" href="#Fusion-trees-1">Fusion trees</a></h2><p><strong>Work in progress</strong></p><p>The gain in efficiency (both in memory occupation and computation time) obtained from using symmetric tensor maps is that, by Schur&#39;s lemma, they are block diagonal in the basis of coupled sectors. To exploit this block diagonal form, it is however essential that we know the basis transform from the individual (uncoupled) sectors appearing in the tensor product form of the domain and codomain, to the totally coupled sectors that label the different blocks. We refer to the latter as block sectors, as we already encountered in the previous section <a href="../../lib/spaces/#TensorKit.blocksectors"><code>blocksectors</code></a> and <a href="man/@ref"><code>blockdim</code></a> defined on the type <a href="../../lib/spaces/#TensorKit.ProductSpace"><code>ProductSpace</code></a>.</p><p>To couple or fuse the different sectors together into a single block sector, we sequentially fuse together two sectors into a single coupled sector, which is then fused with the next uncoupled sector. For this, we assume the existence of unitary tensor maps <span>$X_{a,b}^{c,μ} : R_c → R_a ⊗ R_b$</span> introduced in the section <a href="#Sectors-1">Sectors</a>.</p><p>such that <span>$(X_{a,b}^{c,μ})^† X_{a,b}^{c,μ} = \mathrm{id}_{R_c}$</span> and</p><p><span>$\sum_{c} \sum_{μ = 1}^{N_{a,b}^c} X_{a,b}^{c,μ} (X_{a,b}^{c,μ})^\dagger = \mathrm{id}_{R_a ⊗ R_b}$</span></p><p>The tensors <span>$X_{a,b}^{c,μ}$</span> are the splitting tensors, their hermitian conjugate are the fusion tensors. For <span>$\mathsf{SU}_2$</span>, their entries are given by the Clebsch-Gordan coefficients</p><h3><a class="nav-anchor" id="Canonical-representation-1" href="#Canonical-representation-1">Canonical representation</a></h3><p>TODO</p><h3><a class="nav-anchor" id="Possible-manipulations-1" href="#Possible-manipulations-1">Possible manipulations</a></h3><p>TODO</p><h2><a class="nav-anchor" id="Fermions-1" href="#Fermions-1">Fermions</a></h2><p>TODO</p><h2><a class="nav-anchor" id="Bibliography-1" href="#Bibliography-1">Bibliography</a></h2><div class="footnote" id="footnote-kitaev"><a href="#footnote-kitaev"><strong>[kitaev]</strong></a><p>Kitaev, A. (2006). Anyons in an exactly solved model and beyond. Annals of Physics, 321(1), 2-111.</p></div><div class="footnote" id="footnote-1"><a href="#footnote-1"><strong>[1]</strong></a><p>Strictly speaking the number of sectors, i.e. simple objects, in a fusion category needs to be finite, so that <span>$Rep\{\mathsf{G}\}$</span> is only a fusion category for a finite group <span>$\mathsf{G}$</span>. It is clear our formalism also works for compact Lie groups with an infinite number of irreps, since any finite-dimensional vector space will only have a finite number of all possible irreps in its decomposition.</p></div><footer><hr/><a class="previous" href="../spaces/"><span class="direction">Previous</span><span class="title">Vector spaces</span></a><a class="next" href="../tensors/"><span class="direction">Next</span><span class="title">Tensors and the <code>TensorMap</code> type</span></a></footer></article></body></html>
