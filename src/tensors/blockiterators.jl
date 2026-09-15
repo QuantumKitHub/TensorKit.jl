@@ -190,11 +190,18 @@ struct StridedSubblocks{A <: DenseVector, N, F <: SubblockOp}
     data::A
     structure::Vector{StridedStructure{N}}
     op::F
+    # store the data as `StridedView` parents it, so that `A` is also the parent type of the views
+    function StridedSubblocks(
+            data::DenseVector, structure::Vector{StridedStructure{N}}, op::F = identity
+        ) where {N, F <: SubblockOp}
+        data′ = parent(StridedView(data))
+        return new{typeof(data′), N, F}(data′, structure, op)
+    end
 end
 Base.length(s::StridedSubblocks) = length(s.structure)
 Base.firstindex(s::StridedSubblocks) = 1
 Base.lastindex(s::StridedSubblocks) = length(s)
-Base.eltype(::Type{S}) where {S <: StridedSubblocks} = Core.Compiler.return_type(getindex, Tuple{S, Int})
+Base.eltype(::Type{StridedSubblocks{A, N, F}}) where {A, N, F} = StridedView{eltype(A), N, A, F}
 
 Base.@propagate_inbounds function Base.getindex(s::StridedSubblocks, i::Int)
     sz, str, offset = s.structure[i]

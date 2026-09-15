@@ -197,5 +197,7 @@ end
 # Adapt.adapt would make (which additionally dispatches dynamically). Other storage
 # types (e.g. GPU arrays) do require the conversion.
 # TODO: transformers with dedicated storagetypes
-_adapt_recoupling(::Type{<:Array}, U::Matrix) = StridedView(U)
+# `StridedSubblocks` report their storage as the `StridedView` parent type, which is `Memory` there
+const CPUStorage = @static isdefined(Core, :Memory) ? Union{Array, Memory} : Array
+_adapt_recoupling(::Type{<:CPUStorage}, U::Matrix) = StridedView(U)
 _adapt_recoupling(::Type{A}, U::Matrix) where {A} = Adapt.adapt(A, StridedView(U))
