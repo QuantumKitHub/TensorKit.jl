@@ -177,34 +177,28 @@ function Base.:(==)(d1::SortedVectorDict, d2::SortedVectorDict)
     return true
 end
 
-# merge two SortedVectorDicts of `GradedSpace` dimensions, applying `combine` to keys present in
-# both, and `_unmatched1`/`_unmatched2` to keys present in only the first/second dict, which may
-# keep the value, drop the entry by returning `nothing`, or throw. Zero results are always dropped,
-# since `GradedSpace` never stores an explicit zero dimension.
-_unmatched1(::Any, v) = v
-_unmatched2(::Any, v) = v
-_unmatched1(::typeof(min), v) = nothing # infimum: a missing sector has dimension zero
-_unmatched2(::typeof(min), v) = nothing
-
-# upper bound on the number of entries the merge can produce
-_mergelength(::Any, n1, n2) = n1 + n2
-_mergelength(::typeof(min), n1, n2) = min(n1, n2)
-
-function _sortedmerge(combine::F, d1::SortedVectorDict{K, V}, d2::SortedVectorDict{K, V}) where {F, K, V <: Integer}
+# merge two SortedVectorDicts of `GradedSpace` dimensions: `combine(v1, v2)` is applied to keys
+# present in both, `unmatched1(v)`/`unmatched2(v)` to keys present in only the first/second dict,
+# which may keep the value, drop the entry by returning `nothing`, or throw. Zero results are
+# always dropped, since `GradedSpace` never stores an explicit zero dimension.
+function _sortedmerge(
+        combine::F, unmatched1::F1, unmatched2::F2,
+        d1::SortedVectorDict{K, V}, d2::SortedVectorDict{K, V}
+    ) where {F, F1, F2, K, V <: Integer}
     k1, v1 = d1.keys, d1.values
     k2, v2 = d2.keys, d2.values
     n1, n2 = length(k1), length(k2)
-    len = _mergelength(combine, n1, n2)
+    len = _mergelength(unmatched1, unmatched2, n1, n2)
     ks = Vector{K}(undef, len)
     vs = Vector{V}(undef, len)
     i, j, n = 1, 1, 0
     @inbounds while i <= n1 && j <= n2
         a, b = k1[i], k2[j]
         if isless(a, b)
-            n = _mergestore!(ks, vs, n, a, _unmatched1(combine, v1[i]))
+            n = _mergestore!(ks, vs, n, a, unmatched1(v1[i]))
             i += 1
         elseif isless(b, a)
-            n = _mergestore!(ks, vs, n, b, _unmatched2(combine, v2[j]))
+            n = _mergestore!(ks, vs, n, b, unmatched2(v2[j]))
             j += 1
         else
             n = _mergestore!(ks, vs, n, a, combine(v1[i], v2[j]))
@@ -213,11 +207,11 @@ function _sortedmerge(combine::F, d1::SortedVectorDict{K, V}, d2::SortedVectorDi
         end
     end
     @inbounds while i <= n1
-        n = _mergestore!(ks, vs, n, k1[i], _unmatched1(combine, v1[i]))
+        n = _mergestore!(ks, vs, n, k1[i], unmatched1(v1[i]))
         i += 1
     end
     @inbounds while j <= n2
-        n = _mergestore!(ks, vs, n, k2[j], _unmatched2(combine, v2[j]))
+        n = _mergestore!(ks, vs, n, k2[j], unmatched2(v2[j]))
         j += 1
     end
     resize!(ks, n)
@@ -232,8 +226,22 @@ end
 end
 @inline _mergestore!(ks, vs, n, k, ::Nothing) = n
 
-Base.mergewith(combine, d1::SortedVectorDict{K, V}, d2::SortedVectorDict{K, V}) where {K, V <: Integer} =
-    _sortedmerge(combine, d1, d2)
+# upper bound on the number of entries the merge can produce: a dropping handler contributes none
+function _mergelength(unmatched1, unmatched2, n1, n2)
+    drop = Returns(nothing)
+    return if unmatched1 == drop
+        unmatched2 == drop ? min(n1, n2) : n2
+    else
+        unmatched2 == drop ? n1 : n1 + n2
+    end
+end
+
+function Base.mergewith(combine, d1::SortedVectorDict{K, V}, d2::SortedVectorDict{K, V}) where {K, V <: Integer}
+    # keys occurring in only one of the dicts are kept, except for `min`, where a missing sector
+    # has dimension zero and thus drops out of the result
+    unmatched = combine == min ? Returns(nothing) : identity
+    return _sortedmerge(combine, unmatched, unmatched, d1, d2)
+end
 
 """
     Hashed(value, hashfunction = Base.hash, isequal = Base.isequal)

@@ -35,7 +35,7 @@ If `IteratorSize(values(I)) isa Union{HasLength, HasShape}` and `N = length(valu
 The methods `getindex(values(I), i)` and `findindex(values(I), a)` are used to map between a sector `a ∈ values(I)` and a corresponding index `i ∈ 1:N`.
 As `N` is a compile time constant, these types can be created in a type stable manner.
 For larger `N` this would overly burden the compiler, which is precisely why the dictionary storage takes over above the threshold.
-The storage type of a given sector type is reported by `TensorKit.sectorstoragetype(I)`, and the canonical space type is always obtained as `Vect[I]`.
+The exact threshold is documented with [`TensorKit.sectorstoragetype`](@ref), which reports the storage type of a given sector type; the canonical space type is always obtained as `Vect[I]`.
 
 ## Constructing instances
 
