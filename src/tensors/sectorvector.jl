@@ -53,7 +53,9 @@ Base.valtype(::Type{SectorVector{T, I, A}}) where {T, I, A} = SubArray{T, 1, A, 
 
 Base.keys(v::SectorVector) = keys(v.structure)
 Base.values(v::SectorVector) = (v[c] for c in keys(v))
-Base.pairs(v::SectorVector) = SectorDict(c => v[c] for c in keys(v))
+# lazy, like `blocks(::AbstractTensorMap)`: the blocks are views, and lookups go through
+# `getindex`/`get`/`block` on the `SectorVector` itself rather than through this iterator
+Base.pairs(v::SectorVector) = Base.Iterators.map(((c, r),) -> c => view(parent(v), r), v.structure)
 
 Base.get(v::SectorVector{<:Any, I}, key::I, default) where {I} = haskey(v, key) ? v[key] : default
 Base.haskey(v::SectorVector{<:Any, I}, key::I) where {I} = key in keys(v)

@@ -6,7 +6,8 @@ module Factorizations
 export copy_oftype, factorisation_scalartype, one!, truncspace
 
 using ..TensorKit
-using ..TensorKit: AdjointTensorMap, SectorDict, SectorVector,
+using ..TensorKit: AdjointTensorMap, DictGradedSpace, SectorDict, SectorVector,
+    TupleGradedSpace, findindex,
     blocktype, foreachblock, one!,
     similar_diagonal, similarstoragetype
 using ..TensorKit: GLOBAL_TIMER
@@ -17,6 +18,8 @@ using LinearAlgebra: LinearAlgebra, BlasFloat, Diagonal,
     isposdef, isposdef!
 
 using TensorOperations: Index2Tuple
+
+using TupleTools: MutableNTuple, StaticLength
 
 using MatrixAlgebraKit
 import MatrixAlgebraKit as MAK

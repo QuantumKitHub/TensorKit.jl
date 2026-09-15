@@ -44,7 +44,7 @@ export infimum, supremum, isisomorphic, ismonomorphic, isepimorphic
 export sectortype, sectors, hassector
 export unit, rightunit, leftunit, allunits, isunit, otimes, deligneproduct, timereversed
 export Nsymbol, Fsymbol, Rsymbol, Bsymbol, frobenius_schur_phase, frobenius_schur_indicator, twist, fusiontensor
-export sectorscalartype, fusionscalartype, braidingscalartype
+export sectorscalartype, fusionscalartype, braidingscalartype, dimscalartype
 
 # Export methods for fusion trees
 export fusiontrees, braid, permute, transpose

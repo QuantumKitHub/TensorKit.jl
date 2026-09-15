@@ -35,32 +35,58 @@ _blocklength(ax::Base.OneTo, ind::AbstractVector{<:Integer}) = length(ind)
 _blocklength(ax::Base.OneTo, ind::AbstractVector{Bool}) = count(ind)
 
 function truncate_space(V::ElementarySpace, inds)
+    @assert !isdual(V)
     return spacetype(V)(c => _blocklength(dim(V, c), ind) for (c, ind) in pairs(inds))
+end
+function truncate_space(V::TupleGradedSpace{I, N}, inds) where {I <: Sector, N}
+    @assert !isdual(V)
+    vals = values(I)
+    newdims = MutableNTuple(ntuple(_ -> 0, StaticLength(N)))
+    for (c, ind) in pairs(inds)
+        d = dim(V, c)
+        n_write = findindex(vals, c)
+        @inbounds newdims[n_write] = _blocklength(d, ind)
+    end
+    return typeof(V)(Tuple(newdims), false)
+end
+function truncate_space(V::DictGradedSpace{I}, inds) where {I <: Sector}
+    @assert !isdual(V)
+    ks, vs = Vector{I}(), Vector{Int}() # accumulate and sort once at the end
+    for (c, ind) in pairs(inds)
+        d = dim(V, c)
+        len = _blocklength(d, ind)
+        if !iszero(len)
+            push!(ks, c)
+            push!(vs, len)
+        end
+    end
+    perm = sortperm(ks)
+    return typeof(V)(SectorDict{I, Int}(ks[perm], vs[perm]), false)
 end
 
 function truncate_domain!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, inds)
     for (c, b) in blocks(tdst)
-        I = get(inds, c, nothing)
-        @assert !isnothing(I)
+        ind = get(inds, c, nothing)
+        @assert !isnothing(ind)
         b′ = block(tsrc, c)
-        b .= view(b′, :, I)
+        b .= view(b′, :, ind)
     end
     return tdst
 end
 function truncate_codomain!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, inds)
     for (c, b) in blocks(tdst)
-        I = get(inds, c, nothing)
-        @assert !isnothing(I)
+        ind = get(inds, c, nothing)
+        @assert !isnothing(ind)
         b′ = block(tsrc, c)
-        b .= view(b′, I, :)
+        b .= view(b′, ind, :)
     end
     return tdst
 end
 function truncate_diagonal!(Ddst::DiagonalTensorMap, Dsrc::DiagonalTensorMap, inds)
     for (c, b) in blocks(Ddst)
-        I = get(inds, c, nothing)
-        @assert !isnothing(I)
-        diagview(b) .= view(diagview(block(Dsrc, c)), I)
+        ind = get(inds, c, nothing)
+        @assert !isnothing(ind)
+        diagview(b) .= view(diagview(block(Dsrc, c)), ind)
     end
     return Ddst
 end
@@ -69,17 +95,17 @@ function MAK.truncate(
         ::typeof(svd_trunc!), (U, S, Vᴴ)::NTuple{3, AbstractTensorMap},
         strategy::TruncationStrategy
     )
-    ind = MAK.findtruncated_svd(diagview(S), strategy)
-    V_truncated = truncate_space(space(S, 1), ind)
+    inds = MAK.findtruncated_svd(diagview(S), strategy)
+    V_truncated = truncate_space(space(S, 1), inds)
 
     Ũ = similar(U, codomain(U) ← V_truncated)
-    truncate_domain!(Ũ, U, ind)
+    truncate_domain!(Ũ, U, inds)
     S̃ = similar_diagonal(S, V_truncated)
-    truncate_diagonal!(S̃, S, ind)
+    truncate_diagonal!(S̃, S, inds)
     Ṽᴴ = similar(Vᴴ, V_truncated ← domain(Vᴴ))
-    truncate_codomain!(Ṽᴴ, Vᴴ, ind)
+    truncate_codomain!(Ṽᴴ, Vᴴ, inds)
 
-    return (Ũ, S̃, Ṽᴴ), ind
+    return (Ũ, S̃, Ṽᴴ), inds
 end
 
 function MAK.truncate(
@@ -89,11 +115,11 @@ function MAK.truncate(
     for (c, b) in blocks(S)
         copyto!(extended_S[c], diagview(b)) # copyto! since `b` might be shorter
     end
-    ind = MAK.findtruncated(extended_S, strategy)
-    V_truncated = truncate_space(space(S, 1), ind)
+    inds = MAK.findtruncated(extended_S, strategy)
+    V_truncated = truncate_space(space(S, 1), inds)
     Ũ = similar(U, codomain(U) ← V_truncated)
-    truncate_domain!(Ũ, U, ind)
-    return Ũ, ind
+    truncate_domain!(Ũ, U, inds)
+    return Ũ, inds
 end
 function MAK.truncate(
         ::typeof(right_null!), (S, Vᴴ)::NTuple{2, AbstractTensorMap}, strategy::TruncationStrategy
@@ -102,11 +128,11 @@ function MAK.truncate(
     for (c, b) in blocks(S)
         copyto!(extended_S[c], diagview(b)) # copyto! since `b` might be shorter
     end
-    ind = MAK.findtruncated(extended_S, strategy)
-    V_truncated = truncate_space(dual(space(S, 2)), ind)
+    inds = MAK.findtruncated(extended_S, strategy)
+    V_truncated = truncate_space(dual(space(S, 2)), inds)
     Ṽᴴ = similar(Vᴴ, V_truncated ← domain(Vᴴ))
-    truncate_codomain!(Ṽᴴ, Vᴴ, ind)
-    return Ṽᴴ, ind
+    truncate_codomain!(Ṽᴴ, Vᴴ, inds)
+    return Ṽᴴ, inds
 end
 
 # special case `NoTruncation` for null: should keep exact zeros due to rectangularity
@@ -114,20 +140,20 @@ end
 function MAK.truncate(
         ::typeof(left_null!), (U, S)::NTuple{2, AbstractTensorMap}, strategy::NoTruncation
     )
-    ind = SectorDict(c => (size(b, 2) + 1):size(b, 1) for (c, b) in blocks(S))
-    V_truncated = truncate_space(space(S, 1), ind)
+    inds = SectorDict(c => (size(b, 2) + 1):size(b, 1) for (c, b) in blocks(S))
+    V_truncated = truncate_space(space(S, 1), inds)
     Ũ = similar(U, codomain(U) ← V_truncated)
-    truncate_domain!(Ũ, U, ind)
-    return Ũ, ind
+    truncate_domain!(Ũ, U, inds)
+    return Ũ, inds
 end
 function MAK.truncate(
         ::typeof(right_null!), (S, Vᴴ)::NTuple{2, AbstractTensorMap}, strategy::NoTruncation
     )
-    ind = SectorDict(c => (size(b, 1) + 1):size(b, 2) for (c, b) in blocks(S))
-    V_truncated = truncate_space(dual(space(S, 2)), ind)
+    inds = SectorDict(c => (size(b, 1) + 1):size(b, 2) for (c, b) in blocks(S))
+    V_truncated = truncate_space(dual(space(S, 2)), inds)
     Ṽᴴ = similar(Vᴴ, V_truncated ← domain(Vᴴ))
-    truncate_codomain!(Ṽᴴ, Vᴴ, ind)
-    return Ṽᴴ, ind
+    truncate_codomain!(Ṽᴴ, Vᴴ, inds)
+    return Ṽᴴ, inds
 end
 
 for f! in (:eig_trunc!, :eigh_trunc!)
@@ -136,16 +162,16 @@ for f! in (:eig_trunc!, :eigh_trunc!)
             (D, V)::Tuple{DiagonalTensorMap, AbstractTensorMap},
             strategy::TruncationStrategy
         )
-        ind = MAK.findtruncated(diagview(D), strategy)
-        V_truncated = truncate_space(space(D, 1), ind)
+        inds = MAK.findtruncated(diagview(D), strategy)
+        V_truncated = truncate_space(space(D, 1), inds)
 
         D̃ = similar_diagonal(D, V_truncated)
-        truncate_diagonal!(D̃, D, ind)
+        truncate_diagonal!(D̃, D, inds)
 
         Ṽ = similar(V, codomain(V) ← V_truncated)
-        truncate_domain!(Ṽ, V, ind)
+        truncate_domain!(Ṽ, V, inds)
 
-        return (D̃, Ṽ), ind
+        return (D̃, Ṽ), inds
     end
 end
 
