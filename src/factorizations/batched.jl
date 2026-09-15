@@ -1,28 +1,3 @@
-"""
-    BATCHED_SVD_THRESHOLD
-
-Minimum number of blocks for which a batched driver is used.
-"""
-const BATCHED_SVD_THRESHOLD = 4
-
-"""
-    max_batched_blocksize(alg, storagetype) -> Int
-
-Largest block dimension the backend for `alg` accepts. Blocks exceeding it are sent
-to the block-at-a-time unbatched fallback instead. Unlimited by default.
-"""
-max_batched_blocksize(::AbstractAlgorithm, ::Type) = typemax(Int)
-
-"""
-    batched_requires_tall(alg) -> Bool
-
-Whether the batched driver for `alg` only accepts `m >= n`. `gesvd_batched`
-(the `QRIteration` algorithm) does. The unbatched fallback handles wide
-matrices by decomposing the adjoint, so a wide batch is not batched (for now).
-"""
-batched_requires_tall(::AbstractAlgorithm) = false
-batched_requires_tall(::MAK.QRIteration) = true
-
 # Figure out which sectors are even worth batching, and if some share a batch size
 # `uniform = true` additionally demands that every block already has that exact size, i.e.
 # that no padding is needed. Full decompositions require this, compact decompositions only
@@ -32,11 +7,11 @@ function _batchable(t::AbstractTensorMap, alg::AbstractAlgorithm, uniform::Bool 
     isempty(cs) && return cs, (0, 0)
     szs = [size(block(t, c)) for c in cs]
     m, n = maximum(first, szs), maximum(last, szs)
-    lim = max_batched_blocksize(alg, storagetype(t))
-    (length(cs) < BATCHED_SVD_THRESHOLD || m > lim || n > lim) && return empty(cs), (m, n)
+    lim = MAK.max_batched_blocksize(alg, storagetype(t))
+    (length(cs) < MAK.BATCHED_SVD_THRESHOLD || m > lim || n > lim) && return empty(cs), (m, n)
     # The *padded* batch is (m, n) even if *individual* blocks are tall
     # so check the padded shape rather than the blocks'.
-    (batched_requires_tall(alg) && m < n) && return empty(cs), (m, n)
+    (MAK.requires_tall(alg) && m < n) && return empty(cs), (m, n)
     (uniform && !all(isequal((m, n)), szs)) && return empty(cs), (m, n)
     return cs, (m, n)
 end

@@ -28,14 +28,10 @@ end
 _id(t, V) = TensorKit.id(TensorKit.storagetype(t), V)
 
 @timedtestset "batched SVD on ROCArray" verbose = true begin
-    @testset "block-count dispatch" begin
-        @test Factorizations.BATCHED_SVD_THRESHOLD == 4
-    end
-
     @testset "many blocks: $T" for T in (Float64, ComplexF64)
         t_cpu = randn(T, Vsu2 ⊗ Vsu2 ← Vsu2)
         nblocks = length(TensorKit.blocksectors(t_cpu))
-        @test nblocks >= Factorizations.BATCHED_SVD_THRESHOLD
+        @test nblocks >= MatrixAlgebraKit.BATCHED_SVD_THRESHOLD
         t = adapt(ROCArray, t_cpu)
 
         U, S, Vᴴ = batched_svd_compact(t; alg = DivideAndConquer())
@@ -55,7 +51,7 @@ _id(t, V) = TensorKit.id(TensorKit.storagetype(t), V)
         # trivial sector -> a single block, below the threshold
         V = ComplexSpace(6)
         t = adapt(ROCArray, randn(T, V ⊗ V ← V))
-        @test length(TensorKit.blocksectors(t)) < Factorizations.BATCHED_SVD_THRESHOLD
+        @test length(TensorKit.blocksectors(t)) < MatrixAlgebraKit.BATCHED_SVD_THRESHOLD
         U, S, Vᴴ = batched_svd_compact(t; alg = DivideAndConquer())
         Ur, Sr, Vr = svd_compact(t; alg = DivideAndConquer())
         @test specdiff(S, Sr) < 1.0e-10
@@ -77,7 +73,7 @@ _id(t, V) = TensorKit.id(TensorKit.storagetype(t), V)
         t_cpu = randn(T, Vu ← Vu)
         t = adapt(ROCArray, t_cpu)
         szs = [size(TensorKit.block(t, c)) for c in TensorKit.blocksectors(t)]
-        @test length(szs) >= Factorizations.BATCHED_SVD_THRESHOLD
+        @test length(szs) >= MatrixAlgebraKit.BATCHED_SVD_THRESHOLD
         @test all(isequal(first(szs)), szs)
         cs, _ = Factorizations._batchable(t, QRIteration(), true)
         @test !isempty(cs)
