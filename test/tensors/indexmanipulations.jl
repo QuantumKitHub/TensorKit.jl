@@ -183,7 +183,9 @@ for V in spacelist
         @timedtestset "Adjoint operands: isometry" begin
             # independent of the adjoint convention: a wrongly conjugated recoupling matrix U
             # would break dot(U * x', U * y) == dot(x', y) whenever U is genuinely complex
-            W = V1 ⊗ V2 ← V3 ⊗ V4
+            # this leg selection also closes the unit cycle for multifusion sectors, where
+            # `V1 ⊗ V2 ← V3 ⊗ V4` does not
+            W = V1 ⊗ V5 ← V2 ⊗ V4
             x = rand(ComplexF64, W)
             y = rand(ComplexF64, W')
             if hasbraiding
