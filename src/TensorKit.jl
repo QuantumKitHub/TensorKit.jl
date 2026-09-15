@@ -257,7 +257,7 @@ end
 # general definitions
 include("tensors/abstracttensor.jl")
 include("tensors/backends.jl")
-include("tensors/blockiterator.jl")
+include("tensors/blockiterators.jl")
 include("tensors/sectorvector.jl")
 include("tensors/tensor.jl")
 include("tensors/adjoint.jl")
