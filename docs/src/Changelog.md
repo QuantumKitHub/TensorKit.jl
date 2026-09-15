@@ -26,7 +26,7 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 - For sector types with `GenericUnit` such that colorings are not unique, `GradedSpace`, `ProductSpace` and `HomSpace` now check for this compatibility. In particular, this prevents the construction of `TensorMap`s with incompatible colorings, which previously either errored or produced empty tensors inconsistently. ([#515](https://github.com/QuantumKitHub/TensorKit.jl/pull/515))
 
 ### Deprecated
-- The type alias `ZNSpace{N}` is deprecated in favour of `Vect[ZNIrrep{N}]`: a type alias cannot compute the storage type from `N`, so the two only agree for small `N`. ([#511](https://github.com/QuantumKitHub/TensorKit.jl/pull/511))
+- The type alias `ZNSpace{N}` is deprecated in favour of `Vect[ZNIrrep{N}]` or `Rep[ℤ{N}]`: a type alias cannot compute the storage type from `N`, so the two only agree for small `N`. ([#511](https://github.com/QuantumKitHub/TensorKit.jl/pull/511))
 
 ### Removed
 

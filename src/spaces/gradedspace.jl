@@ -23,8 +23,8 @@ sector `s::I` can be transformed into an index via `s == getindex(values(I), i)`
 is used to store the non-zero degeneracy dimensions with the corresponding sector as key.
 The parameter `D` is hidden from the user and should typically be of no concern.
 
-The concrete type `GradedSpace{I,D}` with correct `D` can be obtained as `Vect[I]`, or if
-`I == Irrep[G]` for some `G<:Group`, as `Rep[G]`.
+The concrete type `GradedSpace{I,D}` with correct `D` can be obtained as `Vect[I]`,
+or as `Rep[G]` if `I == Irrep[G]` for some `G<:Group`.
 """
 struct GradedSpace{I <: Sector, D} <: ElementarySpace
     dims::D
