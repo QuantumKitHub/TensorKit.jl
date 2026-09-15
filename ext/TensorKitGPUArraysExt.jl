@@ -311,7 +311,7 @@ end
 
 function TensorKit.add_transform_kernel!(
         data_dst::A, data_src::A, p, transformer::TensorKit.AbelianTreeTransformer{T, N},
-        α, β, backend, allocator, ntasks::Int 
+        α, β, backend, allocator, ntasks::Int
     ) where {T, N, A <: AnyGPUArray}
     # GPU-side object to hold the treetransformer information
     device = device_transformer(data_dst, transformer, linearize(p))::DeviceAbelianTreeTransformer
