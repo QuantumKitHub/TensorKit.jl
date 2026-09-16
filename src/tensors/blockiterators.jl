@@ -172,6 +172,8 @@ function Base.show(io::IO, mime::MIME"text/plain", iter::SubblockIterator)
     return nothing
 end
 
+const SubblockOp = Union{typeof(identity), typeof(conj)}
+
 """
     struct StridedSubblocks{A <: DenseVector, N, F}
     StridedSubblocks(t::TensorMap, [op = identity])
@@ -185,7 +187,6 @@ representing the subblocks of a conjugated tensor without materializing it.
 This is the data structure consumed by the index manipulation kernels, whose type does not
 depend on the sectortype of `t`.
 """
-const SubblockOp = Union{typeof(identity), typeof(conj)}
 struct StridedSubblocks{A <: DenseVector, N, F <: SubblockOp}
     data::A
     structure::Vector{StridedStructure{N}}
@@ -198,6 +199,9 @@ struct StridedSubblocks{A <: DenseVector, N, F <: SubblockOp}
         return new{typeof(data′), N, F}(data′, structure, op)
     end
 end
+
+storagetype(::Type{StridedSubblocks{A, N, F}}) where {A, N, F} = A
+
 Base.length(s::StridedSubblocks) = length(s.structure)
 Base.firstindex(s::StridedSubblocks) = 1
 Base.lastindex(s::StridedSubblocks) = length(s)
@@ -213,7 +217,6 @@ function Base.iterate(s::StridedSubblocks, i::Int = 1)
     return @inbounds(s[i]), i + 1
 end
 
-storagetype(::Type{StridedSubblocks{A, N, F}}) where {A, N, F} = A
 
 """
     struct TreeSubblocks{TT <: AbstractTensorMap, I, F}
