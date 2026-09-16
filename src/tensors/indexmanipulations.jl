@@ -604,7 +604,7 @@ end
         tdst, tsrc, p::Index2Tuple, conjsrc::Bool, levels::IndexTuple, α, β, backend, allocator
     )
     @boundscheck spacecheck_transform(permute, tdst, tsrc, p, conjsrc)
-    has_array_view(tdst, tsrc) && return _dense_transform!(tdst, tsrc, p, conjsrc, α, β, backend, allocator)
+    all(has_array_view, (tdst, tsrc)) && return _dense_transform!(tdst, tsrc, p, conjsrc, α, β, backend, allocator)
     transformer = treebraider(tdst, tsrc, p, conjsrc, levels)
     return add_transform!(tdst, tsrc, p, conjsrc, transformer, α, β, backend, allocator)
 end
@@ -614,7 +614,7 @@ end
         tdst, tsrc, p::Index2Tuple, conjsrc::Bool, α, β, backend, allocator
     )
     @boundscheck spacecheck_transform(permute, tdst, tsrc, p, conjsrc)
-    has_array_view(tdst, tsrc) && return _dense_transform!(tdst, tsrc, p, conjsrc, α, β, backend, allocator)
+    all(has_array_view, (tdst, tsrc)) && return _dense_transform!(tdst, tsrc, p, conjsrc, α, β, backend, allocator)
     transformer = treetransposer(tdst, tsrc, p, conjsrc)
     return add_transform!(tdst, tsrc, p, conjsrc, transformer, α, β, backend, allocator)
 end
