@@ -110,7 +110,7 @@ end
     struct SubblockIterator{T <: AbstractTensorMap, S}
 
 Iterator over the subblocks of a tensor of type `T`, possibly holding some pre-computed data of type `S`.
-This is typically constructed through of [`subblocks`](@ref).
+This is typically constructed through [`subblocks`](@ref).
 """
 struct SubblockIterator{T <: AbstractTensorMap, S}
     t::T
