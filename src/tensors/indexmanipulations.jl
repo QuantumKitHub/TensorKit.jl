@@ -635,7 +635,7 @@ of `tsrc`, using the fusion tree transformation encoded in `transformer` (see [`
         add!(tdst, tsrc, α, β)
     else
         p2 = (linearize(p), ()) # only the linear permutation matters for the array kernels
-        ntasks = use_threaded_transform(tdst, transformer) ? get_num_transformer_threads() : 1
+        ntasks = get_num_transformer_threads(tdst)
         # resolve the conjugation flag into the view type here, with a statically typed call per branch
         if conjsrc
             dst, src = _transform_subblocks(tdst, tsrc, transformer, conj)
@@ -655,10 +655,9 @@ _transform_subblocks(tdst::TensorMap, tsrc::TensorMap, transformer, op) =
 _transform_subblocks(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, transformer, op) =
     TreeSubblocks(tdst), TreeSubblocks(tsrc, op)
 
-use_threaded_transform(t::TensorMap, transformer) =
-    get_num_transformer_threads() > 1 && length(t.data) > Strided.MINTHREADLENGTH
-use_threaded_transform(t::AbstractTensorMap, transformer) =
-    get_num_transformer_threads() > 1 && dim(space(t)) > Strided.MINTHREADLENGTH
+# Don't thread if overhead is not worth it
+get_num_transformer_threads(t::AbstractTensorMap) =
+    dim(t) <= Strided.MINTHREADLENGTH ? 1 : get_num_transformer_threads()
 
 # The kernel operates on the subblocks addressed by position, so that for `TensorMap`s this only
 # depends on `numind`, `eltype` and the transformer data, not on the sectortype.
