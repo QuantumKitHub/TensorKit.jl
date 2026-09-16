@@ -23,6 +23,7 @@ links = InterLinks(
 TENSOR_PAGES = [
     "man/tensors.md", "man/linearalgebra.md", "man/indexmanipulations.md",
     "man/factorizations.md", "man/contractions.md", "man/precompilation.md",
+    "man/chargedoperators.md",
 ]
 
 pages = [
