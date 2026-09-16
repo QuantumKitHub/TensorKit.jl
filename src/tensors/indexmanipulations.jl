@@ -606,7 +606,7 @@ end
     @boundscheck spacecheck_transform(permute, tdst, tsrc, p, conjsrc)
     has_array_view(tdst, tsrc) && return _dense_transform!(tdst, tsrc, p, conjsrc, α, β, backend, allocator)
     transformer = treebraider(tdst, tsrc, p, conjsrc, levels)
-    return @inbounds add_transform!(tdst, tsrc, p, conjsrc, transformer, α, β, backend, allocator)
+    return add_transform!(tdst, tsrc, p, conjsrc, transformer, α, β, backend, allocator)
 end
 
 # counterpart of `_braid!` for `transpose!`; the cyclicity of `p` is checked by the caller
@@ -616,21 +616,15 @@ end
     @boundscheck spacecheck_transform(permute, tdst, tsrc, p, conjsrc)
     has_array_view(tdst, tsrc) && return _dense_transform!(tdst, tsrc, p, conjsrc, α, β, backend, allocator)
     transformer = treetransposer(tdst, tsrc, p, conjsrc)
-    return @inbounds add_transform!(tdst, tsrc, p, conjsrc, transformer, α, β, backend, allocator)
+    return add_transform!(tdst, tsrc, p, conjsrc, transformer, α, β, backend, allocator)
 end
 
-"""
-    add_transform!(tdst, tsrc, p, conjsrc::Bool, transformer, α, β, backend, allocator) -> tdst
-
-Compute `tdst = β * tdst + α * permutedims(conjsrc ? conj(tsrc) : tsrc, p)`, where `p` indexes the legs
-of `tsrc`, using the fusion tree transformation encoded in `transformer` (see [`TreeTransformer`](@ref)).
-"""
-@propagate_inbounds function add_transform!(
+# kernel for computing `tdst = β * tdst + α * permutedims(conjsrc ? conj(tsrc) : tsrc, p)`
+# with fusion tree transformation encoded in `transformer`.
+function add_transform!(
         tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, conjsrc::Bool, transformer,
         α::Number, β::Number, backend, allocator
     )
-    @boundscheck spacecheck_transform(permute, tdst, tsrc, p, conjsrc)
-
     if !conjsrc && p[1] === codomainind(tsrc) && p[2] === domainind(tsrc)
         add!(tdst, tsrc, α, β)
     else
