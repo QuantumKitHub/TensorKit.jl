@@ -23,7 +23,6 @@ links = InterLinks(
 TENSOR_PAGES = [
     "man/tensors.md", "man/linearalgebra.md", "man/indexmanipulations.md",
     "man/factorizations.md", "man/contractions.md", "man/precompilation.md",
-    "man/chargedoperators.md",
 ]
 
 pages = [
@@ -41,7 +40,10 @@ pages = [
         "lib/spaces.md", "lib/tensors.md",
     ],
     "Index" => ["index/index.md"],
-    "Appendix" => ["appendix/symmetric_tutorial.md", "appendix/categories.md"],
+    "Appendix" => [
+        "appendix/symmetric_tutorial.md", "appendix/chargedoperators.md",
+        "appendix/categories.md",
+    ],
     "Changelog" => "Changelog.md",
 ]
 

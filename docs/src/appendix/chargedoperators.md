@@ -1,4 +1,4 @@
-# [Constructing physical operators](@id s_chargedoperators)
+# [An example for constructing physical operators](@id s_chargedoperators)
 
 ```@setup chargedoperators
 using TensorKit
