@@ -107,7 +107,6 @@ export empty_globalcaches!
 # Imports
 #---------
 using TupleTools
-using TupleTools: StaticLength
 
 using Strided
 

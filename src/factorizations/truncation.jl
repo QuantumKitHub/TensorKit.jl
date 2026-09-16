@@ -41,27 +41,28 @@ end
 function truncate_space(V::TupleGradedSpace{I, N}, inds) where {I <: Sector, N}
     @assert !isdual(V)
     vals = values(I)
-    newdims = MutableNTuple(ntuple(_ -> 0, StaticLength(N)))
-    for (c, ind) in pairs(inds)
-        d = dim(V, c)
-        n_write = findindex(vals, c)
-        @inbounds newdims[n_write] = _blocklength(d, ind)
+    # `inds` has a key for every sector with nonzero `dim(V, c)`, so zero-dim sectors are skipped rather than looked up.
+    newdims = ntuple(N) do n
+        d = V.dims[n]
+        return iszero(d) ? 0 : _blocklength(d, inds[vals[n]])
     end
-    return typeof(V)(Tuple(newdims), false)
+    return typeof(V)(newdims, false)
 end
 function truncate_space(V::DictGradedSpace{I}, inds) where {I <: Sector}
     @assert !isdual(V)
-    ks, vs = Vector{I}(), Vector{Int}() # accumulate and sort once at the end
+    # `inds` (a `SectorDict` or `SectorVector`, depending on the truncation strategy) always
+    # iterates in sorted order by sector, so no need to sort again here.
+    ks, vs = Vector{I}(undef, 0), Vector{Int}(undef, 0)
+    sizehint!(ks, length(inds))
+    sizehint!(vs, length(inds))
     for (c, ind) in pairs(inds)
-        d = dim(V, c)
-        len = _blocklength(d, ind)
+        len = _blocklength(dim(V, c), ind)
         if !iszero(len)
             push!(ks, c)
             push!(vs, len)
         end
     end
-    perm = sortperm(ks)
-    return typeof(V)(SectorDict{I, Int}(ks[perm], vs[perm]), false)
+    return typeof(V)(SectorDict{I, Int}(ks, vs), false)
 end
 
 function truncate_domain!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, inds)

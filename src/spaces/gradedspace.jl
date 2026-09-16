@@ -47,7 +47,7 @@ end
 
 function GradedSpace{I, NTuple{N, Int}}(dims; dual::Bool = false) where {I, N}
     @assert N <= 64 "the `UInt64` bitmask tracking which sectors have been set holds 64 bits"
-    d = TupleTools.MutableNTuple(ntuple(Returns(0), StaticLength(N)))
+    d = TupleTools.MutableNTuple(ntuple(Returns(0), N))
     mask = zero(UInt64)
     for (c, dc) in dims
         k = convert(I, c)
