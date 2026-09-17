@@ -673,7 +673,7 @@ function add_transform_kernel!(
         cp = TO.allocator_checkpoint!(allocator)
         @timeit_debug GLOBAL_TIMER "alloc: buffers" buffers = [
             TO.tensoralloc(storagetype(dst), bufsize, Val(true), allocator)
-                for _ in 1:clamp(length(transformer.data), 1, ntasks)
+                for _ in 1:min(length(transformer.data), ntasks)
         ]
         taskforeach(transformer.data, buffers) do (U, inds_dst, inds_src), buffer
             _add_transform_block!(dst, src, p, U, inds_dst, inds_src, buffer, α, β, backend, allocator)
