@@ -4,7 +4,7 @@
 Supertype for structures containing the data for a tree transformation.
 
 The transformers only store how subblocks map onto each other in terms of their positions in
-[`StridedSubblocks`](@ref) (the canonical order of `fusiontrees`), together with the recoupling
+[`StridedSubblocks`](@ref) (the canonical order of [`fusiontrees`](@ref)), together with the recoupling
 coefficients, and are therefore independent of the sectortype once constructed. The
 transformation is that of `permutedims(op(tsrc), p)` where `p` indexes the legs of `tsrc` itself and
 `op` is either `identity` or `conj`; in the latter case the fusion trees that are transformed are
