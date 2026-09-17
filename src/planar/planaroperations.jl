@@ -271,8 +271,7 @@ function planar_contract_indices(
     # if all indices are contracted, fix the residual rotation using the other tensor
     if isempty(oindA′) && !isempty(cindA)
         cindA′ = _rotate_to(cindA′, cindA[something(findfirst(==(first(cindB′)), cindB))])
-    end
-    if isempty(oindB′) && !isempty(cindB)
+    elseif isempty(oindB′) && !isempty(cindB)
         cindB′ = _rotate_to(cindB′, cindB[something(findfirst(==(first(cindA′)), cindA))])
     end
     TupleTools.sort(tuple.(cindA′, cindB′)) == TupleTools.sort(tuple.(cindA, cindB)) ||
