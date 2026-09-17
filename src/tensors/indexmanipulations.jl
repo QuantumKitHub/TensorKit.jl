@@ -521,6 +521,13 @@ spacecheck_transform(f, tdst::AbstractTensorMap, tsrc::AbstractTensorMap, args..
     )
     return nothing
 end
+# a conjugated source is transformed through its adjoint space, whose legs `p` is relabeled onto
+@noinline function spacecheck_transform(
+        f, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
+    )
+    Vsrc′, p′ = conjsrc ? (Vsrc', adjointtensorindices(Vsrc, p)) : (Vsrc, p)
+    return spacecheck_transform(f, Vdst, Vsrc′, p′)
+end
 @noinline function spacecheck_transform(::typeof(braid), Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, levels::IndexTuple)
     check_spacetype(Vdst, Vsrc)
     braid(Vsrc, p, levels) == Vdst ||
@@ -592,12 +599,6 @@ function _dense_transform!(tdst, tsrc, p::Index2Tuple, conjsrc::Bool, α, β, ba
         tdst[], tsrc[], p2, conjsrc, α, β, backend, allocator
     )
     return tdst
-end
-
-# space check for `tdst = permutedims(conjsrc ? conj(tsrc) : tsrc, p)`
-function spacecheck_transform(f, tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, conjsrc::Bool)
-    Vsrc′, p′ = transform_source(space(tsrc), p, conjsrc)
-    return spacecheck_transform(f, space(tdst), Vsrc′, p′)
 end
 
 @propagate_inbounds function _braid!(

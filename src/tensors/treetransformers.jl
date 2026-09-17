@@ -47,27 +47,19 @@ struct GenericTreeTransformer{T, N} <: TreeTransformer
     structure_src::Vector{StridedStructure{N}}
 end
 
-# Space and permutation as seen by the tree manipulations: for a conjugated source these are
-# those of the adjoint space, whose tree pairs `(f₁, f₂)` address the subblock `(f₂, f₁)` of the source.
-function transform_source(Vsrc::HomSpace, p::Index2Tuple, conjsrc::Bool)
-    return conjsrc ? (adjoint(Vsrc), adjointtensorindices(Vsrc, p)) : (Vsrc, p)
-end
-source_tree((f₁, f₂)::FusionTreePair, conjsrc::Bool) = conjsrc ? (f₂, f₁) : (f₁, f₂)
-
 function AbelianTreeTransformer(transform, p, Vdst, Vsrc, conjsrc::Bool)
     t₀ = Base.time()
-    Vsrc′, p′ = transform_source(Vsrc, p, conjsrc)
-    spacecheck_transform(permute, Vdst, Vsrc′, p′)
-    srcindices = fusiontreeindices(Vsrc)
-    dstindices = fusiontreeindices(Vdst)
-    trees_src = fusiontrees(Vsrc′)
-    L = length(trees_src)
-    T = sectorscalartype(sectortype(Vdst))
-    data = Vector{AbelianTransformerData{T}}(undef, L)
 
-    @timeit_debug GLOBAL_TIMER "symmetry: tree transform" for (i, f_src) in enumerate(trees_src)
-        f_dst, coeff = transform(f_src)
-        data[i] = (coeff, dstindices[f_dst], srcindices[source_tree(f_src, conjsrc)])
+    spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
+
+    src_trees, dst_trees = fusiontrees(Vsrc), fusiontrees(Vdst)
+    T = sectorscalartype(sectortype(Vdst))
+    data = Vector{AbelianTransformerData{T}}(undef, length(src_trees))
+
+    @timeit_debug GLOBAL_TIMER "symmetry: tree transform" for (isrc, (f₁, f₂)) in enumerate(src_trees)
+        f_dst, coeff = transform(conjsrc ? (f₂, f₁) : (f₁, f₂))
+        _, (_, idst) = gettoken(dst_trees, f_dst)
+        data[isrc] = (coeff, idst, isrc)
     end
 
     structure_dst = degeneracystructure(Vdst).subblockstructure
@@ -75,17 +67,17 @@ function AbelianTreeTransformer(transform, p, Vdst, Vsrc, conjsrc::Bool)
     transformer = AbelianTreeTransformer(data, structure_dst, structure_src)
 
     Δt = Base.time() - t₀
-    @debug(lazy"Treetransformer for $Vsrc to $Vdst via $p", conjsrc, nblocks = L, Δt)
+    @debug(lazy"Treetransformer for $Vsrc to $Vdst via $p", conjsrc, nblocks = length(data), Δt)
 
     return transformer
 end
 
 function GenericTreeTransformer(transform, p, Vdst, Vsrc, conjsrc::Bool)
     t₀ = Base.time()
-    Vsrc′, p′ = transform_source(Vsrc, p, conjsrc)
-    spacecheck_transform(permute, Vdst, Vsrc′, p′)
-    srcindices = fusiontreeindices(Vsrc)
-    dstindices = fusiontreeindices(Vdst)
+    spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
+    # the fusion blocks that are transformed are those of the adjoint space for a conjugated source
+    Vsrc′ = conjsrc ? Vsrc' : Vsrc
+    src_trees, dst_trees = fusiontrees(Vsrc), fusiontrees(Vdst)
     structure_dst = degeneracystructure(Vdst).subblockstructure
     structure_src = degeneracystructure(Vsrc).subblockstructure
     T = sectorscalartype(sectortype(Vsrc))
@@ -101,8 +93,15 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc, conjsrc::Bool)
             fs_src = fblocks[i]
             fs_dst, U = transform(fs_src)
             @timeit_debug GLOBAL_TIMER "bookkeeping: subblock positions" begin
-                inds_src = map(f -> srcindices[source_tree(f, conjsrc)], fusiontrees(fs_src))
-                inds_dst = map(f -> dstindices[f], fusiontrees(fs_dst))
+                # the token into the fusion tree `Indices` is the subblock position
+                inds_src = map(fusiontrees(fs_src)) do (f₁, f₂)
+                    _, (_, isrc) = gettoken(src_trees, conjsrc ? (f₂, f₁) : (f₁, f₂))
+                    return isrc
+                end
+                inds_dst = map(fusiontrees(fs_dst)) do f
+                    _, (_, idst) = gettoken(dst_trees, f)
+                    return idst
+                end
             end
             data[i] = (U, inds_dst, inds_src)
             # cost model: L input blocks each going to L output blocks of a given length
@@ -171,7 +170,7 @@ end
 @cached function treebraider(
         Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool, levels::IndexTuple
     )::treetransformertype(Vdst, Vsrc)
-    Vsrc′, p′ = transform_source(Vsrc, p, conjsrc)
+    Vsrc′, p′ = conjsrc ? (Vsrc', adjointtensorindices(Vsrc, p)) : (Vsrc, p)
     # levels are attached to the legs, so they follow the same relabeling as the permutation
     levels′ = conjsrc ? TupleTools.getindices(levels, adjointtensorindices(Vsrc′, allind(Vsrc′))) : levels
     levels″ = (TupleTools.getindices(levels′, codomainind(Vsrc′)), TupleTools.getindices(levels′, domainind(Vsrc′)))
@@ -185,7 +184,7 @@ end
 @cached function treetransposer(
         Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
     )::treetransformertype(Vdst, Vsrc)
-    Vsrc′, p′ = transform_source(Vsrc, p, conjsrc)
+    p′ = conjsrc ? adjointtensorindices(Vsrc, p) : p
     fusiontreetransform(f) = transpose(f, p′)
     return TreeTransformer(fusiontreetransform, p, Vdst, Vsrc, conjsrc)
 end

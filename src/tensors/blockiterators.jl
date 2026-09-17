@@ -179,7 +179,7 @@ const SubblockOp = Union{typeof(identity), typeof(conj)}
     StridedSubblocks(t::TensorMap, [op = identity])
 
 Sector-independent, integer-indexable collection of the subblocks of a `TensorMap`, as `StridedView`s into its flat data vector.
-Subblock `i` corresponds to the `i`th fusion tree pair in the canonical order of `fusiontrees(space(t))`, see also [`fusiontreeindices`](@ref).
+Subblock `i` corresponds to the `i`th fusion tree pair in the canonical order of `fusiontrees(space(t))`.
 The operation `op` (`identity` or `conj`) is applied lazily to every view, which allows representing the subblocks of a conjugated tensor without materializing it.
 
 This is the data structure consumed by the index manipulation kernels, whose type does not depend on the sectortype of `t`.
