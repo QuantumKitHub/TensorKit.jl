@@ -57,6 +57,25 @@ for V in spacelist
             @planar t5[a; b] := t4[a c; b c]
             @test t2 ≈ t5
         end
+        @timedtestset "Planar contraction: test self-consistency" begin
+            t = rand(ComplexF64, V1 ⊗ V2 ⊗ V3 ← (V4 ⊗ V5)')
+            # neither index partition of this contraction is planar by itself,
+            # only their cyclic rotations are
+            @planar ρ[a; b] := t[a c d; e f] * t'[e f; b c d]
+            @test space(ρ) == (V1 ← V1)
+            @test ρ ≈ ρ'
+            t1 = transpose(t, ((1,), (4, 5, 3, 2)))
+            t2 = transpose(t', ((1, 2, 5, 4), (3,)))
+            @test ρ ≈ t1 * t2
+            if BraidingStyle(I) isa Bosonic
+                # `@planar` and `@tensor` only agree for bosonic braiding
+                @tensor ρ2[a; b] := t[a c d; e f] * conj(t[b c d; e f])
+                @test ρ ≈ ρ2
+            end
+            # the intermediate result is allocated as a temporary
+            @planar ρ3[a; b] := t[a c d; e f] * t'[e f; g c d] * ρ[g; b]
+            @test ρ3 ≈ ρ * ρ
+        end
         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
             @timedtestset "Trace: test via conversion" begin
                 t = rand(ComplexF64, V1 ⊗ V2' ⊗ V3 ⊗ V2 ⊗ V1' ⊗ V3')
@@ -97,6 +116,12 @@ for V in spacelist
                 t2 = rand(T, V2 ⊗ V3, V4')
                 t = @constinferred (t1 ⊗ t2)
                 @test norm(t) ≈ norm(t1) * norm(t2)
+                # a factor with more than one index in the domain has a non-planar
+                # intermediate space
+                t2′ = transpose(t2, ((1,), (3, 2)))
+                t′ = @constinferred (t1 ⊗ t2′)
+                @test norm(t′) ≈ norm(t1) * norm(t2′)
+                @test space(t′) == (V1 ⊗ V2 ← V5' ⊗ V4' ⊗ V3')
             end
         end
         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
