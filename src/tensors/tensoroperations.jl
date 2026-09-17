@@ -47,17 +47,8 @@ function TO.tensoradd!(
         α::Number, β::Number,
         backend, allocator
     )
-    if has_array_view(C) && has_array_view(A)
-        TO.tensoradd!(C[], A[], pA, conjA, α, β, backend, allocator)
-        return C
-    end
-    if conjA
-        A′ = adjoint(A)
-        pA′ = adjointtensorindices(A, _canonicalize(pA, C))
-        permute!(C, A′, pA′, α, β, backend, allocator)
-    else
-        permute!(C, A, _canonicalize(pA, C), α, β, backend, allocator)
-    end
+    tdst, tsrc, p, _, conjA′, α′, β′ = unwrap_adjoints(C, A, _canonicalize(pA, C), nothing, conjA, α, β)
+    _braid!(tdst, tsrc, p, conjA′, allind(tsrc), α′, β′, backend, allocator)
     return C
 end
 
@@ -136,7 +127,7 @@ function TO.tensorcontract!(
     )
     pAB′ = _canonicalize(pAB, C)
     @boundscheck spacecheck_contract(C, A, pA, conjA, B, pB, conjB, pAB′)
-    if has_array_view(C) && has_array_view(A) && has_array_view(B)
+    if all(has_array_view, (C, A, B))
         TO.tensorcontract!(C[], A[], pA, conjA, B[], pB, conjB, pAB′, α, β, backend, allocator)
         return C
     end
@@ -235,7 +226,7 @@ function trace_permute!(
     end
 
     @timeit_debug GLOBAL_TIMER "trace_permute!" begin
-        if has_array_view(tdst) && has_array_view(tsrc)
+        if all(has_array_view, (tdst, tsrc))
             TO.tensortrace!(tdst[], tsrc[], (p₁, p₂), (q₁, q₂), false, α, β, backend)
         else
             _trace_permute!(FusionStyle(I), tdst, tsrc, (p₁, p₂), (q₁, q₂), α, β, backend)

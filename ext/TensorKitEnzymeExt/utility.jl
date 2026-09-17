@@ -24,6 +24,7 @@ pullback_dC!(ΔC, β::Number) = scale!(ΔC, conj(β))
 @inline EnzymeRules.inactive_type(::Type{<:TensorKit.FusionTreeDict}) = true
 @inline EnzymeRules.inactive_type(::Type{<:TensorKit.FusionTreeBlock}) = true
 @inline EnzymeRules.inactive_type(::Type{<:TensorKit.GenericTreeTransformer}) = true
+@inline EnzymeRules.inactive_type(::Type{<:TensorKit.AbelianTreeTransformer}) = true
 @inline EnzymeRules.inactive_type(::Type{<:TensorKit.VectorSpace}) = true
 @inline EnzymeRules.inactive_type(::Type{<:TensorKit.LRU}) = true
 
