@@ -149,11 +149,11 @@ an entry of an `AbelianTreeTransformer`.
 struct AbelianTransformerBlock{T, N}
     coeff::T
     sz::NTuple{N, Int}
-    densestrides::NTuple{N, Int}
-    st_dst::NTuple{N, Int}
-    offs_dst::Int
-    pst_src::NTuple{N, Int}  # source strides, permuted by `p`
-    offs_src::Int
+    dense_strides::NTuple{N, Int}
+    strides_dst::NTuple{N, Int}
+    offsets_dst::Int
+    permuted_strides_src::NTuple{N, Int}  # source strides, permuted by `p`
+    offsets_src::Int
 end
 
 # device-side simple struct that GPU kernels can use
@@ -164,17 +164,17 @@ struct DeviceAbelianTreeTransformer{VB <: AbstractVector{<:AbelianTransformerBlo
 end
 
 # strides of a dense array of shape `sz`
-_densestrides(sz::NTuple{N, Int}) where {N} = ntuple(n -> prod(sz[1:(n - 1)]; init = 1), Val(N))
-_permutestrides(st::NTuple{N, Int}, p) where {N} = ntuple(n -> st[p[n]], Val(N))
+_dense_strides(size::NTuple{N, Int}) where {N} = ntuple(n -> prod(size[1:(n - 1)]; init = 1), Val(N))
+_permute_strides(strides::NTuple{N, Int}, p) where {N} = ntuple(n -> strides[p[n]], Val(N))
 
 # `permute(Vsrc, p) == Vdst` is enforced when the transformer is built, so the permuted
 # source shape always matches `sz_dst` and the two views share Cartesian inds.
 function _abelian_block(
-        coeff::T, (sz_dst, st_dst, offs_dst), (_, st_src, offs_src), p
+        coeff::T, (size_dst, strides_dst, offsets_dst), (_, strides_src, offsets_src), p
     ) where {T}
-    return AbelianTransformerBlock{T, length(sz_dst)}(
-        coeff, sz_dst, _densestrides(sz_dst), st_dst, offs_dst,
-        _permutestrides(st_src, p), offs_src
+    return AbelianTransformerBlock{T, length(size_dst)}(
+        coeff, size_dst, _dense_strides(size_dst), strides_dst, offsets_dst,
+        _permute_strides(strides_src, p), offsets_src
     )
 end
 
@@ -254,7 +254,9 @@ _device_transformer(t::TensorKit.AbelianTreeTransformer, p) = DeviceAbelianTreeT
 # kernels are not reachable by coverage
 
 # largest `i` with `offsets[i] <= w`. This corresponds to the
-# block which  this kernel thread will work on.
+# block which  this kernel thread will work on. Since this is
+# used inside a GPU kernel, searchsortedlast/searchsortedfirst
+# won't work.
 @inline function _searchblock(offsets, w)
     lo, hi = 1, length(offsets)
     while lo < hi
@@ -272,14 +274,14 @@ end
 # Computed once per thread and then reused for every strided view of that subblock.
 # This avoids `StridedView` redoing these divisions on every single element access.
 # Integer division on GPU is usually pretty slow.
-@inline function _coordinates(w, sz::NTuple{N, Int}, densestrides::NTuple{N, Int}) where {N}
-    return ntuple(n -> (w ÷ densestrides[n]) % sz[n], Val(N))
+@inline function _coordinates(w, size::NTuple{N, Int}, dense_strides::NTuple{N, Int}) where {N}
+    return ntuple(n -> (w ÷ dense_strides[n]) % size[n], Val(N))
 end
 
 # finds the overall offset in the output and input arrays corresponding to the **sublock**
 # coordinates currently being worked on
-@inline function _offset(coords::NTuple{N, Int}, st::NTuple{N, Int}, offs) where {N}
-    return offs + sum(ntuple(n -> coords[n] * st[n], Val(N))) + 1
+@inline function _offset(coords::NTuple{N, Int}, strides::NTuple{N, Int}, offset) where {N}
+    return offset + sum(ntuple(n -> coords[n] * strides[n], Val(N))) + 1
 end
 
 # One thread per destination element in `data_dst`.
