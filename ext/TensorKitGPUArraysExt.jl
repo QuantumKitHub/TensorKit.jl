@@ -292,9 +292,9 @@ end
     if w < nwork
         b = _searchblock(work_offsets, w)
         blk = @inbounds blocks[b]
-        coords = _coordinates(w - (@inbounds work_offsets[b]), blk.sz, blk.densestrides)
-        i_dst = _offset(coords, blk.st_dst, blk.offs_dst)
-        i_src = _offset(coords, blk.pst_src, blk.offs_src)
+        coords = _coordinates(w - (@inbounds work_offsets[b]), blk.sz, blk.dense_strides)
+        i_dst = _offset(coords, blk.strides_dst, blk.offsets_dst)
+        i_src = _offset(coords, blk.permuted_strides_src, blk.offsets_src)
         @inbounds data_dst[i_dst] = α * blk.coeff * data_src[i_src] + β * data_dst[i_dst]
     end
 end
