@@ -151,8 +151,8 @@ diagspacelist = (
     @timedtestset "Trace, Multiplication and inverse" begin
         t1 = DiagonalTensorMap(rand(Float64, reduceddim(V)), V)
         t2 = DiagonalTensorMap(rand(ComplexF64, reduceddim(V)), V)
-        @test tr(TensorMap(t1)) == @constinferred tr(t1)
-        @test tr(TensorMap(t2)) == @constinferred tr(t2)
+        @test tr(TensorMap(t1)) ≈ @constinferred tr(t1)
+        @test tr(TensorMap(t2)) ≈ @constinferred tr(t2)
         @test TensorMap(@constinferred t1 * t2) ≈ TensorMap(t1) * TensorMap(t2)
         @test TensorMap(@constinferred t1 \ t2) ≈ TensorMap(t1) \ TensorMap(t2)
         @test TensorMap(@constinferred t1 / t2) ≈ TensorMap(t1) / TensorMap(t2)

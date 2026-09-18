@@ -129,15 +129,15 @@ function EnzymeRules.reverse(
 end
 function EnzymeRules.forward(
         config::EnzymeRules.FwdConfigWidth{1},
-        ::Type{RT},
         func::Const{typeof(tr)},
+        ::Type{RT},
         A::Annotation{<:AbstractTensorMap},
     ) where {RT}
     y = EnzymeRules.needs_primal(config) ? tr(A.val) : nothing
     Δy = if EnzymeRules.needs_shadow(config) && !isa(A, Const)
         tr(A.dval)
     elseif EnzymeRules.needs_shadow(config)
-        zero(eltype(A.dval))
+        zero(eltype(A.val))
     else
         nothing
     end

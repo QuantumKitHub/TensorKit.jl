@@ -129,9 +129,9 @@ function VectorInterface.inner(tx::TensorMap, ty::TensorMap)
     else
         T = VectorInterface.promote_inner(tx, ty)
         s = zero(T)
-        for c in blocksectors(tx)
-            bx = parent(block(tx, c)) # matrix structure (reshape) does not matter
-            by = parent(block(ty, c)) # but does lead to slower path in inner
+        for (c, (_, r)) in pairs(blockstructure(space(tx)))
+            bx = view(tx.data, r) # matrix structure (reshape) does not matter
+            by = view(ty.data, r) # but does lead to slower path in inner
             s += convert(T, dim(c)) * inner(bx, by)
         end
     end

@@ -4,6 +4,13 @@ using TensorKit
 using TensorKit: sqrtdim, invsqrtdim, SectorVector
 using VectorInterface: scale!
 using FiniteDifferences
+using Strided: StridedView
+
+function FiniteDifferences.to_vec(x::StridedView)
+    x_vec, from_vec = FiniteDifferences.to_vec(Array(x))
+    StridedView_from_vec(x_vec) = StridedView(from_vec(x_vec))
+    return x_vec, StridedView_from_vec
+end
 
 function FiniteDifferences.to_vec(t::AbstractTensorMap)
     # convert to vector of vectors to make use of existing functionality

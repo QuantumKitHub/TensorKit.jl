@@ -467,15 +467,22 @@ block(t::TensorMap, c::Sector) = blocks(t)[c]
 
 blocks(t::TensorMap) = BlockIterator(t, blockstructure(space(t)))
 
-function blocktype(::Type{TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A <: Vector{T}}
-    return Base.ReshapedArray{T, 2, SubArray{T, 1, A, Tuple{UnitRange{Int}}, true}, Tuple{}}
+function blocktype(::Type{TT}) where {TT <: TensorMap}
+    A = storagetype(TT)
+    T = eltype(A)
+    @static if isdefined(Core, :Memory) # StridedViews normalizes parent types!
+        if A <: Vector{T}
+            A = Memory{T}
+        end
+    end
+    return StridedView{T, 2, A, typeof(identity)}
 end
 
 function Base.iterate(iter::BlockIterator{<:TensorMap}, state...)
     next = iterate(pairs(iter.structure), state...)
     isnothing(next) && return next
-    (c, (sz, r)), newstate = next
-    return c => reshape(view(iter.t.data, r), sz), newstate
+    (c, ((d₁, d₂), r)), newstate = next
+    return c => StridedView(iter.t.data, (d₁, d₂), (1, d₁), first(r) - 1), newstate
 end
 
 function Base.getindex(iter::BlockIterator{<:TensorMap}, c::Sector)
@@ -483,15 +490,16 @@ function Base.getindex(iter::BlockIterator{<:TensorMap}, c::Sector)
     found, token = gettoken(iter.structure, c)
     if found
         (d₁, d₂), r = gettokenvalue(iter.structure, token)
-        return reshape(view(iter.t.data, r), (d₁, d₂))
+        offset = first(r) - 1
     else
         # if c is not a key, at least one of the two dimensions will be zero:
         # it then does not matter where exactly we construct a view in `t.data`,
         # as it will have length zero anyway
         d₁ = blockdim(codomain(iter.t), c)
         d₂ = blockdim(domain(iter.t), c)
-        return reshape(view(iter.t.data, 1:(d₁ * d₂)), (d₁, d₂))
+        offset = 0
     end
+    return StridedView(iter.t.data, (d₁, d₂), (1, d₁), offset)
 end
 
 # Getting and setting the data at the subblock level
