@@ -427,12 +427,21 @@ f1, f2 = first(fusiontrees(t))
 t[f1,f2]
 ```
 
-## [Reading and writing tensors: `Dict` conversion](@id ss_tensor_readwrite)
+## [Reading and writing tensors](@id ss_tensor_readwrite)
 
-There are no custom or dedicated methods for reading, writing or storing `TensorMap`s, however, there is the possibility to convert a `t::AbstractTensorMap` into a `Dict`, simply as `convert(Dict, t)`.
-The backward conversion `convert(TensorMap, dict)` will return a tensor that is equal to `t`, i.e. `t == convert(TensorMap, convert(Dict, t))`.
+TensorKit provides [`save`](@ref) and [`load`](@ref) for storing one tensor map in a versioned JLD2 file.
 
-This conversion relies on that the string representation of objects such as `VectorSpace`, `FusionTree` or `Sector` should be such that it represents valid code to recreate the object.
-Hence, we store information about the domain and codomain of the tensor, and the sector associated with each data block, as a `String` obtained with `repr`.
-This provides the flexibility to still change the internal structure of such objects, without this breaking the ability to load older data files.
-The resulting dictionary can then be stored using any of the provided Julia packages such as [JLD.jl](https://github.com/JuliaIO/JLD.jl), [JLD2.jl](https://github.com/JuliaIO/JLD2.jl), [BSON.jl](https://github.com/JuliaIO/BSON.jl), [JSON.jl](https://github.com/JuliaIO/JSON.jl), ...
+```julia
+filename = "tensor.jld2"
+save(filename, t)
+t′ = load(filename)
+```
+
+`TensorMap`, `DiagonalTensorMap`, and `BraidingTensor` retain their semantic types, while numerical storage is copied to a CPU `Vector` when saving and loading.
+The compact data of `DiagonalTensorMap` and the structural description of `BraidingTensor` are stored without materializing dense blocks.
+A lazy `AdjointTensorMap` must be materialized explicitly before saving, for example with `save(filename, convert(TensorMap, t'))`.
+TensorKit does not add a filename extension and replaces an existing file at the requested path.
+When another loaded package exports functions with the same names, use `TensorKit.save` and `TensorKit.load` explicitly.
+
+The older `convert(Dict, t)` and `convert(TensorMap, dict)` workflow remains available for compatibility.
+That representation stores spaces and block sectors as strings and does not preserve specialized tensor-map types, so it is no longer recommended for new files.
