@@ -333,37 +333,39 @@ function LinearAlgebra.mul!(
     compose(space(tA), space(tB)) == space(tC) ||
         throw(SpaceMismatch(lazy"$(space(tC)) ≠ $(space(tA)) * $(space(tB))"))
 
-    iterC = blocks(tC)
-    iterA = blocks(tA)
-    iterB = blocks(tB)
-    nextA = iterate(iterA)
-    nextB = iterate(iterB)
-    nextC = iterate(iterC)
-    while !isnothing(nextC)
-        (cC, C), stateC = nextC
-        if !isnothing(nextA) && !isnothing(nextB)
-            (cA, A), stateA = nextA
-            (cB, B), stateB = nextB
-            if cA == cC && cB == cC
-                mul!(C, A, B, α, β)
-                nextA = iterate(iterA, stateA)
-                nextB = iterate(iterB, stateB)
-                nextC = iterate(iterC, stateC)
-            elseif cA < cC
-                nextA = iterate(iterA, stateA)
-            elseif cB < cC
-                nextB = iterate(iterB, stateB)
+    @timeit_debug GLOBAL_TIMER "dense: matmul" begin
+        iterC = blocks(tC)
+        iterA = blocks(tA)
+        iterB = blocks(tB)
+        nextA = iterate(iterA)
+        nextB = iterate(iterB)
+        nextC = iterate(iterC)
+        while !isnothing(nextC)
+            (cC, C), stateC = nextC
+            if !isnothing(nextA) && !isnothing(nextB)
+                (cA, A), stateA = nextA
+                (cB, B), stateB = nextB
+                if cA == cC && cB == cC
+                    mul!(C, A, B, α, β)
+                    nextA = iterate(iterA, stateA)
+                    nextB = iterate(iterB, stateB)
+                    nextC = iterate(iterC, stateC)
+                elseif cA < cC
+                    nextA = iterate(iterA, stateA)
+                elseif cB < cC
+                    nextB = iterate(iterB, stateB)
+                else
+                    if β != one(β)
+                        rmul!(C, β)
+                    end
+                    nextC = iterate(iterC, stateC)
+                end
             else
                 if β != one(β)
                     rmul!(C, β)
                 end
                 nextC = iterate(iterC, stateC)
             end
-        else
-            if β != one(β)
-                rmul!(C, β)
-            end
-            nextC = iterate(iterC, stateC)
         end
     end
     return tC

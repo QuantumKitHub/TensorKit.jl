@@ -60,24 +60,24 @@ function ChainRulesCore.rrule(::typeof(⊗), A::AbstractTensorMap, B::AbstractTe
 end
 
 function ChainRulesCore.rrule(
-        ::typeof(permute), tsrc::AbstractTensorMap, p::Index2Tuple; copy::Bool = false
+        ::typeof(permute), tsrc::AbstractTensorMap, p::Index2Tuple; copy::Bool = false, kwargs...
     )
     function permute_pullback(Δtdst)
         invp = TensorKit._canonicalize(TupleTools.invperm(linearize(p)), tsrc)
-        return NoTangent(), permute(unthunk(Δtdst), invp; copy = true), NoTangent()
+        return NoTangent(), permute(unthunk(Δtdst), invp; copy = true, kwargs...), NoTangent()
     end
-    return permute(tsrc, p; copy = true), permute_pullback
+    return permute(tsrc, p; copy = true, kwargs...), permute_pullback
 end
 
 function ChainRulesCore.rrule(
-        ::typeof(transpose), tsrc::AbstractTensorMap, p::Index2Tuple; copy::Bool = false
+        ::typeof(transpose), tsrc::AbstractTensorMap, p::Index2Tuple; copy::Bool = false, kwargs...
     )
     function transpose_pullback(Δtdst)
         invp = TensorKit._canonicalize(TupleTools.invperm(linearize(p)), tsrc)
-        Δtsrc = transpose(unthunk(Δtdst), invp; copy = true)
+        Δtsrc = transpose(unthunk(Δtdst), invp; copy = true, kwargs...)
         return NoTangent(), ProjectTo(tsrc)(Δtsrc), NoTangent()
     end
-    return transpose(tsrc, p; copy = true), transpose_pullback
+    return transpose(tsrc, p; copy = true, kwargs...), transpose_pullback
 end
 
 function ChainRulesCore.rrule(::typeof(tr), A::AbstractTensorMap)

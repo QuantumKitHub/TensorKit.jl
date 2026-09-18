@@ -89,21 +89,12 @@ end
 Base.empty(::SortedVectorDict, ::Type{K}, ::Type{V}) where {K, V} = SortedVectorDict{K, V}()
 Base.empty!(d::SortedVectorDict) = (empty!(d.keys); empty!(d.values); return d)
 
-# _searchsortedfirst(v::Vector, k) = searchsortedfirst(v, k)
-function _searchsortedfirst(v::Vector, k)
-    i = 1
-    @inbounds while i <= length(v) && isless(v[i], k)
-        i += 1
-    end
-    return i
-end
-
 function Base.delete!(d::SortedVectorDict{K}, k) where {K}
     key = convert(K, k)
     if !isequal(k, key)
         return d
     end
-    i = _searchsortedfirst(d.keys, key)
+    i = searchsortedfirst(d.keys, key)
     if i <= length(d) && isequal(d.keys[i], key)
         deleteat!(d.keys, i)
         deleteat!(d.values, i)
@@ -118,7 +109,7 @@ function Base.haskey(d::SortedVectorDict{K}, k) where {K}
     if !isequal(k, key)
         return false
     end
-    i = _searchsortedfirst(d.keys, key)
+    i = searchsortedfirst(d.keys, key)
     return (i <= length(d) && isequal(d.keys[i], key))
 end
 function Base.getindex(d::SortedVectorDict{K}, k) where {K}
@@ -126,7 +117,7 @@ function Base.getindex(d::SortedVectorDict{K}, k) where {K}
     if !isequal(k, key)
         throw(KeyError(k))
     end
-    i = _searchsortedfirst(d.keys, key)
+    i = searchsortedfirst(d.keys, key)
     @inbounds if (i <= length(d) && isequal(d.keys[i], key))
         return d.values[i]
     else
@@ -138,7 +129,7 @@ function Base.setindex!(d::SortedVectorDict{K}, v, k) where {K}
     if !isequal(k, key)
         throw(ArgumentError("$k is not a valid key for type $K"))
     end
-    i = _searchsortedfirst(d.keys, key)
+    i = searchsortedfirst(d.keys, key)
     if i <= length(d) && isequal(d.keys[i], key)
         d.values[i] = v
     else
@@ -153,7 +144,7 @@ function Base.get(d::SortedVectorDict{K}, k, default) where {K}
     if !isequal(k, key)
         return default
     end
-    i = _searchsortedfirst(d.keys, key)
+    i = searchsortedfirst(d.keys, key)
     @inbounds begin
         return (i <= length(d) && isequal(d.keys[i], key)) ? d.values[i] : default
     end
@@ -163,7 +154,7 @@ function Base.get(f::Union{Function, Type}, d::SortedVectorDict{K}, k) where {K}
     if !isequal(k, key)
         return f()
     end
-    i = _searchsortedfirst(d.keys, key)
+    i = searchsortedfirst(d.keys, key)
     @inbounds begin
         return (i <= length(d) && isequal(d.keys[i], key)) ? d.values[i] : f()
     end
@@ -184,6 +175,72 @@ function Base.:(==)(d1::SortedVectorDict, d2::SortedVectorDict)
         end
     end
     return true
+end
+
+# merge two SortedVectorDicts of `GradedSpace` dimensions: `combine(v1, v2)` is applied to keys
+# present in both, `unmatched1(v)`/`unmatched2(v)` to keys present in only the first/second dict,
+# which may keep the value, drop the entry by returning `nothing`, or throw. Zero results are
+# always dropped, since `GradedSpace` never stores an explicit zero dimension.
+function _sortedmerge(
+        combine::F, unmatched1::F1, unmatched2::F2,
+        d1::SortedVectorDict{K, V}, d2::SortedVectorDict{K, V}
+    ) where {F, F1, F2, K, V <: Integer}
+    k1, v1 = d1.keys, d1.values
+    k2, v2 = d2.keys, d2.values
+    n1, n2 = length(k1), length(k2)
+    len = _mergelength(unmatched1, unmatched2, n1, n2)
+    ks = Vector{K}(undef, len)
+    vs = Vector{V}(undef, len)
+    i, j, n = 1, 1, 0
+    @inbounds while i <= n1 && j <= n2
+        a, b = k1[i], k2[j]
+        if isless(a, b)
+            n = _mergestore!(ks, vs, n, a, unmatched1(v1[i]))
+            i += 1
+        elseif isless(b, a)
+            n = _mergestore!(ks, vs, n, b, unmatched2(v2[j]))
+            j += 1
+        else
+            n = _mergestore!(ks, vs, n, a, combine(v1[i], v2[j]))
+            i += 1
+            j += 1
+        end
+    end
+    @inbounds while i <= n1
+        n = _mergestore!(ks, vs, n, k1[i], unmatched1(v1[i]))
+        i += 1
+    end
+    @inbounds while j <= n2
+        n = _mergestore!(ks, vs, n, k2[j], unmatched2(v2[j]))
+        j += 1
+    end
+    resize!(ks, n)
+    resize!(vs, n)
+    return SortedVectorDict{K, V}(ks, vs)
+end
+# write into slot `n + 1` and only advance the length when the value is nonzero
+@inline function _mergestore!(ks, vs, n, k, d)
+    @inbounds ks[n + 1] = k
+    @inbounds vs[n + 1] = d
+    return n + !iszero(d)
+end
+@inline _mergestore!(ks, vs, n, k, ::Nothing) = n
+
+# upper bound on the number of entries the merge can produce: a dropping handler contributes none
+function _mergelength(unmatched1, unmatched2, n1, n2)
+    drop = Returns(nothing)
+    return if unmatched1 == drop
+        unmatched2 == drop ? min(n1, n2) : n2
+    else
+        unmatched2 == drop ? n1 : n1 + n2
+    end
+end
+
+function Base.mergewith(combine, d1::SortedVectorDict{K, V}, d2::SortedVectorDict{K, V}) where {K, V <: Integer}
+    # keys occurring in only one of the dicts are kept, except for `min`, where a missing sector
+    # has dimension zero and thus drops out of the result
+    unmatched = combine == min ? Returns(nothing) : identity
+    return _sortedmerge(combine, unmatched, unmatched, d1, d2)
 end
 
 """

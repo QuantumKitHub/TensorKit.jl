@@ -1,12 +1,18 @@
 # GradedSpace
 
 @testsuite :spaces "graded space" I -> begin
+    u = rand(collect(allunits(I)))
     if Base.IteratorSize(values(I)) === Base.IsInfinite()
         set = unique(vcat(allunits(I)..., [randsector(I) for k in 1:10]))
-        gen = (c => 2 for c in set)
     else
-        gen = (values(I)[k] => (k + 1) for k in 1:length(values(I)))
+        set = values(I)
     end
+    if UnitStyle(I) isa GenericUnit
+        # elementary spaces are homogeneously colored, so restrict to the component of `u`,
+        # which is closed under `⊗` and `dual`; `u` goes first so that `dim(V, u) == 2`
+        set = [u; [c for c in set if c != u && leftunit(c) == u == rightunit(c)]]
+    end
+    gen = (set[k] => (k + 1) for k in 1:length(set))
     V = GradedSpace(gen)
     @test eval(Meta.parse(type_repr(typeof(V)))) == typeof(V)
     @test eval_show(V) == V
@@ -36,22 +42,27 @@
     @test eval_show(typeof(V)) == typeof(V)
     # space with no sectors
     @test dim(@testinferred(zerospace(V))) == 0
-    # space with unit(s), always test as if multifusion
-    W = @testinferred GradedSpace(unit => 1 for unit in allunits(I))
-    dict = Dict(unit => 1 for unit in allunits(I))
-    @test W == GradedSpace(dict)
-    @test W == GradedSpace(push!(dict, randsector(I) => 0))
+    # space with the unit of the coloring of V
+    W = @testinferred leftunitspace(V)
+    if UnitStyle(I) isa SimpleUnit
+        @test W == GradedSpace(unit => 1 for unit in allunits(I))
+        dict = Dict(unit => 1 for unit in allunits(I))
+        @test W == GradedSpace(dict)
+        @test W == GradedSpace(push!(dict, randsector(I) => 0))
+    else
+        # spanning several units is not homogeneously colored, and thus not a valid space
+        @test_throws SpaceMismatch GradedSpace(unit => 1 for unit in allunits(I))
+    end
     @test @testinferred(zerospace(V)) == GradedSpace(unit => 0 for unit in allunits(I))
     randunit = rand(collect(allunits(I)))
     @test_throws ArgumentError("Sector $(randunit) appears multiple times") GradedSpace(randunit => 1, randunit => 3)
 
     @test isunitspace(W)
-    @test @testinferred(unitspace(V)) == W == unitspace(typeof(V))
+    @test W == @testinferred(rightunitspace(V))
     if UnitStyle(I) isa SimpleUnit
-        @test @testinferred(leftunitspace(V)) == W == @testinferred(rightunitspace(V))
+        @test @testinferred(unitspace(V)) == W == unitspace(typeof(V))
     else
-        @test_throws ArgumentError leftunitspace(V)
-        @test_throws ArgumentError rightunitspace(V)
+        @test_throws ArgumentError unitspace(V)
     end
     @test eval_show(W) == W
     @test isa(V, VectorSpace)
@@ -74,8 +85,10 @@
     @test @testinferred(⊕(V, zerospace(V))) == V
     @test @testinferred(⊕(V, V)) == Vect[I](c => 2dim(V, c) for c in sectors(V))
     @test @testinferred(⊕(V, V, V, V)) == Vect[I](c => 4dim(V, c) for c in sectors(V))
-    @test @testinferred(⊕(V, unitspace(V))) == Vect[I](c => isunit(c) + dim(V, c) for c in sectors(V))
-    @test @testinferred(fuse(V, unitspace(V))) == V
+    if UnitStyle(I) isa SimpleUnit
+        @test @testinferred(⊕(V, unitspace(V))) == Vect[I](c => isunit(c) + dim(V, c) for c in sectors(V))
+        @test @testinferred(fuse(V, unitspace(V))) == V
+    end
     d = Dict{I, Int}()
     for a in sectors(V), b in sectors(V)
         for c in a ⊗ b

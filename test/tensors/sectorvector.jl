@@ -83,7 +83,7 @@ spacelist = (
             end
             @test collect(@testinferred(keys(v))) == collect(sectors(V))
             @test collect(values(v)) == [v[c] for c in keys(v)]
-            @test pairs(v) == Dict(c => v[c] for c in keys(v))
+            @test Dict(pairs(v)) == Dict(c => v[c] for c in keys(v))
         end
 
         @timedtestset "VectorInterface ($T)" begin

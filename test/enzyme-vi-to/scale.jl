@@ -17,7 +17,7 @@ fTαs = is_ci ? (Duplicated,) : (Duplicated, Const)
         atol = default_tol(T)
         rtol = default_tol(T)
         α = randn(T)
-        CV = V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5]
+        CV = V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])'
         C = randn(T, CV)
         A = randn(T, CV)
         @testset for TC in (Duplicated,)

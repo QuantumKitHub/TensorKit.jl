@@ -323,7 +323,7 @@ end
         @test dot(t2, t) ≈ conj(dot(t2', t'))
         @test dot(t2, t) ≈ dot(t', t2')
 
-        if UnitStyle(I) isa SimpleUnit || !isempty(blocksectors(V2 ⊗ V1))
+        if UnitStyle(I) isa SimpleUnit
             i1 = @testinferred(isomorphism(T, V1 ⊗ V2, V2 ⊗ V1)) # can't reverse fusion here when modules are involved
             i2 = @testinferred(isomorphism(Vector{T}, V2 ⊗ V1, V1 ⊗ V2))
             @test i1 * i2 == @testinferred(id(T, V1 ⊗ V2))
@@ -1005,8 +1005,9 @@ end
         @test @testinferred(insertrightunit(one(V1) ← V1, Val(0))) == (unitspace(V1) ← V1)
         @test_throws BoundsError insertleftunit(one(V1) ← V1, 0)
     else
-        @test_throws ArgumentError insertrightunit(one(V1) ← V1, 0)
-        @test_throws ArgumentError insertleftunit(one(V1) ← V1, 0)
+        errmsg = "cannot insert a sensible unit space in the empty product space"
+        @test_throws ArgumentError(errmsg) insertrightunit(one(V1) ← V1, 0)
+        @test_throws ArgumentError(errmsg) insertleftunit(one(V1) ← V1, 0)
     end
     @test (V1 ⊗ V2 ← V1 ⊗ V2) == @testinferred TensorKit.compose(W, W')
     @test W == @testinferred permute(W, ((1, 2), (3, 4, 5)))

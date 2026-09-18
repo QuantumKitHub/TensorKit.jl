@@ -134,9 +134,8 @@ Always returns `false` for spaces where `V == conj(V)`, i.e. vector spaces over 
 
 Return the corresponding vector space of type `S` that represents the trivial
 one-dimensional space, i.e. the space that is isomorphic to the corresponding field.
-For vector spaces where `I = sectortype(S)` has a semi-simple unit structure
-(`UnitStyle(I) == GenericUnit()`), this returns a multi-dimensional space corresponding to all unit sectors:
-`dim(unitspace(V), s) == 1` for all `s in allunits(I)`. 
+For vector spaces where `I = sectortype(S)` has a non-simple unit structure
+(`UnitStyle(I) == GenericUnit()`), this errors. 
 
 !!! note
     `unitspace(V)`is different from `one(V)`. The latter returns the empty product space
@@ -167,16 +166,10 @@ in the vector space.
 """
 function leftunitspace(V::ElementarySpace)
     I = sectortype(V)
-    if UnitStyle(I) isa SimpleUnit
-        return unitspace(typeof(V))
-    else
-        !isempty(sectors(V)) || throw(ArgumentError("Cannot determine the left unit of an empty space"))
-        _allequal(leftunit, sectors(V)) ||
-            throw(ArgumentError(lazy"sectors of $V do not have the same left unit"))
-
-        sector = leftunit(first(sectors(V)))
-        return spacetype(V)(sector => 1)
-    end
+    UnitStyle(I) isa SimpleUnit && return unitspace(typeof(V))
+    u = _leftunit(V)
+    isnothing(u) && throw(ArgumentError("Cannot determine the left unit of an empty space"))
+    return spacetype(V)(u => 1)
 end
 
 """
@@ -189,25 +182,38 @@ in the vector space.
 """
 function rightunitspace(V::ElementarySpace)
     I = sectortype(V)
-    if UnitStyle(I) isa SimpleUnit
-        return unitspace(typeof(V))
-    else
-        !isempty(sectors(V)) || throw(ArgumentError("Cannot determine the right unit of an empty space"))
-        _allequal(rightunit, sectors(V)) ||
-            throw(ArgumentError(lazy"sectors of $V do not have the same right unit"))
-
-        sector = rightunit(first(sectors(V)))
-        return spacetype(V)(sector => 1)
-    end
+    UnitStyle(I) isa SimpleUnit && return unitspace(typeof(V))
+    u = _rightunit(V)
+    isnothing(u) && throw(ArgumentError("Cannot determine the right unit of an empty space"))
+    return spacetype(V)(u => 1)
 end
+
+# Return the `(leftunit, rightunit)` of `V`, or `(nothing, nothing)` for the zero space,
+# whose coloring is unconstrained and thus acts as a wildcard. Elementary spaces are
+# homogeneously colored by construction, so any sector determines both.
+function _leftrightunit(V::ElementarySpace)
+    s = sectors(V)
+    isempty(s) && return (nothing, nothing)
+    c = first(s)
+    return (leftunit(c), rightunit(c))
+end
+
+_leftunit(V::ElementarySpace) = _leftrightunit(V)[1]
+_rightunit(V::ElementarySpace) = _leftrightunit(V)[2]
+
+# `nothing` acts as a wildcard, being compatible with any coloring
+_matchunits(::Nothing, ::Nothing) = true
+_matchunits(::Nothing, ::Sector) = true
+_matchunits(::Sector, ::Nothing) = true
+_matchunits(u₁::Sector, u₂::Sector) = u₁ == u₂
 
 """
     isunitspace(V::S) where {S <: ElementarySpace} -> Bool
 
 Return whether the elementary space `V` is a unit space, i.e. is isomorphic to the
 trivial one-dimensional space. For vector spaces of type `GradedSpace{I}` where `Sector` `I` has a
-semi-simple unit structure, this returns `true` if `V` is isomorphic to either the left, right or
-semi-simple unit space.
+semisimple unit structure, this returns `true` if `V` is isomorphic to the left or right unit
+space of its coloring.
 """
 function isunitspace(V::ElementarySpace)
     I = sectortype(V)

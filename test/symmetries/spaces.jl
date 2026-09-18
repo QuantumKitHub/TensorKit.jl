@@ -329,6 +329,46 @@ end
     end
 end
 
+@timedtestset "ProductSpace and HomSpace: GenericUnit coloring $(sectortype(V[1]))" for V in (VIBM, VIBMRepA4)
+    @test UnitStyle(sectortype(V[1])) isa GenericUnit
+    V1, V2, V3, V4, V5 = V
+
+    @test @constinferred(one(V1)) == ProductSpace{typeof(V1)}(())
+
+    @test rightunitspace(V1) == leftunitspace(V2)
+    P1 = @constinferred ProductSpace(V1, V2)
+    @test @constinferred(⊗(V1, V2)) == P1
+
+    @test rightunitspace(V2) != leftunitspace(V1)
+    @test_throws SpaceMismatch (⊗(V2, V1))
+
+    @test rightunitspace(V3) == leftunitspace(V4)
+    @test rightunitspace(V4) == leftunitspace(V5)
+    P2 = @constinferred ProductSpace(V3, V4, V5)
+
+    @test leftunitspace(P1[1]) == rightunitspace(dual(P2[length(P2)]))
+    @test HomSpace(P1, P2') isa HomSpace
+    @test_throws SpaceMismatch P1 ← P2
+
+    @test (V1 ← one(V1)) isa HomSpace
+    @test (one(V1) ← one(V1)) isa HomSpace
+
+    @test leftunitspace(V2) != rightunitspace(V2)
+    @test_throws SpaceMismatch V2 ← one(V2)
+
+    # a space spanning two colorings is rejected on construction
+    @test_throws SpaceMismatch typeof(V1)(first(sectors(V1)) => 1, first(sectors(V3)) => 1)
+
+    # zero spaces are wildcards that suppress only the junctions they touch
+    V0 = zerospace(V1)
+    @test dim(@constinferred(⊗(V1, V2, V0))) == 0
+    @test_throws SpaceMismatch (⊗(V2, V1, V0)) # V2 ⊗ V1 is incompatible on its own
+    @test dim(@constinferred(ProductSpace(V1, V0, V3))) == 0 # V0 breaks the chain
+    @test_throws SpaceMismatch (ProductSpace(V1, V0, V3) ← V3) # left units of V1 and V3
+    @test (ProductSpace(V2, V0) ← one(V2)) isa HomSpace
+    @test (ProductSpace(V0) ← ProductSpace(V0)) isa HomSpace
+end
+
 @timedtestset "show and friends" begin
     V = U1Space(i => 1 for i in 1:3)
     @test string(V) == "$(type_repr(typeof(V)))(1 => 1, 2 => 1, 3 => 1)"

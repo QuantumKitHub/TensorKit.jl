@@ -20,6 +20,11 @@ links = InterLinks(
     "TensorKitSectors" => "https://quantumkithub.github.io/TensorKitSectors.jl/dev/"
 )
 
+TENSOR_PAGES = [
+    "man/tensors.md", "man/linearalgebra.md", "man/indexmanipulations.md",
+    "man/factorizations.md", "man/contractions.md", "man/precompilation.md",
+]
+
 pages = [
     "Home" => "index.md",
     "Manual" => [
@@ -27,13 +32,8 @@ pages = [
         "man/spaces.md", "man/symmetries.md",
         "man/sectors.md", "man/gradedspaces.md",
         "man/fusiontrees.md",
-        "Tensors" => [
-            "man/tensors.md",
-            "man/linearalgebra.md",
-            "man/indexmanipulations.md",
-            "man/factorizations.md",
-            "man/contractions.md",
-        ],
+        "Tensors" => TENSOR_PAGES,
+        "man/profiling.md",
     ],
     "Library" => [
         "lib/sectors.md", "lib/fusiontrees.md",

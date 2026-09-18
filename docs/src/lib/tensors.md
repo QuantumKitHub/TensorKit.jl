@@ -118,22 +118,11 @@ subblock
 subblocks
 ```
 
-To access the data associated with a specific fusion tree pair, you can use:
+One can access the data of an `AbstractTensorMap` in multiple ways, its availability depending on the sector type of the tensor.
+In particular, the data of a tensor `t` can be accessed by specifying the fusion tree pair, the outcoming sectors if `FusionStyle(sectortype(t)) isa UniqueFusion`, or by multidimensional array indexing if `sectortype(t) == Trivial`.
 ```@docs
-Base.getindex(::AbstractTensorMap, ::FusionTree, ::FusionTree)
-Base.setindex!(::AbstractTensorMap, ::Any, ::FusionTree, ::FusionTree)
-```
-
-For a tensor `t` with `FusionStyle(sectortype(t)) isa UniqueFusion`, fusion trees are completely determined by the outcoming sectors, and the data can be accessed in a more straightforward way:
-```@docs
-Base.getindex(::AbstractTensorMap, ::Tuple{I,Vararg{I}}) where {I<:Sector}
-```
-
-For tensor `t` with `sectortype(t) == Trivial`, the data can be accessed and manipulated directly as multidimensional arrays:
-```@docs
-Base.getindex(::AbstractTensorMap)
-Base.getindex(::AbstractTensorMap, ::Vararg{SliceIndex})
-Base.setindex!(::AbstractTensorMap, ::Any, ::Vararg{SliceIndex})
+Base.getindex(::AbstractTensorMap, args...)
+Base.setindex!(::AbstractTensorMap, args...)
 ```
 
 The tensor data can also be filled with random numbers via

@@ -44,7 +44,7 @@ export infimum, supremum, isisomorphic, ismonomorphic, isepimorphic
 export sectortype, sectors, hassector
 export unit, rightunit, leftunit, allunits, isunit, otimes, deligneproduct, timereversed
 export Nsymbol, Fsymbol, Rsymbol, Bsymbol, frobenius_schur_phase, frobenius_schur_indicator, twist, fusiontensor
-export sectorscalartype, fusionscalartype, braidingscalartype
+export sectorscalartype, fusionscalartype, braidingscalartype, dimscalartype
 
 # Export methods for fusion trees
 export fusiontrees, braid, permute, transpose
@@ -107,7 +107,6 @@ export empty_globalcaches!
 # Imports
 #---------
 using TupleTools
-using TupleTools: StaticLength
 
 using Strided
 
@@ -123,6 +122,7 @@ using Dictionaries: Dictionaries, Dictionary, Indices, gettoken, gettokenvalue
 using LRUCache
 using OhMyThreads
 using ScopedValues
+using TimerOutputs: TimerOutputs, TimerOutput, @timeit_debug
 
 using TensorKitSectors
 import TensorKitSectors: dim, BraidingStyle, FusionStyle, ⊠, ⊗, ×
@@ -134,7 +134,7 @@ using Base: @boundscheck, @propagate_inbounds, @constprop,
     tuple_type_head, tuple_type_tail, tuple_type_cons,
     SizeUnknown, HasLength, HasShape, IsInfinite, EltypeUnknown, HasEltype
 using Base.Iterators: product, filter
-using Printf: @sprintf
+using Printf: @sprintf, @printf
 
 using LinearAlgebra: LinearAlgebra, BlasFloat
 using LinearAlgebra: norm, dot, normalize, normalize!, tr,
@@ -153,6 +153,7 @@ using Adapt: Adapt
 
 # Auxiliary files
 #-----------------
+include("auxiliary/timers.jl")
 include("auxiliary/auxiliary.jl")
 include("auxiliary/caches.jl")
 include("auxiliary/dicts.jl")
@@ -225,7 +226,8 @@ include("spaces/structure.jl")
 #-------------------------
 const TRANSFORMER_THREADS = Ref(1)
 
-get_num_transformer_threads() = TRANSFORMER_THREADS[]
+# while timing, force serial execution: timer sections may only be entered from one task
+get_num_transformer_threads() = timers_enabled() ? 1 : TRANSFORMER_THREADS[]
 
 function set_num_transformer_threads(n::Int)
     N = Base.Threads.nthreads()
@@ -238,7 +240,7 @@ end
 
 const TREEMANIPULATION_THREADS = Ref(1)
 
-get_num_manipulation_threads() = TREEMANIPULATION_THREADS[]
+get_num_manipulation_threads() = timers_enabled() ? 1 : TREEMANIPULATION_THREADS[]
 
 function set_num_manipulation_threads(n::Int)
     N = Base.Threads.nthreads()
@@ -286,5 +288,7 @@ include("planar/planaroperations.jl")
 include("auxiliary/ad.jl")
 include("pullbacks/tensoroperations.jl")
 include("pullbacks/indexmanipulations.jl")
+
+include("precompile/precompile.jl")
 
 end

@@ -90,6 +90,18 @@ function _insert_planar_operations(ex)
     return ex
 end
 
+# like `TO.insertargument`, but matching `GlobalRef`s into `TensorKit`
+function _insertargument(ex, arg, methods)
+    if isexpr(ex, :call) && ex.args[1] isa GlobalRef &&
+            ex.args[1].mod === TensorKit && ex.args[1].name ∈ methods
+        return Expr(:call, ex.args..., arg)
+    elseif isa(ex, Expr)
+        return Expr(ex.head, (_insertargument(e, arg, methods) for e in ex.args)...)
+    else
+        return ex
+    end
+end
+
 """
     insertplanarbackend(ex, backend)
 
@@ -98,7 +110,7 @@ Insert the backend argument into the tensor operation methods `planaradd!`, `pla
 See also: [`TensorOperations.insertbackend`](@ref).
 """
 function insertplanarbackend(ex, backend)
-    return TO.insertargument(ex, backend, (:planaradd!, :planartrace!, :planarcontract!))
+    return _insertargument(ex, backend, _PLANAR_OPERATIONS)
 end
 
 """
@@ -109,5 +121,5 @@ Insert the allocator argument into the tensor operation methods `planaradd!`, `p
 See also: [`TensorOperations.insertallocator`](@ref).
 """
 function insertplanarallocator(ex, allocator)
-    return TO.insertargument(ex, allocator, (:planaradd!, :planartrace!, :planarcontract!))
+    return _insertargument(ex, allocator, _PLANAR_OPERATIONS)
 end

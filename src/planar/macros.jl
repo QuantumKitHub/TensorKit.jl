@@ -30,7 +30,7 @@ function planarparser(planarexpr, kwargs...)
         if name == :backend
             hasbackend = true
             backend = val
-            push!(parser.postprocessors, ex -> TO.insertbackend(ex, backend))
+            push!(parser.postprocessors, ex -> insertplanarbackend(ex, backend))
             break
         end
     end
@@ -39,9 +39,13 @@ function planarparser(planarexpr, kwargs...)
             allocator = val
             if !hasbackend
                 backend = Expr(:call, GlobalRef(TensorOperations, :DefaultBackend))
-                push!(parser.postprocessors, ex -> TO.insertbackend(ex, backend))
+                push!(parser.postprocessors, ex -> insertplanarbackend(ex, backend))
             end
+            push!(parser.postprocessors, ex -> insertplanarallocator(ex, allocator))
+            # the alloc/free calls are still `GlobalRef(TensorOperations, ...)`
             push!(parser.postprocessors, ex -> TO.insertallocator(ex, allocator))
+            # add checkpoints around the block
+            push!(parser.postprocessors, ex -> TO.insertcheckpoints(ex, allocator))
             break
         end
     end
