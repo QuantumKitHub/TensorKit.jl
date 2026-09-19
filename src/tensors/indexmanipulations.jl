@@ -642,7 +642,7 @@ end
 _transform_subblocks(tdst::TensorMap, tsrc::TensorMap, transformer) =
     StridedSubblocks(tdst, transformer.structure_dst), StridedSubblocks(tsrc, transformer.structure_src)
 _transform_subblocks(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, transformer) =
-    TreeSubblocks(tdst), TreeSubblocks(tsrc)
+    subblocks(tdst), subblocks(tsrc)
 
 # Don't thread if overhead is not worth it
 get_num_transformer_threads(t::AbstractTensorMap) =
@@ -650,7 +650,7 @@ get_num_transformer_threads(t::AbstractTensorMap) =
 
 # The kernel operates on the subblocks addressed by position, so that for `TensorMap`s this only
 # depends on `numind`, `eltype` and the transformer data, not on the sectortype.
-const TransformSubblocks = Union{StridedSubblocks, TreeSubblocks}
+const TransformSubblocks = Union{StridedSubblocks, SubblockIterator}
 function add_transform_kernel!(
         dst::TransformSubblocks, src::TransformSubblocks, p, conjsrc::Bool,
         transformer::TreeTransformer, α, β, backend, allocator, ntasks::Int

@@ -412,7 +412,7 @@ corresponding tensor subblocks.
 
 See also [`subblock`](@ref) and [`fusiontrees`](@ref).
 """
-subblocks(t::AbstractTensorMap) = SubblockIterator(t, fusiontrees(t))
+subblocks(t::AbstractTensorMap) = SubblockIterator(t)
 
 const _doc_subblock = """
 Return a view into the data of `t` corresponding to the splitting - fusion tree pair

@@ -496,32 +496,36 @@ end
 
 # Getting and setting the data at the subblock level
 # --------------------------------------------------
-function StridedSubblocks(t::TensorMap)
-    return StridedSubblocks(t, degeneracystructure(space(t)).subblockstructure)
+StridedSubblocks(t::TensorMap) = StridedSubblocks(t.data, degeneracystructure(space(t)).subblockstructure)
+StridedSubblocks(t::TensorMap, structure::Vector{<:StridedStructure}) = StridedSubblocks(t.data, structure)
+
+# the subblocks of a `TensorMap` are strided views into its flat data, which the subblock
+# structure of its space describes directly
+SubblockIterator(t::TensorMap) = SubblockIterator(t, subblockstructure(space(t)))
+
+# the throws are kept out of line: mentioning `iter` in the error would make it escape,
+# which costs the caller scalar replacement of the subblock views
+@noinline _throw_subblock_bounds(iter, i) = throw(BoundsError(iter, i))
+@noinline _throw_subblock_missing(f) = throw(SectorMismatch(lazy"fusion tree pair $f is not present"))
+
+@propagate_inbounds function Base.getindex(iter::SubblockIterator{<:TensorMap}, i::Int)
+    @boundscheck 0 < i <= length(iter.structure) || _throw_subblock_bounds(iter, i)
+    @inbounds sz, str, offset = gettokenvalue(iter.structure, i)
+    return StridedView(iter.t.data, sz, str, offset)
 end
-function StridedSubblocks(t::TensorMap, structure::Vector{<:StridedStructure})
-    return StridedSubblocks(t.data, structure)
+@propagate_inbounds function Base.getindex(iter::SubblockIterator{<:TensorMap}, f::FusionTreePair)
+    found, token = gettoken(iter.structure, f)
+    @boundscheck found || _throw_subblock_missing(f)
+    @inbounds sz, str, offset = gettokenvalue(iter.structure, token)
+    return StridedView(iter.t.data, sz, str, offset)
 end
 
-# iterate the subblock views in canonical order alongside the fusion trees, without hashing
-function subblocks(t::TensorMap)
-    return sectortype(t) === Trivial ? SubblockIterator(t, fusiontrees(t)) :
-        SubblockIterator(t, StridedSubblocks(t))
-end
-function Base.iterate(iter::SubblockIterator{<:TensorMap, <:StridedSubblocks}, i::Int = 1)
-    i > length(iter.structure) && return nothing
-    @inbounds begin
-        f = gettokenvalue(fusiontrees(iter.t), i)
-        return f => iter.structure[i], i + 1
-    end
-end
-
-function subblock(
+@propagate_inbounds function subblock(
         t::TensorMap{T, S, N₁, N₂}, (f₁, f₂)::Tuple{FusionTree{I, N₁}, FusionTree{I, N₂}}
     ) where {T, S, N₁, N₂, I <: Sector}
     fts = subblockstructure(space(t))
     found, token = gettoken(fts, (f₁, f₂))
-    @boundscheck found || throw(SectorMismatch(lazy"fusion tree pair ($(f₁, f₂)) is not present"))
+    @boundscheck found || _throw_subblock_missing((f₁, f₂))
     @inbounds begin
         sz, str, offset = gettokenvalue(fts, token)
         return StridedView(t.data, sz, str, offset)
