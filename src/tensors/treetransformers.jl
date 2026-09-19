@@ -13,18 +13,18 @@ those of `adjoint(space(tsrc))`, which read the subblocks of `tsrc` with the tre
 abstract type TreeTransformer end
 
 # (coefficient, destination position, source position)
-const AbelianTransformerData{T} = Tuple{T, Int, Int}
+const UniqueTransformerData{T} = Tuple{T, Int, Int}
 
 """
-    AbelianTreeTransformer{T, N} <: TreeTransformer
+    UniqueTreeTransformer{T, N} <: TreeTransformer
 
 Tree transformation for `UniqueFusion` sectors, where every source subblock maps onto a single
 destination subblock with a scalar coefficient, stored as `(coeff, idst, isrc)`. The subblock
 structures of the destination and source spaces are kept alongside, such that the
 [`StridedSubblocks`](@ref) of both tensors can be created without further lookups.
 """
-struct AbelianTreeTransformer{T, N} <: TreeTransformer
-    data::Vector{AbelianTransformerData{T}}
+struct UniqueTreeTransformer{T, N} <: TreeTransformer
+    data::Vector{UniqueTransformerData{T}}
     structure_dst::Vector{StridedStructure{N}}
     structure_src::Vector{StridedStructure{N}}
 end
@@ -47,14 +47,14 @@ struct GenericTreeTransformer{T, N} <: TreeTransformer
     structure_src::Vector{StridedStructure{N}}
 end
 
-function AbelianTreeTransformer(transform, p, Vdst, Vsrc, conjsrc::Bool)
+function UniqueTreeTransformer(transform, p, Vdst, Vsrc, conjsrc::Bool)
     t₀ = Base.time()
 
     spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
 
     src_trees, dst_trees = fusiontrees(Vsrc), fusiontrees(Vdst)
     T = sectorscalartype(sectortype(Vdst))
-    data = Vector{AbelianTransformerData{T}}(undef, length(src_trees))
+    data = Vector{UniqueTransformerData{T}}(undef, length(src_trees))
 
     @timeit_debug GLOBAL_TIMER "symmetry: tree transform" for (isrc, (f₁, f₂)) in enumerate(src_trees)
         f_dst, coeff = transform(conjsrc ? (f₂, f₁) : (f₁, f₂))
@@ -64,7 +64,7 @@ function AbelianTreeTransformer(transform, p, Vdst, Vsrc, conjsrc::Bool)
 
     structure_dst = degeneracystructure(Vdst).subblockstructure
     structure_src = degeneracystructure(Vsrc).subblockstructure
-    transformer = AbelianTreeTransformer(data, structure_dst, structure_src)
+    transformer = UniqueTreeTransformer(data, structure_dst, structure_src)
 
     Δt = Base.time() - t₀
     @debug(lazy"Treetransformer for $Vsrc to $Vdst via $p", conjsrc, nblocks = length(data), Δt)
@@ -137,7 +137,7 @@ Compute the workspace size required to pack, recouple and unpack the largest mul
 block, i.e. `prod(sz_src) * (rows + cols)` where `(rows, cols) = size(U)` is the size of
 the recoupling matrix.
 """
-buffersize(::AbelianTreeTransformer) = 0
+buffersize(::UniqueTreeTransformer) = 0
 function buffersize(transformer::GenericTreeTransformer)
     structure_src = transformer.structure_src
     return maximum(transformer.data; init = 0) do (U, _, inds_src)
@@ -149,7 +149,7 @@ function treetransformertype(Vdst, Vsrc)
     I = sectortype(Vdst)
     T = sectorscalartype(I)
     N = numind(Vdst)
-    return FusionStyle(I) == UniqueFusion() ? AbelianTreeTransformer{T, N} : GenericTreeTransformer{T, N}
+    return FusionStyle(I) == UniqueFusion() ? UniqueTreeTransformer{T, N} : GenericTreeTransformer{T, N}
 end
 
 function TreeTransformer(
@@ -157,7 +157,7 @@ function TreeTransformer(
     ) where {S}
     I = sectortype(Vdst)
     return FusionStyle(I) == UniqueFusion() ?
-        AbelianTreeTransformer(transform, p, Vdst, Vsrc, conjsrc) :
+        UniqueTreeTransformer(transform, p, Vdst, Vsrc, conjsrc) :
         GenericTreeTransformer(transform, p, Vdst, Vsrc, conjsrc)
 end
 

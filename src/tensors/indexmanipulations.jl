@@ -658,8 +658,8 @@ get_num_transformer_threads(t::AbstractTensorMap) =
 # depends on `numind`, `eltype` and the transformer data, not on the sectortype.
 const TransformSubblocks = Union{StridedSubblocks, TreeSubblocks}
 function add_transform_kernel!(
-        dst::TransformSubblocks, src::TransformSubblocks, p,
-        transformer::Union{AbelianTreeTransformer, GenericTreeTransformer},
+        dst::TransformSubblocks, src::TransformSubblocks, p, conjsrc::Bool,
+        transformer::TreeTransformer,
         α, β, backend, allocator, ntasks::Int
     )
     bufsize = buffersize(transformer)
@@ -685,8 +685,8 @@ function add_transform_kernel!(
     return nothing
 end
 
-# `U` is either a scalar coefficient with integer positions (abelian), or a recoupling matrix
-# with vectors of positions (generic).
+# `U` is either a scalar coefficient with integer positions (unique fusion), or a recoupling
+# matrix with vectors of positions (generic).
 function _add_transform_block!(
         dst::TransformSubblocks, src::TransformSubblocks, p, U, inds_dst, inds_src, buffer,
         α, β, backend, allocator
