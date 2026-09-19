@@ -631,24 +631,18 @@ function add_transform!(
     else
         p2 = (linearize(p), ()) # only the linear permutation matters for the array kernels
         ntasks = get_num_transformer_threads(tdst)
-        # resolve the conjugation flag into the view type here, with a statically typed call per branch
-        if conjsrc
-            dst, src = _transform_subblocks(tdst, tsrc, transformer, conj)
-            add_transform_kernel!(dst, src, p2, transformer, α, β, backend, allocator, ntasks)
-        else
-            dst, src = _transform_subblocks(tdst, tsrc, transformer, identity)
-            add_transform_kernel!(dst, src, p2, transformer, α, β, backend, allocator, ntasks)
-        end
+        dst, src = _transform_subblocks(tdst, tsrc, transformer)
+        add_transform_kernel!(dst, src, p2, conjsrc, transformer, α, β, backend, allocator, ntasks)
     end
 
     return tdst
 end
 
 # TensorMaps address their flat data directly, other tensor types go through `subblock`
-_transform_subblocks(tdst::TensorMap, tsrc::TensorMap, transformer, op) =
-    StridedSubblocks(tdst, transformer.structure_dst), StridedSubblocks(tsrc, transformer.structure_src, op)
-_transform_subblocks(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, transformer, op) =
-    TreeSubblocks(tdst), TreeSubblocks(tsrc, op)
+_transform_subblocks(tdst::TensorMap, tsrc::TensorMap, transformer) =
+    StridedSubblocks(tdst, transformer.structure_dst), StridedSubblocks(tsrc, transformer.structure_src)
+_transform_subblocks(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, transformer) =
+    TreeSubblocks(tdst), TreeSubblocks(tsrc)
 
 # Don't thread if overhead is not worth it
 get_num_transformer_threads(t::AbstractTensorMap) =
@@ -659,13 +653,12 @@ get_num_transformer_threads(t::AbstractTensorMap) =
 const TransformSubblocks = Union{StridedSubblocks, TreeSubblocks}
 function add_transform_kernel!(
         dst::TransformSubblocks, src::TransformSubblocks, p, conjsrc::Bool,
-        transformer::TreeTransformer,
-        α, β, backend, allocator, ntasks::Int
+        transformer::TreeTransformer, α, β, backend, allocator, ntasks::Int
     )
     bufsize = buffersize(transformer)
     if bufsize == 0 # no recoupling needed: every block consists of a single tree
         taskforeach(transformer.data, ntasks) do (U, inds_dst, inds_src)
-            _add_transform_block!(dst, src, p, U, inds_dst, inds_src, nothing, α, β, backend, allocator)
+            _add_transform_block!(dst, src, p, conjsrc, U, inds_dst, inds_src, nothing, α, β, backend, allocator)
         end
     else
         # One max-sized workspace per task (a single one that is reused by all blocks when
@@ -677,7 +670,7 @@ function add_transform_kernel!(
                 for _ in 1:min(length(transformer.data), ntasks)
         ]
         taskforeach(transformer.data, buffers) do (U, inds_dst, inds_src), buffer
-            _add_transform_block!(dst, src, p, U, inds_dst, inds_src, buffer, α, β, backend, allocator)
+            _add_transform_block!(dst, src, p, conjsrc, U, inds_dst, inds_src, buffer, α, β, backend, allocator)
         end
         foreach(Base.Fix2(TO.tensorfree!, allocator), buffers)
         TO.allocator_reset!(allocator, cp)
@@ -688,12 +681,12 @@ end
 # `U` is either a scalar coefficient with integer positions (unique fusion), or a recoupling
 # matrix with vectors of positions (generic).
 function _add_transform_block!(
-        dst::TransformSubblocks, src::TransformSubblocks, p, U, inds_dst, inds_src, buffer,
+        dst::TransformSubblocks, src::TransformSubblocks, p, conjsrc::Bool, U, inds_dst, inds_src, buffer,
         α, β, backend, allocator
     )
     if length(U) == 1 # single tree: no matmul needed
         @timeit_debug GLOBAL_TIMER "dense: tensoradd" @inbounds TO.tensoradd!(
-            dst[only(inds_dst)], src[only(inds_src)], p, false, α * only(U), β, backend, allocator
+            dst[only(inds_dst)], src[only(inds_src)], p, conjsrc, α * only(U), β, backend, allocator
         )
     else # Multi-tree block: pack → recoupling matmul → unpack.
         rows, cols = size(U)
@@ -708,7 +701,7 @@ function _add_transform_block!(
         @timeit_debug GLOBAL_TIMER "dense: pack" @inbounds for (i, isrc) in enumerate(inds_src)
             TO.tensoradd!(
                 sreshape(view(buffer_src, :, i), sz_src), src[isrc],
-                ptriv, false, One(), Zero(), backend, allocator
+                ptriv, conjsrc, One(), Zero(), backend, allocator
             )
         end
 

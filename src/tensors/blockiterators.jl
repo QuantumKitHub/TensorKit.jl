@@ -172,42 +172,36 @@ function Base.show(io::IO, mime::MIME"text/plain", iter::SubblockIterator)
     return nothing
 end
 
-const SubblockOp = Union{typeof(identity), typeof(conj)}
-
 """
-    struct StridedSubblocks{A <: DenseVector, N, F}
-    StridedSubblocks(t::TensorMap, [op = identity])
+    struct StridedSubblocks{A <: DenseVector, N}
+    StridedSubblocks(t::TensorMap)
 
 Sector-independent, integer-indexable collection of the subblocks of a `TensorMap`, as `StridedView`s into its flat data vector.
 Subblock `i` corresponds to the `i`th fusion tree pair in the canonical order of `fusiontrees(space(t))`.
-The operation `op` (`identity` or `conj`) is applied lazily to every view, which allows representing the subblocks of a conjugated tensor without materializing it.
 
-This is the data structure consumed by the index manipulation kernels, whose type does not depend on the sectortype of `t`.
-It only contains type parameters `N` (number of indices) and `F` (element-wise operation).
+This is the data structure consumed by the index manipulation kernels, whose type does not depend on the sectortype of `t`:
+it only carries the storage type `A` of the flat data vector and the number of indices `N` of the subblocks.
 """
-struct StridedSubblocks{A <: DenseVector, N, F <: SubblockOp}
+struct StridedSubblocks{A <: DenseVector, N}
     data::A
     structure::Vector{StridedStructure{N}}
-    op::F
     # store the data as `StridedView` parents it, so that `A` is also the parent type of the views
-    function StridedSubblocks(
-            data::DenseVector, structure::Vector{StridedStructure{N}}, op::F = identity
-        ) where {N, F <: SubblockOp}
+    function StridedSubblocks(data::DenseVector, structure::Vector{StridedStructure{N}}) where {N}
         data′ = parent(StridedView(data))
-        return new{typeof(data′), N, F}(data′, structure, op)
+        return new{typeof(data′), N}(data′, structure)
     end
 end
 
-storagetype(::Type{StridedSubblocks{A, N, F}}) where {A, N, F} = A
+storagetype(::Type{StridedSubblocks{A, N}}) where {A, N} = A
 
 Base.length(s::StridedSubblocks) = length(s.structure)
 Base.firstindex(s::StridedSubblocks) = 1
 Base.lastindex(s::StridedSubblocks) = length(s)
-Base.eltype(::Type{StridedSubblocks{A, N, F}}) where {A, N, F} = StridedView{eltype(A), N, A, F}
+Base.eltype(::Type{StridedSubblocks{A, N}}) where {A, N} = StridedView{eltype(A), N, A, typeof(identity)}
 
 Base.@propagate_inbounds function Base.getindex(s::StridedSubblocks, i::Int)
     sz, str, offset = s.structure[i]
-    return StridedView(s.data, sz, str, offset, s.op)
+    return StridedView(s.data, sz, str, offset)
 end
 
 function Base.iterate(s::StridedSubblocks, i::Int = 1)
@@ -217,32 +211,29 @@ end
 
 
 """
-    struct TreeSubblocks{TT <: AbstractTensorMap, I, F}
-    TreeSubblocks(t::AbstractTensorMap, [op = identity])
+    struct TreeSubblocks{TT <: AbstractTensorMap, I}
+    TreeSubblocks(t::AbstractTensorMap)
 
 Integer-indexable collection of the subblocks of an arbitrary tensor `t`, where position `i`
 refers to the `i`th fusion tree pair of `fusiontrees(space(t))` and the data is retrieved through
-[`subblock`](@ref), with `op` (`identity` or `conj`) applied. This is the generic counterpart of
-[`StridedSubblocks`](@ref) for tensor types that do not store their data in a flat vector.
+[`subblock`](@ref). This is the generic counterpart of [`StridedSubblocks`](@ref) for tensor
+types that do not store their data in a flat vector.
 """
-struct TreeSubblocks{TT <: AbstractTensorMap, I, F <: SubblockOp}
+struct TreeSubblocks{TT <: AbstractTensorMap, I}
     t::TT
     trees::I
-    op::F
 end
-function TreeSubblocks(t::AbstractTensorMap, op::SubblockOp = identity)
-    return TreeSubblocks(t, fusiontrees(t), scalartype(t) <: Real ? identity : op)
-end
+TreeSubblocks(t::AbstractTensorMap) = TreeSubblocks(t, fusiontrees(t))
 
-storagetype(::Type{TreeSubblocks{TT, I, F}}) where {TT, I, F} = storagetype(TT)
+storagetype(::Type{TreeSubblocks{TT, I}}) where {TT, I} = storagetype(TT)
 
 Base.length(s::TreeSubblocks) = length(s.trees)
 Base.firstindex(s::TreeSubblocks) = 1
 Base.lastindex(s::TreeSubblocks) = length(s)
-Base.eltype(::Type{S}) where {S <: TreeSubblocks} = Core.Compiler.return_type(getindex, Tuple{S, Int})
+Base.eltype(::Type{TreeSubblocks{TT, I}}) where {TT, I} = subblocktype(TT)
 
 Base.@propagate_inbounds function Base.getindex(s::TreeSubblocks, i::Int)
-    return s.op(subblock(s.t, gettokenvalue(s.trees, i)))
+    return subblock(s.t, gettokenvalue(s.trees, i))
 end
 
 function Base.iterate(s::TreeSubblocks, i::Int = 1)
