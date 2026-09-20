@@ -93,8 +93,8 @@ function planarparser(planarexpr, kwargs...)
     )
     parser.contractioncostcheck = nothing
     push!(parser.preprocessors, ex -> _check_planarity(ex))
-    push!(parser.preprocessors, ex -> _decompose_planar_contractions(ex, temporaries))
-    push!(parser.preprocessors, ex -> _index_partitions!(partitions, ex))
+    push!(parser.preprocessors, ex -> _decompose_planar_contractions!(ex, temporaries))
+    push!(parser.preprocessors, ex -> _record_index_partitions!(ex, partitions))
 
     return parser
 end

@@ -75,6 +75,9 @@ for V in spacelist
             # the intermediate result is allocated as a temporary
             @planar ρ3[a; b] := t[a c d; e f] * t'[e f; g c d] * ρ[g; b]
             @test ρ3 ≈ ρ * ρ
+            # the same, but with a less trivial temporary
+            @planar ρ4[a; b] := t[a c d; e f] * (t'[e f; g c d] * ρ[g; b])
+            @test ρ4 ≈ ρ * ρ
         end
         if BraidingStyle(I) isa Bosonic && hasfusiontensor(I)
             @timedtestset "Trace: test via conversion" begin

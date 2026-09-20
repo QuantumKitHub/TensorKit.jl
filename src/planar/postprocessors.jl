@@ -1,6 +1,6 @@
 # Additional postprocessors for @planar and @plansor
 
-# Temporaries were explicitly created by _decompose_planar_contractions and were thus
+# Temporaries were explicitly created by _decompose_planar_contractions! and were thus
 # instantiated as if they were new output tensors rather than temporary tensors; we need
 # to correct for this by adding the `istemp = true` flag.
 function _annotate_temporaries(ex, temporaries)

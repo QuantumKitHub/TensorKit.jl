@@ -78,13 +78,13 @@ end
 # used by `@planar`: record the index partition of every tensor in `ex`, keyed by its object.
 # Objects that occur with conflicting partitions are recorded as `nothing`. Note that
 # `_extract_tensormap_objects` checks these partitions against the actual tensors at runtime.
-function _index_partitions!(partitions, ex)
+function _record_index_partitions!(ex, partitions)
     if TO.istensor(ex)
         obj, leftind, rightind = TO.decomposetensor(ex)
         p = IndexPartition(length(leftind), length(rightind))
         partitions[obj] = get(partitions, obj, p) == p ? p : nothing
     elseif ex isa Expr
-        foreach(a -> _index_partitions!(partitions, a), ex.args)
+        foreach(a -> _record_index_partitions!(a, partitions), ex.args)
     end
     return ex
 end
@@ -462,8 +462,8 @@ end
 
 # decompose contraction trees in order to fix index order of temporaries
 # to ensure that planarity is guaranteed
-_decompose_planar_contractions(ex, temporaries) = ex
-function _decompose_planar_contractions(ex::Expr, temporaries)
+_decompose_planar_contractions!(ex, temporaries) = ex
+function _decompose_planar_contractions!(ex::Expr, temporaries)
     if isexpr(ex, :macrocall) && ex.args[1] == Symbol("@notensor")
         return ex
     end
@@ -484,7 +484,7 @@ function _decompose_planar_contractions(ex::Expr, temporaries)
     end
     if isexpr(ex, :block)
         return Expr(
-            ex.head, [_decompose_planar_contractions(a, temporaries) for a in ex.args]...
+            ex.head, [_decompose_planar_contractions!(a, temporaries) for a in ex.args]...
         )
     end
     return ex
