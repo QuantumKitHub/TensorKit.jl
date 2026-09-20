@@ -2,6 +2,8 @@ using Test
 import JLD2
 using TensorKit
 
+const TensorKitJLD2Ext = Base.get_extension(TensorKit, :TensorKitJLD2Ext)
+
 struct UnregisteredTensorMap <: AbstractTensorMap{Float64, ComplexSpace, 1, 0} end
 
 struct TestDenseVector{T} <: DenseVector{T}
@@ -13,7 +15,7 @@ Base.getindex(vector::TestDenseVector, index::Int) = vector.data[index]
 Base.setindex!(vector::TestDenseVector, value, index::Int) = (vector.data[index] = value)
 
 """Write a raw TensorKit tensor record for malformed-file and permutation tests."""
-function write_record(path, record; format = TensorKit.TENSORMAP_FILE_FORMAT, version = TensorKit.TENSORMAP_FILE_VERSION)
+function write_record(path, record; format = TensorKitJLD2Ext.TENSORMAP_FILE_FORMAT, version = TensorKitJLD2Ext.TENSORMAP_FILE_VERSION)
     return JLD2.jldopen(path, "w") do file
         file["format"] = format
         file["version"] = version
@@ -69,6 +71,7 @@ function reverse_record(record)
 end
 
 @testset "TensorMap save_tensor and load_tensor" begin
+    @test !isnothing(TensorKitJLD2Ext)
     @test :save_tensor in names(TensorKit)
     @test :load_tensor in names(TensorKit)
     @test :save ∉ names(TensorKit)
@@ -159,7 +162,7 @@ end
 @testset "TensorMap record representation" begin
     V1, V2, V3, V4, V5 = TestSetup.VRepA4
     tensor = randn(ComplexF64, V1 ⊗ V2 ← (V3 ⊗ V4 ⊗ V5)')
-    record = TensorKit._pack_tensormap(tensor)
+    record = TensorKitJLD2Ext._pack_tensormap(tensor)
     @test record isa NamedTuple
     @test record.kind === :dense
     for table in (record.codomain_trees, record.domain_trees)
@@ -180,24 +183,24 @@ end
 @testset "Fusion-tree iteration-order independence" begin
     V1, V2, V3, V4, V5 = TestSetup.VRepA4
     tensor = randn(ComplexF64, V1 ⊗ V2 ← (V3 ⊗ V4 ⊗ V5)')
-    @test TensorKit._unpack_tensormap(reverse_record(TensorKit._pack_tensormap(tensor))) == tensor
+    @test TensorKitJLD2Ext._unpack_tensormap(reverse_record(TensorKitJLD2Ext._pack_tensormap(tensor))) == tensor
 
     V = Vect[SU2Irrep](0 => 3, 1 // 2 => 2, 1 => 1)'
     diagonal = DiagonalTensorMap(randn(ComplexF64, reduceddim(V)), V)
-    @test TensorKit._unpack_tensormap(reverse_record(TensorKit._pack_tensormap(diagonal))) == diagonal
+    @test TensorKitJLD2Ext._unpack_tensormap(reverse_record(TensorKitJLD2Ext._pack_tensormap(diagonal))) == diagonal
 end
 
 @testset "TensorMap file validation" begin
     V = Vect[Z2Irrep](0 => 2, 1 => 3)
     tensor = randn(Float64, V ⊗ V ← V ⊗ V)
-    record = TensorKit._pack_tensormap(tensor)
+    record = TensorKitJLD2Ext._pack_tensormap(tensor)
     mktempdir() do directory
         path = joinpath(directory, "invalid.jld2")
 
         write_record(path, record; format = "not TensorKit")
         @test_throws ArgumentError load_tensor(path)
 
-        write_record(path, record; version = TensorKit.TENSORMAP_FILE_VERSION + 1)
+        write_record(path, record; version = TensorKitJLD2Ext.TENSORMAP_FILE_VERSION + 1)
         @test_throws ArgumentError load_tensor(path)
 
         JLD2.jldsave(path; unrelated = tensor.data)

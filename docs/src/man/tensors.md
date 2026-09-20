@@ -430,8 +430,11 @@ t[f1,f2]
 ## [Reading and writing tensors](@id ss_tensor_readwrite)
 
 TensorKit provides [`save_tensor`](@ref) and [`load_tensor`](@ref) for storing one tensor map in a versioned JLD2 file.
+Install JLD2 and load it with `using JLD2` to activate these functions through the `TensorKitJLD2Ext` extension.
 
 ```julia
+using JLD2
+
 filename = "tensor.jld2"
 save_tensor(filename, t)
 t′ = load_tensor(filename)
