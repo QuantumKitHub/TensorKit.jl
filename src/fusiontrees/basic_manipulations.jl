@@ -31,7 +31,7 @@ true
     0 <= M <= N ||
         throw(ArgumentError("M should be between 0 and N = $N"))
 
-    innerlines_extended = (f.uncoupled[1], f.innerlines..., f.coupled)
+    innerlines_extended = N == 0 ? () : (f.uncoupled[1], f.innerlines..., f.coupled)
     vertices_extended = (1, f.vertices...)
 
     uncoupled₁ = ntuple(n -> f.uncoupled[n], M)
