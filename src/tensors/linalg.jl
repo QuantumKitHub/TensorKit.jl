@@ -326,12 +326,19 @@ function LinearAlgebra.tr(t::AbstractTensorMap)
     return s
 end
 
+# LinearAlgebra's BLAS wrappers do not accept `VectorInterface.One`/`Zero`, e.g.
+# `herk_wrapper!` (hit by `mul!(C, A, A')`) calls `isreal` on the scalars.
+_blasscalar(α::Number) = α
+_blasscalar(::One) = true
+_blasscalar(::Zero) = false
+
 # TensorMap multiplication
 function LinearAlgebra.mul!(
         tC::AbstractTensorMap, tA::AbstractTensorMap, tB::AbstractTensorMap, α = true, β = false
     )
     compose(space(tA), space(tB)) == space(tC) ||
         throw(SpaceMismatch(lazy"$(space(tC)) ≠ $(space(tA)) * $(space(tB))"))
+    α, β = _blasscalar(α), _blasscalar(β)
 
     @timeit_debug GLOBAL_TIMER "dense: matmul" begin
         iterC = blocks(tC)
