@@ -162,13 +162,16 @@ zerospace(S::Type{<:GradedSpace}) = S()
 function ⊕(V₁::DictGradedSpace{I}, V₂::DictGradedSpace{I}) where {I <: Sector}
     dual1 = isdual(V₁)
     dual1 == isdual(V₂) || throw(SpaceMismatch("Direct sum of a vector space and a dual space does not exist"))
-    return typeof(V₁)(mergewith(+, V₁.dims, V₂.dims), dual1)
+    newdims = mergewith(+, V₁.dims, V₂.dims)
+    _check_unit_homogeneity(I, keys(newdims))
+    return typeof(V₁)(newdims, dual1)
 end
 function ⊕(V₁::TupleGradedSpace{I}, V₂::TupleGradedSpace{I}) where {I <: Sector}
     dual1 = isdual(V₁)
     dual1 == isdual(V₂) ||
         throw(SpaceMismatch("Direct sum of a vector space and a dual space does not exist"))
     newdims = map(+, V₁.dims, V₂.dims)
+    _check_unit_homogeneity(I, (values(I)[n] for n in eachindex(newdims) if !iszero(newdims[n])))
     return typeof(V₁)(newdims, dual1)
 end
 @noinline _throw_not_subspace(V, W) = throw(SpaceMismatch(lazy"$(W) is not a subspace of $(V)"))
@@ -248,12 +251,15 @@ function supremum(V₁::TupleGradedSpace{I}, V₂::TupleGradedSpace{I}) where {I
     Visdual = isdual(V₁)
     Visdual == isdual(V₂) || throw(SpaceMismatch("Supremum of space and dual space does not exist"))
     newdims = map(max, V₁.dims, V₂.dims)
+    _check_unit_homogeneity(I, (values(I)[n] for n in eachindex(newdims) if !iszero(newdims[n])))
     return typeof(V₁)(newdims, Visdual)
 end
 function supremum(V₁::DictGradedSpace{I}, V₂::DictGradedSpace{I}) where {I <: Sector}
     Visdual = isdual(V₁)
     Visdual == isdual(V₂) || throw(SpaceMismatch("Supremum of space and dual space does not exist"))
-    return typeof(V₁)(mergewith(max, V₁.dims, V₂.dims), Visdual)
+    newdims = mergewith(max, V₁.dims, V₂.dims)
+    _check_unit_homogeneity(I, keys(newdims))
+    return typeof(V₁)(newdims, Visdual)
 end
 
 hassector(V::GradedSpace{I}, s::I) where {I <: Sector} = dim(V, s) != 0

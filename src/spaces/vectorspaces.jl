@@ -220,7 +220,7 @@ function isunitspace(V::ElementarySpace)
     return if isa(UnitStyle(I), SimpleUnit)
         isisomorphic(V, unitspace(V))
     else
-        (dim(V) == 0 || !all(isunit, sectors(V))) && return false
+        (dim(V) == 1 && all(isunit, sectors(V))) || return false
         return true
     end
 end

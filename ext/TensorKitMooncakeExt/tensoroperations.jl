@@ -197,7 +197,7 @@ function Mooncake.rrule!!(::CoDual{typeof(TensorKit.scalar)}, t_dt::CoDual{<:Abs
     t, dt = arrayify(t_dt)
     val = scalar(t)
     function scalar_pullback(Δval)
-        first(blocks(dt))[2][1] = Δval
+        first(blocks(dt))[2][1] += Δval
         return NoRData(), NoRData()
     end
     return Mooncake.zero_fcodual(val), scalar_pullback
