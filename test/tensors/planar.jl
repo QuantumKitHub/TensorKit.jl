@@ -128,6 +128,34 @@ end
         @test occursin("DefaultBackend", string(ex))
     end
 
+    @testset "allocator is rewound" begin
+        # A `BufferAllocator` hands out slices of a single buffer and reclaims them only
+        # by rewinding its offset -- `tensorfree!` is a no-op for it. The temporaries a
+        # block creates for intermediate results are released that way, so without a
+        # checkpoint/reset pair around the block their space is never reclaimed. A buffer
+        # that is not fully drained also never resizes itself, so it would stay pinned at
+        # whatever size it first grew to, and every later temporary would fall back on the
+        # garbage collector.
+        for W in (ℂ^4, Vect[FermionParity](0 => 2, 1 => 2))
+            A = rand(T, W ← W ⊗ W)
+            B = rand(T, W ⊗ W ← W)
+            @planar Cref[i; j] := A[i; k l] * τ[k l; m n] * B[m n; j]
+
+            # three tensors, so the first contraction is an intermediate temporary
+            buffer = TensorOperations.BufferAllocator(; sizehint = 1 << 16)
+            @planar allocator = buffer C[i; j] := A[i; k l] * τ[k l; m n] * B[m n; j]
+            @test isempty(buffer)
+            @test C ≈ Cref
+
+            # the result must not live in the buffer: the next block hands out the same
+            # memory again, and `C` has to survive that
+            @planar allocator = buffer C2[i; j] := A[i; k l] * τ[k l; m n] * B[m n; j]
+            @test isempty(buffer)
+            @test C ≈ Cref
+            @test C2 ≈ Cref
+        end
+    end
+
     @testset "contractcheck" begin
         V = ℂ^2
         A = rand(T, V ⊗ V ← V)

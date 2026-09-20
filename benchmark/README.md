@@ -29,3 +29,12 @@ benchpkgtable TensorKit \
     -i benchmark/results/ \
     -o benchmark/results/ \
 ```
+
+## Timing internal kernels
+
+To break down where time is spent *inside* the operations (symmetry work, bookkeeping,
+allocations, dense kernels), TensorKit ships built-in
+[TimerOutputs.jl](https://github.com/KristofferC/TimerOutputs.jl) instrumentation that is
+compiled away by default and can be enabled with `TensorKit.enable_timers!()`. See the
+"Profiling and timers" section of the documentation for the workflow and caveats.
+

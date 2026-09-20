@@ -53,7 +53,7 @@ for V in spacelist
                 @test dot(t2, t) ≈ conj(dot(t2', t'))
                 @test dot(t2, t) ≈ dot(t', t2')
 
-                if UnitStyle(I) isa SimpleUnit || !isempty(blocksectors(V2 ⊗ V1))
+                if UnitStyle(I) isa SimpleUnit
                     i1 = @constinferred(isomorphism(T, V1 ⊗ V2, V2 ⊗ V1)) # can't reverse fusion here when modules are involved
                     i2 = @constinferred(isomorphism(Vector{T}, V2 ⊗ V1, V1 ⊗ V2))
                     @test i1 * i2 == @constinferred(id(T, V1 ⊗ V2))

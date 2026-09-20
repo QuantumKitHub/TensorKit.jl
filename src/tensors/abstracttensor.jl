@@ -419,7 +419,7 @@ Return a view into the data of `t` corresponding to the splitting - fusion tree 
 `(f₁, f₂)`. In particular, this is an `AbstractArray{T}` with `T = scalartype(t)`, of size
 `(dims(codomain(t), f₁.uncoupled)..., dims(codomain(t), f₂.uncoupled)...)`.
 
-Whenever `FusionStyle(sectortype(t)) isa UniqueFusion` , it is also possible to provide only
+Whenever `FusionStyle(sectortype(t)) isa UniqueFusion`, it is also possible to provide only
 the external `sectors`, in which case the fusion tree pair will be constructed automatically.
 """
 
@@ -496,8 +496,18 @@ $_doc_subblock
     As a result, modifying the view will modify the data in the tensor.
 
 See also [`subblock`](@ref), [`subblocks`](@ref) and [`fusiontrees`](@ref).
-""" Base.getindex(::AbstractTensorMap, ::Tuple{I, Vararg{I}}) where {I <: Sector},
-    Base.getindex(::AbstractTensorMap, ::FusionTree, ::FusionTree)
+
+    Base.getindex(t::AbstractTensorMap, indices::Vararg{Int})
+    t[indices]
+
+Return a view into the data slice of `t` corresponding to `indices`, by slicing the
+`StridedViews.StridedView` into the full data array.
+
+    Base.getindex(t::AbstractTensorMap)
+    t[]
+
+Return a view into the data of `t` as a `StridedViews.StridedView` of size `dims(t)`.
+""" Base.getindex(::AbstractTensorMap, args...)
 
 @inline Base.getindex(t::AbstractTensorMap, sectors::Tuple{I, Vararg{I}}) where {I <: Sector} =
     subblock(t, sectors)
@@ -514,8 +524,12 @@ Copies `v` into the data slice of `t` corresponding to the splitting - fusion tr
 By default, `v` can be any object that can be copied into the view associated with `t[f₁, f₂]`.
 
 See also [`subblock`](@ref), [`subblocks`](@ref) and [`fusiontrees`](@ref).
-""" Base.setindex!(::AbstractTensorMap, ::Any, ::Tuple{I, Vararg{I}}) where {I <: Sector},
-    Base.setindex!(::AbstractTensorMap, ::Any, ::FusionTree, ::FusionTree)
+
+    Base.setindex!(t::AbstractTensorMap, v, indices::Vararg{Int})
+    t[indices] = v
+
+Assigns `v` to the data slice of `t` corresponding to `indices`.
+""" Base.setindex!(::AbstractTensorMap, args...)
 
 @inline Base.setindex!(t::AbstractTensorMap, v, sectors::Tuple{I, Vararg{I}}) where {I <: Sector} =
     copy!(subblock(t, sectors), v)
@@ -530,25 +544,13 @@ using TensorKit.Strided: SliceIndex
 # TODO: should we allow range indices as well
 # TODO 2: should we enable this for (abelian) symmetric tensors with some CUDA like `allowscalar` flag?
 # TODO 3: should we then also allow at least `getindex` for nonabelian tensors
-"""
-    Base.getindex(t::AbstractTensorMap, indices::Vararg{Int})
-    t[indices]
-
-Return a view into the data slice of `t` corresponding to `indices`, by slicing the
-`StridedViews.StridedView` into the full data array.
-"""
 @inline function Base.getindex(t::AbstractTensorMap, indices::Vararg{SliceIndex})
     data = t[trivial_fusiontree(t)...]
     @boundscheck checkbounds(data, indices...)
     @inbounds v = data[indices...]
     return v
 end
-"""
-    Base.setindex!(t::AbstractTensorMap, v, indices::Vararg{Int})
-    t[indices] = v
 
-Assigns `v` to the data slice of `t` corresponding to `indices`.
-"""
 @inline function Base.setindex!(t::AbstractTensorMap, v, indices::Vararg{SliceIndex})
     data = t[trivial_fusiontree(t)...]
     @boundscheck checkbounds(data, indices...)
@@ -558,12 +560,6 @@ end
 
 # TODO : probably deprecate the following
 # For a tensor with trivial symmetry, allow no argument indexing
-"""
-    Base.getindex(t::AbstractTensorMap)
-    t[]
-
-Return a view into the data of `t` as a `StridedViews.StridedView` of size `dims(t)`.
-"""
 @inline function Base.getindex(t::AbstractTensorMap)
     return t[trivial_fusiontree(t)...]
 end

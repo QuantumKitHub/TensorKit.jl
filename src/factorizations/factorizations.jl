@@ -6,9 +6,12 @@ module Factorizations
 export copy_oftype, factorisation_scalartype, one!, truncspace
 
 using ..TensorKit
-using ..TensorKit: AdjointTensorMap, SectorDict, SectorVector,
+using ..TensorKit: AdjointTensorMap, DictGradedSpace, SectorDict, SectorVector,
+    TupleGradedSpace,
     blocktype, foreachblock, one!,
     similar_diagonal, similarstoragetype
+using ..TensorKit: GLOBAL_TIMER
+using TimerOutputs: @timeit_debug
 
 using LinearAlgebra: LinearAlgebra, BlasFloat, Diagonal,
     svdvals, svdvals!, eigen, eigen!,

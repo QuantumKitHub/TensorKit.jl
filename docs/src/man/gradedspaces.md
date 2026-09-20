@@ -25,16 +25,17 @@ However, this is mostly to lower the barrier, as really the instances of `Graded
 ## Implementation details
 
 As mentioned, the way in which the degeneracy dimensions ``n_a`` are stored depends on the specific sector type `I`, more specifically on the `IteratorSize` of `values(I)`.
-If `IteratorSize(values(I)) isa Union{IsInfinite, SizeUnknown}`, the different sectors ``a`` and their corresponding degeneracy ``n_a`` are stored as key value pairs in an `Associative` array, i.e. a dictionary `dims::SectorDict`.
+If `IteratorSize(values(I)) isa Union{IsInfinite, SizeUnknown}`, or if `values(I)` has a known length that exceeds `TensorKit._NTUPLE_STORAGE_THRESHOLD`, the different sectors ``a`` and their corresponding degeneracy ``n_a`` are stored as key value pairs in an `Associative` array, i.e. a dictionary `dims::SectorDict`.
 As the total number of sectors in `values(I)` can be infinite, only sectors ``a`` for which ``n_a`` are stored.
 Here, `SectorDict` is a constant type alias for a specific dictionary implementation, which currently resorts to `SortedVectorDict` implemented in TensorKit.jl.
 Hence, the sectors and their corresponding dimensions are stored as two matching lists (`Vector` instances), which are ordered based on the property `isless(a::I, b::I)`.
 This ensures that the space ``V = ⨁_a ℂ^{n_a} ⊗ R_{a}`` has some unique canonical order in the direct sum decomposition, such that two different but equal instances created independently always match.
 
-If `IteratorSize(values(I)) isa Union{HasLength, HasShape}`, the degeneracy dimensions `n_a` are stored for all sectors `a ∈ values(I)` (also if `n_a == 0`) in a tuple, more specifically a `NTuple{N, Int}` with `N = length(values(I))`.
+If `IteratorSize(values(I)) isa Union{HasLength, HasShape}` and `N = length(values(I))` is at most `TensorKit._NTUPLE_STORAGE_THRESHOLD`, the degeneracy dimensions `n_a` are stored for all sectors `a ∈ values(I)` (also if `n_a == 0`) in a tuple, more specifically a `NTuple{N, Int}`.
 The methods `getindex(values(I), i)` and `findindex(values(I), a)` are used to map between a sector `a ∈ values(I)` and a corresponding index `i ∈ 1:N`.
 As `N` is a compile time constant, these types can be created in a type stable manner.
-Note however that this implies that for large values of `N`, it can be beneficial to define `IteratorSize(values(a)) = SizeUnknown()` to not overly burden the compiler.
+For larger `N` this would overly burden the compiler, which is precisely why the dictionary storage takes over above the threshold.
+The exact threshold is documented with [`TensorKit.sectorstoragetype`](@ref), which reports the storage type of a given sector type; the canonical space type is always obtained as `Vect[I]`.
 
 ## Constructing instances
 

@@ -32,8 +32,8 @@ for pullback! in (:svd_pullback!, :eig_pullback!, :eigh_pullback!)
             kwargs...
         )
         foreachblock(Δt, t) do c, (Δb, b)
-            haskey(inds, c) || return nothing
-            ind = inds[c]
+            ind = get(inds, c, nothing)
+            isnothing(ind) && return nothing
             Fc = block.(F, Ref(c))
             ΔFc = block.(ΔF, Ref(c))
             MAK.$pullback!(Δb, b, Fc, ΔFc, ind; kwargs...)

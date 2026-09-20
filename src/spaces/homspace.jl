@@ -9,6 +9,38 @@ to denote categories and their objects, and keep `HomSpace` distinct.
 struct HomSpace{S <: ElementarySpace, P1 <: CompositeSpace{S}, P2 <: CompositeSpace{S}}
     codomain::P1
     domain::P2
+    function HomSpace{S, P1, P2}(codomain::P1, domain::P2) where {S <: ElementarySpace, P1 <: CompositeSpace{S}, P2 <: CompositeSpace{S}}
+        _check_unit_compatibility(codomain, domain)
+        return new{S, P1, P2}(codomain, domain)
+    end
+end
+function HomSpace(codomain::P1, domain::P2) where {S, P1 <: CompositeSpace{S}, P2 <: CompositeSpace{S}}
+    return HomSpace{S, P1, P2}(codomain, domain)
+end
+
+# check that the legs form a closed cycle of composable spaces:
+# codomain[1] … codomain[N₁], dual(domain[N₂]) … dual(domain[1]).
+function _check_unit_compatibility(
+        codomain::CompositeSpace{S}, domain::CompositeSpace{S}
+    ) where {S <: ElementarySpace}
+    UnitStyle(sectortype(S)) isa GenericUnit || return nothing
+    N₁, N₂ = length(codomain), length(domain)
+
+    if N₁ == 0 && N₂ == 0 # one() ← one(): empty cycle
+        return nothing
+    elseif N₁ == 0 # the domain segment closes onto itself
+        _matchunits(_leftunit(domain[1]), _rightunit(domain[N₂])) ||
+            throw(SpaceMismatch(lazy"domain $domain has incompatible left and right units"))
+    elseif N₂ == 0 # the codomain segment closes onto itself
+        _matchunits(_leftunit(codomain[1]), _rightunit(codomain[N₁])) ||
+            throw(SpaceMismatch(lazy"codomain $codomain has incompatible left and right units"))
+    else
+        _matchunits(_rightunit(codomain[N₁]), _rightunit(domain[N₂])) ||
+            throw(SpaceMismatch(lazy"HomSpace $codomain ← $domain has incompatible right units"))
+        _matchunits(_leftunit(codomain[1]), _leftunit(domain[1])) ||
+            throw(SpaceMismatch(lazy"HomSpace $codomain ← $domain has incompatible left units"))
+    end
+    return nothing
 end
 
 function HomSpace(codomain::S, domain::CompositeSpace{S}) where {S <: ElementarySpace}
@@ -270,6 +302,25 @@ function compose(W::HomSpace{S}, V::HomSpace{S}) where {S}
     return HomSpace(codomain(W), domain(V))
 end
 
+# workaround to permuting after composing intermediate spaces without constructing the latter
+function _contractedspace(
+        A::HomSpace{S}, (oindA, cindA)::Index2Tuple,
+        B::HomSpace{S}, (cindB, oindB)::Index2Tuple,
+        (p₁, p₂)::Index2Tuple{N₁, N₂}
+    ) where {S, N₁, N₂}
+    NA = length(oindA)
+
+    Acind = map(n -> dual(A[n]), cindA)
+    Bcind = map(n -> B[n], cindB)
+    Acind == Bcind || throw(SpaceMismatch(lazy"$(Acind) ≠ $(Bcind)"))
+
+    getopen(n) = n <= NA ? A[oindA[n]] : B[oindB[n - NA]]
+
+    cod = ProductSpace{S, N₁}(map(getopen, p₁))
+    dom = ProductSpace{S, N₂}(map(n -> dual(getopen(n)), p₂))
+    return cod ← dom
+end
+
 function TensorOperations.tensorcontract(
         A::HomSpace, pA::Index2Tuple, conjA::Bool,
         B::HomSpace, pB::Index2Tuple, conjB::Bool,
@@ -290,7 +341,7 @@ function TensorOperations.tensorcontract(
         pB′ = adjointtensorindices(B, pB)
         TensorOperations.tensorcontract(A, pA, false, B′, pB′, false, pAB)
     else
-        return permute(compose(permute(A, pA), permute(B, pB)), pAB)
+        _contractedspace(A, pA, B, pB, pAB)
     end
 end
 

@@ -20,7 +20,7 @@ fTβs = is_ci ? (Duplicated,) : (Duplicated, Const)
     α = randn(T)
     β = randn(T)
 
-    CV = V[1] ⊗ V[2] ← V[3] ⊗ V[4] ⊗ V[5]
+    CV = V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])'
     C = randn(T, CV)
     A = randn(T, CV)
     for TC in (Duplicated,), TA in (Duplicated,)

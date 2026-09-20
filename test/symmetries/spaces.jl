@@ -188,12 +188,18 @@ end
 end
 
 @timedtestset "ElementarySpace: $(type_repr(Vect[I]))" for I in sectorlist
+    u = rand(collect(allunits(I)))
     if Base.IteratorSize(values(I)) === Base.IsInfinite()
         set = unique(vcat(allunits(I)..., [randsector(I) for k in 1:10]))
-        gen = (c => 2 for c in set)
     else
-        gen = (values(I)[k] => (k + 1) for k in 1:length(values(I)))
+        set = values(I)
     end
+    if UnitStyle(I) isa GenericUnit
+        # elementary spaces are homogeneously colored, so restrict to the component of `u`,
+        # which is closed under `⊗` and `dual`; `u` goes first so that `dim(V, u) == 2`
+        set = [u; [c for c in set if c != u && leftunit(c) == u == rightunit(c)]]
+    end
+    gen = (set[k] => (k + 1) for k in 1:length(set))
     V = GradedSpace(gen)
     @test eval(Meta.parse(type_repr(typeof(V)))) == typeof(V)
     @test eval_show(V) == V
@@ -223,22 +229,27 @@ end
     @test eval_show(typeof(V)) == typeof(V)
     # space with no sectors
     @test dim(@constinferred(zerospace(V))) == 0
-    # space with unit(s), always test as if multifusion
-    W = @constinferred GradedSpace(unit => 1 for unit in allunits(I))
-    dict = Dict(unit => 1 for unit in allunits(I))
-    @test W == GradedSpace(dict)
-    @test W == GradedSpace(push!(dict, randsector(I) => 0))
+    # space with the unit of the coloring of V
+    W = @constinferred leftunitspace(V)
+    if UnitStyle(I) isa SimpleUnit
+        @test W == GradedSpace(unit => 1 for unit in allunits(I))
+        dict = Dict(unit => 1 for unit in allunits(I))
+        @test W == GradedSpace(dict)
+        @test W == GradedSpace(push!(dict, randsector(I) => 0))
+    else
+        # spanning several units is not homogeneously colored, and thus not a valid space
+        @test_throws SpaceMismatch GradedSpace(unit => 1 for unit in allunits(I))
+    end
     @test @constinferred(zerospace(V)) == GradedSpace(unit => 0 for unit in allunits(I))
     randunit = rand(collect(allunits(I)))
     @test_throws ArgumentError("Sector $(randunit) appears multiple times") GradedSpace(randunit => 1, randunit => 3)
 
     @test isunitspace(W)
-    @test @constinferred(unitspace(V)) == W == unitspace(typeof(V))
+    @test W == @constinferred(rightunitspace(V))
     if UnitStyle(I) isa SimpleUnit
-        @test @constinferred(leftunitspace(V)) == W == @constinferred(rightunitspace(V))
+        @test @constinferred(unitspace(V)) == W == unitspace(typeof(V))
     else
-        @test_throws ArgumentError leftunitspace(V)
-        @test_throws ArgumentError rightunitspace(V)
+        @test_throws ArgumentError unitspace(V)
     end
     @test eval_show(W) == W
     @test isa(V, VectorSpace)
@@ -261,8 +272,10 @@ end
     @test @constinferred(⊕(V, zerospace(V))) == V
     @test @constinferred(⊕(V, V)) == Vect[I](c => 2dim(V, c) for c in sectors(V))
     @test @constinferred(⊕(V, V, V, V)) == Vect[I](c => 4dim(V, c) for c in sectors(V))
-    @test @constinferred(⊕(V, unitspace(V))) == Vect[I](c => isunit(c) + dim(V, c) for c in sectors(V))
-    @test @constinferred(fuse(V, unitspace(V))) == V
+    if UnitStyle(I) isa SimpleUnit
+        @test @constinferred(⊕(V, unitspace(V))) == Vect[I](c => isunit(c) + dim(V, c) for c in sectors(V))
+        @test @constinferred(fuse(V, unitspace(V))) == V
+    end
     d = Dict{I, Int}()
     for a in sectors(V), b in sectors(V)
         for c in a ⊗ b
@@ -279,7 +292,6 @@ end
     @test V ≺ ⊕(V, V)
     @test !(V ≻ ⊕(V, V))
 
-    u = first(allunits(I))
     @test infimum(V, GradedSpace(u => 3)) == GradedSpace(u => 2)
     @test_throws SpaceMismatch (⊕(V, V'))
 end
@@ -470,13 +482,54 @@ end
             @test @constinferred(insertrightunit(one(V1) ← V1, 0)) == (unitspace(V1) ← V1)
             @test_throws BoundsError insertleftunit(one(V1) ← V1, 0)
         else
-            @test_throws ArgumentError insertrightunit(one(V1) ← V1, 0)
-            @test_throws ArgumentError insertleftunit(one(V1) ← V1, 0)
+            errmsg = "cannot insert a sensible unit space in the empty product space"
+            @test_throws ArgumentError(errmsg) insertrightunit(one(V1) ← V1, 0)
+            @test_throws ArgumentError(errmsg) insertleftunit(one(V1) ← V1, 0)
         end
         @test (V1 ⊗ V2 ← V1 ⊗ V2) == @constinferred TensorKit.compose(W, W')
         @test W == @constinferred permute(W, ((1, 2), (3, 4, 5)))
         @test permute(W, ((2, 5, 4), (1, 3))) == (V2 ⊗ V3 ⊗ V4 ← V1' ⊗ V5') # cyclic permutation
     end
+end
+
+@timedtestset "ProductSpace and HomSpace: GenericUnit coloring $(sectortype(V[1]))" for V in (VIBM, VIBMRepA4)
+    @test UnitStyle(sectortype(V[1])) isa GenericUnit
+    V1, V2, V3, V4, V5 = V
+
+    @test @constinferred(one(V1)) == ProductSpace{typeof(V1)}(())
+
+    @test rightunitspace(V1) == leftunitspace(V2)
+    P1 = @constinferred ProductSpace(V1, V2)
+    @test @constinferred(⊗(V1, V2)) == P1
+
+    @test rightunitspace(V2) != leftunitspace(V1)
+    @test_throws SpaceMismatch (⊗(V2, V1))
+
+    @test rightunitspace(V3) == leftunitspace(V4)
+    @test rightunitspace(V4) == leftunitspace(V5)
+    P2 = @constinferred ProductSpace(V3, V4, V5)
+
+    @test leftunitspace(P1[1]) == rightunitspace(dual(P2[length(P2)]))
+    @test HomSpace(P1, P2') isa HomSpace
+    @test_throws SpaceMismatch P1 ← P2
+
+    @test (V1 ← one(V1)) isa HomSpace
+    @test (one(V1) ← one(V1)) isa HomSpace
+
+    @test leftunitspace(V2) != rightunitspace(V2)
+    @test_throws SpaceMismatch V2 ← one(V2)
+
+    # a space spanning two colorings is rejected on construction
+    @test_throws SpaceMismatch typeof(V1)(first(sectors(V1)) => 1, first(sectors(V3)) => 1)
+
+    # zero spaces are wildcards that suppress only the junctions they touch
+    V0 = zerospace(V1)
+    @test dim(@constinferred(⊗(V1, V2, V0))) == 0
+    @test_throws SpaceMismatch (⊗(V2, V1, V0)) # V2 ⊗ V1 is incompatible on its own
+    @test dim(@constinferred(ProductSpace(V1, V0, V3))) == 0 # V0 breaks the chain
+    @test_throws SpaceMismatch (ProductSpace(V1, V0, V3) ← V3) # left units of V1 and V3
+    @test (ProductSpace(V2, V0) ← one(V2)) isa HomSpace
+    @test (ProductSpace(V0) ← ProductSpace(V0)) isa HomSpace
 end
 
 @timedtestset "show and friends" begin

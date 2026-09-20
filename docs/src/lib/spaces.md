@@ -37,13 +37,18 @@ Vect
 Rep
 ```
 
+The storage that `Vect[I]` selects for the degeneracy dimensions depends on how many sectors `I` has:
+
+```@docs
+TensorKit.sectorstoragetype
+```
+
 In this respect, there are also a number of type aliases for the `GradedSpace` types associated with the most common sectors, namely
 
 ```julia
-const ZNSpace{N} = Vect[ZNIrrep{N}]
-const Z2Space = ZNSpace{2}
-const Z3Space = ZNSpace{3}
-const Z4Space = ZNSpace{4}
+const Z2Space = Rep[ℤ{2}]
+const Z3Space = Rep[ℤ{3}]
+const Z4Space = Rep[ℤ{4}]
 const U1Space = Rep[U₁]
 const CU1Space = Rep[CU₁]
 const SU2Space = Rep[SU₂]

@@ -24,3 +24,5 @@ function (::ProjectTo{DiagonalTensorMap{T, S, A}})(x::AbstractTensorMap) where {
     end
     return y
 end
+
+@non_differentiable TensorKit.degeneracystructure(::Any)

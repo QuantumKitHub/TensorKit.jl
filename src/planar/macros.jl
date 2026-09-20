@@ -44,6 +44,8 @@ function planarparser(planarexpr, kwargs...)
             push!(parser.postprocessors, ex -> insertplanarallocator(ex, allocator))
             # the alloc/free calls are still `GlobalRef(TensorOperations, ...)`
             push!(parser.postprocessors, ex -> TO.insertallocator(ex, allocator))
+            # add checkpoints around the block
+            push!(parser.postprocessors, ex -> TO.insertcheckpoints(ex, allocator))
             break
         end
     end
