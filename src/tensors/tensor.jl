@@ -496,12 +496,36 @@ end
 
 # Getting and setting the data at the subblock level
 # --------------------------------------------------
-function subblock(
+StridedSubblocks(t::TensorMap) = StridedSubblocks(t.data, degeneracystructure(space(t)).subblockstructure)
+StridedSubblocks(t::TensorMap, structure::Vector{<:StridedStructure}) = StridedSubblocks(t.data, structure)
+
+# the subblocks of a `TensorMap` are strided views into its flat data, which the subblock
+# structure of its space describes directly
+SubblockIterator(t::TensorMap) = SubblockIterator(t, subblockstructure(space(t)))
+
+# the throws are kept out of line: mentioning `iter` in the error would make it escape,
+# which costs the caller scalar replacement of the subblock views
+@noinline _throw_subblock_bounds(iter, i) = throw(BoundsError(iter, i))
+@noinline _throw_subblock_missing(f) = throw(SectorMismatch(lazy"fusion tree pair $f is not present"))
+
+@propagate_inbounds function Base.getindex(iter::SubblockIterator{<:TensorMap}, i::Int)
+    @boundscheck 0 < i <= length(iter.structure) || _throw_subblock_bounds(iter, i)
+    @inbounds sz, str, offset = gettokenvalue(iter.structure, i)
+    return StridedView(iter.t.data, sz, str, offset)
+end
+@propagate_inbounds function Base.getindex(iter::SubblockIterator{<:TensorMap}, f::FusionTreePair)
+    found, token = gettoken(iter.structure, f)
+    @boundscheck found || _throw_subblock_missing(f)
+    @inbounds sz, str, offset = gettokenvalue(iter.structure, token)
+    return StridedView(iter.t.data, sz, str, offset)
+end
+
+@propagate_inbounds function subblock(
         t::TensorMap{T, S, N₁, N₂}, (f₁, f₂)::Tuple{FusionTree{I, N₁}, FusionTree{I, N₂}}
     ) where {T, S, N₁, N₂, I <: Sector}
     fts = subblockstructure(space(t))
     found, token = gettoken(fts, (f₁, f₂))
-    @boundscheck found || throw(SectorMismatch(lazy"fusion tree pair ($(f₁, f₂)) is not present"))
+    @boundscheck found || _throw_subblock_missing((f₁, f₂))
     @inbounds begin
         sz, str, offset = gettokenvalue(fts, token)
         return StridedView(t.data, sz, str, offset)

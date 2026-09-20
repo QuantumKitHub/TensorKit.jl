@@ -106,32 +106,49 @@ function Base.show(io::IO, mime::MIME"text/plain", b::BlockIterator)
     return nothing
 end
 
+# Positional subblock collections
+# -------------------------------
+# These address subblocks by their position in the canonical order of `fusiontrees(space(t))`,
+# hoisting the space-level lookups out of the individual accesses.
+
 """
     struct SubblockIterator{T <: AbstractTensorMap, S}
+    SubblockIterator(t::AbstractTensorMap)
 
-Iterator over the subblocks of a tensor of type `T`, possibly holding some pre-computed data of type `S`.
-This is typically constructed through of [`subblocks`](@ref).
+Collection of the subblocks of a tensor of type `T`, indexable both by fusion tree pair and by
+token, i.e. by the position in the canonical order of [`fusiontrees`](@ref), and iterating over
+`(f₁, f₂) => subblock` pairs. This is what [`subblocks`](@ref) returns.
+
+This object additionally has a `structure` field which can be used to precompute data that facilitates
+fast indexing/iteration. By default this only holds the fusion tree pairs, but it can be any dictionary
+mapping those onto the data needed to address the relevant subblocks, as `TensorMap` does.
 """
 struct SubblockIterator{T <: AbstractTensorMap, S}
     t::T
     structure::S
 end
 
+# default just holds the set of fusiontrees for fast iteration and mapping index to fusiontree
+SubblockIterator(t::AbstractTensorMap) = SubblockIterator(t, fusiontrees(t))
+
+storagetype(::Type{<:SubblockIterator{T}}) where {T} = storagetype(T)
+
 Base.IteratorSize(::SubblockIterator) = Base.HasLength()
 Base.IteratorEltype(::SubblockIterator) = Base.HasEltype()
 Base.eltype(::Type{<:SubblockIterator{T}}) where {T} = Pair{fusiontreetype(T), subblocktype(T)}
 Base.length(iter::SubblockIterator) = length(iter.structure)
-Base.isdone(iter::SubblockIterator, state...) = Base.isdone(iter.structure, state...)
+Base.firstindex(::SubblockIterator) = 1
+Base.lastindex(iter::SubblockIterator) = length(iter)
+Base.isdone(iter::SubblockIterator, i::Int = 1) = i > length(iter)
 
-# default implementation assumes `structure = fusiontrees(t)`
-function Base.iterate(iter::SubblockIterator, state...)
-    next = Base.iterate(iter.structure, state...)
-    isnothing(next) && return nothing
-    (f₁, f₂), state = next
-    @inbounds data = subblock(iter.t, (f₁, f₂))
-    return (f₁, f₂) => data, state
+@propagate_inbounds Base.getindex(iter::SubblockIterator, i::Int) =
+    subblock(iter.t, gettokenvalue(keys(iter.structure), i))
+@propagate_inbounds Base.getindex(iter::SubblockIterator, f::FusionTreePair) = subblock(iter.t, f)
+
+function Base.iterate(iter::SubblockIterator, i::Int = 1)
+    i > length(iter) && return nothing
+    @inbounds return gettokenvalue(keys(iter.structure), i) => iter[i], i + 1
 end
-
 
 function Base.showarg(io::IO, iter::SubblockIterator, toplevel::Bool)
     print(io, "subblocks(")
@@ -170,4 +187,42 @@ function Base.show(io::IO, mime::MIME"text/plain", iter::SubblockIterator)
     println(io, ":")
     show_subblocks(io, mime, iter)
     return nothing
+end
+
+"""
+    struct StridedSubblocks{A <: DenseVector, N}
+    StridedSubblocks(t::TensorMap)
+
+Sector-independent, integer-indexable collection of the subblocks of a `TensorMap`, as `StridedView`s into its flat data vector.
+Subblock `i` corresponds to the `i`th fusion tree pair in the canonical order of [`fusiontrees`](@ref).
+
+This is the data structure consumed by the index manipulation kernels, whose type does not depend on the sectortype of `t`:
+it only carries the storage type `A` of the flat data vector and the number of indices `N` of the subblocks.
+As a result, the kernels do not have to be recompiled for each new symmetry type.
+"""
+struct StridedSubblocks{A <: DenseVector, N}
+    data::A
+    structure::Vector{StridedStructure{N}}
+    # store the data as `StridedView` parents it, so that `A` is also the parent type of the views
+    function StridedSubblocks(data::DenseVector, structure::Vector{StridedStructure{N}}) where {N}
+        data′ = parent(StridedView(data))
+        return new{typeof(data′), N}(data′, structure)
+    end
+end
+
+storagetype(::Type{StridedSubblocks{A, N}}) where {A, N} = A
+
+Base.length(s::StridedSubblocks) = length(s.structure)
+Base.firstindex(s::StridedSubblocks) = 1
+Base.lastindex(s::StridedSubblocks) = length(s)
+Base.eltype(::Type{StridedSubblocks{A, N}}) where {A, N} = StridedView{eltype(A), N, A, typeof(identity)}
+
+Base.@propagate_inbounds function Base.getindex(s::StridedSubblocks, i::Int)
+    sz, str, offset = s.structure[i]
+    return StridedView(s.data, sz, str, offset)
+end
+
+function Base.iterate(s::StridedSubblocks, i::Int = 1)
+    i > length(s) && return nothing
+    return @inbounds(s[i]), i + 1
 end
