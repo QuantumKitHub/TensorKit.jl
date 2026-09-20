@@ -51,23 +51,27 @@ function reverse_record(record)
         domain_permutation = reverse(eachindex(record.domain_trees.coupled))
         pair_ids[1, :] .= invperm(codomain_permutation)[pair_ids[1, :]]
         pair_ids[2, :] .= invperm(domain_permutation)[pair_ids[2, :]]
-        return merge(record, (
-            codomain_trees = permute_table(record.codomain_trees, codomain_permutation),
-            domain_trees = permute_table(record.domain_trees, domain_permutation),
-            pair_ids = pair_ids[:, pair_permutation],
-            shapes = record.shapes[:, pair_permutation],
-            data,
-        ))
+        return merge(
+            record, (
+                codomain_trees = permute_table(record.codomain_trees, codomain_permutation),
+                domain_trees = permute_table(record.domain_trees, domain_permutation),
+                pair_ids = pair_ids[:, pair_permutation],
+                shapes = record.shapes[:, pair_permutation],
+                data,
+            )
+        )
     end
     tree_permutation = reverse(eachindex(record.trees.coupled))
     remapping = invperm(tree_permutation)
     pair_ids .= remapping[pair_ids]
-    return merge(record, (
-        trees = permute_table(record.trees, tree_permutation),
-        pair_ids = pair_ids[:, pair_permutation],
-        lengths = record.lengths[pair_permutation],
-        data,
-    ))
+    return merge(
+        record, (
+            trees = permute_table(record.trees, tree_permutation),
+            pair_ids = pair_ids[:, pair_permutation],
+            lengths = record.lengths[pair_permutation],
+            data,
+        )
+    )
 end
 
 @testset "TensorMap save_tensor and load_tensor" begin
@@ -214,10 +218,14 @@ end
         write_record(path, merge(record, (pair_ids = duplicate_ids,)))
         @test_throws ArgumentError load_tensor(path)
 
-        write_record(path, merge(record, (
-            pair_ids = record.pair_ids[:, 1:(end - 1)],
-            shapes = record.shapes[:, 1:(end - 1)],
-        )))
+        write_record(
+            path, merge(
+                record, (
+                    pair_ids = record.pair_ids[:, 1:(end - 1)],
+                    shapes = record.shapes[:, 1:(end - 1)],
+                )
+            )
+        )
         @test_throws ArgumentError load_tensor(path)
 
         invalid_ids = copy(record.pair_ids)
@@ -225,19 +233,23 @@ end
         write_record(path, merge(record, (pair_ids = invalid_ids,)))
         @test_throws ArgumentError load_tensor(path)
 
-        duplicate_table = merge(record.codomain_trees, (
-            uncoupled = hcat(record.codomain_trees.uncoupled, record.codomain_trees.uncoupled[:, 1]),
-            coupled = vcat(record.codomain_trees.coupled, record.codomain_trees.coupled[1]),
-            isdual = hcat(record.codomain_trees.isdual, record.codomain_trees.isdual[:, 1]),
-            innerlines = hcat(record.codomain_trees.innerlines, record.codomain_trees.innerlines[:, 1]),
-            vertices = hcat(record.codomain_trees.vertices, record.codomain_trees.vertices[:, 1]),
-        ))
+        duplicate_table = merge(
+            record.codomain_trees, (
+                uncoupled = hcat(record.codomain_trees.uncoupled, record.codomain_trees.uncoupled[:, 1]),
+                coupled = vcat(record.codomain_trees.coupled, record.codomain_trees.coupled[1]),
+                isdual = hcat(record.codomain_trees.isdual, record.codomain_trees.isdual[:, 1]),
+                innerlines = hcat(record.codomain_trees.innerlines, record.codomain_trees.innerlines[:, 1]),
+                vertices = hcat(record.codomain_trees.vertices, record.codomain_trees.vertices[:, 1]),
+            )
+        )
         write_record(path, merge(record, (codomain_trees = duplicate_table,)))
         @test_throws ArgumentError load_tensor(path)
 
-        bad_dimensions = merge(record.codomain_trees, (
-            uncoupled = record.codomain_trees.uncoupled[1:(end - 1), :],
-        ))
+        bad_dimensions = merge(
+            record.codomain_trees, (
+                uncoupled = record.codomain_trees.uncoupled[1:(end - 1), :],
+            )
+        )
         write_record(path, merge(record, (codomain_trees = bad_dimensions,)))
         @test_throws DimensionMismatch load_tensor(path)
 
