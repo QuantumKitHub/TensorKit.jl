@@ -108,6 +108,9 @@ end
         @test restored isa Tensor
         @test restored == tensor
 
+        save_tensor(path, 2 * tensor)
+        @test load_tensor(path) == 2 * tensor
+
         scalar_space = one(ℂ^1)
         scalar = randn(ComplexF64, scalar_space ← scalar_space)
         path = joinpath(directory, "scalar.jld2")
@@ -135,7 +138,8 @@ end
 
         diagonal_space = Vect[SU2Irrep](0 => 3, 1 // 2 => 2, 1 => 1)'
         diagonal = DiagonalTensorMap(randn(ComplexF64, reduceddim(diagonal_space)), diagonal_space)
-        for (index, value) in enumerate((diagonal, diagonal'))
+        empty_diagonal = DiagonalTensorMap(ComplexF64[], zero(diagonal_space))
+        for (index, value) in enumerate((diagonal, diagonal', empty_diagonal))
             path = joinpath(directory, "diagonal-$index.jld2")
             save_tensor(path, value)
             restored_diagonal = load_tensor(path)
@@ -232,6 +236,10 @@ end
         invalid_ids[1, 1] = size(record.codomain_trees.coupled, 1) + 1
         write_record(path, merge(record, (pair_ids = invalid_ids,)))
         @test_throws ArgumentError load_tensor(path)
+
+        used_pairs = record.pair_ids[:, record.pair_ids[1, :] .!= 1]
+        write_record(path, merge(record, (pair_ids = used_pairs,)))
+        @test_throws "unused codomain fusion tree" load_tensor(path)
 
         duplicate_table = merge(
             record.codomain_trees, (
