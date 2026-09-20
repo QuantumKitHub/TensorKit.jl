@@ -289,6 +289,11 @@ Finally, the name `τ` is reserved for the braiding tensor: every literal crossi
 The `BraidingTensor` itself does not need to be constructed by the user; the macro figures out the appropriate spaces from the surrounding contraction.
 Any layout the macro cannot identify as planar is rejected at parse time with `ArgumentError("not a planar diagram expression: ...")`.
 
+For users writing their own planar kernels, it is important to note that the index tuples `pA = (oindA, cindA)` and `pB = (cindB, oindB)` handed to `planarcontract!` need not individually be planar partitions of the operands.
+As long as the overall diagram is planar, the function `TensorKit.planar_contract_indices(A, pA, B, pB, pAB)` will return the canonical `pA′`, `pB′` and the remaining output permutation `pAB′` for which the operations are each planar.
+These canonical tuples are also the only ones for which the intermediate spaces exist for sector types with multiple units (i.e. multifusion categories with `GenericUnit()`).
+The `@planar` macro automatically applies it to the tuples it emits, but hand-written planar kernels should do the same before allocating a destination with `TensorOperations.tensoralloc_contract`.
+
 To make this concrete, consider the contraction `A * B` for two anyonic tensors, written in a manifestly planar fashion:
 
 ```@example anyoncontraction

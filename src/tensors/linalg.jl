@@ -326,12 +326,19 @@ function LinearAlgebra.tr(t::AbstractTensorMap)
     return s
 end
 
+# LinearAlgebra's BLAS wrappers do not accept `VectorInterface.One`/`Zero`, e.g.
+# `herk_wrapper!` (hit by `mul!(C, A, A')`) calls `isreal` on the scalars.
+_blasscalar(α::Number) = α
+_blasscalar(::One) = true
+_blasscalar(::Zero) = false
+
 # TensorMap multiplication
 function LinearAlgebra.mul!(
         tC::AbstractTensorMap, tA::AbstractTensorMap, tB::AbstractTensorMap, α = true, β = false
     )
     compose(space(tA), space(tB)) == space(tC) ||
         throw(SpaceMismatch(lazy"$(space(tC)) ≠ $(space(tA)) * $(space(tB))"))
+    α, β = _blasscalar(α), _blasscalar(β)
 
     @timeit_debug GLOBAL_TIMER "dense: matmul" begin
         iterC = blocks(tC)
@@ -602,7 +609,7 @@ is `domain(t1) ⊗ domain(t2)`.
 function ⊗(A::AbstractTensorMap, B::AbstractTensorMap)
     check_spacetype(A, B)
 
-    # allocate destination with correct scalartype
+    # index tuples for the blockwise tensor product
     pA = ((codomainind(A)..., domainind(A)...), ())
     pB = ((), (codomainind(B)..., domainind(B)...))
     NA = numind(A)
@@ -610,8 +617,12 @@ function ⊗(A::AbstractTensorMap, B::AbstractTensorMap)
         (codomainind(A)..., (codomainind(B) .+ NA)...),
         (domainind(A)..., (domainind(B) .+ NA)...),
     )
+    # note that we don't use `tensoralloc_contract`: its intermediate spaces are not
+    # cyclically ordered, which is not allowed for `GenericUnit` sectors
     TC = TO.promote_contract(scalartype(A), scalartype(B))
-    C = TO.tensoralloc_contract(TC, A, pA, false, B, pB, false, pAB, Val(false))
+    TTC = TO.tensorcontract_type(TC, A, pA, false, B, pB, false, pAB)
+    structure = (codomain(A) ⊗ codomain(B)) ← (domain(A) ⊗ domain(B))
+    C = TO.tensoralloc(TTC, structure, Val(false))
     zerovector!(C)
 
     # implement tensor product
