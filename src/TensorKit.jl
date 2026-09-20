@@ -29,7 +29,7 @@ export FusionTree
 export IndexSpace, HomSpace, TensorSpace, TensorMapSpace
 export AbstractTensorMap, AbstractTensor, TensorMap, Tensor # tensors and tensor properties
 export DiagonalTensorMap, BraidingTensor
-export save, load
+export save_tensor, load_tensor
 export SpaceMismatch, SectorMismatch, IndexError # error types
 
 # Export general vector space methods

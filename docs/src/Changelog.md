@@ -22,7 +22,7 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 ### Added
 
-- Versioned `save` and `load` support for `TensorMap`, `DiagonalTensorMap`, and `BraidingTensor` objects.
+- Versioned, fusion-tree-based `save_tensor` and `load_tensor` support for `TensorMap`, `DiagonalTensorMap`, and `BraidingTensor` objects.
 
 ### Changed
 

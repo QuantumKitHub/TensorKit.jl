@@ -429,19 +429,19 @@ t[f1,f2]
 
 ## [Reading and writing tensors](@id ss_tensor_readwrite)
 
-TensorKit provides [`save`](@ref) and [`load`](@ref) for storing one tensor map in a versioned JLD2 file.
+TensorKit provides [`save_tensor`](@ref) and [`load_tensor`](@ref) for storing one tensor map in a versioned JLD2 file.
 
 ```julia
 filename = "tensor.jld2"
-save(filename, t)
-t′ = load(filename)
+save_tensor(filename, t)
+t′ = load_tensor(filename)
 ```
 
 `TensorMap`, `DiagonalTensorMap`, and `BraidingTensor` retain their semantic types, while numerical storage is copied to a CPU `Vector` when saving and loading.
+Dense numerical segments are labeled by the semantic fields of their codomain and domain fusion trees, so loading does not depend on fusion-tree or block iteration order.
 The compact data of `DiagonalTensorMap` and the structural description of `BraidingTensor` are stored without materializing dense blocks.
-A lazy `AdjointTensorMap` must be materialized explicitly before saving, for example with `save(filename, convert(TensorMap, t'))`.
+A lazy `AdjointTensorMap` must be materialized explicitly before saving, for example with `save_tensor(filename, convert(TensorMap, t'))`.
 TensorKit does not add a filename extension and replaces an existing file at the requested path.
-When another loaded package exports functions with the same names, use `TensorKit.save` and `TensorKit.load` explicitly.
 
 The older `convert(Dict, t)` and `convert(TensorMap, dict)` workflow remains available for compatibility.
 That representation stores spaces and block sectors as strings and does not preserve specialized tensor-map types, so it is no longer recommended for new files.
