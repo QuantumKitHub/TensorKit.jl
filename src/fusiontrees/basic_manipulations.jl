@@ -31,12 +31,12 @@ true
     0 <= M <= N ||
         throw(ArgumentError("M should be between 0 and N = $N"))
 
-    innerlines_extended = (f.uncoupled[1], f.innerlines..., f.coupled)
+    innerlines_extended = N == 0 ? () : (f.uncoupled[1], f.innerlines..., f.coupled)
     vertices_extended = (1, f.vertices...)
 
     uncoupled₁ = ntuple(n -> f.uncoupled[n], M)
     isdual₁ = ntuple(n -> f.isdual[n], M)
-    coupled₁ = M == 0 ? leftunit(f.uncoupled[1]) : innerlines_extended[M]
+    coupled₁ = M == 0 ? leftunit(f.coupled) : innerlines_extended[M]
     innerlines₁ = ntuple(n -> f.innerlines[n], max(0, M - 2))
     vertices₁ = ntuple(n -> f.vertices[n], max(0, M - 1))
 
@@ -138,8 +138,10 @@ function multi_associator(long::FusionTree{I, N}, short) where {I, N}
     length(short) == N - 1 ||
         throw(DimensionMismatch("second fusion tree must have one less uncoupled leg"))
     uncoupled = long.uncoupled
-    (uncoupled[2:end] == short.uncoupled && long.isdual[2:end] == short.isdual) ||
-        return zero(sectorscalartype(typeof(long.coupled)))
+    if !(uncoupled[2:end] == short.uncoupled && long.isdual[2:end] == short.isdual)
+        return FusionStyle(I) isa MultiplicityFreeFusion ?
+            zero(sectorscalartype(I)) : zeros(sectorscalartype(I), 1)
+    end
 
     if FusionStyle(I) isa MultiplicityFreeFusion
         coeff = one(sectorscalartype(I))

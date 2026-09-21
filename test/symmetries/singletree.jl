@@ -98,6 +98,11 @@ using TensorKitSectors
             f′ = @constinferred TK.join(f₁, f₂)
             @test f′ == f
         end
+
+        f0 = FusionTree{I}((), TK.leftunit(coupled), (), (), ())
+        f0₁, f0₂ = @constinferred TK.split(f0, 0)
+        @test f0₁ == f0
+        @test TK.join(f0₁, f0₂) == f0
     end
 
     @testset "Fusion tree: multi_Fmove" begin
@@ -131,6 +136,15 @@ using TensorKitSectors
                     end
                 end
                 @test norm(values(d)) < 1.0e-12
+
+                short_mismatch = FusionTree{I}(
+                    f′s[1].uncoupled, f′s[1].coupled, map(!, f′s[1].isdual),
+                    f′s[1].innerlines, f′s[1].vertices
+                )
+                if short_mismatch.isdual != f.isdual[2:end]
+                    coeff_mismatch = @constinferred TK.multi_associator(f, short_mismatch)
+                    @test all(iszero, coeff_mismatch)
+                end
             end
         end
 

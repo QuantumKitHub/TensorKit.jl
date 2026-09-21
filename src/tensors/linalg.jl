@@ -417,7 +417,7 @@ end
 function Base.:(/)(t1::AbstractTensorMap, t2::AbstractTensorMap)
     domain(t1) == domain(t2) ||
         throw(SpaceMismatch("non-matching domains in t1 / t2"))
-    T = promote_type(scalartype(t1), scalartype(t2))
+    T = float(promote_type(scalartype(t1), scalartype(t2)))
     t = similar(t1, T, codomain(t1) ← codomain(t2))
     for (c, b) in blocks(t)
         copy!(b, block(t1, c) / block(t2, c))

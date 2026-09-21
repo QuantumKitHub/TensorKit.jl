@@ -486,7 +486,7 @@ function _repartition_body(N)
                 return src => one(T)
             else
                 U = copyto!(zeros(T, length(src), length(src)), LinearAlgebra.I)
-                return src, U
+                return src => U
             end
         end
     else

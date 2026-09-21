@@ -195,10 +195,23 @@ end
 )
 function Mooncake.rrule!!(::CoDual{typeof(TensorKit.scalar)}, t_dt::CoDual{<:AbstractTensorMap})
     t, dt = arrayify(t_dt)
-    val = scalar(t)
+
+    # need to identify the correct unit for contributing the pullback
+    Bs = collect(blocks(t))
+    inds = findall(!iszero ∘ last, Bs)
+    c, val = if isempty(inds)
+        # for multifusion sectors, several unit blocks can be structurally present and
+        # simultaneously zero, by convention picking the first here.
+        # TODO: should we throw an error in this case?
+        first(first(Bs)), zero(scalartype(t))
+    else
+        c, b = Bs[only(inds)]
+        c, only(b)
+    end
     function scalar_pullback(Δval)
-        first(blocks(dt))[2][1] = Δval
+        block(dt, c) .+= Δval
         return NoRData(), NoRData()
     end
+
     return Mooncake.zero_fcodual(val), scalar_pullback
 end

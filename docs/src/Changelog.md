@@ -18,30 +18,60 @@ When making changes to this project, please update the "Unreleased" section with
 
 When releasing a new version, move the "Unreleased" changes to a new version section with the release date.
 
-## [Unreleased](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.1...HEAD)
+## [Unreleased](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.2...HEAD)
 
 ### Added
 
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Performance
+
+## [0.17.2](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.1...v0.17.2) - 2026-09-20
+
+### Added
+
+- Precompilation workloads for common tensor construction, contraction, index manipulation, and factorization patterns, to reduce time-to-first-use ([#487](https://github.com/QuantumKitHub/TensorKit.jl/pull/487))
+- TimerOutputs-based timers for internal kernels, and documentation for the global cache API, to aid profiling and debugging ([#525](https://github.com/QuantumKitHub/TensorKit.jl/pull/525), [#507](https://github.com/QuantumKitHub/TensorKit.jl/pull/507))
+- Enzyme forward/reverse rules for `flip`, `insertleftunit`, `insertrightunit`, and `removeunit`, and for planar operations ([#488](https://github.com/QuantumKitHub/TensorKit.jl/pull/488), [#489](https://github.com/QuantumKitHub/TensorKit.jl/pull/489), [#474](https://github.com/QuantumKitHub/TensorKit.jl/pull/474))
 - `planarcontract!` now supports an arbitrary (cyclic) output permutation `pAB`, in the same way as the non-planar `tensorcontract!`, along with the new helper `TensorKit.planar_contract_indices`, which `@planar` uses to emit canonical index tuples. ([#531](https://github.com/QuantumKitHub/TensorKit.jl/pull/531))
 
 ### Changed
+
 - For sector types with `GenericUnit` such that colorings are not unique, `GradedSpace`, `ProductSpace` and `HomSpace` now check for this compatibility. In particular, this prevents the construction of `TensorMap`s with incompatible colorings, which previously either errored or produced empty tensors inconsistently. ([#515](https://github.com/QuantumKitHub/TensorKit.jl/pull/515))
 - `TensorOperations.tensorcontract_structure` now requires the index tuples `pA` and `pB` to be planar (cyclic) partitions for sector types with `GenericUnit()`; hand-written planar kernels should canonicalize their index tuples with `TensorKit.planar_contract_indices` before allocating. ([#531](https://github.com/QuantumKitHub/TensorKit.jl/pull/531))
-
+- The allocator is now threaded through `transpose!` in planar operations and through additional `@planar` call sites ([#502](https://github.com/QuantumKitHub/TensorKit.jl/pull/502), [#529](https://github.com/QuantumKitHub/TensorKit.jl/pull/529))
 - Index manipulations use a single kernel operating on subblocks addressed by position: `StridedSubblocks` (sector-independent views into the flat data of a `TensorMap`) or `SubblockIterator` (any `AbstractTensorMap`, through `subblock`). The `TreeTransformer`s store the mapping between subblock positions and recoupling coefficients and are cached for every tensor type; conjugated and adjoint operands are handled through this mechanism instead of through `AdjointTensorMap` wrappers (internal) ([#516](https://github.com/QuantumKitHub/TensorKit.jl/issues/516))
 
 ### Deprecated
+
 - The type alias `ZNSpace{N}` is deprecated in favour of `Vect[ZNIrrep{N}]` or `Rep[ℤ{N}]`: a type alias cannot compute the storage type from `N`, so the two only agree for small `N`. ([#511](https://github.com/QuantumKitHub/TensorKit.jl/pull/511))
 
 ### Removed
 
 ### Fixed
 
+- Fixed bugs in the `GradedSpace` constructor and in `similar` for `SectorVector` ([#498](https://github.com/QuantumKitHub/TensorKit.jl/pull/498))
+- `braid` for anyonic sectors no longer silently accepts duplicate `levels` ([#503](https://github.com/QuantumKitHub/TensorKit.jl/pull/503))
+- Fixed backend and allocator insertion in the `@planar` macro ([#505](https://github.com/QuantumKitHub/TensorKit.jl/pull/505))
+- `permute` and `transpose` ChainRules rules now support all keyword arguments ([#513](https://github.com/QuantumKitHub/TensorKit.jl/pull/513))
+- Added a `hash` method for `FusionTreeBlock` to fix a caching bug affecting `permute` on `AdjointTensorMap`s ([#518](https://github.com/QuantumKitHub/TensorKit.jl/pull/518))
+- `@planar` and hand-written planar kernels now canonicalize index partitions before allocating the contraction destination, fixing incorrect/erroring allocation for non-planar `pAB`, for `@planar` contractions whose leg-wise partitions are non-planar by themselves, and for contracting operands with different `spacetype`s (e.g. a `BlockTensorMap` with a `TensorMap`) ([#532](https://github.com/QuantumKitHub/TensorKit.jl/pull/532))
 - `braid!`, `permute!` and `transpose!` with a `BraidingTensor` source now use the cached fusion tree transformers ([#516](https://github.com/QuantumKitHub/TensorKit.jl/issues/516))
+- Made the ChainRules extension's rules consistent with the corresponding Mooncake and Enzyme rules ([#535](https://github.com/QuantumKitHub/TensorKit.jl/pull/535))
+- `isunitspace`, `GradedSpace` `⊕`/`supremum`, `isconj(::ComplexSpace)`, `multi_associator`, `split`, `repartition`, the Mooncake `scalar` rule, `rand`/`randn`/`randexp`/`randisometry` with an explicit `rng`, `pinv(::DiagonalTensorMap)`, and `t1 / t2`: fixed various small bugs found during a pre-release audit ([#537](https://github.com/QuantumKitHub/TensorKit.jl/issues/537), [#538](https://github.com/QuantumKitHub/TensorKit.jl/issues/538), [#539](https://github.com/QuantumKitHub/TensorKit.jl/issues/539), [#540](https://github.com/QuantumKitHub/TensorKit.jl/issues/540), [#541](https://github.com/QuantumKitHub/TensorKit.jl/issues/541), [#542](https://github.com/QuantumKitHub/TensorKit.jl/issues/542), [#543](https://github.com/QuantumKitHub/TensorKit.jl/issues/543), [#544](https://github.com/QuantumKitHub/TensorKit.jl/issues/544), [#545](https://github.com/QuantumKitHub/TensorKit.jl/issues/545), [#546](https://github.com/QuantumKitHub/TensorKit.jl/issues/546))
 
 ### Performance
-- `GradedSpace` operations (`dim`, `flip`, `⊕`, `⊖`, `fuse`, `infimum`, `supremum`, truncation) are now specialised on the storage type of the degeneracy dimensions, and tuple storage is used only for sector types with at most `TensorKit._NTUPLE_STORAGE_THRESHOLD` sectors so that sector types with many sectors no longer burden the compiler. ([#511](https://github.com/QuantumKitHub/TensorKit.jl/pull/511))
 
+- `GradedSpace` operations (`dim`, `flip`, `⊕`, `⊖`, `fuse`, `infimum`, `supremum`, truncation) are now specialised on the storage type of the degeneracy dimensions, and tuple storage is used only for sector types with at most `TensorKit._NTUPLE_STORAGE_THRESHOLD` sectors so that sector types with many sectors no longer burden the compiler. ([#511](https://github.com/QuantumKitHub/TensorKit.jl/pull/511))
+- Fixed a performance regression for non-abelian index manipulations, and reduced memory usage of `twist` ([#521](https://github.com/QuantumKitHub/TensorKit.jl/pull/521), [#501](https://github.com/QuantumKitHub/TensorKit.jl/pull/501))
+- More error strings marked as lazy to reduce runtime overhead in non-error paths ([#492](https://github.com/QuantumKitHub/TensorKit.jl/pull/492))
+- Use vector multiplication instead of an explicit loop for truncation error computation ([#443](https://github.com/QuantumKitHub/TensorKit.jl/pull/443))
 - In-place `permute!`, `braid!` and `transpose!` with `AdjointTensorMap` sources or destinations, as well as `@tensor` expressions with `conj`, now use the same cached and sector-independent kernel as plain `TensorMap`s; other tensor types (e.g. `DiagonalTensorMap`) also use the cached fusion tree transformers, and `subblocks` iterates without repeating any space-level lookup ([#516](https://github.com/QuantumKitHub/TensorKit.jl/issues/516), [#519](https://github.com/QuantumKitHub/TensorKit.jl/pull/519), [#520](https://github.com/QuantumKitHub/TensorKit.jl/pull/520))
 
 ## [0.17.1](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.0...v0.17.1) - 2026-07-13

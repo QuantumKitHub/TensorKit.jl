@@ -48,7 +48,7 @@ Base.axes(V::ComplexSpace, ::Trivial = Trivial()) = Base.OneTo(dim(V))
 dual(V::ComplexSpace) = ComplexSpace(dim(V), !isdual(V))
 Base.conj(V::ComplexSpace) = dual(V)
 isdual(V::ComplexSpace) = V.dual
-isconj(V::ComplexSpace) = true
+isconj(V::ComplexSpace) = isdual(V)
 flip(V::ComplexSpace) = dual(V)
 
 unitspace(::Type{ComplexSpace}) = ComplexSpace(1)

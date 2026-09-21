@@ -268,10 +268,20 @@ function planar_contract_indices(
     oindA′, cindA′ = _planar_rotate(indA, oindA, cindA)
     cindB′, oindB′ = _planar_rotate(indB, cindB, oindB)
 
-    # if all indices are contracted, fix the residual rotation using the other tensor
-    if isempty(oindA′) && !isempty(cindA)
+    # an empty arc leaves a residual rotation, which has to be fixed elsewhere
+    if isempty(cindA) && isempty(cindB)
+        # nothing is contracted: both rotations are fixed by the cycle of the destination
+        NA = length(oindA)
+        indAB = (pAB[1]..., reverse(pAB[2])...)
+        posA′, posB′ = _planar_rotate(
+            indAB, ntuple(identity, Val(NA)), ntuple(n -> NA + n, Val(length(oindB)))
+        )
+        oindA′ = TupleTools.getindices(oindA, posA′)
+        oindB′ = map(n -> oindB[n - NA], posB′)
+    elseif isempty(oindA′)
+        # everything is contracted: the rotation is fixed by the other tensor
         cindA′ = _rotate_to(cindA′, cindA[something(findfirst(==(first(cindB′)), cindB))])
-    elseif isempty(oindB′) && !isempty(cindB)
+    elseif isempty(oindB′)
         cindB′ = _rotate_to(cindB′, cindB[something(findfirst(==(first(cindA′)), cindA))])
     end
     TupleTools.sort(tuple.(cindA′, cindB′)) == TupleTools.sort(tuple.(cindA, cindB)) ||

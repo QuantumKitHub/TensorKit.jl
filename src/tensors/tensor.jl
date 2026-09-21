@@ -393,7 +393,7 @@ for randf in (:rand, :randn, :randexp, :randisometry)
         function $randfun(
                 rng::Random.AbstractRNG, ::Type{TorA}, codomain::TensorSpace
             ) where {TorA}
-            return $randfun(rng, TorA, codomain ← one(domain))
+            return $randfun(rng, TorA, codomain ← one(codomain))
         end
 
         # filling in default eltype
