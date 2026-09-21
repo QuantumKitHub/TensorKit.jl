@@ -99,7 +99,7 @@ using TensorKitSectors
             @test f′ == f
         end
 
-        f0 = FusionTree{I}((), TK.leftunit(one(I)), (), (), ())
+        f0 = FusionTree{I}((), TK.leftunit(coupled), (), (), ())
         f0₁, f0₂ = @constinferred TK.split(f0, 0)
         @test f0₁ == f0
         @test TK.join(f0₁, f0₂) == f0

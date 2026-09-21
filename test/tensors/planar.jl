@@ -108,6 +108,14 @@ end
         pAB3 = ((1, 2), (3, 4, 5))
         E′ = force_planar(randn(ℂ^2 ⊗ (ℂ^2)' ← ℂ^5 ⊗ (ℂ^2)' ⊗ ℂ^4))
         @test_throws ArgumentError planarcontract!(E′, A′, pA, B′, pB, pAB3, true, true)
+
+        # without contracted indices the cyclic reordering is fixed by `pAB` alone
+        F′ = force_planar(randn(ℂ^2 ⊗ ℂ^3 ← ℂ^4))
+        G′ = force_planar(randn(ℂ^5 ← ℂ^6 ⊗ ℂ^7))
+        H′ = force_planar(randn(ℂ^2 ⊗ ℂ^3 ⊗ ℂ^5 ← ℂ^4 ⊗ ℂ^6 ⊗ ℂ^7))
+        pF, pG = ((1, 2, 3), ()), ((), (1, 2, 3))
+        pFG = ((1, 2, 4), (3, 5, 6))
+        @test planarcontract!(H′, F′, pF, G′, pG, pFG, true, false) ≈ F′ ⊗ G′
     end
 
     @testset "planar_contract_indices" begin
@@ -154,6 +162,18 @@ end
         @test pAB2′ == ((1, 2, 3), (4, 5))
         @test last(planar_contract_indices(WA, pA2, WB, pB2, ((2, 1), (3, 4, 5)))) ==
             ((2, 3), (1, 4, 5))
+
+        # no indices contracted: the rotations are only fixed by the destination
+        WAo, WBo = ℂ^2 ⊗ ℂ^3 ← ℂ^4, ℂ^5 ← ℂ^6
+        pAo, pBo = ((1, 2, 3), ()), ((), (1, 2))
+        pAo′, pBo′, pABo′ = @constinferred planar_contract_indices(
+            WAo, pAo, WBo, pBo, ((1, 2, 4), (3, 5))
+        )
+        @test (pAo′, pBo′) == (((3, 1, 2), ()), ((), (2, 1)))
+        @test transpose(WAo, pAo′) isa TensorKit.HomSpace
+        @test transpose(WBo, pBo′) isa TensorKit.HomSpace
+        @test TensorOperations.tensorcontract(WAo, pAo′, false, WBo, pBo′, false, pABo′) ==
+            (ℂ^2 ⊗ ℂ^3 ⊗ ℂ^5 ← ℂ^4 ⊗ ℂ^6)
     end
 end
 
