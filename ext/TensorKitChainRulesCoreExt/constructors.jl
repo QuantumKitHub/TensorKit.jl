@@ -57,6 +57,13 @@ function ChainRulesCore.rrule(::Type{DiagonalTensorMap}, t::AbstractTensorMap)
     return d, DiagonalTensorMap_pullback
 end
 
+function ChainRulesCore.rrule(::Type{TensorMap}, d::DiagonalTensorMap)
+    t = TensorMap(d)
+    P = ProjectTo(d)
+    TensorMap_pullback(Δt) = NoTangent(), P(unthunk(Δt))
+    return t, TensorMap_pullback
+end
+
 function ChainRulesCore.rrule(::typeof(Base.getproperty), t::TensorMap, prop::Symbol)
     if prop === :data
         function getdata_pullback(Δdata)
