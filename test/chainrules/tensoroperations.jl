@@ -3,6 +3,7 @@ using TensorKit
 using TensorKit: type_repr, SectorDict
 using TensorOperations
 using ChainRulesCore
+using VectorInterface: Zero
 using ChainRulesTestUtils
 using Random
 using LinearAlgebra
@@ -47,6 +48,7 @@ for V in spacelist
                     for conjA in (false, true)
                         C = randn!(TensorOperations.tensoralloc_add(T, A, p, conjA, Val(false)))
                         test_rrule(tensortrace!, C, A, p, q, conjA, α, β; atol, rtol)
+                        test_rrule(tensortrace!, C, A, p, q, conjA, α, Zero() ⊢ NoTangent(); atol, rtol)
                     end
                 end
             end
@@ -65,6 +67,7 @@ for V in spacelist
 
                     C2 = randn!(TensorOperations.tensoralloc_add(T, A, p, true, Val(false)))
                     test_rrule(tensoradd!, C2, A, p, true, α, β; atol, rtol)
+                    test_rrule(tensoradd!, C1, A, p, false, α, Zero() ⊢ NoTangent(); atol, rtol)
 
                     A = rand(Bool) ? C1 : C2
                 end
@@ -106,6 +109,10 @@ for V in spacelist
                         test_rrule(
                             tensorcontract!, C, A, pA, conjA, B, pB, conjB, pAB, α, β;
                             atol, rtol
+                        )
+                        test_rrule(
+                            tensorcontract!, C, A, pA, conjA, B, pB, conjB, pAB, α,
+                            Zero() ⊢ NoTangent(); atol, rtol
                         )
                     end
                 end
