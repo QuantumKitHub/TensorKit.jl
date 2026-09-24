@@ -89,6 +89,9 @@ for V in spacelist
 
                 test_rrule(DiagonalTensorMap, rand!(T1))
                 test_rrule(DiagonalTensorMap, randn!(T))
+
+                test_rrule(TensorMap, D1)
+                test_rrule(TensorMap, D)
             end
         end
 
