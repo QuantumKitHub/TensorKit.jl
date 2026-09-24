@@ -24,6 +24,8 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 ### Changed
 
+- `@cached` can be used from other modules, such as package extensions, which then own the cache of the methods they add; these caches are shown with their module in `global_cache_info` (internal)
+
 ### Deprecated
 
 ### Removed
