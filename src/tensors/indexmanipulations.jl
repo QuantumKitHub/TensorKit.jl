@@ -744,8 +744,15 @@ end
 # computes `buffer_dst = buffer_src * transpose(U)`, where both are column-major views into `buffer`
 _recouple!(buffer, buffer_dst, buffer_src, U) =
     (mul!(buffer_dst, buffer_src, transpose(StridedView(U))); nothing)
-# real coefficients acting on complex data: recouple the real and imaginary parts in a single real gemm,
-# called directly since views of reinterpreted arrays are not `StridedMatrix` and `mul!` would not use BLAS
+# real coefficients acting on complex data: recouple the real and imaginary parts in a single real gemm
+function _recouple!(
+        buffer::DenseVector{Complex{R}}, buffer_dst::StridedView, buffer_src::StridedView, U::AbstractMatrix{R}
+    ) where {R <: LinearAlgebra.BlasReal}
+    rbuffer = reinterpret(R, buffer)
+    mul!(_realview(rbuffer, buffer_dst), _realview(rbuffer, buffer_src), transpose(U))
+    return nothing
+end
+# on the CPU, views of reinterpreted arrays are not `StridedMatrix`, so `mul!` would not use BLAS
 function _recouple!(
         buffer::CPUStorage{Complex{R}}, buffer_dst::StridedView, buffer_src::StridedView, U::Matrix{R}
     ) where {R <: LinearAlgebra.BlasReal}

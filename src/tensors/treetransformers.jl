@@ -23,20 +23,14 @@ end
     recoupling_scalartype(A::Type{<:AbstractVector}, Tₛ::Type{<:Number}) -> Type{<:Number}
 
 Scalar type used to store the recoupling coefficients with sector scalar type `Tₛ` in the
-transformers for destination tensors with storagetype `A`. For CPU storage with BLAS scalars, this
-is the precision of the storage, where real coefficients are kept real also for complex storage,
-such that they can be applied to the real and imaginary parts at once. For other storage with BLAS
-scalars, this is the scalar type of the storage.
+transformers for destination tensors with storagetype `A`. For storage with BLAS scalars, this is
+the precision of the storage, where real coefficients are kept real also for complex storage, such
+that they can be applied to the real and imaginary parts at once.
 """
-function recoupling_scalartype(::Type{A}, ::Type{Tₛ}) where {A <: CPUStorage, Tₛ <: Number}
-    T = eltype(A)
-    T <: BlasFloat || return Tₛ
-    return Tₛ <: Real ? real(T) : complex(T)
-end
 function recoupling_scalartype(::Type{A}, ::Type{Tₛ}) where {A, Tₛ <: Number}
     T = eltype(A)
     T <: BlasFloat || return Tₛ
-    return Tₛ <: Real ? T : complex(T)
+    return Tₛ <: Real ? real(T) : complex(T)
 end
 
 # storagetypes are vector types, so the recoupling matrices are stored as reshaped vectors
