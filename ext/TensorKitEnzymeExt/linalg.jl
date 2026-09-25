@@ -99,8 +99,7 @@ function EnzymeRules.augmented_primal(
     ret = func.val(A.val)
     primal = EnzymeRules.needs_primal(config) ? ret : nothing
     shadow = EnzymeRules.needs_shadow(config) ? zero(ret) : nothing
-    cache = EnzymeRules.overwritten(config)[2] ? copy(A.val) : nothing
-    return EnzymeRules.AugmentedReturn(primal, shadow, cache)
+    return EnzymeRules.AugmentedReturn(primal, shadow, nothing)
 end
 function EnzymeRules.reverse(
         config::EnzymeRules.RevConfigWidth{1},
@@ -109,7 +108,6 @@ function EnzymeRules.reverse(
         cache,
         A::Annotation{<:AbstractTensorMap},
     )
-    Aval = something(cache, A.val)
     Δtrace = dret.val
     if !isa(A, Const)
         for (_, b) in blocks(A.dval)
@@ -176,10 +174,10 @@ function EnzymeRules.reverse(
     n, cacheA = cache
     Δn = dret.val
     p.val == 2 || error("currently only implemented for p = 2")
-    Aval = something(cacheA, A.val)
     if !isa(A, Const)
         x = real(Δn) * pinv(n)
-        add!(A.dval, A.val, x)
+        Aval = something(cacheA, A.val)
+        add!(A.dval, Aval, x)
     end
     return (nothing, nothing)
 end
