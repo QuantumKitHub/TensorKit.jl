@@ -11,7 +11,7 @@ function ChainRulesCore.rrule(
         A::AbstractTensorMap, pA::Index2Tuple, conjA::Bool,
         α::Number, β::Number, ba...
     )
-    C′ = tensoradd!(β === Zero() ? similar(C) : copy(C), A, pA, conjA, α, β, ba...)
+    C′ = tensoradd!(copy(C), A, pA, conjA, α, β, ba...)
     # only keep `C` alive on the tape if `dβ` needs it
     C_β = _needs_tangent(β) ? C : nothing
 
@@ -67,7 +67,7 @@ function ChainRulesCore.rrule(
         pAB::Index2Tuple,
         α::Number, β::Number, ba...
     )
-    C′ = tensorcontract!(β === Zero() ? similar(C) : copy(C), A, pA, conjA, B, pB, conjB, pAB, α, β, ba...)
+    C′ = tensorcontract!(copy(C), A, pA, conjA, B, pB, conjB, pAB, α, β, ba...)
     C_β = _needs_tangent(β) ? C : nothing
 
     projectA = ProjectTo(A)
@@ -158,7 +158,7 @@ function ChainRulesCore.rrule(
         A::AbstractTensorMap, p::Index2Tuple, q::Index2Tuple, conjA::Bool,
         α::Number, β::Number, ba...
     )
-    C′ = tensortrace!(β === Zero() ? similar(C) : copy(C), A, p, q, conjA, α, β, ba...)
+    C′ = tensortrace!(copy(C), A, p, q, conjA, α, β, ba...)
     C_β = _needs_tangent(β) ? C : nothing
 
     projectA = ProjectTo(A)
