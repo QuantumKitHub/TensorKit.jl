@@ -12,6 +12,8 @@ function ChainRulesCore.rrule(
         α::Number, β::Number, ba...
     )
     C′ = tensoradd!(copy(C), A, pA, conjA, α, β, ba...)
+    # only keep `C` alive on the tape if `dβ` needs it
+    C_β = _needs_tangent(β) ? C : nothing
 
     projectA = ProjectTo(A)
     projectC = ProjectTo(C)
@@ -49,7 +51,7 @@ function ChainRulesCore.rrule(
         else
             ZeroTangent()
         end
-        dβ = _needs_tangent(β) ? @thunk(projectβ(inner(C, ΔC))) : ZeroTangent()
+        dβ = _needs_tangent(β) ? @thunk(projectβ(inner(C_β, ΔC))) : NoTangent()
         dba = map(_ -> NoTangent(), ba)
         return NoTangent(), dC, dA, NoTangent(), NoTangent(), dα, dβ, dba...
     end
@@ -66,6 +68,7 @@ function ChainRulesCore.rrule(
         α::Number, β::Number, ba...
     )
     C′ = tensorcontract!(copy(C), A, pA, conjA, B, pB, conjB, pAB, α, β, ba...)
+    C_β = _needs_tangent(β) ? C : nothing
 
     projectA = ProjectTo(A)
     projectB = ProjectTo(B)
@@ -138,7 +141,7 @@ function ChainRulesCore.rrule(
         else
             ZeroTangent()
         end
-        dβ = _needs_tangent(β) ? @thunk(projectβ(inner(C, ΔC))) : ZeroTangent()
+        dβ = _needs_tangent(β) ? @thunk(projectβ(inner(C_β, ΔC))) : NoTangent()
         dba = map(_ -> NoTangent(), ba)
         return NoTangent(), dC,
             dA, NoTangent(), NoTangent(),
@@ -156,6 +159,7 @@ function ChainRulesCore.rrule(
         α::Number, β::Number, ba...
     )
     C′ = tensortrace!(copy(C), A, p, q, conjA, α, β, ba...)
+    C_β = _needs_tangent(β) ? C : nothing
 
     projectA = ProjectTo(A)
     projectC = ProjectTo(C)
@@ -190,7 +194,7 @@ function ChainRulesCore.rrule(
         else
             ZeroTangent()
         end
-        dβ = _needs_tangent(β) ? @thunk(projectβ(inner(C, ΔC))) : ZeroTangent()
+        dβ = _needs_tangent(β) ? @thunk(projectβ(inner(C_β, ΔC))) : NoTangent()
         dba = map(_ -> NoTangent(), ba)
         return NoTangent(), dC, dA, NoTangent(), NoTangent(), NoTangent(), dα, dβ, dba...
     end
