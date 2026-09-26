@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Vector spaces · TensorKit.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link href="../../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>TensorKit.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../../">Home</a></li><li><span class="toctext">Manual</span><ul><li><a class="toctext" href="../intro/">Introduction</a></li><li class="current"><a class="toctext" href>Vector spaces</a><ul class="internal"><li><a class="toctext" href="#Fields-1">Fields</a></li><li><a class="toctext" href="#Elementary-vector-spaces-1">Elementary vector spaces</a></li><li><a class="toctext" href="#Composite-spaces-1">Composite spaces</a></li><li><a class="toctext" href="#Some-more-functionality-1">Some more functionality</a></li></ul></li><li><a class="toctext" href="../sectors/">Sectors, representation spaces and fusion trees</a></li><li><a class="toctext" href="../tensors/">Tensors and the <code>TensorMap</code> type</a></li></ul></li><li><span class="toctext">Library</span><ul><li><a class="toctext" href="../../lib/spaces/">Vector spaces</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Manual</li><li><a href>Vector spaces</a></li></ul><a class="edit-page" href="https://github.com/Jutho/TensorKit.jl/blob/master/docs/src/man/spaces.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Vector spaces</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Vector-spaces-1" href="#Vector-spaces-1">Vector spaces</a></h1><div></div><p>From the <a href="man/@ref">Introduction</a>, it should be clear that an important aspect in the definition of a tensor (map) is specifying the vector spaces and their structure in the domain and codomain of the map. The starting point is an abstract type <code>VectorSpace</code></p><pre><code class="language-julia">abstract type VectorSpace end</code></pre><p>which serves in a sense as the category <span>$\mathbf{Vect}$</span>. All instances of subtypes of <code>VectorSpace</code> will represent vector spaces. In particular, we define two abstract subtypes</p><pre><code class="language-julia">abstract type ElementarySpace{𝕜} &lt;: VectorSpace end
+const IndexSpace = ElementarySpace
+
+abstract type CompositeSpace{S&lt;:ElementarySpace} &lt;: VectorSpace end</code></pre><p>Here, <code>ElementarySpace</code> is a super type for all vector spaces that can be associated with the individual indices of a tensor, as hinted to by its alias <code>IndexSpace</code>. It is parametrically dependent on <code>𝕜</code>, the field of scalars (see the next section on <a href="#Fields-1">Fields</a>).</p><p>On the other hand, subtypes of <code>CompositeSpace{S}</code> where <code>S&lt;:ElementarySpace</code> are composed of a number of elementary spaces of type <code>S</code>. So far, there is a single concrete type <code>ProductSpace{S,N}</code> that represents the homogeneous tensor product of <code>N</code> vector spaces of type <code>S</code>. Its properties are discussed in the section on <a href="man/@ref">Composite spaces</a>, together with possible extensions for the future.</p><h2><a class="nav-anchor" id="Fields-1" href="#Fields-1">Fields</a></h2><p>Vector spaces are defined over a field of scalars. We define a type hierarchy to specify the scalar field, but so far only support real and complex numbers, via</p><pre><code class="language-julia">abstract type Field end
+
+struct RealNumbers &lt;: Field end
+struct ComplexNumbers &lt;: Field end
+
+const ℝ = RealNumbers()
+const ℂ = ComplexNumbers()</code></pre><p>Note that <code>ℝ</code> and <code>ℂ</code> can be typed as <code>\bbR</code>+TAB and <code>\bbC</code>+TAB. One reason for defining this new type hierarchy instead of recycling the types from Julia&#39;s <code>Number</code> hierarchy is to introduce some syntactic suggar without commiting type piracy. In particular, we now have</p><pre><code class="language-julia-repl">julia&gt; 3 ∈ ℝ
+true
+
+julia&gt; 5.0 ∈ ℂ
+true
+
+julia&gt; 5.0+1.0*im ∈ ℝ
+false
+
+julia&gt; Float64 ⊆ ℝ
+true
+
+julia&gt; ComplexF64 ⊆ ℂ
+true
+
+julia&gt; ℝ ⊆ ℂ
+true
+
+julia&gt; ℂ ⊆ ℝ
+false</code></pre><p>and furthermore ––probably more usefully–– <code>ℝ^n</code> and <code>ℂ^n</code> create specific elementary vector spaces as described in the next section. The underlying field of a vector space or tensor <code>a</code> can be obtained with <code>field(a)</code>.</p><h2><a class="nav-anchor" id="Elementary-vector-spaces-1" href="#Elementary-vector-spaces-1">Elementary vector spaces</a></h2><p>As mentioned at the beginning of this section, vector spaces that are associated with the individual indices of a tensor should be implemented as subtypes of <code>ElementarySpace</code>. As the domain and codomain of a tensor map will be the tensor product of such objects which all have the same type, it is important that related vector spaces, e.g. the dual space, are objects of the same concrete type (i.e. with the same type parameters in case of a parametric type). In particular, every <code>ElementarySpace</code> should implement the following methods</p><ul><li><p><code>dim(::ElementarySpace) -&gt; ::Int</code> returns the dimension of the space as an <code>Int</code></p></li><li><p><code>dual{S&lt;:ElementarySpace}(::S) -&gt; ::S</code> returns the   <a href="http://en.wikipedia.org/wiki/Dual_space">dual space</a> <code>dual(V)</code>, using an instance of   the same concrete type (i.e. not via type parameters); this should satisfy   <code>dual(dual(V)==V</code></p></li><li><p><code>conj{S&lt;:ElementarySpace}(::S) -&gt; ::S</code> returns the   <a href="http://en.wikipedia.org/wiki/Complex_conjugate_vector_space">complex conjugate space</a>   <code>conj(V)</code>, using an instance of the same concrete type (i.e. not via type parameters);   this should satisfy <code>conj(conj(V))==V</code> and we automatically have   <code>conj(V::ElementarySpace{ℝ}) = V</code>.</p></li></ul><p>For convenience, the dual of a space <code>V</code> can also be obtained as <code>V&#39;</code>.</p><p>There is concrete type <code>GeneralSpace</code> which is completely characterized by its field <code>𝕜</code>, its dimension and whether its the dual and/or complex conjugate of <span>$𝕜^d$</span>.</p><pre><code class="language-julia">struct GeneralSpace{𝕜} &lt;: ElementarySpace{𝕜}
+    d::Int
+    dual::Bool
+    conj::Bool
+end</code></pre><p>We furthermore define the abstract type</p><pre><code class="language-julia">abstract InnerProductSpace{𝕜} &lt;: ElementarySpace{𝕜}</code></pre><p>to contain all vector spaces <code>V</code> which have an inner product and thus a canonical mapping from <code>dual(V)</code> to <code>V</code> (for <code>𝕜 ⊆ ℝ</code>) or from <code>dual(V)</code> to <code>conj(V)</code> (otherwise). This mapping is provided by the metric, but no further support for working with metrics is currently implemented.</p><p>Finally there is</p><pre><code class="language-julia">abstract EuclideanSpace{𝕜} &lt;: InnerProductSpace{𝕜}</code></pre><p>to contain all spaces <code>V</code> with a standard Euclidean inner product (i.e. where the metric is the identity). These spaces have the natural isomorphisms <code>dual(V) == V</code> (for <code>𝕜&lt;:Real</code>) or <code>dual(V) == conj(V)</code> (for <code>𝕜&lt;:Complex</code>). In particular, we have two concrete types</p><pre><code class="language-julia">immutable CartesianSpace &lt;: EuclideanSpace{ℝ}
+    d::Int
+end
+immutable ComplexSpace &lt;: EuclideanSpace{ℂ}
+  d::Int
+  dual::Bool
+end</code></pre><p>to represent the Euclidean spaces <span>$ℝ^d$</span> or <span>$ℂ^d$</span> without further inner structure. They can be created using the syntax <code>ℝ^d</code> and <code>ℂ^d</code>, or <code>(ℂ^d)&#39;</code>for the dual space of the latter. Note that the brackets are required because of the precedence rules, since <code>d&#39; == d</code> for <code>d::Integer</code>. Some examples:</p><pre><code class="language-julia-repl">julia&gt; dim(ℝ^10)
+10
+
+julia&gt; (ℝ^10)&#39; == ℝ^10
+true
+
+julia&gt; isdual((ℂ^5))
+false
+
+julia&gt; isdual((ℂ^5)&#39;)
+true
+
+julia&gt; isdual((ℝ^5)&#39;)
+false
+
+julia&gt; dual(ℂ^5) == (ℂ^5)&#39; == conj(ℂ^5)
+true</code></pre><p>We refer to the next section on <a href="../sectors/#Sectors,-representation-spaces-and-fusion-trees-1">Sectors, representation spaces and fusion trees</a> for further information about <code>RepresentationSpace</code>, which is a subtype of <code>EuclideanSpace{ℂ}</code> with an inner structure corresponding to the irreducible representations of a group.</p><h2><a class="nav-anchor" id="Composite-spaces-1" href="#Composite-spaces-1">Composite spaces</a></h2><p>Composite spaces are vector spaces that are built up out of individual elementary vector spaces. The most prominent (and currently only) example is a tensor product of <code>N</code> elementary spaces of the same type <code>S</code>, which is implemented as</p><pre><code class="language-julia">struct ProductSpace{S&lt;:ElementarySpace, N} &lt;: CompositeSpace{S}
+    spaces::NTuple{N, S}
+end</code></pre><p>Given some <code>V1::S</code>, <code>V2::S</code>, <code>V3::S</code> of the same type <code>S&lt;:ElementarySpace</code>, we can easily construct <code>ProductSpace{S,3}((V1,V2,V3))</code> as <code>ProductSpace(V1,V2,V3)</code> or using <code>V1 ⊗ V2 ⊗ V3</code>, where <code>⊗</code> is simply obtained by typing <code>\otimes</code>+TAB. In fact, for convenience, also the regular multiplication operator <code>*</code> acts as tensor product between vector spaces, and as a consequence so does raising a vector space to a positive integer power, i.e.</p><pre><code class="language-julia-repl">julia&gt; V1 = ℂ^2
+ℂ^2
+
+julia&gt; V2 = ℂ^3
+ℂ^3
+
+julia&gt; V1 ⊗ V2 ⊗ V1&#39; == V1 * V2 * V1&#39; == ProductSpace(V1,V2,V1&#39;) == ProductSpace(V1,V2) ⊗ V1&#39;
+true
+
+julia&gt; V1^3
+(ℂ^2 ⊗ ℂ^2 ⊗ ℂ^2)
+
+julia&gt; dim(V1 ⊗ V2)
+6
+
+julia&gt; dims(V1 ⊗ V2)
+(2, 3)
+
+julia&gt; dual(V1 ⊗ V2)
+((ℂ^3)&#39; ⊗ (ℂ^2)&#39;)</code></pre><p>Here, the new function <code>dims</code> maps <code>dim</code> to the individual spaces in a <code>ProductSpace</code> and returns the result as a tuple. Note that the rationale for the last result was explained in the subsection <a href="../intro/#Duals-1">Duals</a> of <a href="../intro/#Properties-of-monoidal-categories-1">Properties of monoidal categories</a>.</p><p>Following Julia&#39;s Base library, the function <code>one</code> applied to a <code>ProductSpace{S,N}</code> returns the multiplicative identity, which is <code>ProductSpace{S,0}</code>. The same result is obtained when acting on an instance <code>V</code> of <code>S::ElementarySpace</code> directly, however note that <code>V ⊗ one(V)</code> will yield a <code>ProductSpace{S,1}(V)</code> and not <code>V</code> itself. Similar to Julia Base, <code>one</code> also works in the type domain.</p><p>In the future, other <code>CompositeSpace</code> types could be added. For example, the wave function of an <code>N</code>-particle quantum system in first quantization would require the introduction of a <code>SymmetricSpace{S,N}</code> or a <code>AntiSymmetricSpace{S,N}</code> for bosons or fermions respectively, which correspond to the symmetric (permutation invariant) or antisymmetric subspace of <code>V^N</code>, where <code>V::S</code> represents the Hilbert space of the single particle system. Other domains, like general relativity, might also benefit from tensors living in a subspace with certain symmetries under specific index permutations.</p><h2><a class="nav-anchor" id="Some-more-functionality-1" href="#Some-more-functionality-1">Some more functionality</a></h2><p>Some more convenience functions are provided for the euclidean spaces <a href="../../lib/spaces/#TensorKit.CartesianSpace"><code>CartesianSpace</code></a> and <a href="../../lib/spaces/#TensorKit.ComplexSpace"><code>ComplexSpace</code></a>, as well as for <a href="../../lib/spaces/#TensorKit.RepresentationSpace"><code>RepresentationSpace</code></a> discussed in the next section. All functions below that act on more than a single elementary space, are only defined when the different spaces are of the same concrete subtype <code>S&lt;:ElementarySpace</code></p><p>The function <code>fuse(V1, V2, ...)</code> or <code>fuse(V1 ⊗ V2 ⊗ ...)</code> returns an elementary space that is isomorphic to <code>V1 ⊗ V2 ⊗ ...</code>, in the sense that a unitary tensor map can be constructed between those spaces, e.g. from <code>W = V1 ⊗ V2 ⊗ ...</code> to <code>V = fuse(V1 ⊗ V2 ⊗ ...)</code>. The function <code>flip(V1)</code> returns a space that is isomorphic to <code>V1</code> but has <code>isdual(flip(V1)) == isdual(V1&#39;)</code>, i.e. if <code>V1</code> is a normal space than <code>flip(V1)</code> is a dual space. Again, isomorphism here implies that a unitary map (but there is no canonical choice) can be constructed between both spaces. <code>flip(V1)</code> is different from <code>dual(V1)</code> in the case of <a href="../../lib/spaces/#TensorKit.RepresentationSpace"><code>RepresentationSpace</code></a>. It is useful to flip a tensor index from a ket to a bra (or vice versa), by contracting that index with a unitary map from <code>V1</code> to <code>flip(V1)</code>. We refer to <code>[Index operations](@ref)</code> for further information. Some examples:</p><pre><code class="language-julia-repl">julia&gt; fuse(ℝ^5, ℝ^3)
+ℝ^15
+
+julia&gt; fuse(ℂ^3, (ℂ^5)&#39;, ℂ^2)
+ℂ^30
+
+julia&gt; flip(ℂ^4)
+(ℂ^4)&#39;</code></pre><p>We also define the direct sum <code>V1</code> and <code>V2</code> as <code>V1 ⊕ V2</code>, where <code>⊕</code> is obtained by typing <code>\oplus</code>+TAB. This is possible only if <code>isdual(V1) == isdual(V2)</code>. With a little pun on Julia Base, <code>oneunit</code> applied to an elementary space (in the value or type domain) returns the one-dimensional space, which is isomorphic to the scalar field of the spaceitself. Some examples illustrate this better</p><pre><code class="language-julia-repl">julia&gt; ℝ^5 ⊕ ℝ^3
+ℝ^8
+
+julia&gt; ℂ^5 ⊕ ℂ^3
+ℂ^8
+
+julia&gt; ℂ^5 ⊕ (ℂ^3)&#39;
+ERROR: SpaceMismatch(Direct sum of a vector space and its dual does not exist)
+
+julia&gt; oneunit(ℝ^3)
+ℝ^1
+
+julia&gt; ℂ^5 ⊕ oneunit(ComplexSpace)
+ℂ^6
+
+julia&gt; oneunit((ℂ^3)&#39;)
+ℂ^1
+
+julia&gt; (ℂ^5) ⊕ oneunit((ℂ^5))
+ℂ^6
+
+julia&gt; (ℂ^5)&#39; ⊕ oneunit((ℂ^5)&#39;)
+ERROR: SpaceMismatch(Direct sum of a vector space and its dual does not exist)</code></pre><p>For two spaces <code>V1</code> and <code>V2</code>, <code>min(V1,V2)</code> returns the space with the smallest dimension, whereas <code>max(V1,V2)</code> returns the space with the largest dimension, as illustrated by</p><pre><code class="language-julia-repl">julia&gt; min(ℝ^5, ℝ^3)
+ℝ^3
+
+julia&gt; max(ℂ^5, ℂ^3)
+ℂ^5
+
+julia&gt; max(ℂ^5, (ℂ^3)&#39;)
+ERROR: SpaceMismatch(V1 and V2 should both be normal or dual spaces)</code></pre><p>Again, we impose <code>isdual(V1) == isdual(V2)</code>. Again, the use of these methods is to construct unitary or isometric tensors that map between different spaces, which will be elaborated upon in the section on Tensors.</p><footer><hr/><a class="previous" href="../intro/"><span class="direction">Previous</span><span class="title">Introduction</span></a><a class="next" href="../sectors/"><span class="direction">Next</span><span class="title">Sectors, representation spaces and fusion trees</span></a></footer></article></body></html>
