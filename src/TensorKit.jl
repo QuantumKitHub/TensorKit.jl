@@ -29,6 +29,7 @@ export FusionTree
 export IndexSpace, HomSpace, TensorSpace, TensorMapSpace
 export AbstractTensorMap, AbstractTensor, TensorMap, Tensor # tensors and tensor properties
 export DiagonalTensorMap, BraidingTensor
+export save_tensor, load_tensor
 export SpaceMismatch, SectorMismatch, IndexError # error types
 
 # Export general vector space methods
@@ -267,6 +268,7 @@ include("tensors/treetransformers.jl")
 include("tensors/indexmanipulations.jl")
 include("tensors/diagonal.jl")
 include("tensors/braidingtensor.jl")
+include("tensors/io.jl")
 
 include("factorizations/factorizations.jl")
 using .Factorizations

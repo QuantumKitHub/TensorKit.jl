@@ -22,6 +22,8 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 ### Added
 
+- Versioned, fusion-tree-based `save_tensor` and `load_tensor` support for `TensorMap`, `DiagonalTensorMap`, and `BraidingTensor` objects through the optional JLD2-based `TensorKitJLD2Ext` extension.
+
 ### Changed
 
 ### Deprecated
