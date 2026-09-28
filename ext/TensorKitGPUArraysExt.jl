@@ -166,7 +166,7 @@ struct DeviceUniqueTreeTransformer{VB <: AbstractVector{<:UniqueTransformerBlock
 end
 
 # strides of a dense array of shape `sz`
-_dense_strides(size::NTuple{N, Int}) where {N} = ntuple(n -> prod(size[1:(n - 1)]; init = 1), Val(N))
+_dense_strides(size::Dims) = (1, Base.front(cumprod(size))...)
 _permute_strides(strides::NTuple{N, Int}, p) where {N} = ntuple(n -> strides[p[n]], Val(N))
 
 # `permute(Vsrc, p) == Vdst` is enforced when the transformer is built, so the permuted
