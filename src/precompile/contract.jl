@@ -20,6 +20,7 @@ function precompile_contract(::Type{S}; eltypes = PRECOMPILE_ELTYPES, ndims = PR
     V = unitspace(S)
     backend = TO.DefaultBackend()
     allocator = TO.DefaultAllocator()
+    symmetric_braiding = BraidingStyle(sectortype(S)) isa SymmetricBraiding
     for T in eltypes
         α, β = rand(T), rand(T)
 
@@ -32,27 +33,31 @@ function precompile_contract(::Type{S}; eltypes = PRECOMPILE_ELTYPES, ndims = PR
             B = randn(T, W ← V)
             pA = ((1,), ntuple(i -> i + 1, Val(N - 1)))
             pB = (ntuple(identity, Val(N - 1)), (N,))
-            C = TO.tensoralloc_contract(T, A, pA, false, B, pB, false, ((1,), (2,)), Val(false))
-            # both scalar-type paths: generic `(α,β)` and the identity `(One(), Zero())` fast path
-            TO.tensorcontract!(C, A, pA, false, B, pB, false, ((1,), (2,)), α, β, backend, allocator)
-            TO.tensorcontract!(C, A, pA, false, B, pB, false, ((1,), (2,)), One(), Zero(), backend, allocator)
+            pAB = ((1,), (2,))
+            C = TO.tensoralloc_contract(T, A, pA, false, B, pB, false, pAB, Val(false))
 
-            # a non-trivial permutation exercises the repartition/braid/transform machinery at
-            # arity N (the contraction above takes the no-copy view path for its natural partition)
-            permute(A, (ntuple(i -> N - i + 1, Val(N)), ()))
+            planarcontract!(C, A, pA, B, pB, pAB, α, β, backend, allocator)
+            planarcontract!(C, A, pA, B, pB, pAB, One(), Zero(), backend, allocator)
+
+            if symmetric_braiding
+                TO.tensorcontract!(C, A, pA, false, B, pB, false, pAB, α, β, backend, allocator)
+                TO.tensorcontract!(C, A, pA, false, B, pB, false, pAB, One(), Zero(), backend, allocator)
+            end
         end
 
         # the conjugated-operand branch (`conjA=true`) is a distinct runtime path (adjoint
-        # handling) that `conj(A) * B` networks hit; `@tensor` handles the space bookkeeping
+        # handling) that `conj(A) * B` networks hit; `@plansor` picks the planar or non-planar
+        # implementation depending on the braiding style, so this compiles for any sectortype
         A2 = randn(T, V ← V)
         B2 = randn(T, V ← V)
-        @tensor Cc[a; c] := conj(A2[b; a]) * B2[b; c]
+        @plansor Cc[a; c] := conj(A2[b; a]) * B2[b; c]
 
         # partial trace (the two traced legs are mutually dual)
         At = randn(T, V ⊗ V' ← V)
-        TO.tensortrace!(
-            TO.tensoralloc_add(T, At, ((3,), ()), false, Val(false)),
-            At, ((3,), ()), ((1,), (2,)), false, α, β, backend, allocator
+        Ct = TO.tensoralloc_add(T, At, ((3,), ()), false, Val(false))
+        planartrace!(Ct, At, ((3,), ()), ((1,), (2,)), α, β, backend, allocator)
+        symmetric_braiding && TO.tensortrace!(
+            Ct, At, ((3,), ()), ((1,), (2,)), false, α, β, backend, allocator
         )
     end
     return nothing

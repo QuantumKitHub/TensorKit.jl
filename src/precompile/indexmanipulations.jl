@@ -17,6 +17,8 @@ See also [`precompile_contract`](@ref TensorKit.precompile_contract), [`precompi
 """
 function precompile_indexmanipulations(::Type{S}; eltypes = PRECOMPILE_ELTYPES, ndims = PRECOMPILE_NDIMS) where {S <: IndexSpace}
     V = unitspace(S)
+    symmetric_braiding = BraidingStyle(sectortype(S)) isa SymmetricBraiding
+    has_braiding = !(BraidingStyle(sectortype(S)) isa NoBraiding)
     for T in eltypes
         # `Val(N)`/`ntuple` keep the index tuples concrete so the machinery specializes per arity
         for N in 1:ndims
@@ -30,8 +32,13 @@ function precompile_indexmanipulations(::Type{S}; eltypes = PRECOMPILE_ELTYPES, 
             p2 = ntuple(i -> perm[i + N₁], Val(N - N₁))
 
             # `permute` and `braid` funnel through `add_transform!` with different transformers
-            permute(t, (p1, p2))
-            braid(t, (p1, p2), ntuple(identity, Val(N)))   # `levels` is a tuple over the source indices
+            if symmetric_braiding
+                permute(t, (p1, p2))
+                permute(t', (p1, p2))
+            elseif has_braiding
+                braid(t, (p1, p2), ntuple(identity, Val(N)))   # `levels` is a tuple over the source indices
+                braid(t', (p1, p2), ntuple(identity, Val(N)))   # `levels` is a tuple over the source indices
+            end
 
             # canonical transpose `(reverse(domain), reverse(codomain))` is always a valid cyclic transpose
             tp1 = ntuple(i -> N - i + 1, Val(N - N₁))
@@ -42,6 +49,7 @@ function precompile_indexmanipulations(::Type{S}; eltypes = PRECOMPILE_ELTYPES, 
             repartition(t, N₁ < N ? N₁ + 1 : N₁ - 1)
 
             twist(t, 1)
+            twist(t', 1)
         end
     end
     return nothing

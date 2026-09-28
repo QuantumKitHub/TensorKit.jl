@@ -3,9 +3,8 @@ module Precompilation
 export precompile_indexmanipulations, precompile_contract, precompile_factorizations
 
 using ..TensorKit
-using ..TensorKit: TO
+using ..TensorKit: TO, planarcontract!, planartrace!
 using VectorInterface: One, Zero
-using TensorOperations: @tensor
 using PrecompileTools: @setup_workload, @compile_workload
 using Preferences: @load_preference
 
