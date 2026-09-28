@@ -11,6 +11,7 @@ using TensorKit.TensorOperations: linearize, DefaultAllocator
 using TensorKit.Factorizations
 using TensorKit.Factorizations: AbstractAlgorithm
 using TensorKit: SectorDict, tensormaptype, scalar, similarstoragetype, AdjointTensorMap, scalartype, project_symmetric_and_check
+using TensorKit: StridedSubblocks, UniqueTreeTransformer
 import TensorKit: randisometry, rand, randn, fill_braidingsubblock!, add_transform_kernel!
 
 function TensorKit.fill_braidingsubblock!(data::TD, val) where {T, TD <: Union{<:AnyGPUMatrix{T}, <:StridedViews.StridedView{T, 4, <:AnyGPUArray{T}}}}
@@ -124,14 +125,15 @@ end
 
 # Device-side tree transformers
 # -----------------------------
-# We pack all the information on the CPU side into dense vectors of numbers,
-# plus some accounting information so we know how to unpack in the kernel.
-# Also, we can permute the source strides "in advance" on the CPU side.
+# A `TreeTransformer` stores the mapping between subblock positions (plus recoupling
+# coefficients) and the `StridedStructure`s of the source and destination spaces.
+# We resolve the positions into sizes/strides/offsets and pack all the information on the
+# CPU side into dense vectors of numbers, plus some accounting information so we know how
+# to unpack in the kernel. Also, we can permute the source strides "in advance" on the CPU side.
 # We also precompute the strides of the subblock each kernel index will work on,
-# so that the GPU thread can recover the Cartesian
-# coordinates it will need for input/ouput, and a running `work_offsets` count
-# of destination elements, so that a kernel can run one thread per output
-# element and recover which input that element belongs with.
+# so that the GPU thread can recover the Cartesian coordinates it will need for input/ouput,
+# and a running `work_offsets` count of destination elements, so that a kernel can run one
+# thread per output element and recover which input that element belongs with.
 
 # Some possible TODO here:
 # - Try cuTILE as this is a classic tile programming problem
@@ -141,12 +143,12 @@ end
 const TreeStructure{N} = Tuple{NTuple{N, Int}, Int}
 
 """
-    AbelianTransformerBlock{T, N}
+    UniqueTransformerBlock{T, N}
 
 `isbits` descriptor for a subblock that is a *single* scaled permutation:
-an entry of an `AbelianTreeTransformer`.
+an entry of a `UniqueTreeTransformer`.
 """
-struct AbelianTransformerBlock{T, N}
+struct UniqueTransformerBlock{T, N}
     coeff::T
     sz::NTuple{N, Int}
     dense_strides::NTuple{N, Int}
@@ -157,7 +159,7 @@ struct AbelianTransformerBlock{T, N}
 end
 
 # device-side simple struct that GPU kernels can use
-struct DeviceAbelianTreeTransformer{VB <: AbstractVector{<:AbelianTransformerBlock}, VO <: AbstractVector{Int}}
+struct DeviceUniqueTreeTransformer{VB <: AbstractVector{<:UniqueTransformerBlock}, VO <: AbstractVector{Int}}
     blocks::VB
     work_offsets::VO
     nwork::Int
@@ -169,10 +171,10 @@ _permute_strides(strides::NTuple{N, Int}, p) where {N} = ntuple(n -> strides[p[n
 
 # `permute(Vsrc, p) == Vdst` is enforced when the transformer is built, so the permuted
 # source shape always matches `sz_dst` and the two views share Cartesian inds.
-function _abelian_block(
+function _unique_block(
         coeff::T, (size_dst, strides_dst, offsets_dst), (_, strides_src, offsets_src), p
     ) where {T}
-    return AbelianTransformerBlock{T, length(size_dst)}(
+    return UniqueTransformerBlock{T, length(size_dst)}(
         coeff, size_dst, _dense_strides(size_dst), strides_dst, offsets_dst,
         _permute_strides(strides_src, p), offsets_src
     )
@@ -185,12 +187,14 @@ function _work_offsets(work)
     return offsets, total
 end
 
-function DeviceAbelianTreeTransformer(
-        transformer::TensorKit.AbelianTreeTransformer{T, N}, p
-    ) where {T, N}
-    blocks = AbelianTransformerBlock{T, N}[_abelian_block(entry..., p) for entry in transformer.data]
+function DeviceUniqueTreeTransformer(transformer::UniqueTreeTransformer{T, N}, p) where {T, N}
+    (; structure_dst, structure_src) = transformer
+    blocks = UniqueTransformerBlock{T, N}[
+        _unique_block(coeff, structure_dst[idst], structure_src[isrc], p)
+            for (coeff, idst, isrc) in transformer.data
+    ]
     work_offsets, nwork = _work_offsets(prod(blk.sz) for blk in blocks)
-    return DeviceAbelianTreeTransformer(blocks, work_offsets, nwork)
+    return DeviceUniqueTreeTransformer(blocks, work_offsets, nwork)
 end
 
 """
@@ -209,8 +213,8 @@ function Adapt.adapt_storage(a::StorageAdaptor, x::AbstractArray)
     return copyto!(dst, x)
 end
 
-function Adapt.adapt_structure(to, t::DeviceAbelianTreeTransformer)
-    return DeviceAbelianTreeTransformer(
+function Adapt.adapt_structure(to, t::DeviceUniqueTreeTransformer)
+    return DeviceUniqueTreeTransformer(
         Adapt.adapt(to, t.blocks), Adapt.adapt(to, t.work_offsets), t.nwork
     )
 end
@@ -221,6 +225,8 @@ end
 # - `transformer.data`
 # - the storage type
 # - `p`, which is baked into the permuted source strides.
+# `conjsrc` is not part of the key: it is applied in the kernel, and the transformer data
+# for a conjugated source is already distinct (and cached separately) on the CPU side.
 # Using `objectid` avoids walking every recoupling matrix on every lookup.
 # TODO: should this live in the main package?
 const DEVICE_TRANSFORMER_CACHE = Dict{UInt, Tuple{WeakRef, Dict{Any, Any}}}()
@@ -248,7 +254,7 @@ function device_transformer(proto::AbstractArray, transformer, p)
     end
 end
 
-_device_transformer(t::TensorKit.AbelianTreeTransformer, p) = DeviceAbelianTreeTransformer(t, p)
+_device_transformer(t::UniqueTreeTransformer, p) = DeviceUniqueTreeTransformer(t, p)
 
 # COV_EXCL_START
 # kernels are not reachable by coverage
@@ -284,9 +290,10 @@ end
     return offset + sum(ntuple(n -> coords[n] * strides[n], Val(N))) + 1
 end
 
-# One thread per destination element in `data_dst`.
-@kernel function abelian_batched_permute!(
-        data_dst, data_src, blocks, work_offsets, α, β, nwork, ::Val{N}
+# One thread per destination element in `data_dst`. `op` is `identity` or `conj`, and is
+# applied to the source data only (not to the coefficients).
+@kernel function unique_batched_permute!(
+        data_dst, data_src, op, blocks, work_offsets, α, β, nwork, ::Val{N}
     ) where {N}
     w = @index(Global, Linear) - 1
     if w < nwork
@@ -295,29 +302,32 @@ end
         coords = _coordinates(w - (@inbounds work_offsets[b]), blk.sz, blk.dense_strides)
         i_dst = _offset(coords, blk.strides_dst, blk.offsets_dst)
         i_src = _offset(coords, blk.permuted_strides_src, blk.offsets_src)
-        @inbounds data_dst[i_dst] = α * blk.coeff * data_src[i_src] + β * data_dst[i_dst]
+        @inbounds data_dst[i_dst] = α * blk.coeff * op(data_src[i_src]) + β * data_dst[i_dst]
     end
 end
 
 # COV_EXCL_STOP
 
-function _launch_abelian!(data_dst, data_src, transformer, α, β, ::Val{N}) where {N}
+function _launch_unique!(data_dst, data_src, op, transformer, α, β, ::Val{N}) where {N}
     nwork = transformer.nwork
     nwork == 0 && return nothing
-    abelian_batched_permute!(get_backend(data_dst))(
-        data_dst, data_src, transformer.blocks, transformer.work_offsets, α, β, nwork,
+    unique_batched_permute!(get_backend(data_dst))(
+        data_dst, data_src, op, transformer.blocks, transformer.work_offsets, α, β, nwork,
         Val(N); ndrange = nwork
     )
     return nothing
 end
 
+const GPUStridedSubblocks = StridedSubblocks{<:AnyGPUArray}
+
 function TensorKit.add_transform_kernel!(
-        data_dst::A, data_src::A, p, transformer::TensorKit.AbelianTreeTransformer{T, N},
-        α, β, backend, allocator, ntasks::Int
-    ) where {T, N, A <: AnyGPUArray}
+        dst::GPUStridedSubblocks, src::GPUStridedSubblocks, p, conjsrc::Bool,
+        transformer::UniqueTreeTransformer{T, N}, α, β, backend, allocator, ntasks::Int
+    ) where {T, N}
     # GPU-side object to hold the treetransformer information
-    device = device_transformer(data_dst, transformer, linearize(p))::DeviceAbelianTreeTransformer
-    _launch_abelian!(data_dst, data_src, device, α, β, Val(N))
+    device = device_transformer(dst.data, transformer, linearize(p))::DeviceUniqueTreeTransformer
+    op = conjsrc ? conj : identity
+    _launch_unique!(dst.data, src.data, op, device, α, β, Val(N))
     return nothing
 end
 
