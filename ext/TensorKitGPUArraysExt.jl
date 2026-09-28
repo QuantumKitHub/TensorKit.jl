@@ -202,8 +202,8 @@ end
     StorageAdaptor(proto)
 
 `Adapt` adaptor moving arrays onto the same device and array type as `proto`, preserving
-their element type. `adapt(CuVector{Float64}, ::Vector{Int})` would force-convert the Int
-to Float64, while `similar(proto, Int, n)` doesn't.
+their element type. For `proto::CuVector{Float64}` and `array::Vector{Int}`, the call `adapt(typeof(proto), array)` would force-convert the element type `Int`
+to `Float64`, while `adapt(StoreAdaptor(proto), array)` does not.
 """
 struct StorageAdaptor{A <: AbstractArray}
     proto::A
