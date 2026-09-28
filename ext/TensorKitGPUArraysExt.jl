@@ -4,6 +4,7 @@ using GPUArrays
 using GPUArrays: @allowscalar
 using GPUArrays.KernelAbstractions: @kernel, @index, get_backend
 using Adapt
+using TensorKit.LRUCache: LRU
 using Strided: StridedViews
 using MatrixAlgebraKit, Adapt
 using TensorKit
@@ -219,38 +220,34 @@ function Adapt.adapt_structure(to, t::DeviceUniqueTreeTransformer)
     )
 end
 
-# Copying a transformer to GPU is more expensive than running it, and transformers are
-# themselves cached (and thus long-lived) by `treebraider`/`treetransposer`, so we cache the
-# device copy for as long as the CPU original is "alive". The key is:
-# - `transformer.data`
+# Copying a transformer to GPU is more expensive than running it, so we cache the device
+# copy in a global LRU cache, registered in `TensorKit.GLOBAL_CACHES` so that
+# `empty_globalcaches!` also frees the device memory. The key is:
+# - transformer which is an immutable struct. It's hashed and compared by the identity of
+#   its fields, which avoids walking every recoupling matrix on every lookup.
+#   Holding it in the key also keeps it alive, so its `objectid` cannot be
+#   reused by a different transformer while the entry is cached.
 # - the storage type
 # - `p`, which is baked into the permuted source strides.
-# `conjsrc` is not part of the key: it is applied in the kernel, and the transformer data
-# for a conjugated source is already distinct (and cached separately) on the CPU side.
-# Using `objectid` avoids walking every recoupling matrix on every lookup.
 # TODO: should this live in the main package?
-const DEVICE_TRANSFORMER_CACHE = Dict{UInt, Tuple{WeakRef, Dict{Any, Any}}}()
-const DEVICE_TRANSFORMER_LOCK = ReentrantLock()
+const DEVICE_TRANSFORMER_CACHE = LRU{Any, Any}(; maxsize = TensorKit.DEFAULT_GLOBALCACHE_SIZE[])
+
+function __init__()
+    push!(TensorKit.GLOBAL_CACHES, :DEVICE_TRANSFORMER_CACHE => DEVICE_TRANSFORMER_CACHE)
+    return nothing
+end
 
 # We have this complicated setup because a naive `adapt` doesn't work.
 # Rather we copy everything to GPU-native arrays and have kernels that can work
 # with that.
 function device_transformer(proto::AbstractArray, transformer, p)
-    key = transformer.data
-    return Base.@lock DEVICE_TRANSFORMER_LOCK begin
-        entry = get(DEVICE_TRANSFORMER_CACHE, objectid(key), nothing)
-        if isnothing(entry) || entry[1].value !== key
-            filter!(kv -> !isnothing(last(kv)[1].value), DEVICE_TRANSFORMER_CACHE)
-            entry = (WeakRef(key), Dict{Any, Any}())
-            DEVICE_TRANSFORMER_CACHE[objectid(key)] = entry
-        end
-        get!(last(entry), (typeof(proto), p)) do
-            # be careful about the lifetime of these, since they live as long as their
-            # "parent" on the CPU, so they can persist beyond the call
-            GPUArrays.@uncached Adapt.adapt(
-                StorageAdaptor(proto), _device_transformer(transformer, p)
-            )
-        end
+    key = (transformer, typeof(proto), p)
+    return get!(DEVICE_TRANSFORMER_CACHE, key) do
+        # be careful about the lifetime of these, since they live in a global cache and
+        # thus persist beyond the call
+        GPUArrays.@uncached Adapt.adapt(
+            StorageAdaptor(proto), _device_transformer(transformer, p)
+        )
     end
 end
 
