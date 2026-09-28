@@ -54,9 +54,26 @@ function _cached_category(fname::Symbol)
         "symmetry" : "bookkeeping"
 end
 
+# timer sections are controlled by the `timeit_debug_enabled` switch of the module using `@cached`
+_timeit_expr(label, ex) =
+    Expr(:macrocall, GlobalRef(TimerOutputs, Symbol("@timeit_debug")), LineNumberNode(@__LINE__, @__FILE__), GLOBAL_TIMER, label, ex)
+
 macro cached(ex)
-    Meta.isexpr(ex, :function) ||
-        error("cached macro can only be used on function definitions")
+    return _cached(__module__, ex)
+end
+
+function _cached_error(msg, ex)
+    ex isa Expr && (ex = Base.remove_linenums!(copy(ex)))
+    Meta.isexpr(ex, :kw) && (ex = Expr(:(=), ex.args...)) # prints as `x = 1`
+    throw(ArgumentError("@cached: $msg, got `$ex`"))
+end
+
+function _cached(mod::Module, ex)
+    if !Meta.isexpr(ex, :function)
+        Meta.isexpr(ex, :(=)) && Meta.isexpr(ex.args[1], (:call, :where, :(::))) &&
+            _cached_error("short-form function definitions are not supported, use `function ... end`", ex.args[1])
+        _cached_error("expected a function definition", ex)
+    end
     fcall = ex.args[1]
     if Meta.isexpr(fcall, :where)
         hasparams = true
@@ -72,12 +89,23 @@ macro cached(ex)
     else
         typed = false
     end
-    Meta.isexpr(fcall, :call) ||
-        error("cached macro can only be used on function definitions")
+    Meta.isexpr(fcall, :call) || _cached_error("expected a function signature", fcall)
     fname = fcall.args[1]
+    # qualified names such as `TensorKit.treebraider` add methods to a function of another module
+    basename = Meta.isexpr(fname, :.) ? fname.args[end].value : fname
+    basename isa Symbol ||
+        _cached_error("expected a function name or a qualified name such as `Module.f`", fname)
+    # the arguments form the cache key, so they must all be named positional arguments
+    for arg in fcall.args[2:end]
+        Meta.isexpr(arg, :parameters) && _cached_error("keyword arguments are not supported", fcall)
+        Meta.isexpr(arg, :kw) && _cached_error("default values are not supported", arg)
+        Meta.isexpr(arg, :...) && _cached_error("varargs are not supported", arg)
+        (arg isa Symbol || (Meta.isexpr(arg, :(::)) && length(arg.args) == 2)) ||
+            _cached_error("all arguments must be named, since they form the cache key", arg)
+    end
     # timer labels for the cache lookup and the miss-path construction
-    lookuplabel = string("bookkeeping: cache ", fname)
-    misslabel = string(_cached_category(fname), ": compute ", fname)
+    lookuplabel = string("bookkeeping: cache ", basename)
+    misslabel = string(_cached_category(basename), ": compute ", basename)
     fargs = fcall.args[2:end]
     fargnames = map(fargs) do arg
         if Meta.isexpr(arg, :(::))
@@ -89,7 +117,7 @@ macro cached(ex)
     _fbody = ex.args[2]
 
     # actual implenetation, with underscore name
-    _fname = Symbol(:_, fname)
+    _fname = Symbol(:_, basename)
     _fcall = Expr(:call, _fname, fargs...)
     if hasparams
         _fcall = Expr(:where, _fcall, params...)
@@ -103,7 +131,7 @@ macro cached(ex)
     end
     cachestylevar = gensym(:cachestyle)
     cachestyleex = Expr(
-        :(=), cachestylevar, Expr(:call, :CacheStyle, fname, fargnames...)
+        :(=), cachestylevar, Expr(:call, GlobalRef(@__MODULE__, :CacheStyle), fname, fargnames...)
     )
     newfbody = Expr(
         :block, cachestyleex, Expr(:call, fname, fargnames..., cachestylevar)
@@ -111,11 +139,11 @@ macro cached(ex)
     newfex = Expr(:function, newfcall, newfbody)
 
     # nocache implementation
-    fnocachecall = Expr(:call, fname, fargs..., :(::NoCache))
+    fnocachecall = Expr(:call, fname, fargs..., :(::$NoCache))
     if hasparams
         fnocachecall = Expr(:where, fnocachecall, params...)
     end
-    fnocachebody = :(@timeit_debug GLOBAL_TIMER $misslabel $(Expr(:call, _fname, fargnames...)))
+    fnocachebody = _timeit_expr(misslabel, Expr(:call, _fname, fargnames...))
     if typed
         T = gensym(:T)
         fnocachebody = Expr(:block, Expr(:(=), T, typeex), Expr(:(::), fnocachebody, T))
@@ -124,16 +152,17 @@ macro cached(ex)
 
     # tasklocal cache implementation
     Dvar = gensym(:D)
-    flocalcachecall = Expr(:call, fname, fargs..., :(::TaskLocalCache{$Dvar}))
+    flocalcachecall = Expr(:call, fname, fargs..., :(::$TaskLocalCache{$Dvar}))
     if hasparams
         flocalcachecall = Expr(:where, flocalcachecall, params..., Dvar)
     else
         flocalcachecall = Expr(:where, flocalcachecall, Dvar)
     end
-    localcachename = Symbol(:_tasklocal_, fname, :_cache)
+    globalcachename = Symbol(:GLOBAL_, uppercase(string(basename)), :_CACHE)
+    localcachename = Symbol(:_tasklocal_, globalcachename)
     cachevar = gensym(:cache)
     getlocalcacheex = :(
-        $cachevar::$Dvar = get!(task_local_storage(), $localcachename) do
+        $cachevar::$Dvar = get!(task_local_storage(), $(QuoteNode(localcachename))) do
             return $Dvar()
         end
     )
@@ -143,11 +172,8 @@ macro cached(ex)
     else
         key = Expr(:tuple, fargnames...)
     end
-    getvalex = :(
-        @timeit_debug GLOBAL_TIMER $lookuplabel get!($cachevar, $key) do
-            return @timeit_debug GLOBAL_TIMER $misslabel $_fname($(fargnames...))
-        end
-    )
+    missex = _timeit_expr(misslabel, Expr(:call, _fname, fargnames...))
+    getvalex = _timeit_expr(lookuplabel, :(get!(() -> $missex, $cachevar, $key)))
     if typed
         T = gensym(:T)
         flocalcachebody = Expr(
@@ -168,11 +194,10 @@ macro cached(ex)
     flocalcacheex = Expr(:function, flocalcachecall, flocalcachebody)
 
     # # global cache implementation
-    fglobalcachecall = Expr(:call, fname, fargs..., :(::GlobalLRUCache))
+    fglobalcachecall = Expr(:call, fname, fargs..., :(::$GlobalLRUCache))
     if hasparams
         fglobalcachecall = Expr(:where, fglobalcachecall, params...)
     end
-    globalcachename = Symbol(:GLOBAL_, uppercase(string(fname)), :_CACHE)
     getglobalcachex = Expr(:(=), cachevar, globalcachename)
     if typed
         T = gensym(:T)
@@ -194,10 +219,12 @@ macro cached(ex)
     fglobalcacheex = Expr(:function, fglobalcachecall, fglobalcachebody)
     fglobalcachedef = Expr(
         :const,
-        Expr(:(=), globalcachename, :(LRU{Any, Any}(; maxsize = DEFAULT_GLOBALCACHE_SIZE[])))
+        Expr(:(=), globalcachename, :($LRU{Any, Any}(; maxsize = $DEFAULT_GLOBALCACHE_SIZE[])))
     )
+    # caches of other modules (e.g. extensions adding methods) are registered with their module
+    registername = mod === (@__MODULE__) ? globalcachename : Symbol(nameof(mod), ".", globalcachename)
     fglobalcacheregister = Expr(
-        :call, :push!, :GLOBAL_CACHES, :($(QuoteNode(globalcachename)) => $globalcachename)
+        :call, :push!, GLOBAL_CACHES, :($(QuoteNode(registername)) => $globalcachename)
     )
 
     # # total expression
