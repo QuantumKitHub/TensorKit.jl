@@ -5,6 +5,7 @@ using GPUArrays: @allowscalar
 using GPUArrays.KernelAbstractions: @kernel, @index, get_backend
 using Adapt
 using TensorKit.LRUCache: LRU
+using TensorKit.TupleTools
 using Strided: StridedViews
 using MatrixAlgebraKit, Adapt
 using TensorKit
@@ -168,7 +169,6 @@ end
 
 # strides of a dense array of shape `sz`
 _dense_strides(size::Dims) = (1, Base.front(cumprod(size))...)
-_permute_strides(strides::NTuple{N, Int}, p) where {N} = ntuple(n -> strides[p[n]], Val(N))
 
 # `permute(Vsrc, p) == Vdst` is enforced when the transformer is built, so the permuted
 # source shape always matches `sz_dst` and the two views share Cartesian inds.
@@ -177,7 +177,7 @@ function _unique_block(
     ) where {T}
     return UniqueTransformerBlock{T, length(size_dst)}(
         coeff, size_dst, _dense_strides(size_dst), strides_dst, offsets_dst,
-        _permute_strides(strides_src, p), offsets_src
+        TupleTools.getindices(strides_src, p), offsets_src
     )
 end
 
