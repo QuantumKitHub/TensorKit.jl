@@ -24,6 +24,8 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 ### Changed
 
+- Extend VectorInterface compat to include v0.7
+
 ### Deprecated
 
 ### Removed
