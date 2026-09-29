@@ -207,7 +207,7 @@ function _unique_block(
     return UniqueTransformerBlock{T, length(size_dst)}(
         coeff, size_dst, _dense_strides(size_dst), strides_dst, offsets_dst,
         TupleTools.getindices(strides_src, p), offsets_src
-       )
+    )
 end
 
 function _work_offsets(work)
@@ -457,7 +457,7 @@ end
 
 function TensorKit.add_transform_kernel!(
         dst::GPUStridedSubblocks, src::GPUStridedSubblocks, p, conjsrc::Bool,
-        transformer::GenericTreeTransformer{T, N}, α, β, backend, allocator, ntasks::Int 
+        transformer::GenericTreeTransformer{T, N}, α, β, backend, allocator, ntasks::Int
     ) where {T, N}
     # GPU-side object to hold the treetransformer information
     device = device_transformer(dst.data, transformer, linearize(p))
