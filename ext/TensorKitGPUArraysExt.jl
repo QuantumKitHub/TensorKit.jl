@@ -286,7 +286,7 @@ end
 
 # One thread per destination element in `data_dst`. `op` is `identity` or `conj`, and is
 # applied to the source data only (not to the coefficients).
-@kernel function unique_batched_permute!(
+@kernel function unique_batched_permute_kernel!(
         data_dst, data_src, op, blocks, work_offsets, α, β, nwork, ::Val{N}
     ) where {N}
     w = @index(Global, Linear) - 1
@@ -305,7 +305,7 @@ end
 function _launch_unique!(data_dst, data_src, op, transformer, α, β, ::Val{N}) where {N}
     nwork = transformer.nwork
     nwork == 0 && return nothing
-    unique_batched_permute!(get_backend(data_dst))(
+    unique_batched_permute_kernel!(get_backend(data_dst))(
         data_dst, data_src, op, transformer.blocks, transformer.work_offsets, α, β, nwork,
         Val(N); ndrange = nwork
     )
