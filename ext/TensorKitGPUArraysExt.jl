@@ -211,7 +211,7 @@ end
 function Adapt.adapt_storage(a::StorageAdaptor, x::AbstractArray)
     dst = similar(a.proto, eltype(x), size(x))
     isempty(x) && return dst
-    return copyto!(dst, x)
+    return copy!(dst, x)
 end
 
 function Adapt.adapt_structure(to, t::DeviceUniqueTreeTransformer)
