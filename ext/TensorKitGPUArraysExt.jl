@@ -281,9 +281,9 @@ end
     return ntuple(n -> (w ÷ dense_strides[n]) % size[n], Val(N))
 end
 
-# finds the overall offset in the output and input arrays corresponding to the **sublock**
+# finds the overall linear index in the output and input arrays corresponding to the **sublock**
 # coordinates currently being worked on
-@inline function _offset(coords::NTuple{N, Int}, strides::NTuple{N, Int}, offset) where {N}
+@inline function _linear_index(coords::NTuple{N, Int}, strides::NTuple{N, Int}, offset) where {N}
     return offset + sum(ntuple(n -> coords[n] * strides[n], Val(N))) + 1
 end
 
@@ -297,8 +297,8 @@ end
         b = _searchblock(work_offsets, w)
         blk = @inbounds blocks[b]
         coords = _coordinates(w - (@inbounds work_offsets[b]), blk.sz, blk.dense_strides)
-        i_dst = _offset(coords, blk.strides_dst, blk.offsets_dst)
-        i_src = _offset(coords, blk.permuted_strides_src, blk.offsets_src)
+        i_dst = _linear_index(coords, blk.strides_dst, blk.offsets_dst)
+        i_src = _linear_index(coords, blk.permuted_strides_src, blk.offsets_src)
         @inbounds data_dst[i_dst] = α * blk.coeff * op(data_src[i_src]) + β * data_dst[i_dst]
     end
 end
