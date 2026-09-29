@@ -239,7 +239,7 @@ function DeviceGenericTreeTransformer(
     for (U, (size_dst, strides_dst), (size_src, strides_src)) in transformer.data
         if length(U) == 1 # same as the unique (Abelian) case
             push!(
-                degenerate, _abelian_block(
+                degenerate, _unique_block(
                     only(U), (size_dst, only(strides_dst)...), (size_src, only(strides_src)...), p
                 )
             )
@@ -253,7 +253,7 @@ function DeviceGenericTreeTransformer(
             append!(coeffs, U)
             append!(structs_dst, strides_dst)
             for (stride_src, offset_src) in strides_src
-                push!(structs_src, (_permutestrides(stride_src, p), offset_src))
+                push!(structs_src, (TupleTools.getindices(stride_src, p), offset_src))
             end
         end
     end
@@ -403,7 +403,7 @@ end
         coords = _coordinates(local_w % blocksize, blk.sz, blk.densestrides)
 
         st_dst, offs_dst = @inbounds structs_dst[blk.dst_offset + i + 1]
-        i_dst = _offset(coords, st_dst, offs_dst)
+        i_dst = _linear_index(coords, st_dst, offs_dst)
 
         # dst_i = β * dst_i + α * Σ_j U[i, j] * permute(src_j, p): each output tree is a
         # linear combination of the input trees weighted by the recoupling coefficients.
@@ -415,7 +415,7 @@ end
             coeff = @inbounds coeffs[blk.u_offset + (j - 1) * blk.rows + i + 1]
             iszero(coeff) && continue
             pst_src, offs_src = @inbounds structs_src[blk.src_offset + j]
-            acc += coeff * @inbounds op(data_src[_offset(coords, pst_src, offs_src)])
+            acc += coeff * @inbounds op(data_src[_linear_index(coords, pst_src, offs_src)])
         end
         @inbounds data_dst[i_dst] = α * acc + β * data_dst[i_dst]
     end
