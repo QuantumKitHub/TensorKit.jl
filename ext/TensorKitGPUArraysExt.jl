@@ -274,9 +274,6 @@ _device_transformer(t::UniqueTreeTransformer, p) = DeviceUniqueTreeTransformer(t
 end
 
 # Cartesian coordinates of the `w`-th (0-based) entry of a dense subblock of shape `sz`.
-# Computed once per thread and then reused for every strided view of that subblock.
-# This avoids `StridedView` redoing these divisions on every single element access.
-# Integer division on GPU is usually pretty slow.
 @inline function _coordinates(w, size::NTuple{N, Int}, dense_strides::NTuple{N, Int}) where {N}
     return ntuple(n -> (w ÷ dense_strides[n]) % size[n], Val(N))
 end
