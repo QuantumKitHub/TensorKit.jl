@@ -151,7 +151,7 @@ function EnzymeRules.forward(
         func::Const{typeof(twist!)},
         ::Type{RT},
         t::Annotation{<:AbstractTensorMap},
-        inds::Const;
+        inds::Annotation;
         inv::Bool = false
     ) where {RT}
     twist!(t.val, inds.val; inv)
