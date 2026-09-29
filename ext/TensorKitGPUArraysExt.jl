@@ -319,7 +319,7 @@ function TensorKit.add_transform_kernel!(
         transformer::UniqueTreeTransformer{T, N}, α, β, backend, allocator, ntasks::Int
     ) where {T, N}
     # GPU-side object to hold the treetransformer information
-    device = device_transformer(dst.data, transformer, linearize(p))::DeviceUniqueTreeTransformer
+    device = device_transformer(dst.data, transformer, linearize(p))
     op = conjsrc ? conj : identity
     _launch_unique!(dst.data, src.data, op, device, α, β, Val(N))
     return nothing
