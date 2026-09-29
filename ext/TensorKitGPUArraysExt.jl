@@ -236,14 +236,17 @@ function DeviceGenericTreeTransformer(
     structs_dst = TreeStructure{N}[]
     structs_src = TreeStructure{N}[]
 
-    for (U, (size_dst, strides_dst), (size_src, strides_src)) in transformer.data
+    (; structure_dst, structure_src) = transformer
+    for (U, inds_dst, inds_src) in transformer.data
         if length(U) == 1 # same as the unique (Abelian) case
             push!(
                 degenerate, _unique_block(
-                    only(U), (size_dst, only(strides_dst)...), (size_src, only(strides_src)...), p
+                    only(U), structure_dst[only(inds_dst)], structure_src[only(inds_src)], p
                 )
             )
         else
+            # all trees in a block share the same subblock size
+            size_dst = first(structure_dst[first(inds_dst)])
             push!(
                 blocks, GenericTransformerBlock{N}(
                     size_dst, _dense_strides(size_dst), size(U, 1), size(U, 2),
@@ -251,9 +254,13 @@ function DeviceGenericTreeTransformer(
                 )
             )
             append!(coeffs, U)
-            append!(structs_dst, strides_dst)
-            for (stride_src, offset_src) in strides_src
-                push!(structs_src, (TupleTools.getindices(stride_src, p), offset_src))
+            for idst in inds_dst
+                _, strides_dst, offset_dst = structure_dst[idst]
+                push!(structs_dst, (strides_dst, offset_dst))
+            end
+            for isrc in inds_src
+                _, strides_src, offset_src = structure_src[isrc]
+                push!(structs_src, (TupleTools.getindices(strides_src, p), offset_src))
             end
         end
     end
