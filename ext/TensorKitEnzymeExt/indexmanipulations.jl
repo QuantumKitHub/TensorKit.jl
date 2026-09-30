@@ -116,6 +116,57 @@ function EnzymeRules.reverse(
     return nothing, nothing, nothing, nothing, Δαr, Δβr, map(Returns(nothing), ba)...
 end
 
+# Differentiating through the fusion tree loop corrupts the
+# heap on Julia 1.10 and causes segfaults in the GC. Remove this
+# custom rule when we drop support for 1.10
+function EnzymeRules.augmented_primal(
+        config::EnzymeRules.RevConfigWidth{1},
+        func::Const{typeof(twist!)},
+        ::Type{RT},
+        t::Annotation{<:AbstractTensorMap},
+        inds::Const;
+        inv::Bool = false
+    ) where {RT}
+    twist!(t.val, inds.val; inv)
+    primal = EnzymeRules.needs_primal(config) ? t.val : nothing
+    shadow = EnzymeRules.needs_shadow(config) ? t.dval : nothing
+    return EnzymeRules.AugmentedReturn(primal, shadow, nothing)
+end
+
+function EnzymeRules.reverse(
+        config::EnzymeRules.RevConfigWidth{1},
+        func::Const{typeof(twist!)},
+        ::Type{RT},
+        cache,
+        t::Annotation{<:AbstractTensorMap},
+        inds::Const;
+        inv::Bool = false
+    ) where {RT}
+    !isa(t, Const) && twist!(t.dval, inds.val; inv = !inv)
+    return (nothing, nothing)
+end
+
+function EnzymeRules.forward(
+        config::EnzymeRules.FwdConfigWidth{1},
+        func::Const{typeof(twist!)},
+        ::Type{RT},
+        t::Annotation{<:AbstractTensorMap},
+        inds::Annotation;
+        inv::Bool = false
+    ) where {RT}
+    twist!(t.val, inds.val; inv)
+    !isa(t, Const) && twist!(t.dval, inds.val; inv)
+    if EnzymeRules.needs_primal(config) && EnzymeRules.needs_shadow(config)
+        return Duplicated(t.val, t.dval)
+    elseif EnzymeRules.needs_primal(config)
+        return t.val
+    elseif EnzymeRules.needs_shadow(config)
+        return t.dval
+    else
+        return nothing
+    end
+end
+
 function EnzymeRules.augmented_primal(
         config::EnzymeRules.RevConfigWidth{1},
         func::Const{typeof(flip)},
