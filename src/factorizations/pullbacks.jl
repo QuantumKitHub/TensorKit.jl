@@ -36,6 +36,21 @@ for pullback! in (:qr_null_pullback!, :lq_null_pullback!)
 end
 _notrunc_ind(t) = SectorDict(c => Colon() for c in blocksectors(t))
 
+for pullback! in (:eig_vals_pullback!, :eigh_vals_pullback!)
+    @eval function MAK.$pullback!(
+            Δt::AbstractTensorMap, ::Nothing, DV::Tuple{Diagonal, <:AbstractTensorMap}, ΔD, inds;
+            kwargs...
+        )
+        return MAK.$pullback!(Δt, nothing, (MAK.diagonal(parent(DV[1])), DV[2]), ΔD, inds; kwargs...)
+    end
+end
+function MAK.svd_vals_pullback!(
+        Δt::AbstractTensorMap, ::Nothing, USVᴴ::Tuple{<:AbstractTensorMap, Diagonal, <:AbstractTensorMap}, ΔS, ind;
+        kwargs...
+    )
+    return MAK.svd_vals_pullback!(Δt, nothing, (USVᴴ[1], MAK.diagonal(parent(USVᴴ[2])), USVᴴ[3]), ΔS, ind; kwargs...)
+end
+
 for pullback! in (:svd_pullback!, :eig_pullback!, :eigh_pullback!)
     @eval function MAK.$pullback!(
             Δt::AbstractTensorMap, t::AbstractTensorMap, F, ΔF, inds = _notrunc_ind(t);
