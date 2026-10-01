@@ -326,11 +326,13 @@ function LinearAlgebra.tr(t::AbstractTensorMap)
     return s
 end
 
-# LinearAlgebra's BLAS wrappers do not accept `VectorInterface.One`/`Zero`, e.g.
-# `herk_wrapper!` (hit by `mul!(C, A, A')`) calls `isreal` on the scalars.
+# LinearAlgebra's BLAS wrappers do not accept `VectorInterface.One`/`Zero` before
+# VectorInterface v0.7, e.g. `herk_wrapper!` (hit by `mul!(C, A, A')`) calls `isreal`.
 _blasscalar(α::Number) = α
-_blasscalar(::One) = true
-_blasscalar(::Zero) = false
+@static if !(One <: Real)
+    _blasscalar(::One) = true
+    _blasscalar(::Zero) = false
+end
 
 # TensorMap multiplication
 function LinearAlgebra.mul!(
