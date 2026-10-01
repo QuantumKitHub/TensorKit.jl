@@ -51,30 +51,19 @@ function MAK.svd_vals_pullback!(
     return MAK.svd_vals_pullback!(Δt, nothing, (USVᴴ[1], MAK.diagonal(parent(USVᴴ[2])), USVᴴ[3]), ΔS, ind; kwargs...)
 end
 
+nothing_or_block(x, c) = isnothing(x) ? x : block(x, c)
 for pullback! in (:svd_pullback!, :eig_pullback!, :eigh_pullback!)
     @eval function MAK.$pullback!(
-            Δt::AbstractTensorMap, t::AbstractTensorMap, F, ΔF, inds = _notrunc_ind(t);
+            Δt::AbstractTensorMap, t, F, ΔF, inds = _notrunc_ind(Δt);
             kwargs...
         )
         foreachblock(Δt, t) do c, (Δb, b)
             ind = get(inds, c, nothing)
             isnothing(ind) && return nothing
-            Fc = block.(F, Ref(c))
-            ΔFc = block.(ΔF, Ref(c))
+            Fc = nothing_or_block.(F, Ref(c))
+            ΔFc = nothing_or_block.(ΔF, Ref(c))
             MAK.$pullback!(Δb, b, Fc, ΔFc, ind; kwargs...)
             return nothing
-        end
-        return Δt
-    end
-    @eval function MAK.$pullback!(
-            Δt::AbstractTensorMap, ::Nothing, F, ΔF, inds; kwargs...
-        )
-        foreachblock(Δt) do c, (Δb,)
-            haskey(inds, c) || return nothing
-            ind = inds[c]
-            Fc = block.(F, Ref(c))
-            ΔFc = map(ΔFc -> isnothing(ΔFc) ? nothing : block(ΔFc, c), ΔF)
-            return MAK.$pullback!(Δb, nothing, Fc, ΔFc, ind; kwargs...)
         end
         return Δt
     end
@@ -82,16 +71,6 @@ for pullback! in (:svd_pullback!, :eig_pullback!, :eigh_pullback!)
             Δt::AbstractTensorMap, t::AbstractTensorMap, F, ΔF, ::Colon; kwargs...
         )
         return MAK.$pullback!(Δt, t, F, ΔF, _notrunc_ind(t); kwargs...)
-    end
-    @eval function MAK.$pullback!(
-            Δt::AbstractTensorMap, ::Nothing, F, ΔF; kwargs...
-        )
-        return MAK.$pullback!(Δt, nothing, F, ΔF, _notrunc_ind(Δt); kwargs...)
-    end
-    @eval function MAK.$pullback!(
-            Δt::AbstractTensorMap, ::Nothing, F, ΔF, ::Colon; kwargs...
-        )
-        return MAK.$pullback!(Δt, nothing, F, ΔF, _notrunc_ind(Δt); kwargs...)
     end
 end
 
