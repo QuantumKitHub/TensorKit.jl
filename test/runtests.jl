@@ -30,6 +30,17 @@ args = parse_args(ARGS; custom = ["fast"])
 # --fast: skip AD tests and inject fast_tests=true into each worker sandbox
 fast = !isnothing(args.custom["fast"])
 
+# Enzyme workers end up needing ~4 GB, but the default job count assumes ~2 GB per worker.
+# Cap the number of jobs by increasing the per-worker memory budger unless --jobs was given.
+selected = copy(testsuite)
+ParallelTestRunner.filter_tests!(selected, args)
+if isnothing(args.jobs) && any(startswith("enzyme"), keys(selected))
+    njobs = clamp(Int(Sys.free_memory() ÷ (4 * Int64(2)^30)), 1, Sys.CPU_THREADS)
+    args = ParallelTestRunner.ParsedArgs(
+        Some(njobs), args.verbose, args.quickfail, args.list, args.custom, args.positionals
+    )
+end
+
 setup_path = joinpath(@__DIR__, "setup.jl")
 const init_worker_code = quote
     const fast_tests = $fast
