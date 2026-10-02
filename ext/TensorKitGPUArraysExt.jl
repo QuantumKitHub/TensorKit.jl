@@ -147,7 +147,7 @@ const TreeStructure{N} = Tuple{NTuple{N, Int}, Int}
     UniqueTransformerBlock{T, N}
 
 `isbits` descriptor for a subblock that is a *single* scaled permutation:
-an entry of a `UniqueTreeTransformer` or a degenerate (one-tree) block of a
+an entry of a `UniqueTreeTransformer` or a unique (one-tree) block of a
 `GenericTreeTransformer`.
 """
 struct UniqueTransformerBlock{T, N}
@@ -172,7 +172,6 @@ end
 
 Descriptor for a recoupling block of a `GenericTreeTransformer`, indexing into the
 flat `coeffs`/`structs_dst`/`structs_src` vectors of a `DeviceGenericTreeTransformer`.
-** All offsets are 0-based since it makes the arithmetic easier. **
 """
 struct GenericTransformerBlock{N}
     sz::NTuple{N, Int}
@@ -187,7 +186,7 @@ end
 # force all the type signatures here to make sure doing something wrong fails
 # before the kernel launch. Kernel error dumps are awful and hard to interpret.
 struct DeviceGenericTreeTransformer{VO <: AbstractVector{Int}, DA <: DeviceUniqueTreeTransformer{<:Any, VO}, VB <: AbstractVector{<:GenericTransformerBlock}, VC <: AbstractVector{<:Number}, VS <: AbstractVector{<:Tuple{<:Tuple{Vararg{Int}}, Int}}}
-    degenerate::DA  # length(U) = 1 blocks, can be handled by unique kernel
+    unique_blocks::DA  # length(U) = 1 blocks, can be handled by unique kernel
     blocks::VB
     work_offsets::VO
     nwork::Int
@@ -230,7 +229,7 @@ end
 function DeviceGenericTreeTransformer(
         transformer::GenericTreeTransformer{T, N}, p
     ) where {T, N}
-    degenerate = UniqueTransformerBlock{T, N}[]
+    unique_blocks = UniqueTransformerBlock{T, N}[]
     blocks = GenericTransformerBlock{N}[]
     coeffs = T[]
     structs_dst = TreeStructure{N}[]
@@ -240,7 +239,7 @@ function DeviceGenericTreeTransformer(
     for (U, inds_dst, inds_src) in transformer.data
         if length(U) == 1 # same as the unique (Abelian) case
             push!(
-                degenerate, _unique_block(
+                unique_blocks, _unique_block(
                     only(U), structure_dst[only(inds_dst)], structure_src[only(inds_src)], p
                 )
             )
@@ -265,10 +264,10 @@ function DeviceGenericTreeTransformer(
         end
     end
 
-    degenerate_offsets, degenerate_nwork = _work_offsets(prod(blk.sz) for blk in degenerate)
+    unique_offsets, unique_nwork = _work_offsets(prod(blk.sz) for blk in unique_blocks)
     work_offsets, nwork = _work_offsets(blk.rows * prod(blk.sz) for blk in blocks)
     return DeviceGenericTreeTransformer(
-        DeviceUniqueTreeTransformer(degenerate, degenerate_offsets, degenerate_nwork),
+        DeviceUniqueTreeTransformer(unique_blocks, unique_offsets, unique_nwork),
         blocks, work_offsets, nwork, coeffs, structs_dst, structs_src
     )
 end
@@ -298,7 +297,7 @@ end
 
 function Adapt.adapt_structure(to, t::DeviceGenericTreeTransformer)
     return DeviceGenericTreeTransformer(
-        Adapt.adapt(to, t.degenerate), Adapt.adapt(to, t.blocks),
+        Adapt.adapt(to, t.unique_blocks), Adapt.adapt(to, t.blocks),
         Adapt.adapt(to, t.work_offsets), t.nwork, Adapt.adapt(to, t.coeffs),
         Adapt.adapt(to, t.structs_dst), Adapt.adapt(to, t.structs_src)
     )
@@ -471,7 +470,7 @@ function TensorKit.add_transform_kernel!(
     op = conjsrc ? conj : identity
     # one-tree blocks are a scaled permutation, which the unique kernel already handles; the
     # two kernels touch disjoint subblocks so the launch order does not matter
-    _launch_unique!(dst.data, src.data, op, device.degenerate, α, β, Val(N))
+    _launch_unique!(dst.data, src.data, op, device.unique_blocks, α, β, Val(N))
     _launch_generic!(dst.data, src.data, op, device, α, β, Val(N))
     return nothing
 end
