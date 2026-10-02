@@ -53,7 +53,7 @@ end
 
 nothing_or_block(x, c) = isnothing(x) ? x : block(x, c)
 nothing_or_block(x::Diagonal, c) = block(MAK.diagonal(parent(x)), c)
-nothing_or_foreachblock(f, Δt, t) = isnothing(t) ? foreachblock(f, Δt) : foreachblock(f, Δt, t) 
+nothing_or_foreachblock(f, Δt, t) = isnothing(t) ? foreachblock(f, Δt) : foreachblock(f, Δt, t)
 for pullback! in (:svd_pullback!, :eig_pullback!, :eigh_pullback!)
     @eval function MAK.$pullback!(
             Δt::AbstractTensorMap, t, F, ΔF, inds = _notrunc_ind(Δt);
