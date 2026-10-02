@@ -52,22 +52,15 @@ end
 
 for pushforward! in (:svd_pushforward!, :eig_pushforward!, :eigh_pushforward!)
     @eval function MAK.$pushforward!(
-            Δt::AbstractTensorMap, t, F, ΔF, inds = _notrunc_ind(Δt);
+            Δt::AbstractTensorMap, t, F, ΔF;
             kwargs...
         )
         foreachblock(Δt, t) do c, (Δb, b)
-            ind = get(inds, c, nothing)
-            isnothing(ind) && return nothing
             Fc = nothing_or_block.(F, Ref(c))
             ΔFc = nothing_or_block.(ΔF, Ref(c))
-            MAK.$pushforward!(Δb, b, Fc, ΔFc, ind; kwargs...)
+            MAK.$pushforward!(Δb, b, Fc, ΔFc; kwargs...)
             return nothing
         end
         return Δt
-    end
-    @eval function MAK.$pushforward!(
-            Δt::AbstractTensorMap, t::AbstractTensorMap, F, ΔF, ::Colon; kwargs...
-        )
-        return MAK.$pushforward!(Δt, t, F, ΔF, _notrunc_ind(t); kwargs...)
     end
 end

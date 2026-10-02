@@ -52,12 +52,15 @@ function MAK.svd_vals_pullback!(
 end
 
 nothing_or_block(x, c) = isnothing(x) ? x : block(x, c)
+nothing_or_block(x::Diagonal, c) = block(MAK.diagonal(parent(x)), c)
+nothing_or_foreachblock(f, Δt, t) = isnothing(t) ? foreachblock(f, Δt) : foreachblock(f, Δt, t) 
 for pullback! in (:svd_pullback!, :eig_pullback!, :eigh_pullback!)
     @eval function MAK.$pullback!(
             Δt::AbstractTensorMap, t, F, ΔF, inds = _notrunc_ind(Δt);
             kwargs...
         )
-        foreachblock(Δt, t) do c, (Δb, b)
+        nothing_or_foreachblock(Δt, t) do c, Δbb
+            Δb, b = length(Δbb) == 1 ? (only(Δbb), nothing) : Δbb
             ind = get(inds, c, nothing)
             isnothing(ind) && return nothing
             Fc = nothing_or_block.(F, Ref(c))
@@ -68,9 +71,9 @@ for pullback! in (:svd_pullback!, :eig_pullback!, :eigh_pullback!)
         return Δt
     end
     @eval function MAK.$pullback!(
-            Δt::AbstractTensorMap, t::AbstractTensorMap, F, ΔF, ::Colon; kwargs...
+            Δt::AbstractTensorMap, t, F, ΔF, ::Colon; kwargs...
         )
-        return MAK.$pullback!(Δt, t, F, ΔF, _notrunc_ind(t); kwargs...)
+        return MAK.$pullback!(Δt, t, F, ΔF, _notrunc_ind(Δt); kwargs...)
     end
 end
 
