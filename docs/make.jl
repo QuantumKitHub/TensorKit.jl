@@ -10,7 +10,7 @@ using Documenter
 using Random
 using TensorKit
 using TensorKit: FusionTreePair, FusionTreeBlock, Index2Tuple, IndexTuple
-using TensorKit.TensorKitSectors
+using TensorKitSectors
 using TensorKit.MatrixAlgebraKit
 using DocumenterInterLinks
 
@@ -58,7 +58,7 @@ mathengine = MathJax3(
 # docstrings don't need `using TensorKit`
 DocMeta.setdocmeta!(TensorKit, :DocTestSetup, :(using TensorKit); recursive = true)
 DocMeta.setdocmeta!(
-    TensorKitSectors, :DocTestSetup, :(using TensorKit.TensorKitSectors); recursive = true
+    TensorKitSectors, :DocTestSetup, :(using TensorKitSectors); recursive = true
 )
 
 makedocs(;
