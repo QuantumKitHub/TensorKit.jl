@@ -34,6 +34,8 @@ PlanarTrivial
 IsingBimodule
 TimeReversed
 ProductSector
+NamedSector
+@NamedSector
 ```
 
 Several more concrete sector types can be found in other packages such as [SUNRepresentations.jl](https://github.com/QuantumKitHub/SUNRepresentations.jl), [CategoryData.jl](https://github.com/QuantumKitHub/CategoryData.jl), [QWignerSymbols.jl](https://github.com/lkdvos/QWignerSymbols.jl), ...:
