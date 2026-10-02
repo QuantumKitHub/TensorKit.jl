@@ -43,6 +43,33 @@ function EnzymeTestUtils.to_vec(t::TensorKit.DiagonalTensorMap, seen_vecs::Enzym
     parent_vec, parent_t = to_vec(TensorMap(t), seen_vecs)
     return parent_vec, TensorKit.DiagonalTensorMap ∘ parent_t
 end
+function EnzymeTestUtils.to_vec(v::TensorKit.SectorVector, seen_vecs::EnzymeTestUtils.AliasDict)
+    has_seen = haskey(seen_vecs, v)
+    is_const = Enzyme.Compiler.guaranteed_const(Core.Typeof(v))
+    if has_seen || is_const
+        v_vec = Float32[]
+    else
+        vec_of_vecs = [b * TensorKit.sqrtdim(c) for (c, b) in pairs(v)]
+        v_vec, back = to_vec(vec_of_vecs)
+        seen_vecs[v] = v_vec
+    end
+    function SectorVector_from_vec(v_vec_new::AbstractVector, seen_xs::EnzymeTestUtils.AliasDict)
+        if xor(has_seen, haskey(seen_xs, v))
+            throw(ErrorException("Arrays must be reconstructed in the same order as they are vectorized."))
+        end
+        has_seen && return seen_xs[v]
+        is_const && return v
+
+        v_new = similar(v)
+        vvec_of_vecs = back(v_vec_new)
+        for (i, (c, b)) in enumerate(pairs(v_new))
+            scale!(b, vvec_of_vecs[i], TensorKit.invsqrtdim(c))
+        end
+        seen_xs[v] = v_new
+        return v_new
+    end
+    return v_vec, SectorVector_from_vec
+end
 
 # generate random tangents for testing
 function EnzymeTestUtils.rand_tangent(rng, t::TensorMap)

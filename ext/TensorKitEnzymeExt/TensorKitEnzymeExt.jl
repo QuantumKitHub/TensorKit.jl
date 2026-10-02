@@ -15,5 +15,6 @@ include("utility.jl")
 include("linalg.jl")
 include("indexmanipulations.jl")
 include("tensoroperations.jl")
+include("factorizations.jl")
 
 end
