@@ -75,10 +75,10 @@ TAs = is_ci ? (Duplicated,) : (Const, Duplicated)
                     ip = _repartition(invperm(linearize((_p, _q))), k′)
                     A = randn(T, permute(prod(V1) ⊗ V3 ← V4, ip))
                     C = randn!(TensorOperations.tensoralloc_add(T, A, p, false, Val(false)))
-                    for Tα in (Const, Active), Tβ in (Const, Active)
+                    for Tα in rTαs, Tβ in rTβs
                         EnzymeTestUtils.test_reverse(TensorKit.planartrace!, Duplicated, (C, Duplicated), (A, Duplicated), (p, Const), (q, Const), (α, Tα), (β, Tβ), (TensorOperations.DefaultBackend(), Const), (TensorOperations.DefaultAllocator(), Const); atol, rtol, testset_name = "planartrace reverse Tα $Tα Tβ $Tβ")
                     end
-                    for Tα in (Const, Duplicated), Tβ in (Const, Duplicated)
+                    for Tα in fTαs, Tβ in fTβs
                         EnzymeTestUtils.test_forward(TensorKit.planartrace!, Duplicated, (C, Duplicated), (A, Duplicated), (p, Const), (q, Const), (α, Tα), (β, Tβ), (TensorOperations.DefaultBackend(), Const), (TensorOperations.DefaultAllocator(), Const); atol, rtol, testset_name = "planartrace forward Tα $Tα Tβ $Tβ")
                     end
                 end
