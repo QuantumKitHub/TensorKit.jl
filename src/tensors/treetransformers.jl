@@ -210,3 +210,11 @@ end
     return TreeTransformer(A, fusiontreetransform, p, Vdst, Vsrc, conjsrc)
 end
 
+
+# Keep TensorKit's profiling categories for the phases instrumented by Cached.
+const TensorKitCachedFunction = Union{
+    typeof(fsbraid), typeof(fstranspose), typeof(treebraider), typeof(treetransposer),
+    typeof(sectorstructure), typeof(degeneracystructure),
+}
+Cached.instrument_label(f::TensorKitCachedFunction, ::Val{:lookup}) = "bookkeeping: cache $(nameof(f))"
+Cached.instrument_label(f::TensorKitCachedFunction, ::Val{:compute}) = "symmetry: compute $(nameof(f))"
