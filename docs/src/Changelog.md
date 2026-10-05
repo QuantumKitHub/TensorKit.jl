@@ -28,7 +28,7 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 - Extend VectorInterface compat to include v0.7
 - Require TensorKitSectors v0.3.10
-- `@cached` can be used from other modules, such as package extensions, which then own the cache of the methods they add; these caches are shown with their module in `global_cache_info` (internal)
+- `@cached` can be used from other modules, such as package extensions, which then own the cache of the methods they add; these caches are shown with their module in `global_cache_info` after registration in `__init__` (internal)
 - The `TreeTransformer`s used in index manipulations are now constructed and cached per storagetype of the destination tensor, which is also a dispatch point for storage-specific transformers with their own cache (internal)
 
 ### Deprecated

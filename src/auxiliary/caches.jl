@@ -56,7 +56,7 @@ end
 
 # timer sections are controlled by the `timeit_debug_enabled` switch of the module using `@cached`
 _timeit_expr(label, ex) =
-    Expr(:macrocall, GlobalRef(TimerOutputs, Symbol("@timeit_debug")), LineNumberNode(@__LINE__, @__FILE__), GLOBAL_TIMER, label, ex)
+    Expr(:macrocall, GlobalRef(TimerOutputs, Symbol("@timeit_debug")), LineNumberNode(@__LINE__, @__FILE__), GlobalRef(@__MODULE__, :GLOBAL_TIMER), label, ex)
 
 macro cached(ex)
     return _cached(__module__, ex)
@@ -221,11 +221,12 @@ function _cached(mod::Module, ex)
         :const,
         Expr(:(=), globalcachename, :($LRU{Any, Any}(; maxsize = $DEFAULT_GLOBALCACHE_SIZE[])))
     )
-    # caches of other modules (e.g. extensions adding methods) are registered with their module
-    registername = mod === (@__MODULE__) ? globalcachename : Symbol(nameof(mod), ".", globalcachename)
-    fglobalcacheregister = Expr(
-        :call, :push!, GLOBAL_CACHES, :($(QuoteNode(registername)) => $globalcachename)
-    )
+    # Other modules register their caches explicitly from `__init__`, since
+    # mutations of this registry during their precompilation do not survive loading.
+    fglobalcacheregister = mod === (@__MODULE__) ? Expr(
+            :call, :push!, GlobalRef(@__MODULE__, :GLOBAL_CACHES),
+            :($(QuoteNode(globalcachename)) => $globalcachename)
+        ) : nothing
 
     # # total expression
     return esc(
