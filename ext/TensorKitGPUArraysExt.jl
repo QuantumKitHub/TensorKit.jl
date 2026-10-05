@@ -12,7 +12,7 @@ using TensorKit.TensorOperations: linearize, DefaultAllocator
 using TensorKit.Factorizations
 using TensorKit.Factorizations: AbstractAlgorithm
 using TensorKit: SectorDict, tensormaptype, scalar, similarstoragetype, AdjointTensorMap, scalartype, project_symmetric_and_check
-using TensorKit: StridedSubblocks, UniqueTreeTransformer, GenericTreeTransformer, @cached, TensorMapSpace, Index2Tuple, IndexTuple
+using TensorKit: UniqueTreeTransformer, GenericTreeTransformer, @cached, TensorMapSpace, Index2Tuple, IndexTuple
 import TensorKit: randisometry, rand, randn, fill_braidingsubblock!, add_transform_kernel!
 
 function TensorKit.fill_braidingsubblock!(data::TD, val) where {T, TD <: Union{<:AnyGPUMatrix{T}, <:StridedViews.StridedView{T, 4, <:AnyGPUArray{T}}}}
@@ -447,33 +447,32 @@ function _launch_generic!(data_dst, data_src, op, transformer, α, β, ::Val{N})
     return nothing
 end
 
-const GPUStridedSubblocks = StridedSubblocks{<:AnyGPUArray}
-
+# we don't want/need the `StridedSubblocks` here because that information is already in the transformer
 TensorKit._transform_subblocks(
     tdst::TensorMap, tsrc::TensorMap,
     transformer::Union{DeviceUniqueTreeTransformer, DeviceGenericTreeTransformer}
-) = StridedSubblocks(tdst), StridedSubblocks(tsrc)
+) = (tdst.data, tsrc.data)
 
 function TensorKit.add_transform_kernel!(
-        dst::GPUStridedSubblocks, src::GPUStridedSubblocks, p, conjsrc::Bool,
+        dst::AnyGPUVector, src::AnyGPUVector, p, conjsrc::Bool,
         device::DeviceUniqueTreeTransformer, α, β, backend, allocator, ntasks::Int
     )
     N = length(linearize(p))
     op = conjsrc ? conj : identity
-    _launch_unique!(dst.data, src.data, op, device, α, β, Val(N))
+    _launch_unique!(dst, src, op, device, α, β, Val(N))
     return nothing
 end
 
 function TensorKit.add_transform_kernel!(
-        dst::GPUStridedSubblocks, src::GPUStridedSubblocks, p, conjsrc::Bool,
+        dst::AnyGPUVector, src::AnyGPUVector, p, conjsrc::Bool,
         device::DeviceGenericTreeTransformer, α, β, backend, allocator, ntasks::Int
     )
     N = length(linearize(p))
     op = conjsrc ? conj : identity
     # one-tree blocks are a scaled permutation, which the unique kernel already handles; the
     # two kernels touch disjoint subblocks so the launch order does not matter
-    _launch_unique!(dst.data, src.data, op, device.unique_blocks, α, β, Val(N))
-    _launch_generic!(dst.data, src.data, op, device, α, β, Val(N))
+    _launch_unique!(dst, src, op, device.unique_blocks, α, β, Val(N))
+    _launch_generic!(dst, src, op, device, α, β, Val(N))
     return nothing
 end
 
