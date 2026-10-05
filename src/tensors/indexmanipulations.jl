@@ -657,8 +657,8 @@ function add_transform_kernel!(
     )
     bufsize = buffersize(transformer)
     if bufsize == 0 # no recoupling needed: every block consists of a single tree
-        taskforeach(transformer.data, ntasks) do blk
-            _add_transform_block!(dst, src, p, conjsrc, blk, nothing, α, β, backend, allocator)
+        taskforeach(transformer.data, ntasks) do (U, inds_dst, inds_src)
+            _add_transform_block!(dst, src, p, conjsrc, U, inds_dst, inds_src, nothing, α, β, backend, allocator)
         end
     else
         # One max-sized workspace per task (a single one that is reused by all blocks when
@@ -669,8 +669,8 @@ function add_transform_kernel!(
             TO.tensoralloc(storagetype(dst), bufsize, Val(true), allocator)
                 for _ in 1:min(length(transformer.data), ntasks)
         ]
-        taskforeach(transformer.data, buffers) do blk, buffer
-            _add_transform_block!(dst, src, p, conjsrc, blk, buffer, α, β, backend, allocator)
+        taskforeach(transformer.data, buffers) do (U, inds_dst, inds_src), buffer
+            _add_transform_block!(dst, src, p, conjsrc, U, inds_dst, inds_src, buffer, α, β, backend, allocator)
         end
         foreach(Base.Fix2(TO.tensorfree!, allocator), buffers)
         TO.allocator_reset!(allocator, cp)
@@ -678,65 +678,45 @@ function add_transform_kernel!(
     return nothing
 end
 
+# `U` is either a scalar coefficient with integer positions (unique fusion), or a recoupling
+# matrix with vectors of positions (generic).
 function _add_transform_block!(
-        dst::TransformSubblocks, src::TransformSubblocks, p, conjsrc::Bool,
-        (coeff, idst, isrc)::UniqueTransformerData, buffer, α, β, backend, allocator
-    )
-    return _add_single_block!(dst, src, p, conjsrc, coeff, idst, isrc, α, β, backend, allocator)
-end
-function _add_transform_block!(
-        dst::TransformSubblocks, src::TransformSubblocks, p, conjsrc::Bool,
-        blk::RecouplingBlock, buffer, α, β, backend, allocator
-    )
-    U = blk.U
-    return U isa Number ?
-        _add_single_block!(dst, src, p, conjsrc, U, only(blk.inds_dst), only(blk.inds_src), α, β, backend, allocator) :
-        _add_recoupling_block!(dst, src, p, conjsrc, U, blk.inds_dst, blk.inds_src, buffer, α, β, backend, allocator)
-end
-
-# single tree: no matmul needed
-function _add_single_block!(
-        dst::TransformSubblocks, src::TransformSubblocks, p, conjsrc::Bool, coeff, idst::Int, isrc::Int,
-        α, β, backend, allocator
-    )
-    @timeit_debug GLOBAL_TIMER "dense: tensoradd" @inbounds TO.tensoradd!(
-        dst[idst], src[isrc], p, conjsrc, α * coeff, β, backend, allocator
-    )
-    return nothing
-end
-
-# multi-tree block: pack → recoupling matmul → unpack
-function _add_recoupling_block!(
         dst::TransformSubblocks, src::TransformSubblocks, p, conjsrc::Bool, U, inds_dst, inds_src, buffer,
         α, β, backend, allocator
     )
-    rows, cols = size(U)
-    sz_src = size(@inbounds(src[first(inds_src)]))
-    blocksize = prod(sz_src)
-    ptriv = (ntuple(identity, length(sz_src)), ())
-    buffer_dst = StridedView(buffer, (blocksize, rows), (1, blocksize), 0)
-    buffer_src = StridedView(buffer, (blocksize, cols), (1, blocksize), blocksize * rows)
-
-    # 1. Extract: copy each source block into column i of buffer_src as a flat vector,
-    #    using a trivial permutation so the layout is canonical before the matmul.
-    @timeit_debug GLOBAL_TIMER "dense: pack" @inbounds for (i, isrc) in enumerate(inds_src)
-        TO.tensoradd!(
-            sreshape(view(buffer_src, :, i), sz_src), src[isrc],
-            ptriv, conjsrc, One(), Zero(), backend, allocator
+    if length(U) == 1 # single tree: no matmul needed
+        @timeit_debug GLOBAL_TIMER "dense: tensoradd" @inbounds TO.tensoradd!(
+            dst[only(inds_dst)], src[only(inds_src)], p, conjsrc, α * only(U), β, backend, allocator
         )
-    end
+    else # Multi-tree block: pack → recoupling matmul → unpack.
+        rows, cols = size(U)
+        sz_src = size(@inbounds(src[first(inds_src)]))
+        blocksize = prod(sz_src)
+        ptriv = (ntuple(identity, length(sz_src)), ())
+        buffer_dst = StridedView(buffer, (blocksize, rows), (1, blocksize), 0)
+        buffer_src = StridedView(buffer, (blocksize, cols), (1, blocksize), blocksize * rows)
 
-    # 2. Recoupling: buffer_dst = buffer_src * U^T  (each output tree is a linear
-    #    combination of input trees weighted by the recoupling coefficients).
-    @timeit_debug GLOBAL_TIMER "dense: recouple mul!" _recouple!(buffer, buffer_dst, buffer_src, U)
+        # 1. Extract: copy each source block into column i of buffer_src as a flat vector,
+        #    using a trivial permutation so the layout is canonical before the matmul.
+        @timeit_debug GLOBAL_TIMER "dense: pack" @inbounds for (i, isrc) in enumerate(inds_src)
+            TO.tensoradd!(
+                sreshape(view(buffer_src, :, i), sz_src), src[isrc],
+                ptriv, conjsrc, One(), Zero(), backend, allocator
+            )
+        end
 
-    # 3. Insert: scatter column j of buffer_dst into the destination, applying the
-    #    actual index permutation p and the scaling α in the same tensoradd! call.
-    @timeit_debug GLOBAL_TIMER "dense: unpack" @inbounds for (j, idst) in enumerate(inds_dst)
-        TO.tensoradd!(
-            dst[idst], sreshape(view(buffer_dst, :, j), sz_src),
-            p, false, α, β, backend, allocator
-        )
+        # 2. Recoupling: buffer_dst = buffer_src * U^T  (each output tree is a linear
+        #    combination of input trees weighted by the recoupling coefficients).
+        @timeit_debug GLOBAL_TIMER "dense: recouple mul!" _recouple!(buffer, buffer_dst, buffer_src, U)
+
+        # 3. Insert: scatter column j of buffer_dst into the destination, applying the
+        #    actual index permutation p and the scaling α in the same tensoradd! call.
+        @timeit_debug GLOBAL_TIMER "dense: unpack" @inbounds for (j, idst) in enumerate(inds_dst)
+            TO.tensoradd!(
+                dst[idst], sreshape(view(buffer_dst, :, j), sz_src),
+                p, false, α, β, backend, allocator
+            )
+        end
     end
     return nothing
 end

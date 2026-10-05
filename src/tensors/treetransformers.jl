@@ -33,10 +33,6 @@ function recoupling_scalartype(::Type{A}, ::Type{Tₛ}) where {A, Tₛ <: Number
     return Tₛ <: Real ? real(T) : complex(T)
 end
 
-# matrix type with scalar type `T` in the same storage as the vector type `A`
-Base.@assume_effects :foldable recoupling_matrixtype(::Type{A}, ::Type{T}) where {A, T} =
-    Core.Compiler.return_type(similar, Tuple{A, Type{T}, Dims{2}})
-
 # (coefficient, destination position, source position)
 const UniqueTransformerData{T} = Tuple{T, Int, Int}
 
@@ -54,34 +50,20 @@ struct UniqueTreeTransformer{T, N} <: TreeTransformer
     structure_src::Vector{StridedStructure{N}}
 end
 
-"""
-    RecouplingBlock{T, M}
-
-Recoupling data of a single [`FusionTreeBlock`](@ref), mapping the subblocks at the source
-positions `inds_src` onto those at the destination positions `inds_dst`. For blocks consisting of a
-single tree, `U::T` is a scalar coefficient, while for other blocks it is a recoupling matrix `U::M`,
-where `U[j, i]` maps source `i` onto destination `j`.
-"""
-struct RecouplingBlock{T, M <: AbstractMatrix{T}}
-    U::Union{T, M}
-    inds_dst::Vector{Int}
-    inds_src::Vector{Int}
-    # `M` cannot be inferred from a scalar `U`, so the parameters are always specified
-    RecouplingBlock{T, M}(U, inds_dst, inds_src) where {T, M <: AbstractMatrix{T}} =
-        new{T, M}(U, inds_dst, inds_src)
-end
+# (recoupling matrix, destination positions, source positions)
+const GenericTransformerData{T} = Tuple{Matrix{T}, Vector{Int}, Vector{Int}}
 
 """
-    GenericTreeTransformer{T, M, N} <: TreeTransformer
+    GenericTreeTransformer{T, N} <: TreeTransformer
 
 Tree transformation for sectors with multiple fusion channels, where the subblocks of a
 [`FusionTreeBlock`](@ref) map onto the subblocks of the transformed block through a recoupling
-matrix, stored as a [`RecouplingBlock{T, M}`](@ref RecouplingBlock). The subblock structures of the
-destination and source spaces are kept alongside, such that the [`StridedSubblocks`](@ref) of both
-tensors can be created without further lookups.
+matrix, stored as `(U, inds_dst, inds_src)`, where `U[j, i]` maps source `i` onto destination `j`.
+The subblock structures of the destination and source spaces are kept alongside, such that the
+[`StridedSubblocks`](@ref) of both tensors can be created without further lookups.
 """
-struct GenericTreeTransformer{T, M <: AbstractMatrix{T}, N} <: TreeTransformer
-    data::Vector{RecouplingBlock{T, M}}
+struct GenericTreeTransformer{T, N} <: TreeTransformer
+    data::Vector{GenericTransformerData{T}}
     structure_dst::Vector{StridedStructure{N}}
     structure_src::Vector{StridedStructure{N}}
 end
@@ -120,11 +102,10 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst, Vsrc, conjsrc::Bo
     structure_dst = degeneracystructure(Vdst).subblockstructure
     structure_src = degeneracystructure(Vsrc).subblockstructure
     T = recoupling_scalartype(A, sectorscalartype(sectortype(Vsrc)))
-    M = recoupling_matrixtype(A, T)
 
     fblocks = @timeit_debug GLOBAL_TIMER "bookkeeping: fusionblocks" fusionblocks(Vsrc′)
     nblocks = length(fblocks)
-    data = Vector{RecouplingBlock{T, M}}(undef, nblocks)
+    data = Vector{GenericTransformerData{T}}(undef, nblocks)
     weights = Vector{Int}(undef, nblocks)
 
     nthreads = get_num_manipulation_threads()
@@ -143,8 +124,8 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst, Vsrc, conjsrc::Bo
                     return idst
                 end
             end
-            U = length(U₀) == 1 ? convert(T, only(U₀)) : convert(M, U₀)
-            data[i] = RecouplingBlock{T, M}(U, inds_dst, inds_src)
+            U = convert(Matrix{T}, U₀)
+            data[i] = (U, inds_dst, inds_src)
             # cost model: L input blocks each going to L output blocks of a given length
             weights[i] = length(U₀) * prod(structure_dst[first(inds_dst)][1])
 
@@ -157,14 +138,14 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst, Vsrc, conjsrc::Bo
 
     # sort by (approximate) weight to facilitate multi-threading strategies
     @timeit_debug GLOBAL_TIMER "bookkeeping: sort" Base.permute!(data, sortperm(weights; rev = true))
-    transformer = GenericTreeTransformer{T, M, numind(Vdst)}(data, structure_dst, structure_src)
+    transformer = GenericTreeTransformer{T, numind(Vdst)}(data, structure_dst, structure_src)
 
     Δt = Base.time() - t₀
     @debug(
         lazy"TreeTransformer for $Vsrc to $Vdst via $p", conjsrc,
         nblocks = nblocks,
-        sz_median = nblocks > 0 ? length(data[cld(end, 2)].inds_dst) : 0,
-        sz_max = nblocks > 0 ? length(data[1].inds_dst) : 0,
+        sz_median = nblocks > 0 ? size(data[cld(end, 2)][1], 1) : 0,
+        sz_max = nblocks > 0 ? size(data[1][1], 1) : 0,
         Δt
     )
 
@@ -181,9 +162,9 @@ the recoupling matrix.
 buffersize(::UniqueTreeTransformer) = 0
 function buffersize(transformer::GenericTreeTransformer)
     structure_src = transformer.structure_src
-    return maximum(transformer.data; init = 0) do blk
-        blk.U isa Number && return 0
-        return prod(structure_src[first(blk.inds_src)][1]) * sum(size(blk.U))
+    return maximum(transformer.data; init = 0) do (U, _, inds_src)
+        length(U) == 1 && return 0
+        return prod(structure_src[first(inds_src)][1]) * sum(size(U))
     end
 end
 
@@ -192,7 +173,7 @@ function treetransformertype(::Type{A}, Vdst, Vsrc) where {A}
     T = recoupling_scalartype(A, sectorscalartype(I))
     N = numind(Vdst)
     FusionStyle(I) == UniqueFusion() && return UniqueTreeTransformer{T, N}
-    return GenericTreeTransformer{T, recoupling_matrixtype(A, T), N}
+    return GenericTreeTransformer{T, N}
 end
 
 function TreeTransformer(
