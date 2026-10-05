@@ -22,15 +22,20 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 ### Added
 
+- Re-export `NamedSector` and `@NamedSector` from TensorKitSectors
+
 ### Changed
 
 - Extend VectorInterface compat to include v0.7
+- Require TensorKitSectors v0.3.10
 
 ### Deprecated
 
 ### Removed
 
 ### Fixed
+
+- Documentation build failing on TensorKitSectors doctests
 
 ### Performance
 
