@@ -416,12 +416,12 @@ end
         # The permutation of src_j was already done by permuting its strides before the
         # kernel launched.
         acc = zero(promote_type(eltype(data_src), eltype(coeffs)))
-        for j in 1:blk.cols
+        @inbounds for j in 1:blk.cols
             # TODO is there a more efficient way to do this read?
-            coeff = @inbounds coeffs[blk.u_offset + (j - 1) * blk.rows + i + 1]
+            coeff = coeffs[blk.u_offset + 1 + i + (j - 1) * blk.rows]
             iszero(coeff) && continue
-            pst_src, offs_src = @inbounds structs_src[blk.src_offset + j]
-            acc += coeff * @inbounds op(data_src[_linear_index(coords, pst_src, offs_src)])
+            pst_src, offs_src = structs_src[blk.src_offset + j]
+            acc += coeff * op(data_src[_linear_index(coords, pst_src, offs_src)])
         end
         @inbounds data_dst[i_dst] = α * acc + β * data_dst[i_dst]
     end
