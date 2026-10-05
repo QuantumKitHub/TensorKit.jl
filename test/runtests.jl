@@ -31,14 +31,22 @@ args = parse_args(ARGS; custom = ["fast"])
 fast = !isnothing(args.custom["fast"])
 
 # Enzyme workers end up needing ~4 GB, but the default job count assumes ~2 GB per worker.
-# Cap the number of jobs by increasing the per-worker memory budger unless --jobs was given.
+# Cap the number of jobs by increasing the per-worker memory budget unless --jobs was given.
 selected = copy(testsuite)
 ParallelTestRunner.filter_tests!(selected, args)
-if isnothing(args.jobs) && any(startswith("enzyme"), keys(selected))
+has_enzyme = any(startswith("enzyme"), keys(selected))
+if isnothing(args.jobs) && has_enzyme
     njobs = clamp(Int(Sys.free_memory() ÷ (4 * Int64(2)^30)), 1, Sys.CPU_THREADS)
     args = ParallelTestRunner.ParsedArgs(
         Some(njobs), args.verbose, args.quickfail, args.list, args.custom, args.positionals
     )
+end
+# Enzyme-compiled code is never freed, so worker RSS keeps growing with each test. Recycle
+# workers well before the default 3.8 GB threshold unless JULIA_TEST_MAXRSS_MB is set.
+max_worker_rss = if has_enzyme && !haskey(ENV, "JULIA_TEST_MAXRSS_MB")
+    2500 * 2^20
+else
+    ParallelTestRunner.get_max_worker_rss()
 end
 
 setup_path = joinpath(@__DIR__, "setup.jl")
@@ -52,4 +60,4 @@ const init_code = quote
     const fast_tests = $fast
 end
 
-ParallelTestRunner.runtests(TensorKit, args; testsuite, init_worker_code, init_code)
+ParallelTestRunner.runtests(TensorKit, args; testsuite, init_worker_code, init_code, max_worker_rss)
