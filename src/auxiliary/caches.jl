@@ -2,7 +2,7 @@
 # `CacheStyle` is imported (not just used) so that the `CacheStyle(::typeof(f), ...)`
 # specializations in TensorKit, and those of users, extend `Cached.CacheStyle`.
 import Cached: CacheStyle
-using Cached: Cached, @cached, NoCache, GlobalCache, LRU
+using Cached: Cached, @cached, NoCache, GlobalCache, Hashed, LRU
 
 """
     const GLOBAL_CACHES

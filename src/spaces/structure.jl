@@ -21,7 +21,7 @@ struct SectorStructure{I <: Sector, F <: FusionTreePair{I}}
     fusiontrees::Indices{F}
 end
 
-Base.@assume_effects :foldable function sectorstructuretype(key::Hashed{S}) where {S <: HomSpace}
+Base.@assume_effects :foldable function sectorstructuretype(::S) where {S <: HomSpace}
     I = sectortype(S)
     F = fusiontreetype(I, numout(S), numin(S))
     return SectorStructure{I, F}
@@ -35,11 +35,8 @@ pairs as `Indices`. The result is cached based on the sector structure of `W` (i
 degeneracy dimensions).
 
 See also [`degeneracystructure`](@ref), [`fusiontrees`](@ref), [`blocksectors`](@ref).
-""" sectorstructure(::HomSpace)
-sectorstructure(W::HomSpace) = sectorstructure(Hashed(W, sectorhash, sectorequal))
-
-@cached function sectorstructure(key::Hashed{S})::sectorstructuretype(key) where {S <: HomSpace}
-    W = parent(key)
+"""
+@cached function sectorstructure(W::S)::sectorstructuretype(W) where {S <: HomSpace}
     codom, dom = codomain(W), domain(W)
 
     I = sectortype(S)
@@ -70,6 +67,8 @@ sectorstructure(W::HomSpace) = sectorstructure(Hashed(W, sectorhash, sectorequal
 
     return SectorStructure{I, F}(Indices(bs), Indices(trees))
 end
+
+Cached.cachekey(::typeof(sectorstructure), W::HomSpace) = (Hashed(W, sectorhash, sectorequal),)
 
 # DegeneracyStructure: degeneracy-dependent characterization of HomSpaces
 # -----------------------------------------------------------------------

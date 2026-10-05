@@ -262,6 +262,23 @@ The `braid` and `permute` routines for double fusion trees will be the main acce
 As a consequence, results from these routines are memoized via a `@cached` mechanism.
 The caching strategy is controlled by `Cached.CacheStyle`: for `FusionStyle(I) isa UniqueFusion` no caching is used (`NoCache()`), since the result is a single cheap scalar coefficient; for `MultipleFusion` or `GenericFusion` sectors, `GlobalCache()` uses Cached.jl's configured container (ClockCache by default), as computing the transformation matrix can be expensive and results are reused frequently.
 
+TensorKit also uses Cached.jl for sector structures, degeneracy structures and fusion tree transformers.
+Sector structures share cache entries across spaces with the same sectors, even if their degeneracy dimensions differ, through `Cached.cachekey`.
+The Cached APIs can inspect, resize and configure these caches:
+
+```julia
+using TensorKit, Cached
+Cached.cache_info(TensorKit)
+Cached.set_cache_size!(TensorKit.treebraider, 50_000)
+Cached.set_cache_preferences!(TensorKit; maxsize = 50_000, measure = "bytes")
+Cached.set_cache_preferences!(; container = "LRU")
+```
+
+Preferences are saved in `LocalPreferences.toml` and apply after restarting Julia; a runtime size change applies immediately.
+`Cached.uncached(f, args...)` computes a result without consulting or filling the cache.
+Optional Cached features, such as the Tachikoma dashboard and SQLite disk caching, remain available through Cached's extensions.
+Disk caching requires loading SQLite and defining `Cached.DiskCacheStyle` for the desired function; it is disabled by default, and `empty_globalcaches!()` clears only in-memory caches.
+
 This caching implies that potential inefficiencies in the fusion tree manipulations (which we nonetheless try to avoid) will not seriously affect performance of tensor manipulations.
 
 ## Inspecting fusion trees as tensors
