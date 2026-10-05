@@ -47,6 +47,22 @@ struct GenericTreeTransformer{T, N} <: TreeTransformer
     structure_src::Vector{StridedStructure{N}}
 end
 
+# Both structure arrays are retained by the transformer, even when another cache also
+# holds them. Within an entry, identical source/destination arrays are counted only once.
+_cache_structure_size(t::TreeTransformer) = sizeof(t.structure_src) +
+    (t.structure_src === t.structure_dst ? 0 : sizeof(t.structure_dst))
+
+Cached.cachesize(t::UniqueTreeTransformer) = sizeof(t) + _cache_payload_size(t.data) + _cache_structure_size(t)
+
+function Cached.cachesize(t::GenericTreeTransformer)
+    bytes = sizeof(t) + sizeof(t.data) + _cache_structure_size(t)
+    for (U, inds_dst, inds_src) in t.data
+        bytes += _cache_payload_size(U) + sizeof(inds_src) +
+            (inds_src === inds_dst ? 0 : sizeof(inds_dst))
+    end
+    return bytes
+end
+
 function UniqueTreeTransformer(transform, p, Vdst, Vsrc, conjsrc::Bool)
     spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
 

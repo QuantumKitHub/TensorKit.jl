@@ -270,12 +270,18 @@ The Cached APIs can inspect, resize and configure these caches:
 using TensorKit, Cached
 Cached.cache_info(TensorKit)
 Cached.set_cache_size!(TensorKit.treebraider, 50_000)
+Cached.set_cache_size!(TensorKit.treebraider, 2^30; by = Cached.cachesize) # 1 GiB of cached values
 Cached.set_cache_preferences!(TensorKit; maxsize = 50_000, measure = "bytes")
 Cached.set_cache_preferences!(; container = "LRU")
 ```
 
 Preferences are saved in `LocalPreferences.toml` and apply after restarting Julia; a runtime size change applies immediately.
 `Cached.uncached(f, args...)` computes a result without consulting or filling the cache.
+TensorKit supplies efficient `Cached.cachesize` methods for its structure, fusion-tree and transformer results.
+These estimate bytes from the fixed-size fields and live array buffers; matrix coefficients and inline sector values are not traversed individually.
+Reference-containing scalar or sector arrays fall back to `Base.summarysize`.
+Buffers shared between cache entries count toward each entry, while identical source and destination structure buffers within a transformer count once.
+The budget excludes cache keys, container and allocation overhead, and spare array capacity; it is a cached-value estimate rather than a limit on total process memory.
 Optional Cached features, such as the Tachikoma dashboard and SQLite disk caching, remain available through Cached's extensions.
 Disk caching requires loading SQLite and defining `Cached.DiskCacheStyle` for the desired function; it is disabled by default, and `empty_globalcaches!()` clears only in-memory caches.
 
