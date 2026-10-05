@@ -284,42 +284,45 @@ function braid(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple, leve
     @assert numind(src) == length(p[1]) + length(p[2])
     @assert numout(src) == length(levels[1]) && numin(src) == length(levels[2])
     @assert TupleTools.isperm((p[1]..., p[2]...))
-    return fsbraid((src, p, levels))
+    return fsbraid(src, p, levels)
 end
 
-const FSPBraidKey{I, N₁, N₂} = Tuple{FusionTreePair{I}, Index2Tuple{N₁, N₂}, Index2Tuple}
-const FSBBraidKey{I, N₁, N₂} = Tuple{FusionTreeBlock{I}, Index2Tuple{N₁, N₂}, Index2Tuple}
-
-Base.@assume_effects :foldable function _fsdicttype(::Type{T}) where {I, N₁, N₂, T <: FSPBraidKey{I, N₁, N₂}}
-    E = sectorscalartype(I)
-    return Pair{fusiontreetype(I, N₁, N₂), E}
+# Braiding can promote real fusion coefficients to complex values. Keep the result
+# type explicit so all braid paths remain inferred, including anyonic sectors.
+Base.@assume_effects :foldable function fsbraidtype(
+        src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, ::Index2Tuple{N₁, N₂}
+    ) where {I, N₁, N₂}
+    T = sectorscalartype(I)
+    if src isa FusionTreePair
+        return Pair{fusiontreetype(I, N₁, N₂), T}
+    else
+        F = Tuple{fusiontreetype(I, N₁), fusiontreetype(I, N₂)}
+        return Pair{FusionTreeBlock{I, N₁, N₂, F}, Matrix{T}}
+    end
 end
-Base.@assume_effects :foldable function _fsdicttype(::Type{T}) where {I, N₁, N₂, T <: FSBBraidKey{I, N₁, N₂}}
-    F₁ = fusiontreetype(I, N₁)
-    F₂ = fusiontreetype(I, N₂)
-    E = sectorscalartype(I)
-    return Pair{FusionTreeBlock{I, N₁, N₂, Tuple{F₁, F₂}}, Matrix{E}}
-end
 
-@cached function fsbraid(key::K)::_fsdicttype(K) where {I, N₁, N₂, K <: Union{FSPBraidKey{I, N₁, N₂}, FSBBraidKey{I, N₁, N₂}}}
-    if K <: FSPBraidKey
-        ((f₁, f₂), (p1, p2), (l1, l2)) = key
-        p = linearizepermutation(p1, p2, length(f₁), length(f₂))
+@cached function fsbraid(
+        src::Union{FusionTreePair{I}, FusionTreeBlock{I}},
+        p::Index2Tuple{N₁, N₂}, levels::Index2Tuple
+    )::fsbraidtype(src, p) where {I, N₁, N₂}
+    p1, p2 = p
+    l1, l2 = levels
+    if src isa FusionTreePair
+        f₁, f₂ = src
+        p′ = linearizepermutation(p1, p2, length(f₁), length(f₂))
         levels = (l1..., reverse(l2)...)
         (f, f0), coeff1 = repartition((f₁, f₂), N₁ + N₂)
-        f′, coeff2 = braid(f, p, levels)
+        f′, coeff2 = braid(f, p′, levels)
         (f₁′, f₂′), coeff3 = repartition((f′, f0), N₁)
         return (f₁′, f₂′) => coeff1 * coeff2 * coeff3
     else
-        src, (p1, p2), (l1, l2) = key
-
-        p = linearizepermutation(p1, p2, numout(src), numin(src))
+        p′ = linearizepermutation(p1, p2, numout(src), numin(src))
         levels = (l1..., reverse(l2)...)
 
         dst, U = repartition(src, numind(src))
 
         braid_style = BraidingStyle(I)
-        for s in permutation2swaps(p)
+        for s in permutation2swaps(p′)
             _check_levels(braid_style, levels, s)
             inv = levels[s] > levels[s + 1]
             dst, U_tmp = artin_braid(dst, s; inv)
@@ -339,7 +342,7 @@ end
     end
 end
 
-CacheStyle(::typeof(fsbraid), k::Union{FSPBraidKey{I}, FSBBraidKey{I}}) where {I} =
+CacheStyle(::typeof(fsbraid), src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, args...) where {I} =
     FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalCache()
 
 """
