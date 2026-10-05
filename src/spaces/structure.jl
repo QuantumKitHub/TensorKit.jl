@@ -71,8 +71,6 @@ sectorstructure(W::HomSpace) = sectorstructure(Hashed(W, sectorhash, sectorequal
     return SectorStructure{I, F}(Indices(bs), Indices(trees))
 end
 
-CacheStyle(::typeof(sectorstructure), ::Hashed{<:HomSpace}) = GlobalLRUCache()
-
 # DegeneracyStructure: degeneracy-dependent characterization of HomSpaces
 # -----------------------------------------------------------------------
 """
@@ -194,5 +192,3 @@ function _subblock_strides(subsz, sz, str)
         throw(ArgumentError("unexpected error in computing subblock strides"))
     return strides
 end
-
-CacheStyle(::typeof(degeneracystructure), ::HomSpace) = GlobalLRUCache()

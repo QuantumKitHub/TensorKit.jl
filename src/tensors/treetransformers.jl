@@ -210,4 +210,3 @@ end
     return TreeTransformer(A, fusiontreetransform, p, Vdst, Vsrc, conjsrc)
 end
 
-# default cachestyle is GlobalLRUCache

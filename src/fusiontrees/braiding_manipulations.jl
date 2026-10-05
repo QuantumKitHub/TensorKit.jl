@@ -340,7 +340,7 @@ end
 end
 
 CacheStyle(::typeof(fsbraid), k::Union{FSPBraidKey{I}, FSBBraidKey{I}}) where {I} =
-    FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalLRUCache()
+    FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalCache()
 
 """
     permute((f₁, f₂)::FusionTreePair, (p1, p2)::Index2Tuple)
