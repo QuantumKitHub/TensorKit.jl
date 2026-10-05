@@ -16,6 +16,16 @@ const GLOBAL_CACHES = Pair{Symbol, Any}[]
 
 const DEFAULT_GLOBALCACHE_SIZE = Ref(10^4)
 
+# Buffer payloads can be measured without visiting their elements when stored inline.
+# Reference-containing sector/scalar types need the recursive fallback to include their data.
+_cache_payload_size(a::Array{T}) where {T} = isbitstype(T) ? sizeof(a) : Base.summarysize(a)
+
+# Include the index tables as well as the values (Dictionaries 0.4's Indices layout).
+function _cache_payload_size(inds::Indices)
+    return sizeof(getfield(inds, :slots)) + sizeof(getfield(inds, :hashes)) +
+        _cache_payload_size(getfield(inds, :values))
+end
+
 """
     empty_globalcaches!()
 
