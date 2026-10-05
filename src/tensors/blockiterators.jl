@@ -45,6 +45,92 @@ function foreachblock(f, t; scheduler = nothing)
     return nothing
 end
 
+# Positional block collections
+# ----------------------------
+# Keep only storage and integer metadata at the numeric kernel boundary. Unlike
+# BlockIterator, these collections do not retain the tensor or its sector type.
+abstract type PositionalBlocks end
+
+struct ReshapedBlocks{A <: AbstractVector} <: PositionalBlocks
+    data::A
+    structure::Vector{Tuple{Tuple{Int, Int}, UnitRange{Int}}}
+end
+
+struct VectorBlocks{A <: AbstractVector} <: PositionalBlocks
+    data::A
+    ranges::Vector{UnitRange{Int}}
+end
+
+struct DiagonalBlocks{B <: PositionalBlocks} <: PositionalBlocks
+    vectors::B
+end
+
+struct AdjointBlocks{B} <: PositionalBlocks
+    blocks::B
+end
+
+Base.length(b::ReshapedBlocks) = length(b.structure)
+Base.length(b::VectorBlocks) = length(b.ranges)
+Base.length(b::DiagonalBlocks) = length(b.vectors)
+Base.length(b::AdjointBlocks) = length(b.blocks)
+Base.firstindex(::PositionalBlocks) = 1
+Base.lastindex(b::PositionalBlocks) = length(b)
+Base.IteratorEltype(::Type{<:PositionalBlocks}) = Base.EltypeUnknown()
+
+@propagate_inbounds function Base.getindex(b::ReshapedBlocks, i::Int)
+    sz, r = b.structure[i]
+    return reshape(view(b.data, r), sz)
+end
+@propagate_inbounds Base.getindex(b::VectorBlocks, i::Int) = view(b.data, b.ranges[i])
+@propagate_inbounds Base.getindex(b::DiagonalBlocks, i::Int) = Diagonal(b.vectors[i])
+@propagate_inbounds Base.getindex(b::AdjointBlocks, i::Int) = adjoint(b.blocks[i])
+
+function Base.iterate(b::PositionalBlocks, i::Int = 1)
+    i > length(b) && return nothing
+    return @inbounds(b[i]), i + 1
+end
+
+# Generic tensor implementations can materialize their block views during
+# preparation. The optimized methods below reuse flat storage instead.
+positionalblocks(t) = map(last, collect(blocks(t)))
+positionalblocks(t, sectors) = [block(t, c) for c in sectors]
+
+"""
+    alignedblocks(t, ts...)
+
+Prepare integer-indexable block collections on a shared sector domain, preserving
+the union and empty-block behavior of `foreachblock`. Equal sector sets reuse the
+original positional metadata; differing sets are aligned before entering the kernel.
+The resulting positions are local to this alignment, not global sector identifiers.
+"""
+function alignedblocks(t, ts...)
+    tensors = (t, ts...)
+    all(t -> sectortype(t) === sectortype(first(tensors)), Base.tail(tensors)) || throw(SectorMismatch())
+    sectors = map(blocksectors, tensors)
+    if all(==(first(sectors)), Base.tail(sectors))
+        return map(positionalblocks, tensors)
+    end
+    allsectors = union(sectors...)
+    return map(t -> positionalblocks(t, allsectors), tensors)
+end
+
+"""
+    foreachblockvalue(f, t, ts...)
+
+Apply `f` to a tuple of corresponding block views, without passing sector keys.
+For flat-storage tensors the numeric loop specializes only on storage, block
+representation, and callback types. Sector matching stays in `alignedblocks`.
+"""
+foreachblockvalue(f, t, ts...) = foreachalignedblock(f, alignedblocks(t, ts...))
+
+# Prevent inlining the shared loop into each sector-dependent caller.
+@noinline function foreachalignedblock(f, bs::Tuple)
+    for i in 1:length(first(bs))
+        f(map(b -> b[i], bs))
+    end
+    return nothing
+end
+
 function show_blocks(io, mime::MIME"text/plain", iter; maytruncate::Bool = true)
     if maytruncate && get(io, :limit, false)
         numlinesleft, numcols = get(io, :displaysize, displaysize(io))::Tuple{Int, Int}
