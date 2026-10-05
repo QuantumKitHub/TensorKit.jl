@@ -271,37 +271,6 @@ function DeviceGenericTreeTransformer(
     )
 end
 
-"""
-    StorageAdaptor(proto)
-
-`Adapt` adaptor moving arrays onto the same device and array type as `proto`, preserving
-their element type. For `proto::CuVector{Float64}` and `array::Vector{Int}`,
-the call `adapt(typeof(proto), array)` would force-convert the element type `Int`
-to `Float64`, while `adapt(StoreAdaptor(proto), array)` does not.
-"""
-struct StorageAdaptor{A <: AbstractArray}
-    proto::A
-end
-function Adapt.adapt_storage(a::StorageAdaptor, x::AbstractArray)
-    dst = similar(a.proto, eltype(x), size(x))
-    isempty(x) && return dst
-    return copy!(dst, x)
-end
-
-function Adapt.adapt_structure(to, t::DeviceUniqueTreeTransformer)
-    return DeviceUniqueTreeTransformer(
-        Adapt.adapt(to, t.blocks), Adapt.adapt(to, t.work_offsets), t.nwork
-    )
-end
-
-function Adapt.adapt_structure(to, t::DeviceGenericTreeTransformer)
-    return DeviceGenericTreeTransformer(
-        Adapt.adapt(to, t.unique_blocks), Adapt.adapt(to, t.blocks),
-        Adapt.adapt(to, t.work_offsets), t.nwork, Adapt.adapt(to, t.coeffs),
-        Adapt.adapt(to, t.structs_dst), Adapt.adapt(to, t.structs_src)
-    )
-end
-
 # Cache the device transformer directly, constructing the cached host version only on a miss.
 @cached function TensorKit.treebraider(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
@@ -336,18 +305,32 @@ function __init__()
     return nothing
 end
 
-# We have this complicated setup because a naive `adapt` doesn't work.
-# Rather we copy everything to GPU-native arrays and have kernels that can work
-# with that.
-function device_transformer(A, transformer, p)
-    # Allocations must outlive any GPUArrays allocation-cache scope around the operation.
-    return GPUArrays.@uncached Adapt.adapt(
-        StorageAdaptor(A(undef, 0)), _device_transformer(transformer, p)
-    )
+# Allocations must outlive any GPUArrays allocation-cache scope around the operation.
+function device_transformer(A, transformer::UniqueTreeTransformer, p)
+    packed = DeviceUniqueTreeTransformer(transformer, p)
+    return GPUArrays.@uncached begin
+        proto = A(undef, 0)
+        # Metadata and coefficients have different element types; preserve each on upload.
+        upload(x) = copy!(similar(proto, eltype(x), size(x)), x)
+        DeviceUniqueTreeTransformer(upload(packed.blocks), upload(packed.work_offsets), packed.nwork)
+    end
 end
 
-_device_transformer(t::UniqueTreeTransformer, p) = DeviceUniqueTreeTransformer(t, p)
-_device_transformer(t::GenericTreeTransformer, p) = DeviceGenericTreeTransformer(t, p)
+function device_transformer(A, transformer::GenericTreeTransformer, p)
+    packed = DeviceGenericTreeTransformer(transformer, p)
+    return GPUArrays.@uncached begin
+        proto = A(undef, 0)
+        upload(x) = copy!(similar(proto, eltype(x), size(x)), x)
+        unique = packed.unique_blocks
+        device_unique = DeviceUniqueTreeTransformer(
+            upload(unique.blocks), upload(unique.work_offsets), unique.nwork
+        )
+        DeviceGenericTreeTransformer(
+            device_unique, upload(packed.blocks), upload(packed.work_offsets), packed.nwork,
+            upload(packed.coeffs), upload(packed.structs_dst), upload(packed.structs_src)
+        )
+    end
+end
 
 # COV_EXCL_START
 # kernels are not reachable by coverage
