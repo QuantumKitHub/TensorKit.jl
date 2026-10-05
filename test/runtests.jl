@@ -37,6 +37,9 @@ ParallelTestRunner.filter_tests!(selected, args)
 has_enzyme = any(startswith("enzyme"), keys(selected))
 if isnothing(args.jobs) && has_enzyme
     njobs = clamp(Int(Sys.free_memory() ÷ (4 * Int64(2)^30)), 1, Sys.CPU_THREADS)
+    # On Windows with Julia 1.10, memory pressure makes recycled workers too slow to start:
+    # Malt gives up if a new worker does not connect within 30 s, which aborts the whole run.
+    Sys.iswindows() && VERSION < v"1.11" && (njobs = min(njobs, 2))
     args = ParallelTestRunner.ParsedArgs(
         Some(njobs), args.verbose, args.quickfail, args.list, args.custom, args.positionals
     )
