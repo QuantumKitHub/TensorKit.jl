@@ -48,8 +48,6 @@ struct GenericTreeTransformer{T, N} <: TreeTransformer
 end
 
 function UniqueTreeTransformer(transform, p, Vdst, Vsrc, conjsrc::Bool)
-    t₀ = Base.time()
-
     spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
 
     src_trees, dst_trees = fusiontrees(Vsrc), fusiontrees(Vdst)
@@ -66,14 +64,12 @@ function UniqueTreeTransformer(transform, p, Vdst, Vsrc, conjsrc::Bool)
     structure_src = degeneracystructure(Vsrc).subblockstructure
     transformer = UniqueTreeTransformer(data, structure_dst, structure_src)
 
-    Δt = Base.time() - t₀
-    @debug(lazy"Treetransformer for $Vsrc to $Vdst via $p", conjsrc, nblocks = length(data), Δt)
+    @debug(lazy"Treetransformer for $Vsrc to $Vdst via $p", conjsrc, nblocks = length(data))
 
     return transformer
 end
 
 function GenericTreeTransformer(transform, p, Vdst, Vsrc, conjsrc::Bool)
-    t₀ = Base.time()
     spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
     # the fusion blocks that are transformed are those of the adjoint space for a conjugated source
     Vsrc′ = conjsrc ? Vsrc' : Vsrc
@@ -118,13 +114,11 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc, conjsrc::Bool)
     @timeit_debug GLOBAL_TIMER "bookkeeping: sort" Base.permute!(data, sortperm(weights; rev = true))
     transformer = GenericTreeTransformer(data, structure_dst, structure_src)
 
-    Δt = Base.time() - t₀
     @debug(
         lazy"TreeTransformer for $Vsrc to $Vdst via $p", conjsrc,
         nblocks = nblocks,
         sz_median = nblocks > 0 ? size(data[cld(end, 2)][1], 1) : 0,
-        sz_max = nblocks > 0 ? size(data[1][1], 1) : 0,
-        Δt
+        sz_max = nblocks > 0 ? size(data[1][1], 1) : 0
     )
 
     return transformer
@@ -188,6 +182,14 @@ end
     fusiontreetransform(f) = transpose(f, p′)
     return TreeTransformer(fusiontreetransform, p, Vdst, Vsrc, conjsrc)
 end
+
+# Keep TensorKit's profiling categories for the phases instrumented by Cached.
+const TensorKitCachedFunction = Union{
+    typeof(fsbraid), typeof(fstranspose), typeof(treebraider), typeof(treetransposer),
+    typeof(sectorstructure), typeof(degeneracystructure),
+}
+Cached.instrument_label(f::TensorKitCachedFunction, ::Val{:lookup}) = "bookkeeping: cache $(nameof(f))"
+Cached.instrument_label(f::TensorKitCachedFunction, ::Val{:compute}) = "symmetry: compute $(nameof(f))"
 
 # For CPU arrays the recoupling matrix can be used as is, also when the scalar types
 # do not match, since Strided handles mixed-eltype mul! without the copy that

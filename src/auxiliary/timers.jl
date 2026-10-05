@@ -61,6 +61,7 @@ host-side dispatch of asynchronous kernels unless the workload is explicitly syn
 """
 function enable_timers!()
     TimerOutputs.enable_debug_timings(TensorKit)
+    Cached.enable_cache_timers!(TensorKit, GLOBAL_TIMER)
     return nothing
 end
 
@@ -72,6 +73,7 @@ Also triggers recompilation of the instrumented methods on first use.
 """
 function disable_timers!()
     TimerOutputs.disable_debug_timings(TensorKit)
+    Cached.disable_cache_timers!(TensorKit)
     return nothing
 end
 
