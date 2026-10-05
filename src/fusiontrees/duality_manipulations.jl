@@ -568,9 +568,9 @@ end
 end
 
 CacheStyle(::typeof(fstranspose), k::FSPTransposeKey{I}) where {I} =
-    FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalLRUCache()
+    FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalCache()
 CacheStyle(::typeof(fstranspose), k::FSBTransposeKey{I}) where {I} =
-    FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalLRUCache()
+    FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalCache()
 
 # COMPOSITE DUALITY MANIPULATIONS PART 2: Planar traces
 #-------------------------------------------------------------------

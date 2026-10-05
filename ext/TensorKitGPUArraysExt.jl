@@ -4,7 +4,7 @@ using GPUArrays
 using GPUArrays: @allowscalar
 using GPUArrays.KernelAbstractions: @kernel, @index, get_backend
 using Adapt
-using TensorKit.LRUCache: LRU
+using TensorKit: LRU
 using TensorKit.TupleTools
 using Strided: StridedViews
 using MatrixAlgebraKit, Adapt

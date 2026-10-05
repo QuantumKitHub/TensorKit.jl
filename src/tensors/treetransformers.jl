@@ -189,8 +189,6 @@ end
     return TreeTransformer(fusiontreetransform, p, Vdst, Vsrc, conjsrc)
 end
 
-# default cachestyle is GlobalLRUCache
-
 # For CPU arrays the recoupling matrix can be used as is, also when the scalar types
 # do not match, since Strided handles mixed-eltype mul! without the copy that
 # Adapt.adapt would make (which additionally dispatches dynamically). Other storage
