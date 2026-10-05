@@ -122,6 +122,15 @@ struct FusionTreeBlock{I, N₁, N₂, F <: FusionTreePair{I, N₁, N₂}}
     trees::Vector{F}
 end
 
+Cached.cachesize(b::FusionTreeBlock) = sizeof(b) + _cache_payload_size(b.trees)
+
+# The scalar result is inline for ordinary sectors. Matrix results include the output
+# trees and the recoupling matrix, without walking every coefficient.
+Cached.cachesize(p::Pair{<:FusionTreePair, <:Number}) =
+    isbitstype(typeof(p)) ? sizeof(p) : Base.summarysize(p)
+Cached.cachesize(p::Pair{<:FusionTreeBlock, <:Matrix}) =
+    sizeof(p) + Cached.cachesize(first(p)) + _cache_payload_size(last(p))
+
 function FusionTreeBlock{I}(
         uncoupled::Tuple{NTuple{N₁, I}, NTuple{N₂, I}},
         isdual::Tuple{NTuple{N₁, Bool}, NTuple{N₂, Bool}};
