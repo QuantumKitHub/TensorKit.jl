@@ -1,6 +1,7 @@
 # [Profiling and timers](@id s_profiling)
 
 TensorKit's index manipulations, tensor contractions and factorizations are instrumented with [TimerOutputs.jl](https://github.com/KristofferC/TimerOutputs.jl) sections that are compiled away by default, so they incur no runtime cost.
+Enabling TensorKit's timers also enables Cached.jl's cache lookup and computation timers, recorded in the same timer tree and categories.
 They can be enabled to obtain a detailed breakdown of where time is spent inside these operations, in particular the split between the different kinds of work involved in manipulating symmetric tensors:
 
 | category | contents |
