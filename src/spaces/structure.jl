@@ -21,6 +21,9 @@ struct SectorStructure{I <: Sector, F <: FusionTreePair{I}}
     fusiontrees::Indices{F}
 end
 
+Cached.cachesize(s::SectorStructure) =
+    sizeof(s) + _cache_payload_size(s.blocksectors) + _cache_payload_size(s.fusiontrees)
+
 Base.@assume_effects :foldable function sectorstructuretype(::S) where {S <: HomSpace}
     I = sectortype(S)
     F = fusiontreetype(I, numout(S), numin(S))
@@ -93,6 +96,8 @@ struct DegeneracyStructure{N}
     blockstructure::Vector{Tuple{Tuple{Int, Int}, UnitRange{Int}}}
     subblockstructure::Vector{StridedStructure{N}}
 end
+
+Cached.cachesize(s::DegeneracyStructure) = sizeof(s) + sizeof(s.blockstructure) + sizeof(s.subblockstructure)
 
 function degeneracystructuretype(W::HomSpace)
     N = length(codomain(W)) + length(domain(W))
