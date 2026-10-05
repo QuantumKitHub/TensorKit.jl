@@ -319,4 +319,3 @@ end
     return UniqueTreeTransformer(A, fusiontreetwister, p, Vdst, Vsrc, conjsrc)
 end
 
-# default cachestyle is GlobalLRUCache

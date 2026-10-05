@@ -260,7 +260,7 @@ This is simply given by
 
 The `braid` and `permute` routines for double fusion trees will be the main access point for corresponding manipulations on tensors.
 As a consequence, results from these routines are memoized via a `@cached` mechanism.
-The caching strategy is controlled by `CacheStyle`: for `FusionStyle(I) isa UniqueFusion` no caching is used (`NoCache()`), since the result is a single cheap scalar coefficient; for `MultipleFusion` or `GenericFusion` sectors, a global LRU cache (`GlobalLRUCache()`) is used, as computing the transformation matrix can be expensive and results are reused frequently.
+The caching strategy is controlled by `Cached.CacheStyle`: for `FusionStyle(I) isa UniqueFusion` no caching is used (`NoCache()`), since the result is a single cheap scalar coefficient; for `MultipleFusion` or `GenericFusion` sectors, `GlobalCache()` uses Cached.jl's configured container (ClockCache by default), as computing the transformation matrix can be expensive and results are reused frequently.
 
 This caching implies that potential inefficiencies in the fusion tree manipulations (which we nonetheless try to avoid) will not seriously affect performance of tensor manipulations.
 
