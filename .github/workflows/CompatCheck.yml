@@ -68,5 +68,11 @@ jobs:
       - uses: julia-actions/julia-runtest@v1
         with:
           test_args: '${{ matrix.group }} --fast'
+          # This job exists to test the *lowest* compatible versions, so never force the latest
+          # ones: that would undo the downgrade above. `auto` resolves to `true` on Dependabot and
+          # CompatHelper branches -- exactly the PRs this check matters for -- and then pins each
+          # entry to its newest range, which is unsatisfiable here whenever that range requires a
+          # newer Julia than this job runs on.
+          force_latest_compatible_version: false
         env:
           JULIA_NUM_THREADS: "4"
