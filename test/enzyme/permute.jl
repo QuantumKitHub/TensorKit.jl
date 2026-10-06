@@ -22,6 +22,8 @@ Tβs = is_ci ? (Active,) : (Active, Const)
         β = randn(T)
         p = randindextuple(numind(A))
         C = randn!(permute(A, p))
-        EnzymeTestUtils.test_reverse(TensorKit.permute!, Duplicated, (C, Duplicated), (A, Duplicated), (p, Const), (α, Tα), (β, Tβ); atol, rtol)
+        @static if VERSION ≥ v"1.11.0-rc"
+            EnzymeTestUtils.test_reverse(TensorKit.permute!, Duplicated, (C, Duplicated), (A, Duplicated), (p, Const), (α, Tα), (β, Tβ); atol, rtol)
+        end
     end
 end
