@@ -68,7 +68,7 @@ struct GenericTreeTransformer{T, N} <: TreeTransformer
     structure_src::Vector{StridedStructure{N}}
 end
 
-function UniqueTreeTransformer(::Type{A}, transform, p, Vdst, Vsrc, conjsrc::Bool) where {A}
+function UniqueTreeTransformer(::Type{A}, transform, p, Vdst::HomSpace, Vsrc::HomSpace, conjsrc::Bool) where {A}
     t₀ = Base.time()
 
     spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
@@ -93,7 +93,7 @@ function UniqueTreeTransformer(::Type{A}, transform, p, Vdst, Vsrc, conjsrc::Boo
     return transformer
 end
 
-function GenericTreeTransformer(::Type{A}, transform, p, Vdst, Vsrc, conjsrc::Bool) where {A}
+function GenericTreeTransformer(::Type{A}, transform, p, Vdst::HomSpace, Vsrc::HomSpace, conjsrc::Bool) where {A}
     t₀ = Base.time()
     spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
     # the fusion blocks that are transformed are those of the adjoint space for a conjugated source
@@ -183,11 +183,6 @@ function TreeTransformer(
 end
 
 # braid is special because it has levels
-function treebraider(
-        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, conjsrc::Bool, levels::IndexTuple
-    )
-    return treebraider(storagetype(tdst), space(tdst), space(tsrc), p, conjsrc, levels)
-end
 @cached function treebraider(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool, levels::IndexTuple
     )::treetransformertype(A, Vdst, Vsrc) where {TA}
@@ -199,9 +194,6 @@ end
     return TreeTransformer(A, fusiontreebraider, p, Vdst, Vsrc, conjsrc)
 end
 
-function treetransposer(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, conjsrc::Bool)
-    return treetransposer(storagetype(tdst), space(tdst), space(tsrc), p, conjsrc)
-end
 @cached function treetransposer(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
     )::treetransformertype(A, Vdst, Vsrc) where {TA}

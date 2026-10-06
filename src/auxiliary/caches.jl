@@ -87,18 +87,16 @@ function _cached(mod::Module, ex)
     end
     fcall = ex.args[1]
     if Meta.isexpr(fcall, :where)
-        hasparams = true
         params = fcall.args[2:end]
         fcall = fcall.args[1]
     else
-        hasparams = false
+        params = nothing
     end
     if Meta.isexpr(fcall, :(::))
-        typed = true
         typeex = fcall.args[2]
         fcall = fcall.args[1]
     else
-        typed = false
+        typeex = nothing
     end
     Meta.isexpr(fcall, :call) || _cached_error("expected a function signature", fcall)
     fname = fcall.args[1]
@@ -117,14 +115,14 @@ function _cached(mod::Module, ex)
     # actual implenetation, with underscore name
     _fname = Symbol(:_, basename)
     _fcall = Expr(:call, _fname, fargs...)
-    if hasparams
+    if !isnothing(params)
         _fcall = Expr(:where, _fcall, params...)
     end
     _fex = Expr(:function, _fcall, _fbody)
 
     # implementation that chooses the cache style
     newfcall = fcall
-    if hasparams
+    if !isnothing(params)
         newfcall = Expr(:where, newfcall, params...)
     end
     cachestylevar = gensym(:cachestyle)
@@ -138,11 +136,11 @@ function _cached(mod::Module, ex)
 
     # nocache implementation
     fnocachecall = Expr(:call, fname, fargs..., :(::$NoCache))
-    if hasparams
+    if !isnothing(params)
         fnocachecall = Expr(:where, fnocachecall, params...)
     end
     fnocachebody = _timeit_expr(misslabel, Expr(:call, _fname, fargnames...))
-    if typed
+    if !isnothing(typeex)
         T = gensym(:T)
         fnocachebody = Expr(:block, Expr(:(=), T, typeex), Expr(:(::), fnocachebody, T))
     end
@@ -151,7 +149,7 @@ function _cached(mod::Module, ex)
     # tasklocal cache implementation
     Dvar = gensym(:D)
     flocalcachecall = Expr(:call, fname, fargs..., :(::$TaskLocalCache{$Dvar}))
-    if hasparams
+    if !isnothing(params)
         flocalcachecall = Expr(:where, flocalcachecall, params..., Dvar)
     else
         flocalcachecall = Expr(:where, flocalcachecall, Dvar)
@@ -172,7 +170,7 @@ function _cached(mod::Module, ex)
     end
     missex = _timeit_expr(misslabel, Expr(:call, _fname, fargnames...))
     getvalex = _timeit_expr(lookuplabel, :(get!(() -> $missex, $cachevar, $key)))
-    if typed
+    if !isnothing(typeex)
         T = gensym(:T)
         flocalcachebody = Expr(
             :block,
@@ -193,11 +191,11 @@ function _cached(mod::Module, ex)
 
     # # global cache implementation
     fglobalcachecall = Expr(:call, fname, fargs..., :(::$GlobalLRUCache))
-    if hasparams
+    if !isnothing(params)
         fglobalcachecall = Expr(:where, fglobalcachecall, params...)
     end
     getglobalcachex = Expr(:(=), cachevar, globalcachename)
-    if typed
+    if !isnothing(typeex)
         T = gensym(:T)
         fglobalcachebody = Expr(
             :block,
