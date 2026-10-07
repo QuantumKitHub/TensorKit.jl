@@ -94,7 +94,7 @@ for V in spacelist
             end
         end
         @timedtestset "Tensor Dict conversion" begin
-            W = V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5
+            W = V1 ⊗ V2 ← (V3 ⊗ V4 ⊗ V5)'
             for T in (Int, Float32, ComplexF64)
                 t = @constinferred AMDGPU.rand(T, W)
                 d = convert(Dict, t)
@@ -152,7 +152,7 @@ for V in spacelist
             end
         end
         @timedtestset "Trivial space insertion and removal" begin
-            W = V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5
+            W = V1 ⊗ V2 ← (V3 ⊗ V4 ⊗ V5)'
             for T in (Float32, ComplexF64)
                 t = @constinferred AMDGPU.rand(T, W)
                 t2 = @constinferred insertleftunit(t)
@@ -170,7 +170,7 @@ for V in spacelist
                 end
                 @test @constinferred(removeunit(t3, $(numind(t3)))) == t
                 t4 = @constinferred insertrightunit(t, 3; dual = true)
-                @test numin(t4) == numin(t) && numout(t4) == numout(t) + 1
+                @test numin(t4) == numin(t) + 1 && numout(t4) == numout(t)
                 for (c, b) in blocks(t)
                     @test b == block(t4, c)
                 end
@@ -380,7 +380,7 @@ for V in spacelist
         end
         @timedtestset "Multiplication and inverse: test via CPU" begin
             W1 = V1 ⊗ V2 ⊗ V3
-            W2 = V4 ⊗ V5
+            W2 = (V4 ⊗ V5)'
             for T in (Float32, Float64, ComplexF32, ComplexF64)
                 t1 = AMDGPU.rand(T, W1, W1)
                 t2 = AMDGPU.rand(T, W2, W2)
