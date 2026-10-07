@@ -1,16 +1,5 @@
 # Algorithm selection
 # -------------------
-
-"""
-    _tensor_algorithm(f!, ::Type{<:AbstractTensorMap}; kwargs...)
-
-Algorithm a `TensorMap` factorization defaults to. Blocks are decomposed one at a time, so
-the default is whatever the block type would use. For algorithms that have a batched version,
-like `QRIteration` or `Jacobi`, this can be overridden to point to the batching version.
-"""
-function _tensor_algorithm(f!, ::Type{T}; kwargs...) where {T <: AbstractTensorMap}
-    return MAK.default_algorithm(f!, blocktype(T); kwargs...)
-end
 for f in
     [
         :svd_compact, :svd_full, :svd_vals,
@@ -23,7 +12,7 @@ for f in
     ]
     f! = Symbol(f, :!)
     @eval function MAK.default_algorithm(::typeof($f!), ::Type{T}; kwargs...) where {T <: AbstractTensorMap}
-        return _tensor_algorithm($f!, T; kwargs...)
+        return MAK.default_algorithm($f!, blocktype(T); kwargs...)
     end
     @eval function MAK.copy_input(::typeof($f), t::AbstractTensorMap)
         return @timeit_debug GLOBAL_TIMER "alloc: copy_input" copy_oftype(
