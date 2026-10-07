@@ -47,8 +47,11 @@ function blas_contract_pullback_ΔB!(
     return nothing
 end
 
+# Only the primal `A` is annotated: it fixes the element and space types of the workspace `E`
+# below, which `twist!` needs. The tangents stay untyped because their representation differs
+# per AD backend (Mooncake passes a tangent object, Enzyme the `.dval` shadow).
 function trace_permute_pullback_ΔA!(
-        ΔA, ΔC, A, p, q, α, backend
+        ΔA, ΔC, A::AbstractTensorMap, p, q, α, backend
     )
     ip = invperm((linearize(p)..., q[1]..., q[2]...))
     pdA = TO.repartition(ip, numout(A))
