@@ -85,7 +85,7 @@ for transform in (:permute, :transpose)
         elseif EnzymeRules.needs_shadow(config) && !isa(C, Const)
             return C.dval
         elseif EnzymeRules.needs_shadow(config) && isa(C, Const)
-            return Enzyme.make_zero(C.val) 
+            return Enzyme.make_zero(C.val)
         else
             return nothing
         end
@@ -179,7 +179,7 @@ function EnzymeRules.forward(
     elseif EnzymeRules.needs_shadow(config) && !isa(C, Const)
         return C.dval
     elseif EnzymeRules.needs_shadow(config) && isa(C, Const)
-        return Enzyme.make_zero(C.val) 
+        return Enzyme.make_zero(C.val)
     else
         return nothing
     end
