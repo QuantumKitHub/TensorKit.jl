@@ -81,10 +81,9 @@ fTs(::One, is_ci::Bool) = (Const,)
                 for Tα in rTαs, Tβ in rTβs
                     EnzymeTestUtils.test_reverse(TensorKit.planarcontract!, TC, (C, TC), (A, TA), (pA, Const), (B, TB), (pB, Const), (pAB, Const), (α, Tα), (β, Tβ); atol, rtol, testset_name = "planarcontract! Tα = $Tα, Tβ = $Tβ")
                 end
-                # TODO broken internally in Enzyme?
-                #for Tα in fTαs, Tβ in fTβs
-                #    EnzymeTestUtils.test_forward(TensorKit.planarcontract!, TC, (C, TC), (A, TA), (pA, Const), (B, TB), (pB, Const), (pAB, Const), (α, Tα), (β, Tβ); atol, rtol, testset_name = "planarcontract! Tα = $Tα, Tβ = $Tβ")
-                #end
+                for Tα in fTαs, Tβ in fTβs
+                    EnzymeTestUtils.test_forward(TensorKit.planarcontract!, TC, (C, TC), (A, TA), (pA, Const), (B, TB), (pB, Const), (pAB, Const), (α, Tα), (β, Tβ); atol, rtol, testset_name = "planarcontract! Tα = $Tα, Tβ = $Tβ")
+                end
             end
         end
     end
