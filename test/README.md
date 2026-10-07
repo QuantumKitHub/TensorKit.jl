@@ -40,7 +40,36 @@ julia --project=test test/runtests.jl --jobs=4
 | `other` | Aqua code-quality checks, bug-fix regressions |
 | `chainrules` | ChainRulesCore AD tests |
 | `mooncake` | Mooncake AD tests |
-| `cuda` | CUDA GPU tests (only run when a functional GPU is present) |
+| `cuda`/`amd` | GPU tests (only run when a functional GPU is present) |
+
+## `TensorKitTestSuite`
+
+`test/testsuite/TensorKitTestSuite.jl` is a self-contained module.
+It registers individually-runnable tests through plain functions, wrapping its checks in `@testset`s.
+Nothing is exported, so call these with the module
+prefix.
+
+Downstream packages can include it standalone, without any of `TensorKit.jl`'s other test
+dependencies:
+
+```julia
+import TensorKit
+testsuite_path = joinpath(
+    dirname(dirname(pathof(TensorKit))), # TensorKit root
+    "test", "testsuite", "TensorKitTestSuite.jl"
+)
+include(testsuite_path)
+
+TensorKitTestSuite.test_graded_space(MySector)
+```
+
+Sector-level helpers (`randsector`, `hasfusiontensor`) are reused internally from
+`TensorKitSectors.SectorTestSuite`, but deliberately **not** re-exported from
+`TensorKitTestSuite`, so a downstream package can also `include` `TensorKitSectors`'s own
+`test/testsuite.jl` without name clashes.
+
+To add a new check, define a new `test_*` function in the corresponding file under
+`test/testsuite/`, and call it from the relevant test file, e.g. `test/symmetries/spaces.jl`.
 
 ## Fast mode (`--fast`)
 
@@ -54,13 +83,14 @@ Skips `chainrules` and `mooncake` groups entirely, and reduces coverage in the r
 ## `setup.jl`
 
 Defines the `TestSetup` module, which is loaded into every worker sandbox automatically. It
-exports:
+`include`s `test/testsuite/TensorKitTestSuite.jl` and exports:
 
 - **Spaces**: `Vtr`, `Vℤ₂`, `Vfℤ₂`, `Vℤ₃`, `VU₁`, `VfU₁`, `VCU₁`, `VSU₂`, `VfSU₂`,
   `VSU₂U₁`, `Vfib`, `VIB_diag`, `VIB_M`
 - **Sector lists**: `sectorlist` (full), `fast_sectorlist` (reduced)
 - **Utilities**: `randsector`, `smallset`, `hasfusiontensor`, `force_planar`, `random_fusion`,
   `randindextuple`, `randcircshift`, `_repartition`, `trivtuple`, `test_dim_isapprox`, `default_tol`
+- **Test suite**: the `TensorKitTestSuite` module itself, and its `eval_show` utility
 
 The `fast_tests::Bool` constant is also available in every test file (injected alongside
 `TestSetup` via `init_code` in `runtests.jl`).
