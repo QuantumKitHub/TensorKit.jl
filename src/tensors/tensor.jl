@@ -467,6 +467,18 @@ block(t::TensorMap, c::Sector) = blocks(t)[c]
 
 blocks(t::TensorMap) = BlockIterator(t, blockstructure(space(t)))
 
+positionalblocks(t::TensorMap) = ReshapedBlocks(t.data, degeneracystructure(space(t)).blockstructure)
+function positionalblocks(t::TensorMap, sectors)
+    structure = blockstructure(space(t))
+    aligned = map(collect(sectors)) do c
+        entry = get(structure, c, nothing)
+        # Missing blocks have at least one zero dimension, but retain the other
+        # dimension for full factorizations with unmatched output sectors.
+        return isnothing(entry) ? (size(block(t, c)), 1:0) : entry
+    end
+    return ReshapedBlocks(t.data, aligned)
+end
+
 function blocktype(::Type{TensorMap{T, S, N₁, N₂, A}}) where {T, S, N₁, N₂, A <: Vector{T}}
     return Base.ReshapedArray{T, 2, SubArray{T, 1, A, Tuple{UnitRange{Int}}, true}, Tuple{}}
 end

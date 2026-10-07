@@ -67,6 +67,8 @@ storagetype(::Type{SectorVector{T, I, A}}) where {T, I, A} = A
 
 blocksectors(v::SectorVector) = keys(v)
 blocks(v::SectorVector) = pairs(v)
+positionalblocks(v::SectorVector) = VectorBlocks(parent(v), values(v.structure))
+positionalblocks(v::SectorVector, sectors) = VectorBlocks(parent(v), [v.structure[c] for c in sectors])
 block(v::SectorVector{T, I, A}, c::I) where {T, I, A} = Base.getindex(v, c)
 
 # VectorInterface and LinearAlgebra interface
