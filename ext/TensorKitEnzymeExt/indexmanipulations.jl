@@ -176,10 +176,8 @@ function EnzymeRules.forward(
         return C
     elseif EnzymeRules.needs_primal(config)
         return C.val
-    elseif EnzymeRules.needs_shadow(config) && !isa(C, Const)
+    elseif EnzymeRules.needs_shadow(config)
         return C.dval
-    elseif EnzymeRules.needs_shadow(config) && isa(C, Const)
-        return Enzyme.make_zero(C.val)
     else
         return nothing
     end
