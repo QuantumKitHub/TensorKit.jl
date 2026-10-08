@@ -40,7 +40,10 @@ pages = [
         "lib/spaces.md", "lib/tensors.md",
     ],
     "Index" => ["index/index.md"],
-    "Appendix" => ["appendix/symmetric_tutorial.md", "appendix/categories.md"],
+    "Appendix" => [
+        "appendix/symmetric_tutorial.md", "appendix/chargedoperators.md",
+        "appendix/categories.md",
+    ],
     "Changelog" => "Changelog.md",
 ]
 
