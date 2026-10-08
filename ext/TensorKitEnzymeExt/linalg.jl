@@ -125,30 +125,6 @@ function EnzymeRules.reverse(
     )
     return (nothing,)
 end
-function EnzymeRules.forward(
-        config::EnzymeRules.FwdConfigWidth{1},
-        ::Type{RT},
-        func::Const{typeof(tr)},
-        A::Annotation{<:AbstractTensorMap},
-    ) where {RT}
-    y = EnzymeRules.needs_primal(config) ? tr(A.val) : nothing
-    Δy = if EnzymeRules.needs_shadow(config) && !isa(A, Const)
-        tr(A.dval)
-    elseif EnzymeRules.needs_shadow(config)
-        zero(eltype(A.dval))
-    else
-        nothing
-    end
-    if EnzymeRules.needs_primal(config) && EnzymeRules.needs_shadow(config)
-        return Duplicated(y, Δy)
-    elseif EnzymeRules.needs_primal(config)
-        return y
-    elseif EnzymeRules.needs_shadow(config)
-        return Δy
-    else
-        return nothing
-    end
-end
 function EnzymeRules.augmented_primal(
         config::EnzymeRules.RevConfigWidth{1},
         func::Const{typeof(norm)},
