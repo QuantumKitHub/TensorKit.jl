@@ -2,7 +2,7 @@ using Adapt, AMDGPU
 using Test, TestExtras
 using TensorKit
 using LinearAlgebra: LinearAlgebra
-using MatrixAlgebraKit: DefaultAlgorithm, diagview
+using MatrixAlgebraKit: DefaultAlgorithm, PolarViaSVD, QRIteration, diagview
 const AMDGPUExt = Base.get_extension(TensorKit, :TensorKitAMDGPUExt)
 @assert !isnothing(AMDGPUExt) "Failed to load TensorKit - AMDGPU extension"
 const ROCTensorMap = getglobal(AMDGPUExt, :ROCTensorMap)
@@ -588,6 +588,9 @@ for V in spacelist
         end
 
         @testset "Isometric projections" begin
+            # rocSOLVER's gesvdx (Bisection) returns wrong singular vectors for degenerate
+            # singular values, see https://github.com/ROCm/rocm-libraries/issues/12188
+            alg = PolarViaSVD(QRIteration())
             for T in eltypes,
                     t in (
                         AMDGPU.randn(T, W, W),
@@ -595,25 +598,25 @@ for V in spacelist
                         AMDGPU.randn(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)'),
                         AMDGPU.randn(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5))',
                     )
-                t2 = project_isometric(t)
+                t2 = project_isometric(t, alg)
                 @test isisometric(t2)
                 t2′ = @constinferred project_isometric(t, DefaultAlgorithm())
                 @test isisometric(t2′)
                 @test t2′ * ((t2′)' * t) ≈ t
 
-                t3 = project_isometric(t2)
+                t3 = project_isometric(t2, alg)
                 @test t3 ≈ t2 # stability of the projection
                 @test t2 * (t2' * t) ≈ t
 
                 tc = similar(t)
-                t3 = @constinferred project_isometric!(copy!(tc, t), t2)
+                t3 = @constinferred project_isometric!(copy!(tc, t), t2, alg)
                 @test t3 === t2
                 @test isisometric(t2)
 
                 # test that t2 is closer to A then any other isometry
                 for k in 1:10
                     δt = AMDGPU.randn!(similar(t))
-                    t3 = project_isometric(t + δt / 100)
+                    t3 = project_isometric(t + δt / 100, alg)
                     @test norm(t - t3) > norm(t - t2)
                 end
             end
