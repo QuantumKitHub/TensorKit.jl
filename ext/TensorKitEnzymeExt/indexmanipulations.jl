@@ -56,6 +56,40 @@ for transform in (:permute, :transpose)
         !isa(C, Const) && pullback_dC!(C.dval, β.val)
         return nothing, nothing, nothing, Δα, Δβ, map(Returns(nothing), ba)...
     end
+    @eval function EnzymeRules.forward(
+            config::EnzymeRules.FwdConfigWidth{1},
+            func::Const{typeof(TK.$transform!)},
+            ::Type{RT},
+            C::Annotation{<:AbstractTensorMap},
+            A::Annotation{<:AbstractTensorMap},
+            p::Annotation{<:Index2Tuple},
+            α::Annotation{<:Number},
+            β::Annotation{<:Number},
+            ba::Const...
+        ) where {RT}
+        bavs = map(a -> a.val, ba)
+        if !isa(C, Const)
+            if isa(β, Const)
+                scale!(C.dval, β.val)
+            else
+                add!(C.dval, C.val, β.dval, β.val)
+            end
+            !isa(α, Const) && TK.$transform!(C.dval, A.val, p.val, α.dval, One(), bavs...)
+            !isa(A, Const) && TK.$transform!(C.dval, A.dval, p.val, α.val, One(), bavs...)
+        end
+        TK.$transform!(C.val, A.val, p.val, α.val, β.val, bavs...)
+        if EnzymeRules.needs_primal(config) && EnzymeRules.needs_shadow(config)
+            return C
+        elseif EnzymeRules.needs_primal(config)
+            return C.val
+        elseif EnzymeRules.needs_shadow(config) && !isa(C, Const)
+            return C.dval
+        elseif EnzymeRules.needs_shadow(config) && isa(C, Const)
+            return Enzyme.make_zero(C.val)
+        else
+            return nothing
+        end
+    end
 end
 
 function EnzymeRules.augmented_primal(
@@ -114,6 +148,39 @@ function EnzymeRules.reverse(
     Δβr = pullback_dβ(β, C, Cval)
     !isa(C, Const) && pullback_dC!(C.dval, β.val)
     return nothing, nothing, nothing, nothing, Δαr, Δβr, map(Returns(nothing), ba)...
+end
+function EnzymeRules.forward(
+        config::EnzymeRules.FwdConfigWidth{1},
+        func::Const{typeof(TK.braid!)},
+        ::Type{RT},
+        C::Annotation{<:AbstractTensorMap},
+        A::Annotation{<:AbstractTensorMap},
+        p::Annotation{<:Index2Tuple},
+        levels::Annotation{<:IndexTuple},
+        α::Annotation{<:Number},
+        β::Annotation{<:Number},
+        ba::Const...
+    ) where {RT}
+    bavs = map(a -> a.val, ba)
+    if !isa(C, Const)
+        if isa(β, Const)
+            scale!(C.dval, β.val)
+        else
+            add!(C.dval, C.val, β.dval, β.val)
+        end
+        !isa(α, Const) && TK.braid!(C.dval, A.val, p.val, levels.val, α.dval, One(), bavs...)
+        !isa(A, Const) && TK.braid!(C.dval, A.dval, p.val, levels.val, α.val, One(), bavs...)
+    end
+    TK.braid!(C.val, A.val, p.val, levels.val, α.val, β.val, bavs...)
+    if EnzymeRules.needs_primal(config) && EnzymeRules.needs_shadow(config)
+        return C
+    elseif EnzymeRules.needs_primal(config)
+        return C.val
+    elseif EnzymeRules.needs_shadow(config)
+        return C.dval
+    else
+        return nothing
+    end
 end
 
 # Differentiating through the fusion tree loop corrupts the
