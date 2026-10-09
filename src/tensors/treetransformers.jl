@@ -12,6 +12,27 @@ of `tsrc` itself; when `conjsrc` is `true` the fusion trees that are transformed
 """
 abstract type TreeTransformer end
 
+# `StridedSubblocks` report their storage as the `StridedView` parent type, which is `Memory` there
+@static if isdefined(Core, :Memory)
+    const CPUStorage{T} = Union{Array{T}, Memory{T}}
+else
+    const CPUStorage{T} = Array{T}
+end
+
+"""
+    recoupling_scalartype(A::Type{<:AbstractVector}, Tₛ::Type{<:Number}) -> Type{<:Number}
+
+Scalar type used to store the recoupling coefficients with sector scalar type `Tₛ` in the
+transformers for destination tensors with storagetype `A`. For storage with BLAS scalars, this is
+the precision of the storage, where real coefficients are kept real also for complex storage, such
+that they can be applied to the real and imaginary parts at once.
+"""
+function recoupling_scalartype(::Type{A}, ::Type{Tₛ}) where {A, Tₛ <: Number}
+    T = scalartype(A)
+    T <: BlasFloat || return Tₛ
+    return Tₛ <: Real ? real(T) : complex(T)
+end
+
 # (coefficient, destination position, source position)
 const UniqueTransformerData{T} = Tuple{T, Int, Int}
 
@@ -29,7 +50,7 @@ struct UniqueTreeTransformer{T, N} <: TreeTransformer
     structure_src::Vector{StridedStructure{N}}
 end
 
-# (recoupling matrix, destination positions, source positions): U[j, i] maps source i onto destination j
+# (recoupling matrix, destination positions, source positions)
 const GenericTransformerData{T} = Tuple{Matrix{T}, Vector{Int}, Vector{Int}}
 
 """
@@ -37,9 +58,9 @@ const GenericTransformerData{T} = Tuple{Matrix{T}, Vector{Int}, Vector{Int}}
 
 Tree transformation for sectors with multiple fusion channels, where the subblocks of a
 [`FusionTreeBlock`](@ref) map onto the subblocks of the transformed block through a recoupling
-matrix, stored as `(U, inds_dst, inds_src)`. The subblock structures of the destination and
-source spaces are kept alongside, such that the [`StridedSubblocks`](@ref) of both tensors can be
-created without further lookups.
+matrix, stored as `(U, inds_dst, inds_src)`, where `U[j, i]` maps source `i` onto destination `j`.
+The subblock structures of the destination and source spaces are kept alongside, such that the
+[`StridedSubblocks`](@ref) of both tensors can be created without further lookups.
 """
 struct GenericTreeTransformer{T, N} <: TreeTransformer
     data::Vector{GenericTransformerData{T}}
@@ -47,19 +68,19 @@ struct GenericTreeTransformer{T, N} <: TreeTransformer
     structure_src::Vector{StridedStructure{N}}
 end
 
-function UniqueTreeTransformer(transform, p, Vdst, Vsrc, conjsrc::Bool)
+function UniqueTreeTransformer(::Type{A}, transform, p, Vdst, Vsrc, conjsrc::Bool) where {A}
     t₀ = Base.time()
 
     spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
 
     src_trees, dst_trees = fusiontrees(Vsrc), fusiontrees(Vdst)
-    T = sectorscalartype(sectortype(Vdst))
+    T = recoupling_scalartype(A, sectorscalartype(sectortype(Vdst)))
     data = Vector{UniqueTransformerData{T}}(undef, length(src_trees))
 
     @timeit_debug GLOBAL_TIMER "symmetry: tree transform" for (isrc, (f₁, f₂)) in enumerate(src_trees)
         f_dst, coeff = transform(conjsrc ? (f₂, f₁) : (f₁, f₂))
         _, (_, idst) = gettoken(dst_trees, f_dst)
-        data[isrc] = (coeff, idst, isrc)
+        data[isrc] = (convert(T, coeff), idst, isrc)
     end
 
     structure_dst = degeneracystructure(Vdst).subblockstructure
@@ -72,7 +93,7 @@ function UniqueTreeTransformer(transform, p, Vdst, Vsrc, conjsrc::Bool)
     return transformer
 end
 
-function GenericTreeTransformer(transform, p, Vdst, Vsrc, conjsrc::Bool)
+function GenericTreeTransformer(::Type{A}, transform, p, Vdst, Vsrc, conjsrc::Bool) where {A}
     t₀ = Base.time()
     spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
     # the fusion blocks that are transformed are those of the adjoint space for a conjugated source
@@ -80,7 +101,7 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc, conjsrc::Bool)
     src_trees, dst_trees = fusiontrees(Vsrc), fusiontrees(Vdst)
     structure_dst = degeneracystructure(Vdst).subblockstructure
     structure_src = degeneracystructure(Vsrc).subblockstructure
-    T = sectorscalartype(sectortype(Vsrc))
+    T = recoupling_scalartype(A, sectorscalartype(sectortype(Vsrc)))
 
     fblocks = @timeit_debug GLOBAL_TIMER "bookkeeping: fusionblocks" fusionblocks(Vsrc′)
     nblocks = length(fblocks)
@@ -91,7 +112,7 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc, conjsrc::Bool)
     @timeit_debug GLOBAL_TIMER "symmetry: recoupling matrices" begin
         taskforeach(1:nblocks, nthreads) do i
             fs_src = fblocks[i]
-            fs_dst, U = transform(fs_src)
+            fs_dst, U₀ = transform(fs_src)
             @timeit_debug GLOBAL_TIMER "bookkeeping: subblock positions" begin
                 # the token into the fusion tree `Indices` is the subblock position
                 inds_src = map(fusiontrees(fs_src)) do (f₁, f₂)
@@ -103,20 +124,21 @@ function GenericTreeTransformer(transform, p, Vdst, Vsrc, conjsrc::Bool)
                     return idst
                 end
             end
+            U = convert(Matrix{T}, U₀)
             data[i] = (U, inds_dst, inds_src)
             # cost model: L input blocks each going to L output blocks of a given length
-            weights[i] = length(U) * prod(structure_dst[first(inds_dst)][1])
+            weights[i] = length(U₀) * prod(structure_dst[first(inds_dst)][1])
 
             @debug(
                 lazy"Created recoupling block for uncoupled: $(fs_src.uncoupled)",
-                sz = size(U), sparsity = count(!iszero, U) / length(U)
+                sz = size(U₀), sparsity = count(!iszero, U₀) / length(U₀)
             )
         end
     end
 
     # sort by (approximate) weight to facilitate multi-threading strategies
     @timeit_debug GLOBAL_TIMER "bookkeeping: sort" Base.permute!(data, sortperm(weights; rev = true))
-    transformer = GenericTreeTransformer(data, structure_dst, structure_src)
+    transformer = GenericTreeTransformer{T, numind(Vdst)}(data, structure_dst, structure_src)
 
     Δt = Base.time() - t₀
     @debug(
@@ -141,62 +163,54 @@ buffersize(::UniqueTreeTransformer) = 0
 function buffersize(transformer::GenericTreeTransformer)
     structure_src = transformer.structure_src
     return maximum(transformer.data; init = 0) do (U, _, inds_src)
-        return length(U) == 1 ? 0 : prod(structure_src[first(inds_src)][1]) * sum(size(U))
+        length(U) == 1 && return 0
+        return prod(structure_src[first(inds_src)][1]) * sum(size(U))
     end
 end
 
-function treetransformertype(Vdst, Vsrc)
+function treetransformertype(::Type{A}, Vdst, Vsrc) where {A}
     I = sectortype(Vdst)
-    T = sectorscalartype(I)
+    T = recoupling_scalartype(A, sectorscalartype(I))
     N = numind(Vdst)
-    return FusionStyle(I) == UniqueFusion() ? UniqueTreeTransformer{T, N} : GenericTreeTransformer{T, N}
+    FusionStyle(I) == UniqueFusion() && return UniqueTreeTransformer{T, N}
+    return GenericTreeTransformer{T, N}
 end
 
 function TreeTransformer(
-        transform::Function, p, Vdst::HomSpace{S}, Vsrc::HomSpace{S}, conjsrc::Bool
-    ) where {S}
+        ::Type{A}, transform::Function, p, Vdst::HomSpace{S}, Vsrc::HomSpace{S}, conjsrc::Bool
+    ) where {A, S}
     I = sectortype(Vdst)
     return FusionStyle(I) == UniqueFusion() ?
-        UniqueTreeTransformer(transform, p, Vdst, Vsrc, conjsrc) :
-        GenericTreeTransformer(transform, p, Vdst, Vsrc, conjsrc)
+        UniqueTreeTransformer(A, transform, p, Vdst, Vsrc, conjsrc) :
+        GenericTreeTransformer(A, transform, p, Vdst, Vsrc, conjsrc)
 end
 
 # braid is special because it has levels
 function treebraider(
         tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, conjsrc::Bool, levels::IndexTuple
     )
-    return treebraider(space(tdst), space(tsrc), p, conjsrc, levels)
+    return treebraider(storagetype(tdst), space(tdst), space(tsrc), p, conjsrc, levels)
 end
 @cached function treebraider(
-        Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool, levels::IndexTuple
-    )::treetransformertype(Vdst, Vsrc)
+        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool, levels::IndexTuple
+    )::treetransformertype(A, Vdst, Vsrc) where {TA}
     Vsrc′, p′ = conjsrc ? (Vsrc', adjointtensorindices(Vsrc, p)) : (Vsrc, p)
     # levels are attached to the legs, so they follow the same relabeling as the permutation
     levels′ = conjsrc ? TupleTools.getindices(levels, adjointtensorindices(Vsrc′, allind(Vsrc′))) : levels
     levels″ = (TupleTools.getindices(levels′, codomainind(Vsrc′)), TupleTools.getindices(levels′, domainind(Vsrc′)))
     fusiontreebraider(f) = braid(f, p′, levels″)
-    return TreeTransformer(fusiontreebraider, p, Vdst, Vsrc, conjsrc)
+    return TreeTransformer(A, fusiontreebraider, p, Vdst, Vsrc, conjsrc)
 end
 
 function treetransposer(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, conjsrc::Bool)
-    return treetransposer(space(tdst), space(tsrc), p, conjsrc)
+    return treetransposer(storagetype(tdst), space(tdst), space(tsrc), p, conjsrc)
 end
 @cached function treetransposer(
-        Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
-    )::treetransformertype(Vdst, Vsrc)
+        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
+    )::treetransformertype(A, Vdst, Vsrc) where {TA}
     p′ = conjsrc ? adjointtensorindices(Vsrc, p) : p
     fusiontreetransform(f) = transpose(f, p′)
-    return TreeTransformer(fusiontreetransform, p, Vdst, Vsrc, conjsrc)
+    return TreeTransformer(A, fusiontreetransform, p, Vdst, Vsrc, conjsrc)
 end
 
 # default cachestyle is GlobalLRUCache
-
-# For CPU arrays the recoupling matrix can be used as is, also when the scalar types
-# do not match, since Strided handles mixed-eltype mul! without the copy that
-# Adapt.adapt would make (which additionally dispatches dynamically). Other storage
-# types (e.g. GPU arrays) do require the conversion.
-# TODO: transformers with dedicated storagetypes
-# `StridedSubblocks` report their storage as the `StridedView` parent type, which is `Memory` there
-const CPUStorage = @static isdefined(Core, :Memory) ? Union{Array, Memory} : Array
-_adapt_recoupling(::Type{<:CPUStorage}, U::Matrix) = StridedView(U)
-_adapt_recoupling(::Type{A}, U::Matrix) where {A} = Adapt.adapt(A, StridedView(U))
