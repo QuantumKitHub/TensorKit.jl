@@ -62,8 +62,8 @@ for (f!, bf!) in ((:svd_compact!, :batched_svd_compact!), (:svd_full!, :batched_
         @timeit_debug GLOBAL_TIMER $(string(f!)) begin
             U, S, Vᴴ = F
             driver = get(alg.kwargs, :driver, MAK.DefaultDriver())
-            if MAK.supports_ragged_batch(MAK.$f!, alg, driver, storagetype(t))
-                cs = collect(blocksectors(t))
+            cs = collect(union(blocksectors.((t, U, S, Vᴴ))...))
+            if !isempty(cs) && MAK.supports_ragged_batch(MAK.$f!, alg, driver, storagetype(t))
                 As = [block(t, c) for c in cs]
                 Fs = ([block(U, c) for c in cs], [block(S, c) for c in cs], [block(Vᴴ, c) for c in cs])
                 if applicable(MAK.$bf!, As, Fs, alg)
@@ -113,8 +113,8 @@ for (f!, bf!) in ((:svd_vals!, :batched_svd_vals!),)
     @eval function MAK.$f!(t::AbstractTensorMap, N, alg::AbstractAlgorithm)
         @timeit_debug GLOBAL_TIMER $(string(f!)) begin
             driver = get(alg.kwargs, :driver, MAK.DefaultDriver())
-            if MAK.supports_ragged_batch(MAK.$f!, alg, driver, storagetype(t))
-                cs = collect(blocksectors(t))
+            cs = collect(union(blocksectors.((t, N))...))
+            if !isempty(cs) && MAK.supports_ragged_batch(MAK.$f!, alg, driver, storagetype(t))
                 As, Ns = [block(t, c) for c in cs], [block(N, c) for c in cs]
                 if applicable(MAK.$bf!, As, Ns, alg)
                     @timeit_debug GLOBAL_TIMER "batched: MatrixAlgebraKit" MAK.$bf!(As, Ns, alg)
