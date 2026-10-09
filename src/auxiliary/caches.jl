@@ -1,16 +1,35 @@
+# Caching of the fusion tree manipulations and tensor structures is provided by Cached.jl.
+# `CacheStyle` is imported (not just used) so that the `CacheStyle(::typeof(f), ...)`
+# specializations in TensorKit, and those of users, extend `Cached.CacheStyle`.
+import Cached: CacheStyle
+using Cached: Cached, @cached, NoCache, GlobalCache, Hashed, LRU
+
 """
     const GLOBAL_CACHES
 
-Registry of the global caches TensorKit maintains, as `name => cache` pairs.
-
-See also [`empty_globalcaches!`](@ref) and [`global_cache_info`](@ref).
+Registry of additional global caches, which are not managed by `@cached` (e.g. by
+extensions), as `name => cache` pairs. They are emptied by [`empty_globalcaches!`](@ref)
+and listed by [`global_cache_info`](@ref), together with the caches of TensorKit's cached
+functions.
 """
 const GLOBAL_CACHES = Pair{Symbol, Any}[]
+
+const DEFAULT_GLOBALCACHE_SIZE = Ref(10^4)
+
+# Buffer payloads can be measured without visiting their elements when stored inline.
+# Reference-containing sector/scalar types need the recursive fallback to include their data.
+_cache_payload_size(a::Array{T}) where {T} = isbitstype(T) ? sizeof(a) : Base.summarysize(a)
+
+# Include the index tables as well as the values (Dictionaries 0.4's Indices layout).
+function _cache_payload_size(inds::Indices)
+    return sizeof(getfield(inds, :slots)) + sizeof(getfield(inds, :hashes)) +
+        _cache_payload_size(getfield(inds, :values))
+end
 
 """
     empty_globalcaches!()
 
-Empty every global cache in [`GLOBAL_CACHES`](@ref).
+Empty the global caches of TensorKit.
 These mostly contain bookkeeping for various different index manipulations and tensor structures,
 so clearing this out can free up some memory whenever you have a workflow that involves a large variety of structures.
 For example, you may want to clear the cache when working with different symmetries, or in algorithms that dynamically alter the sizes of tensors.
@@ -19,6 +38,7 @@ Since everything is recomputed on demand, this is purely a memory measure.
 See also [`global_cache_info`](@ref) to display the status.
 """
 function empty_globalcaches!()
+    Cached.empty_caches!(TensorKit)
     foreach(empty! ∘ last, GLOBAL_CACHES)
     return nothing
 end
@@ -26,185 +46,16 @@ end
 """
     global_cache_info([io::IO = stdout])
 
-Print the hit/miss statistics and current size of every global cache in [`GLOBAL_CACHES`](@ref).
+Print the hit/miss statistics and current size of every global cache of TensorKit.
 
 See also [`empty_globalcaches!`](@ref).
 """
 function global_cache_info(io::IO = stdout)
+    for (f, cache) in Cached.cache_info(TensorKit)
+        println(io, nameof(f), ":\t", cache)
+    end
     for (name, cache) in GLOBAL_CACHES
-        println(io, name, ":\t", LRUCache.cache_info(cache))
+        println(io, name, ":\t", cache)
     end
     return
-end
-
-abstract type CacheStyle end
-struct NoCache <: CacheStyle end
-struct TaskLocalCache{D <: AbstractDict} <: CacheStyle end
-struct GlobalLRUCache <: CacheStyle end
-
-const DEFAULT_GLOBALCACHE_SIZE = Ref(10^4)
-
-function CacheStyle(args...)
-    return GlobalLRUCache()
-end
-
-# category of the miss-path (construction) timer section of an `@cached` function
-function _cached_category(fname::Symbol)
-    return fname in (:fsbraid, :fstranspose, :treebraider, :treetransposer) ?
-        "symmetry" : "bookkeeping"
-end
-
-macro cached(ex)
-    Meta.isexpr(ex, :function) ||
-        error("cached macro can only be used on function definitions")
-    fcall = ex.args[1]
-    if Meta.isexpr(fcall, :where)
-        hasparams = true
-        params = fcall.args[2:end]
-        fcall = fcall.args[1]
-    else
-        hasparams = false
-    end
-    if Meta.isexpr(fcall, :(::))
-        typed = true
-        typeex = fcall.args[2]
-        fcall = fcall.args[1]
-    else
-        typed = false
-    end
-    Meta.isexpr(fcall, :call) ||
-        error("cached macro can only be used on function definitions")
-    fname = fcall.args[1]
-    # timer labels for the cache lookup and the miss-path construction
-    lookuplabel = string("bookkeeping: cache ", fname)
-    misslabel = string(_cached_category(fname), ": compute ", fname)
-    fargs = fcall.args[2:end]
-    fargnames = map(fargs) do arg
-        if Meta.isexpr(arg, :(::))
-            return arg.args[1]
-        else
-            return arg
-        end
-    end
-    _fbody = ex.args[2]
-
-    # actual implenetation, with underscore name
-    _fname = Symbol(:_, fname)
-    _fcall = Expr(:call, _fname, fargs...)
-    if hasparams
-        _fcall = Expr(:where, _fcall, params...)
-    end
-    _fex = Expr(:function, _fcall, _fbody)
-
-    # implementation that chooses the cache style
-    newfcall = fcall
-    if hasparams
-        newfcall = Expr(:where, newfcall, params...)
-    end
-    cachestylevar = gensym(:cachestyle)
-    cachestyleex = Expr(
-        :(=), cachestylevar, Expr(:call, :CacheStyle, fname, fargnames...)
-    )
-    newfbody = Expr(
-        :block, cachestyleex, Expr(:call, fname, fargnames..., cachestylevar)
-    )
-    newfex = Expr(:function, newfcall, newfbody)
-
-    # nocache implementation
-    fnocachecall = Expr(:call, fname, fargs..., :(::NoCache))
-    if hasparams
-        fnocachecall = Expr(:where, fnocachecall, params...)
-    end
-    fnocachebody = :(@timeit_debug GLOBAL_TIMER $misslabel $(Expr(:call, _fname, fargnames...)))
-    if typed
-        T = gensym(:T)
-        fnocachebody = Expr(:block, Expr(:(=), T, typeex), Expr(:(::), fnocachebody, T))
-    end
-    fnocacheex = Expr(:function, fnocachecall, fnocachebody)
-
-    # tasklocal cache implementation
-    Dvar = gensym(:D)
-    flocalcachecall = Expr(:call, fname, fargs..., :(::TaskLocalCache{$Dvar}))
-    if hasparams
-        flocalcachecall = Expr(:where, flocalcachecall, params..., Dvar)
-    else
-        flocalcachecall = Expr(:where, flocalcachecall, Dvar)
-    end
-    localcachename = Symbol(:_tasklocal_, fname, :_cache)
-    cachevar = gensym(:cache)
-    getlocalcacheex = :(
-        $cachevar::$Dvar = get!(task_local_storage(), $localcachename) do
-            return $Dvar()
-        end
-    )
-    valvar = gensym(:val)
-    if length(fargnames) == 1
-        key = fargnames[1]
-    else
-        key = Expr(:tuple, fargnames...)
-    end
-    getvalex = :(
-        @timeit_debug GLOBAL_TIMER $lookuplabel get!($cachevar, $key) do
-            return @timeit_debug GLOBAL_TIMER $misslabel $_fname($(fargnames...))
-        end
-    )
-    if typed
-        T = gensym(:T)
-        flocalcachebody = Expr(
-            :block,
-            getlocalcacheex,
-            Expr(:(=), T, typeex),
-            Expr(:(=), Expr(:(::), valvar, T), getvalex),
-            Expr(:return, valvar)
-        )
-    else
-        flocalcachebody = Expr(
-            :block,
-            getlocalcacheex,
-            Expr(:(=), valvar, getvalex),
-            Expr(:return, valvar)
-        )
-    end
-    flocalcacheex = Expr(:function, flocalcachecall, flocalcachebody)
-
-    # # global cache implementation
-    fglobalcachecall = Expr(:call, fname, fargs..., :(::GlobalLRUCache))
-    if hasparams
-        fglobalcachecall = Expr(:where, fglobalcachecall, params...)
-    end
-    globalcachename = Symbol(:GLOBAL_, uppercase(string(fname)), :_CACHE)
-    getglobalcachex = Expr(:(=), cachevar, globalcachename)
-    if typed
-        T = gensym(:T)
-        fglobalcachebody = Expr(
-            :block,
-            getglobalcachex,
-            Expr(:(=), T, typeex),
-            Expr(:(=), Expr(:(::), valvar, T), getvalex),
-            Expr(:return, valvar)
-        )
-    else
-        fglobalcachebody = Expr(
-            :block,
-            getglobalcachex,
-            Expr(:(=), valvar, getvalex),
-            Expr(:return, valvar)
-        )
-    end
-    fglobalcacheex = Expr(:function, fglobalcachecall, fglobalcachebody)
-    fglobalcachedef = Expr(
-        :const,
-        Expr(:(=), globalcachename, :(LRU{Any, Any}(; maxsize = DEFAULT_GLOBALCACHE_SIZE[])))
-    )
-    fglobalcacheregister = Expr(
-        :call, :push!, :GLOBAL_CACHES, :($(QuoteNode(globalcachename)) => $globalcachename)
-    )
-
-    # # total expression
-    return esc(
-        Expr(
-            :block, _fex, newfex, fnocacheex, flocalcacheex,
-            fglobalcachedef, fglobalcacheregister, fglobalcacheex
-        )
-    )
 end
