@@ -2,7 +2,7 @@ using Adapt, CUDA, CUDA.cuRAND, cuTENSOR
 using Test, TestExtras
 using TensorKit
 using LinearAlgebra: LinearAlgebra
-using MatrixAlgebraKit: DefaultAlgorithm, diagview
+using MatrixAlgebraKit: DefaultAlgorithm, Jacobi, diagview
 const CUDAExt = Base.get_extension(TensorKit, :TensorKitCUDAExt)
 @assert !isnothing(CUDAExt) "Failed to load TensorKit - CUDA extension"
 const CuTensorMap = getglobal(CUDAExt, :CuTensorMap)
@@ -317,6 +317,32 @@ for V in spacelist
                 Nᴴ = @constinferred right_null(t; trunc = (; atol = 100 * eps(norm(t))))
                 @test isisometric(Nᴴ; side = :right)
                 @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
+
+                if !isa(t, DiagonalTensorMap)
+                    # Jacobi goes through the batched path
+                    u, s, vᴴ = @constinferred svd_full(t, Jacobi())
+                    @test u * s * vᴴ ≈ t
+                    @test isunitary(u)
+                    @test isunitary(vᴴ)
+
+                    u, s, vᴴ = @constinferred svd_compact(t, Jacobi())
+                    @test u * s * vᴴ ≈ t
+                    @test isisometric(u)
+                    @test isposdef(s)
+                    @test isisometric(vᴴ; side = :right)
+
+                    s′ = @constinferred svd_vals(t, Jacobi())
+                    @test parent(s′) ≈ parent(diagview(s))
+                    @test s′ isa TensorKit.SectorVector
+
+                    N = @constinferred left_null(t; alg = :svd, svd = Jacobi())
+                    @test isisometric(N)
+                    @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
+
+                    Nᴴ = @constinferred right_null(t; alg = :svd, svd = Jacobi())
+                    @test isisometric(Nᴴ; side = :right)
+                    @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
+                end
             end
 
             # empty tensor
@@ -339,6 +365,15 @@ for V in spacelist
                 @test dim(U) == dim(S) == dim(Vᴴ) == dim(t) == 0
 
                 U, S, Vᴴ = @constinferred svd_compact(t, DefaultAlgorithm())
+                @test U * S * Vᴴ ≈ t
+                @test dim(U) == dim(S) == dim(Vᴴ) == dim(t) == 0
+
+                U, S, Vᴴ = @constinferred svd_full(t, Jacobi())
+                @test U * S * Vᴴ ≈ t
+                @test isunitary(U)
+                @test isunitary(Vᴴ)
+
+                U, S, Vᴴ = @constinferred svd_compact(t, Jacobi())
                 @test U * S * Vᴴ ≈ t
                 @test dim(U) == dim(S) == dim(Vᴴ) == dim(t) == 0
             end

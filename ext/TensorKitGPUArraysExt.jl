@@ -411,7 +411,7 @@ end
         st_dst, offs_dst = @inbounds structs_dst[blk.dst_offset + i + 1]
         i_dst = _linear_index(coords, st_dst, offs_dst)
 
-        # dst_i = β * dst_i + α * Σ_j U[i, j] * permute(src_j, p): each output tree is a
+        # dst_i = β * dst_i + α * Σ_j U[i, j] * permute(op(src_j), p): each output tree is a
         # linear combination of the input trees weighted by the recoupling coefficients.
         # The permutation of src_j was already done by permuting its strides before the
         # kernel launched.
