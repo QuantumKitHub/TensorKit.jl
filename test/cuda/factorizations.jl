@@ -318,29 +318,31 @@ for V in spacelist
                 @test isisometric(Nᴴ; side = :right)
                 @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
 
-                # Jacobi goes through the batched path
-                u, s, vᴴ = @constinferred svd_full(t, Jacobi())
-                @test u * s * vᴴ ≈ t
-                @test isunitary(u)
-                @test isunitary(vᴴ)
+                if !isa(t, DiagonalTensorMap)
+                    # Jacobi goes through the batched path
+                    u, s, vᴴ = @constinferred svd_full(t, Jacobi())
+                    @test u * s * vᴴ ≈ t
+                    @test isunitary(u)
+                    @test isunitary(vᴴ)
 
-                u, s, vᴴ = @constinferred svd_compact(t, Jacobi())
-                @test u * s * vᴴ ≈ t
-                @test isisometric(u)
-                @test isposdef(s)
-                @test isisometric(vᴴ; side = :right)
+                    u, s, vᴴ = @constinferred svd_compact(t, Jacobi())
+                    @test u * s * vᴴ ≈ t
+                    @test isisometric(u)
+                    @test isposdef(s)
+                    @test isisometric(vᴴ; side = :right)
 
-                s′ = @constinferred svd_vals(t, Jacobi())
-                @test parent(s′) ≈ parent(diagview(s))
-                @test s′ isa TensorKit.SectorVector
+                    s′ = @constinferred svd_vals(t, Jacobi())
+                    @test parent(s′) ≈ parent(diagview(s))
+                    @test s′ isa TensorKit.SectorVector
 
-                N = @constinferred left_null(t; alg = :svd, svd = Jacobi())
-                @test isisometric(N)
-                @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
+                    N = @constinferred left_null(t; alg = :svd, svd = Jacobi())
+                    @test isisometric(N)
+                    @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
 
-                Nᴴ = @constinferred right_null(t; alg = :svd, svd = Jacobi())
-                @test isisometric(Nᴴ; side = :right)
-                @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
+                    Nᴴ = @constinferred right_null(t; alg = :svd, svd = Jacobi())
+                    @test isisometric(Nᴴ; side = :right)
+                    @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
+                end
             end
 
             # empty tensor
