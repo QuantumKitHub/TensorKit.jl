@@ -68,6 +68,17 @@ function _cached_error(msg, ex)
     throw(ArgumentError("@cached: $msg, got `$ex`"))
 end
 
+# the arguments form the cache key, so they must be positional; unnamed ones get a name
+function _cached_canonicalize_arg(arg)
+    Meta.isexpr(arg, :parameters) && _cached_error("keyword arguments are not supported", arg)
+    Meta.isexpr(arg, :kw) && _cached_error("default values are not supported", arg)
+    Meta.isexpr(arg, :...) && _cached_error("varargs are not supported", arg)
+    arg isa Symbol && return arg
+    Meta.isexpr(arg, :(::)) || _cached_error("unsupported argument", arg)
+    length(arg.args) == 1 && return Expr(:(::), gensym(:arg), arg.args[1])
+    return arg
+end
+
 function _cached(mod::Module, ex)
     if !Meta.isexpr(ex, :function)
         Meta.isexpr(ex, :(=)) && Meta.isexpr(ex.args[1], (:call, :where, :(::))) &&
@@ -95,25 +106,12 @@ function _cached(mod::Module, ex)
     basename = Meta.isexpr(fname, :.) ? fname.args[end].value : fname
     basename isa Symbol ||
         _cached_error("expected a function name or a qualified name such as `Module.f`", fname)
-    # the arguments form the cache key, so they must all be named positional arguments
-    for arg in fcall.args[2:end]
-        Meta.isexpr(arg, :parameters) && _cached_error("keyword arguments are not supported", fcall)
-        Meta.isexpr(arg, :kw) && _cached_error("default values are not supported", arg)
-        Meta.isexpr(arg, :...) && _cached_error("varargs are not supported", arg)
-        (arg isa Symbol || (Meta.isexpr(arg, :(::)) && length(arg.args) == 2)) ||
-            _cached_error("all arguments must be named, since they form the cache key", arg)
-    end
+    fargs = map(_cached_canonicalize_arg, fcall.args[2:end])
+    fcall = Expr(:call, fname, fargs...)
+    fargnames = map(arg -> arg isa Symbol ? arg : arg.args[1], fargs)
     # timer labels for the cache lookup and the miss-path construction
     lookuplabel = string("bookkeeping: cache ", basename)
     misslabel = string(_cached_category(basename), ": compute ", basename)
-    fargs = fcall.args[2:end]
-    fargnames = map(fargs) do arg
-        if Meta.isexpr(arg, :(::))
-            return arg.args[1]
-        else
-            return arg
-        end
-    end
     _fbody = ex.args[2]
 
     # actual implenetation, with underscore name
@@ -131,7 +129,7 @@ function _cached(mod::Module, ex)
     end
     cachestylevar = gensym(:cachestyle)
     cachestyleex = Expr(
-        :(=), cachestylevar, Expr(:call, GlobalRef(@__MODULE__, :CacheStyle), fname, fargnames...)
+        :(=), cachestylevar, Expr(:call, CacheStyle, fname, fargnames...)
     )
     newfbody = Expr(
         :block, cachestyleex, Expr(:call, fname, fargnames..., cachestylevar)

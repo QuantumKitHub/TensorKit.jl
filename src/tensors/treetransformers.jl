@@ -112,7 +112,7 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst, Vsrc, conjsrc::Bo
     @timeit_debug GLOBAL_TIMER "symmetry: recoupling matrices" begin
         taskforeach(1:nblocks, nthreads) do i
             fs_src = fblocks[i]
-            fs_dst, U₀ = transform(fs_src)
+            fs_dst, U = transform(fs_src)
             @timeit_debug GLOBAL_TIMER "bookkeeping: subblock positions" begin
                 # the token into the fusion tree `Indices` is the subblock position
                 inds_src = map(fusiontrees(fs_src)) do (f₁, f₂)
@@ -124,14 +124,13 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst, Vsrc, conjsrc::Bo
                     return idst
                 end
             end
-            U = convert(Matrix{T}, U₀)
-            data[i] = (U, inds_dst, inds_src)
+            data[i] = (convert(Matrix{T}, U), inds_dst, inds_src)
             # cost model: L input blocks each going to L output blocks of a given length
-            weights[i] = length(U₀) * prod(structure_dst[first(inds_dst)][1])
+            weights[i] = length(U) * prod(structure_dst[first(inds_dst)][1])
 
             @debug(
                 lazy"Created recoupling block for uncoupled: $(fs_src.uncoupled)",
-                sz = size(U₀), sparsity = count(!iszero, U₀) / length(U₀)
+                sz = size(U), sparsity = count(!iszero, U) / length(U)
             )
         end
     end
@@ -163,8 +162,7 @@ buffersize(::UniqueTreeTransformer) = 0
 function buffersize(transformer::GenericTreeTransformer)
     structure_src = transformer.structure_src
     return maximum(transformer.data; init = 0) do (U, _, inds_src)
-        length(U) == 1 && return 0
-        return prod(structure_src[first(inds_src)][1]) * sum(size(U))
+        return length(U) == 1 ? 0 : prod(structure_src[first(inds_src)][1]) * sum(size(U))
     end
 end
 
@@ -172,8 +170,7 @@ function treetransformertype(::Type{A}, Vdst, Vsrc) where {A}
     I = sectortype(Vdst)
     T = recoupling_scalartype(A, sectorscalartype(I))
     N = numind(Vdst)
-    FusionStyle(I) == UniqueFusion() && return UniqueTreeTransformer{T, N}
-    return GenericTreeTransformer{T, N}
+    return FusionStyle(I) == UniqueFusion() ? UniqueTreeTransformer{T, N} : GenericTreeTransformer{T, N}
 end
 
 function TreeTransformer(
