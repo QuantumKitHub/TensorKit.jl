@@ -258,7 +258,7 @@ function LinearAlgebra.norm(t::AbstractTensorMap, p::Real = 2)
     InnerProductStyle(t) === EuclideanInnerProduct() || throw_invalid_innerproduct(:norm)
     return _norm(blocks(t), p, float(zero(real(scalartype(t)))))
 end
-function _norm(blockiter, p::Real, init::Real)
+function _norm(blockiter, p::Real, init::Number)
     if p == Inf
         return mapreduce(max, blockiter; init = init) do (c, b)
             return isempty(b) ? init : oftype(init, LinearAlgebra.normInf(b))
