@@ -73,9 +73,9 @@ end
 _cache_structure_size(t::TreeTransformer) = sizeof(t.structure_src) +
     (t.structure_src === t.structure_dst ? 0 : sizeof(t.structure_dst))
 
-Cached.cachesize(t::UniqueTreeTransformer) = sizeof(t) + _cache_payload_size(t.data) + _cache_structure_size(t)
+MemoizationKit.cachesize(t::UniqueTreeTransformer) = sizeof(t) + _cache_payload_size(t.data) + _cache_structure_size(t)
 
-function Cached.cachesize(t::GenericTreeTransformer)
+function MemoizationKit.cachesize(t::GenericTreeTransformer)
     bytes = sizeof(t) + sizeof(t.data) + _cache_structure_size(t)
     for (U, inds_dst, inds_src) in t.data
         bytes += _cache_payload_size(U) + sizeof(inds_src) +
@@ -226,10 +226,10 @@ end
     return TreeTransformer(A, fusiontreetransform, p, Vdst, Vsrc, conjsrc)
 end
 
-# Keep TensorKit's profiling categories for the phases instrumented by Cached.
+# Keep TensorKit's profiling categories for the phases instrumented by MemoizationKit.
 const TensorKitCachedFunction = Union{
     typeof(fsbraid), typeof(fstranspose), typeof(treebraider), typeof(treetransposer),
     typeof(sectorstructure), typeof(degeneracystructure),
 }
-Cached.instrument_label(f::TensorKitCachedFunction, ::Val{:lookup}) = "bookkeeping: cache $(nameof(f))"
-Cached.instrument_label(f::TensorKitCachedFunction, ::Val{:compute}) = "symmetry: compute $(nameof(f))"
+MemoizationKit.instrument_label(f::TensorKitCachedFunction, ::Val{:lookup}) = "bookkeeping: cache $(nameof(f))"
+MemoizationKit.instrument_label(f::TensorKitCachedFunction, ::Val{:compute}) = "symmetry: compute $(nameof(f))"
