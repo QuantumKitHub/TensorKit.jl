@@ -133,7 +133,7 @@ Optionally, a scalartype `T` for the destination can be supplied that might diff
 @inline promote_storagetype(A::AbstractTensorMap, B::AbstractTensorMap, Cs::AbstractTensorMap...) =
     promote_storagetype(storagetype(A), storagetype(B), map(storagetype, Cs)...)
 @inline promote_storagetype(::Type{T}, A::AbstractTensorMap, Bs::AbstractTensorMap...) where {T <: Number} =
-    promote_storagetype(similarstoragetype(A, T), mapreduce(Base.Fix2(similarstoragetype, T), Bs)...)
+    promote_storagetype(similarstoragetype(A, T), map(Base.Fix2(similarstoragetype, T), Bs)...)
 
 @inline function promote_storagetype(
         ::Type{A}, ::Type{B}, Cs::Type{<:AbstractTensorMap}...
