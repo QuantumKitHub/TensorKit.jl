@@ -31,7 +31,7 @@ end
             @test 0 < bytes <= Base.summarysize(value)
         end
         for src in TensorKit.fusionblocks(W)
-            result = TensorKit.fsbraid(src, p, ((1, 2), (3, 4)))
+            result = TensorKit.fusiontreebraid(src, p, ((1, 2), (3, 4)))
             @test 0 < (@constinferred MemoizationKit.cachesize(result)) <= Base.summarysize(result)
         end
 

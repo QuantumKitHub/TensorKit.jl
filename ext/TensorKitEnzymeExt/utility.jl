@@ -142,8 +142,7 @@ end
 @inline EnzymeRules.inactive(::typeof(TensorKit.fusiontrees), ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.fusiontrees), ::Any, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.fusiontrees), ::Any, ::Any, ::Any) = nothing
-@inline EnzymeRules.inactive(::typeof(TensorKit.fsbraid), ::Any) = nothing
-@inline EnzymeRules.inactive(::typeof(TensorKit.fsbraid), ::Any, ::Any) = nothing
+@inline EnzymeRules.inactive(::typeof(TensorKit.fusiontreebraid), ::Any, ::Any, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.artin_braid), ::Any, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.fstranspose), ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.fstranspose), ::Any, ::Any) = nothing

@@ -282,8 +282,7 @@ These estimate bytes from the fixed-size fields and live array buffers; matrix c
 Reference-containing scalar or sector arrays fall back to `Base.summarysize`.
 Buffers shared between cache entries count toward each entry, while identical source and destination structure buffers within a transformer count once.
 The budget excludes cache keys, container and allocation overhead, and spare array capacity; it is a cached-value estimate rather than a limit on total process memory.
-Optional MemoizationKit features, such as the Tachikoma dashboard and SQLite disk caching, remain available through MemoizationKit's extensions.
-Disk caching requires loading SQLite and defining `MemoizationKit.DiskCacheStyle` for the desired function; it is disabled by default, and `empty_globalcaches!()` clears only in-memory caches.
+Further features, such as the live cache dashboard, disk caching and the full configuration options, are described in the [MemoizationKit.jl documentation](https://quantumkithub.github.io/MemoizationKit.jl/stable/).
 
 This caching implies that potential inefficiencies in the fusion tree manipulations (which we nonetheless try to avoid) will not seriously affect performance of tensor manipulations.
 
