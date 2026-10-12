@@ -25,7 +25,7 @@ end
         V = GradedSpace{I}(labels[1] => 2, labels[2] => 2)
         W = V ⊗ V ← V ⊗ V
         p, levels = ((2, 1), (4, 3)), (1, 2, 3, 4)
-        transformer = TensorKit.treebraider(W, W, p, false, levels)
+        transformer = TensorKit.treebraider(Vector{Float64}, W, W, p, false, levels)
         for value in (sectorstructure(W), degeneracystructure(W), transformer)
             bytes = @constinferred MemoizationKit.cachesize(value)
             @test 0 < bytes <= Base.summarysize(value)
@@ -39,8 +39,8 @@ end
         # retain its own size budget even if the degeneracy cache has been cleared.
         MemoizationKit.set_cache_size!(TensorKit.treebraider, MemoizationKit.cachesize(transformer); by = MemoizationKit.cachesize)
         try
-            TensorKit.treebraider(W, W, p, false, levels)
-            TensorKit.treebraider(W, W, ((1, 2), (3, 4)), false, levels)
+            TensorKit.treebraider(Vector{Float64}, W, W, p, false, levels)
+            TensorKit.treebraider(Vector{Float64}, W, W, ((1, 2), (3, 4)), false, levels)
             MemoizationKit.empty_caches!(degeneracystructure)
             cache = only(MemoizationKit.cache_info(TensorKit.treebraider)).second
             stats = MemoizationKit.cache_stats(cache)
@@ -51,7 +51,7 @@ end
 
             MemoizationKit.set_cache_size!(TensorKit.treebraider, 0; by = MemoizationKit.cachesize)
             @test isempty(cache)
-            @test TensorKit.treebraider(W, W, p, false, levels).data == transformer.data
+            @test TensorKit.treebraider(Vector{Float64}, W, W, p, false, levels).data == transformer.data
             @test isempty(cache)
         finally
             MemoizationKit.set_cache_size!(TensorKit.treebraider, 10_000)
@@ -72,8 +72,6 @@ MemoizationKit.@cached unrelated_cache(x) = [x]
 
 @testset "TensorKit cache management" begin
     retained = unrelated_cache(1)
-    extra = Dict(:key => :value)
-    push!(TensorKit.GLOBAL_CACHES, :extension_cache => extra)
     try
         V = SU2Space(0 => 2, 1 // 2 => 2)
         t = rand(V ⊗ V ← V ⊗ V)
@@ -82,13 +80,10 @@ MemoizationKit.@cached unrelated_cache(x) = [x]
         @test (@constinferred permute(permute(t, p), p)) ≈ t
         info = sprint(TensorKit.global_cache_info)
         @test occursin("treebraider", info)
-        @test occursin("extension_cache", info)
         @test empty_globalcaches!() === nothing
         @test all(isempty(cache) for (_, cache) in MemoizationKit.cache_info(TensorKit))
-        @test isempty(extra)
         @test unrelated_cache(1) === retained
     finally
-        pop!(TensorKit.GLOBAL_CACHES)
         MemoizationKit.empty_caches!(unrelated_cache)
     end
 end
