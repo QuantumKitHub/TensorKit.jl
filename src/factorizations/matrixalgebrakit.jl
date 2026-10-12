@@ -66,10 +66,8 @@ for (f!, bf!) in ((:svd_compact!, :batched_svd_compact!), (:svd_full!, :batched_
             if !isempty(cs) && MAK.supports_ragged_batch(MAK.$f!, alg, driver, storagetype(t))
                 As = [block(t, c) for c in cs]
                 Fs = ([block(U, c) for c in cs], [block(S, c) for c in cs], [block(Vᴴ, c) for c in cs])
-                if applicable(MAK.$bf!, As, Fs, alg)
-                    @timeit_debug GLOBAL_TIMER "batched: MatrixAlgebraKit" MAK.$bf!(As, Fs, alg)
-                    return F
-                end
+                @timeit_debug GLOBAL_TIMER "batched: MatrixAlgebraKit" MAK.$bf!(As, Fs, alg)
+                return F
             end
             foreachblock(t, U, S, Vᴴ) do _, (tblock, Fblocks...)
                 @timeit_debug GLOBAL_TIMER "dense: MatrixAlgebraKit" begin
@@ -116,10 +114,8 @@ for (f!, bf!) in ((:svd_vals!, :batched_svd_vals!),)
             cs = collect(union(blocksectors.((t, N))...))
             if !isempty(cs) && MAK.supports_ragged_batch(MAK.$f!, alg, driver, storagetype(t))
                 As, Ns = [block(t, c) for c in cs], [block(N, c) for c in cs]
-                if applicable(MAK.$bf!, As, Ns, alg)
-                    @timeit_debug GLOBAL_TIMER "batched: MatrixAlgebraKit" MAK.$bf!(As, Ns, alg)
-                    return N
-                end
+                @timeit_debug GLOBAL_TIMER "batched: MatrixAlgebraKit" MAK.$bf!(As, Ns, alg)
+                return N
             end
             foreachblock(t, N) do _, (tblock, Nblock)
                 @timeit_debug GLOBAL_TIMER "dense: MatrixAlgebraKit" begin

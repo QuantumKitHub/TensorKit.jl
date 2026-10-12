@@ -78,3 +78,40 @@ function MAK.initialize_output(::typeof(eig_vals!), t::AbstractTensorMap, alg::D
     A = similarstoragetype(t, Tc)
     return SectorVector{Tc, sectortype(t), A}(undef, V_D)
 end
+
+for (f!, bf!) in ((:svd_vals!, :batched_svd_vals!),)
+    # diagonals don't support batching yet
+    @eval function MAK.$f!(t::AbstractTensorMap, N, alg::DiagonalAlgorithm)
+        @timeit_debug GLOBAL_TIMER $(string(f!)) begin
+            foreachblock(t, N) do _, (tblock, Nblock)
+                @timeit_debug GLOBAL_TIMER "dense: MatrixAlgebraKit" begin
+                    Nblock′ = $f!(tblock, Nblock, alg)
+                    # deal with the case where the output is not the same as the input
+                    Nblock === Nblock′ || copy!(Nblock, Nblock′)
+                end
+                return nothing
+            end
+        end
+        return N
+    end
+end
+
+for (f!, bf!) in ((:svd_full!, :batched_svd_full!),)
+    @eval function MAK.$f!(t::AbstractTensorMap, F, alg::DiagonalAlgorithm)
+        @timeit_debug GLOBAL_TIMER $(string(f!)) begin
+            U, S, Vᴴ = F
+            foreachblock(t, U, S, Vᴴ) do _, (tblock, Fblocks...)
+                @timeit_debug GLOBAL_TIMER "dense: MatrixAlgebraKit" begin
+                    Fblocks′ = $f!(tblock, Fblocks, alg)
+                    # deal with the case where the output is not in-place
+                    for (b′, b) in zip(Fblocks′, Fblocks)
+                        b === b′ || copy!(b, b′)
+                    end
+                end
+                return nothing
+            end
+            return F
+        end
+    end
+end
+
