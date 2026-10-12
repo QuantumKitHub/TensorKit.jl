@@ -4,18 +4,6 @@
 import MemoizationKit: CacheStyle
 using MemoizationKit: MemoizationKit, @cached, NoCache, GlobalCache, Hashed, LRU
 
-"""
-    const GLOBAL_CACHES
-
-Registry of additional global caches, which are not managed by `@cached` (e.g. by
-extensions), as `name => cache` pairs. They are emptied by [`empty_globalcaches!`](@ref)
-and listed by [`global_cache_info`](@ref), together with the caches of TensorKit's cached
-functions.
-"""
-const GLOBAL_CACHES = Pair{Symbol, Any}[]
-
-const DEFAULT_GLOBALCACHE_SIZE = Ref(10^4)
-
 # Buffer payloads can be measured without visiting their elements when stored inline.
 # Reference-containing sector/scalar types need the recursive fallback to include their data.
 _cache_payload_size(a::Array{T}) where {T} = isbitstype(T) ? sizeof(a) : Base.summarysize(a)
@@ -39,7 +27,6 @@ See also [`global_cache_info`](@ref) to display the status.
 """
 function empty_globalcaches!()
     MemoizationKit.empty_caches!(TensorKit)
-    foreach(empty! ∘ last, GLOBAL_CACHES)
     return nothing
 end
 
@@ -53,9 +40,6 @@ See also [`empty_globalcaches!`](@ref).
 function global_cache_info(io::IO = stdout)
     for (f, cache) in MemoizationKit.cache_info(TensorKit)
         println(io, nameof(f), ":\t", cache)
-    end
-    for (name, cache) in GLOBAL_CACHES
-        println(io, name, ":\t", cache)
     end
     return
 end
