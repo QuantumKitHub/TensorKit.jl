@@ -1,8 +1,8 @@
-# Caching of the fusion tree manipulations and tensor structures is provided by Cached.jl.
+# Caching of the fusion tree manipulations and tensor structures is provided by MemoizationKit.jl.
 # `CacheStyle` is imported (not just used) so that the `CacheStyle(::typeof(f), ...)`
-# specializations in TensorKit, and those of users, extend `Cached.CacheStyle`.
-import Cached: CacheStyle
-using Cached: Cached, @cached, NoCache, GlobalCache, Hashed, LRU
+# specializations in TensorKit, and those of users, extend `MemoizationKit.CacheStyle`.
+import MemoizationKit: CacheStyle
+using MemoizationKit: MemoizationKit, @cached, NoCache, GlobalCache, Hashed, LRU
 
 """
     const GLOBAL_CACHES
@@ -38,7 +38,7 @@ Since everything is recomputed on demand, this is purely a memory measure.
 See also [`global_cache_info`](@ref) to display the status.
 """
 function empty_globalcaches!()
-    Cached.empty_caches!(TensorKit)
+    MemoizationKit.empty_caches!(TensorKit)
     foreach(empty! ∘ last, GLOBAL_CACHES)
     return nothing
 end
@@ -51,7 +51,7 @@ Print the hit/miss statistics and current size of every global cache of TensorKi
 See also [`empty_globalcaches!`](@ref).
 """
 function global_cache_info(io::IO = stdout)
-    for (f, cache) in Cached.cache_info(TensorKit)
+    for (f, cache) in MemoizationKit.cache_info(TensorKit)
         println(io, nameof(f), ":\t", cache)
     end
     for (name, cache) in GLOBAL_CACHES
