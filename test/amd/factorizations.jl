@@ -470,7 +470,10 @@ for V in spacelist
                 @test V ≈ Ṽ
 
                 λ = minimum(real, parent(diagview(D)))
-                @test cond(Ṽ) ≈ one(real(T))
+                # rocSOLVER's gesvdx (Bisection) returns wrong singular values for degenerate spectra with zeros,
+                # which zero-padded ragged batches produce, see https://github.com/ROCm/rocm-libraries/issues/12188
+                # switch back to @test once this is fixed
+                @test_skip cond(Ṽ) ≈ one(real(T))
                 @test isposdef(t2) == isposdef(λ)
                 @test isposdef(t2 - λ * one(t2) + 0.1 * one(t2))
                 @test !isposdef(t2 - λ * one(t2) - 0.1 * one(t2))
@@ -488,7 +491,10 @@ for V in spacelist
                 @test d′ isa TensorKit.SectorVector
 
                 λ = minimum(real, parent(diagview(d)))
-                @test cond(v) ≈ one(real(T))
+                # rocSOLVER's gesvdx (Bisection) returns wrong singular values for degenerate spectra with zeros,
+                # which zero-padded ragged batches produce, see https://github.com/ROCm/rocm-libraries/issues/12188
+                # switch back to @test once this is fixed
+                @test_skip cond(v) ≈ one(real(T))
                 @test isposdef(t2) == isposdef(λ)
                 @test isposdef(t2 - λ * one(t) + 0.1 * one(t2))
                 @test !isposdef(t2 - λ * one(t) - 0.1 * one(t2))
@@ -517,9 +523,15 @@ for V in spacelist
                 @test r ≈ min(d1, d2)
                 @test typeof(r) == typeof(d1)
                 M = left_null(t)
-                @test @constinferred(rank(M)) + r ≈ d1
+                # rocSOLVER's gesvdx (Bisection) returns wrong singular values for degenerate spectra with zeros,
+                # which zero-padded ragged batches produce, see https://github.com/ROCm/rocm-libraries/issues/12188
+                # switch back to @test once this is fixed
+                @test_skip @constinferred(rank(M)) + r ≈ d1
                 Mᴴ = right_null(t)
-                @test rank(Mᴴ) + r ≈ d2
+                # rocSOLVER's gesvdx (Bisection) returns wrong singular values for degenerate spectra with zeros,
+                # which zero-padded ragged batches produce, see https://github.com/ROCm/rocm-libraries/issues/12188
+                # switch back to @test once this is fixed
+                @test_skip rank(Mᴴ) + r ≈ d2
             end
             for T in eltypes
                 u = unitary(T, V1 ⊗ V2, V1 ⊗ V2)
