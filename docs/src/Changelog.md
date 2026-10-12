@@ -28,7 +28,8 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 - Extend VectorInterface compat to include v0.7
 - Require TensorKitSectors v0.3.10
-- `@cached` can be used from other modules, such as package extensions, which then own the cache of the methods they add; these caches are shown with their module in `global_cache_info` after registration in `__init__` (internal)
+- Caching is provided by [MemoizationKit.jl](https://github.com/QuantumKitHub/MemoizationKit.jl), which can inspect, resize and configure TensorKit's caches, also by memory size; this replaces the internal `@cached` machinery and the LRUCache.jl dependency
+- Storage-specific transformers of package extensions are cached by adding `@cached` methods to `treebraider` and `treetransposer`, sharing their cache (internal)
 - The `TreeTransformer`s used in index manipulations are now constructed and cached per storagetype of the destination tensor, which is also a dispatch point for storage-specific transformers with their own cache (internal)
 
 ### Deprecated
