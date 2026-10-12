@@ -284,12 +284,12 @@ function braid(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple, leve
     @assert numind(src) == length(p[1]) + length(p[2])
     @assert numout(src) == length(levels[1]) && numin(src) == length(levels[2])
     @assert TupleTools.isperm((p[1]..., p[2]...))
-    return fsbraid(src, p, levels)
+    return fusiontreebraid(src, p, levels)
 end
 
 # Braiding can promote real fusion coefficients to complex values. Keep the result
 # type explicit so all braid paths remain inferred, including anyonic sectors.
-Base.@assume_effects :foldable function fsbraidtype(
+Base.@assume_effects :foldable function fusiontreebraidtype(
         src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, ::Index2Tuple{N₁, N₂}
     ) where {I, N₁, N₂}
     T = sectorscalartype(I)
@@ -301,10 +301,10 @@ Base.@assume_effects :foldable function fsbraidtype(
     end
 end
 
-@cached function fsbraid(
+@cached function fusiontreebraid(
         src::Union{FusionTreePair{I}, FusionTreeBlock{I}},
         p::Index2Tuple{N₁, N₂}, levels::Index2Tuple
-    )::fsbraidtype(src, p) where {I, N₁, N₂}
+    )::fusiontreebraidtype(src, p) where {I, N₁, N₂}
     p1, p2 = p
     l1, l2 = levels
     if src isa FusionTreePair
@@ -342,7 +342,7 @@ end
     end
 end
 
-CacheStyle(::typeof(fsbraid), src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, args...) where {I} =
+CacheStyle(::typeof(fusiontreebraid), src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, args...) where {I} =
     FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalCache()
 
 """

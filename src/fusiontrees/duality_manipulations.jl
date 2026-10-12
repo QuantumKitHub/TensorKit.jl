@@ -524,12 +524,24 @@ function Base.transpose(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tu
     N == length(p[1]) + length(p[2]) || throw(ArgumentError("invalid permutation p = $p of length N = $N"))
     p′ = linearizepermutation(p..., numout(src), numin(src))
     iscyclicpermutation(p′) || throw(ArgumentError("invalid cyclic or planar permutation p = $p"))
-    return fstranspose(src, p)
+    return fusiontreetranspose(src, p)
 end
 
-@cached function fstranspose(
-        src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, p::Index2Tuple{N₁, N₂}
+Base.@assume_effects :foldable function fusiontreetransposetype(
+        src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, ::Index2Tuple{N₁, N₂}
     ) where {I, N₁, N₂}
+    T = fusionscalartype(I)
+    if src isa FusionTreePair
+        return Pair{fusiontreetype(I, N₁, N₂), T}
+    else
+        F = Tuple{fusiontreetype(I, N₁), fusiontreetype(I, N₂)}
+        return Pair{FusionTreeBlock{I, N₁, N₂, F}, Matrix{T}}
+    end
+end
+
+@cached function fusiontreetranspose(
+        src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, p::Index2Tuple{N₁, N₂}
+    )::fusiontreetransposetype(src, p) where {I, N₁, N₂}
     p1, p2 = p
 
     N = N₁ + N₂
@@ -555,7 +567,7 @@ end
     return dst => U
 end
 
-CacheStyle(::typeof(fstranspose), src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, args...) where {I} =
+CacheStyle(::typeof(fusiontreetranspose), src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, args...) where {I} =
     FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalCache()
 
 # COMPOSITE DUALITY MANIPULATIONS PART 2: Planar traces
