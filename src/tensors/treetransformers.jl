@@ -220,7 +220,7 @@ end
 
 # Keep TensorKit's profiling categories for the phases instrumented by MemoizationKit.
 const TensorKitCachedFunction = Union{
-    typeof(fsbraid), typeof(fstranspose), typeof(treebraider), typeof(treetransposer),
+    typeof(fusiontreebraid), typeof(fusiontreetranspose), typeof(treebraider), typeof(treetransposer),
     typeof(sectorstructure), typeof(degeneracystructure),
 }
 MemoizationKit.instrument_label(f::TensorKitCachedFunction, ::Val{:lookup}) = "bookkeeping: cache $(nameof(f))"
