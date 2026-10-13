@@ -59,8 +59,8 @@ for pullback! in (:svd_pullback!, :eig_pullback!, :eigh_pullback!)
             Δt::AbstractTensorMap, t, F, ΔF, inds = _notrunc_ind(Δt);
             kwargs...
         )
-        nothing_or_foreachblock(Δt, t) do c, Δbb
-            Δb, b = length(Δbb) == 1 ? (only(Δbb), nothing) : Δbb
+        foreachblock(Δt) do c, (Δb,)
+            b = nothing_or_block(t, c)
             ind = get(inds, c, nothing)
             isnothing(ind) && return nothing
             Fc = nothing_or_block.(F, Ref(c))
