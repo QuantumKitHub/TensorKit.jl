@@ -108,25 +108,25 @@ end
 
 # Handle these separately because single output instead of tuple AND batching is supported
 for (f!, bf!) in ((:svd_vals!, :batched_svd_vals!),)
-    @eval function MAK.$f!(t::AbstractTensorMap, N, alg::AbstractAlgorithm)
+    @eval function MAK.$f!(t::AbstractTensorMap, S, alg::AbstractAlgorithm)
         @timeit_debug GLOBAL_TIMER $(string(f!)) begin
             driver = get(alg.kwargs, :driver, MAK.DefaultDriver())
-            cs = collect(union(blocksectors.((t, N))...))
+            cs = blocksectors(t)
             if !isempty(cs) && MAK.supports_ragged_batch(MAK.$f!, alg, driver, storagetype(t))
-                As, Ns = [block(t, c) for c in cs], [block(N, c) for c in cs]
-                @timeit_debug GLOBAL_TIMER "batched: MatrixAlgebraKit" MAK.$bf!(As, Ns, alg)
-                return N
+                As, Ss = last.(blocks(t)), last.(blocks(S))
+                @timeit_debug GLOBAL_TIMER "batched: MatrixAlgebraKit" MAK.$bf!(As, Ss, alg)
+                return S
             end
-            foreachblock(t, N) do _, (tblock, Nblock)
+            foreachblock(t, S) do _, (tblock, Sblock)
                 @timeit_debug GLOBAL_TIMER "dense: MatrixAlgebraKit" begin
-                    Nblock′ = $f!(tblock, Nblock, alg)
+                    Sblock′ = $f!(tblock, Sblock, alg)
                     # deal with the case where the output is not the same as the input
-                    Nblock === Nblock′ || copy!(Nblock, Nblock′)
+                    Sblock === Sblock′ || copy!(Sblock, Sblock′)
                 end
                 return nothing
             end
         end
-        return N
+        return S
     end
 end
 
