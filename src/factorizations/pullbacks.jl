@@ -1,20 +1,14 @@
+nothing_or_block(x, c) = isnothing(x) ? x : block(x, c)
+nothing_or_block(x::Diagonal, c) = block(MAK.diagonal(parent(x)), c)
+
 for pullback! in (
         :qr_pullback!, :lq_pullback!, :left_polar_pullback!, :right_polar_pullback!,
     )
     @eval function MAK.$pullback!(
-            Δt::AbstractTensorMap, t::AbstractTensorMap, F, ΔF; kwargs...
-        )
-        foreachblock(Δt, t) do c, (Δb, b)
-            Fc = block.(F, Ref(c))
-            ΔFc = block.(ΔF, Ref(c))
-            return MAK.$pullback!(Δb, b, Fc, ΔFc; kwargs...)
-        end
-        return Δt
-    end
-    @eval function MAK.$pullback!(
-            Δt::AbstractTensorMap, ::Nothing, F, ΔF; kwargs...
+            Δt::AbstractTensorMap, t, F, ΔF; kwargs...
         )
         foreachblock(Δt) do c, (Δb,)
+            b = nothing_or_block(t, c)
             Fc = block.(F, Ref(c))
             ΔFc = block.(ΔF, Ref(c))
             return MAK.$pullback!(Δb, nothing, Fc, ΔFc; kwargs...)
@@ -51,9 +45,6 @@ function MAK.svd_vals_pullback!(
     return MAK.svd_vals_pullback!(Δt, nothing, (USVᴴ[1], MAK.diagonal(parent(USVᴴ[2])), USVᴴ[3]), ΔS, ind; kwargs...)
 end
 
-nothing_or_block(x, c) = isnothing(x) ? x : block(x, c)
-nothing_or_block(x::Diagonal, c) = block(MAK.diagonal(parent(x)), c)
-nothing_or_foreachblock(f, Δt, t) = isnothing(t) ? foreachblock(f, Δt) : foreachblock(f, Δt, t)
 for pullback! in (:svd_pullback!, :eig_pullback!, :eigh_pullback!)
     @eval function MAK.$pullback!(
             Δt::AbstractTensorMap, t, F, ΔF, inds = _notrunc_ind(Δt);
