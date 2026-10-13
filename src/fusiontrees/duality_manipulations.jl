@@ -527,11 +527,11 @@ function Base.transpose(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tu
     return fusiontreetranspose(src, p)
 end
 function Base.transpose(src::ProductSectorBlock, p::Index2Tuple)
-    isempty(src) && return fstranspose((src, p))
+    isempty(src) && return fusiontreetranspose(src, p)
     # the return type is asserted since inference gives up on the recursion on older Julia versions
     return product_transform(fusionscalartype(sectortype(src)), src) do x
         return transpose(x, p)
-    end::_fsdicttype(typeof((src, p)))
+    end::fusiontreetransposetype(src, p)
 end
 
 Base.@assume_effects :foldable function fusiontreetransposetype(
@@ -549,10 +549,10 @@ end
 @cached function fusiontreetranspose(
         src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, p::Index2Tuple{N₁, N₂}
     )::fusiontreetransposetype(src, p) where {I, N₁, N₂}
-    p1, p2 = p
+    p₁, p₂ = p
 
     N = N₁ + N₂
-    p = linearizepermutation(p1, p2, numout(src), numin(src))
+    p = linearizepermutation(p₁, p₂, numout(src), numin(src))
 
     dst, U = repartition(src, N₁)
     length(p) == 0 && return dst => U
