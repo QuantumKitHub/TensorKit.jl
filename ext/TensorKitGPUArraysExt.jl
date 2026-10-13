@@ -196,6 +196,7 @@ end
 
 # strides of a dense array of shape `sz`
 _dense_strides(size::Dims) = (1, Base.front(cumprod(size))...)
+_dense_strides(::Tuple{}) = ()
 
 # `permute(Vsrc, p) == Vdst` is enforced when the transformer is built, so the permuted
 # source shape always matches `sz_dst` and the two views share Cartesian inds.
