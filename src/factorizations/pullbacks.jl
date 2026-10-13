@@ -8,7 +8,6 @@ for pullback! in (
             Δt::AbstractTensorMap, t, F, ΔF; kwargs...
         )
         foreachblock(Δt) do c, (Δb,)
-            b = nothing_or_block(t, c)
             Fc = block.(F, Ref(c))
             ΔFc = block.(ΔF, Ref(c))
             return MAK.$pullback!(Δb, nothing, Fc, ΔFc; kwargs...)
