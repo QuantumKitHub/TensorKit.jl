@@ -705,21 +705,44 @@ function _add_transform_block!(
             )
         end
 
-        # 2. Recoupling: buffer_dst = α * buffer_src * U^T  (each output tree is a linear
+        # 2. Recoupling: buffer_dst = buffer_src * U^T  (each output tree is a linear
         #    combination of input trees weighted by the recoupling coefficients).
-        @timeit_debug GLOBAL_TIMER "dense: recouple mul!" begin
-            U′ = _adapt_recoupling(storagetype(dst), U)
-            mul!(buffer_dst, buffer_src, transpose(U′), α, Zero())
-        end
+        @timeit_debug GLOBAL_TIMER "dense: recouple mul!" _recouple!(buffer, buffer_dst, buffer_src, U)
 
         # 3. Insert: scatter column j of buffer_dst into the destination, applying the
-        #    actual index permutation p in the same tensoradd! call.
+        #    actual index permutation p and the scaling α in the same tensoradd! call.
         @timeit_debug GLOBAL_TIMER "dense: unpack" @inbounds for (j, idst) in enumerate(inds_dst)
             TO.tensoradd!(
                 dst[idst], sreshape(view(buffer_dst, :, j), sz_src),
-                p, false, One(), β, backend, allocator
+                p, false, α, β, backend, allocator
             )
         end
     end
     return nothing
+end
+
+# computes `buffer_dst = buffer_src * transpose(U)`, where both are column-major views into `buffer`
+_recouple!(buffer, buffer_dst, buffer_src, U) =
+    (mul!(buffer_dst, buffer_src, transpose(StridedView(U))); nothing)
+# real coefficients acting on complex data: recouple the real and imaginary parts in a single real gemm
+function _recouple!(
+        buffer::DenseVector{Complex{R}}, buffer_dst::StridedView, buffer_src::StridedView, U::AbstractMatrix{R}
+    ) where {R <: LinearAlgebra.BlasReal}
+    rbuffer = reinterpret(R, buffer)
+    mul!(_realview(rbuffer, buffer_dst), _realview(rbuffer, buffer_src), transpose(U))
+    return nothing
+end
+# on the CPU, views of reinterpreted arrays are not `StridedMatrix`, so `mul!` would not use BLAS
+function _recouple!(
+        buffer::CPUStorage{Complex{R}}, buffer_dst::StridedView, buffer_src::StridedView, U::Matrix{R}
+    ) where {R <: LinearAlgebra.BlasReal}
+    rbuffer = reinterpret(R, buffer)
+    LinearAlgebra.BLAS.gemm!('N', 'T', one(R), _realview(rbuffer, buffer_src), U, zero(R), _realview(rbuffer, buffer_dst))
+    return nothing
+end
+# real view of the complex column-major view `b` into the reinterpreted buffer `rbuffer`
+function _realview(rbuffer::AbstractVector, b::StridedView)
+    rows, cols = size(b)
+    offset = 2 * b.offset
+    return reshape(view(rbuffer, (offset + 1):(offset + 2 * rows * cols)), 2 * rows, cols)
 end

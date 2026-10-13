@@ -4,7 +4,6 @@ using GPUArrays
 using GPUArrays: @allowscalar
 using GPUArrays.KernelAbstractions: @kernel, @index, get_backend
 using Adapt
-using TensorKit.LRUCache: LRU
 using TensorKit.TupleTools
 using Strided: StridedViews
 using MatrixAlgebraKit, Adapt
@@ -13,7 +12,7 @@ using TensorKit.TensorOperations: linearize, DefaultAllocator
 using TensorKit.Factorizations
 using TensorKit.Factorizations: AbstractAlgorithm
 using TensorKit: SectorDict, tensormaptype, scalar, similarstoragetype, AdjointTensorMap, scalartype, project_symmetric_and_check
-using TensorKit: StridedSubblocks, UniqueTreeTransformer, GenericTreeTransformer
+using TensorKit: UniqueTreeTransformer, GenericTreeTransformer, @cached, TensorMapSpace, Index2Tuple, IndexTuple
 import TensorKit: randisometry, rand, randn, fill_braidingsubblock!, add_transform_kernel!
 
 function TensorKit.fill_braidingsubblock!(data::TD, val) where {T, TD <: Union{<:AnyGPUMatrix{T}, <:StridedViews.StridedView{T, 4, <:AnyGPUArray{T}}}}
@@ -272,70 +271,66 @@ function DeviceGenericTreeTransformer(
     )
 end
 
-"""
-    StorageAdaptor(proto)
-
-`Adapt` adaptor moving arrays onto the same device and array type as `proto`, preserving
-their element type. For `proto::CuVector{Float64}` and `array::Vector{Int}`,
-the call `adapt(typeof(proto), array)` would force-convert the element type `Int`
-to `Float64`, while `adapt(StoreAdaptor(proto), array)` does not.
-"""
-struct StorageAdaptor{A <: AbstractArray}
-    proto::A
-end
-function Adapt.adapt_storage(a::StorageAdaptor, x::AbstractArray)
-    dst = similar(a.proto, eltype(x), size(x))
-    isempty(x) && return dst
-    return copy!(dst, x)
+# Cache the device transformer directly, constructing the cached host version only on a miss.
+@cached function TensorKit.treebraider(
+        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
+        conjsrc::Bool, levels::IndexTuple
+    ) where {TA <: AnyGPUVector}
+    host = TensorKit.treebraider(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc, levels)
+    return device_transformer(A, host, linearize(p))
 end
 
-function Adapt.adapt_structure(to, t::DeviceUniqueTreeTransformer)
-    return DeviceUniqueTreeTransformer(
-        Adapt.adapt(to, t.blocks), Adapt.adapt(to, t.work_offsets), t.nwork
-    )
+@cached function TensorKit.treetransposer(
+        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
+    ) where {TA <: AnyGPUVector}
+    host = TensorKit.treetransposer(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc)
+    return device_transformer(A, host, linearize(p))
 end
 
-function Adapt.adapt_structure(to, t::DeviceGenericTreeTransformer)
-    return DeviceGenericTreeTransformer(
-        Adapt.adapt(to, t.unique_blocks), Adapt.adapt(to, t.blocks),
-        Adapt.adapt(to, t.work_offsets), t.nwork, Adapt.adapt(to, t.coeffs),
-        Adapt.adapt(to, t.structs_dst), Adapt.adapt(to, t.structs_src)
-    )
-end
-
-# Copying a transformer to GPU is more expensive than running it, so we cache the device
-# copy in a global LRU cache, registered in `TensorKit.GLOBAL_CACHES` so that
-# `empty_globalcaches!` also frees the device memory. The key is:
-# - transformer which is an immutable struct. It's hashed and compared by the identity of
-#   its fields, which avoids walking every recoupling matrix on every lookup.
-#   Holding it in the key also keeps it alive, so its `objectid` cannot be
-#   reused by a different transformer while the entry is cached.
-# - the storage type
-# - `p`, which is baked into the permuted source strides.
-# TODO: should this live in the main package?
-const DEVICE_TRANSFORMER_CACHE = LRU{Any, Any}(; maxsize = TensorKit.DEFAULT_GLOBALCACHE_SIZE[])
+const DEFAULT_DEVICECACHE_SIZE = 1000
 
 function __init__()
-    push!(TensorKit.GLOBAL_CACHES, :DEVICE_TRANSFORMER_CACHE => DEVICE_TRANSFORMER_CACHE)
+    # extensions can't modify GLOBAL_CACHES during precompilation, so register explicitly
+    append!(
+        TensorKit.GLOBAL_CACHES, (
+            Symbol("TensorKitGPUArraysExt.GLOBAL_TREEBRAIDER_CACHE") => GLOBAL_TREEBRAIDER_CACHE,
+            Symbol("TensorKitGPUArraysExt.GLOBAL_TREETRANSPOSER_CACHE") => GLOBAL_TREETRANSPOSER_CACHE,
+        )
+    )
+
+    # device-caches should probably have smaller sizes:
+    resize!(GLOBAL_TREEBRAIDER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
+    resize!(GLOBAL_TREETRANSPOSER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
+
     return nothing
 end
 
-# We have this complicated setup because a naive `adapt` doesn't work.
-# Rather we copy everything to GPU-native arrays and have kernels that can work
-# with that.
-function device_transformer(proto::AbstractArray, transformer, p)
-    key = (transformer, typeof(proto), p)
-    return get!(DEVICE_TRANSFORMER_CACHE, key) do
-        # be careful about the lifetime of these, since they live in a global cache and
-        # thus persist beyond the call
-        GPUArrays.@uncached Adapt.adapt(
-            StorageAdaptor(proto), _device_transformer(transformer, p)
-        )
+# Allocations must outlive any GPUArrays allocation-cache scope around the operation.
+function device_transformer(A, transformer::UniqueTreeTransformer, p)
+    packed = DeviceUniqueTreeTransformer(transformer, p)
+    return GPUArrays.@uncached begin
+        proto = A(undef, 0)
+        # Metadata and coefficients have different element types; preserve each on upload.
+        upload(x) = copy!(similar(proto, eltype(x), size(x)), x)
+        DeviceUniqueTreeTransformer(upload(packed.blocks), upload(packed.work_offsets), packed.nwork)
     end
 end
 
-_device_transformer(t::UniqueTreeTransformer, p) = DeviceUniqueTreeTransformer(t, p)
-_device_transformer(t::GenericTreeTransformer, p) = DeviceGenericTreeTransformer(t, p)
+function device_transformer(A, transformer::GenericTreeTransformer, p)
+    packed = DeviceGenericTreeTransformer(transformer, p)
+    return GPUArrays.@uncached begin
+        proto = A(undef, 0)
+        upload(x) = copy!(similar(proto, eltype(x), size(x)), x)
+        unique = packed.unique_blocks
+        device_unique = DeviceUniqueTreeTransformer(
+            upload(unique.blocks), upload(unique.work_offsets), unique.nwork
+        )
+        DeviceGenericTreeTransformer(
+            device_unique, upload(packed.blocks), upload(packed.work_offsets), packed.nwork,
+            upload(packed.coeffs), upload(packed.structs_dst), upload(packed.structs_src)
+        )
+    end
+end
 
 # COV_EXCL_START
 # kernels are not reachable by coverage
@@ -373,7 +368,9 @@ end
 @kernel function unique_batched_permute_kernel!(
         data_dst, data_src, op, blocks, work_offsets, α, β, nwork, ::Val{N}
     ) where {N}
-    w = @index(Global, Linear) - 1
+    # w = @index(Global, Linear) - 1 does not work due to JLArrays bug
+    w = @index(Global, Linear)
+    w -= 1
     if w < nwork
         b = _searchblock(work_offsets, w)
         blk = @inbounds blocks[b]
@@ -398,7 +395,9 @@ end
         data_dst, data_src, op, blocks, work_offsets, coeffs, structs_dst, structs_src,
         α, β, nwork, ::Val{N}
     ) where {N}
-    w = @index(Global, Linear) - 1
+    # w = @index(Global, Linear) - 1 does not work due to JLArrays bug
+    w = @index(Global, Linear)
+    w -= 1
     if w < nwork
         # bookkeeping to figure out where to read from and write to
         b = _searchblock(work_offsets, w)
@@ -448,30 +447,32 @@ function _launch_generic!(data_dst, data_src, op, transformer, α, β, ::Val{N})
     return nothing
 end
 
-const GPUStridedSubblocks = StridedSubblocks{<:AnyGPUArray}
+# we don't want/need the `StridedSubblocks` here because that information is already in the transformer
+TensorKit._transform_subblocks(
+    tdst::TensorMap, tsrc::TensorMap,
+    transformer::Union{DeviceUniqueTreeTransformer, DeviceGenericTreeTransformer}
+) = (tdst.data, tsrc.data)
 
 function TensorKit.add_transform_kernel!(
-        dst::GPUStridedSubblocks, src::GPUStridedSubblocks, p, conjsrc::Bool,
-        transformer::UniqueTreeTransformer{T, N}, α, β, backend, allocator, ntasks::Int
-    ) where {T, N}
-    # GPU-side object to hold the treetransformer information
-    device = device_transformer(dst.data, transformer, linearize(p))
+        dst::AnyGPUVector, src::AnyGPUVector, p, conjsrc::Bool,
+        device::DeviceUniqueTreeTransformer, α, β, backend, allocator, ntasks::Int
+    )
+    N = length(linearize(p))
     op = conjsrc ? conj : identity
-    _launch_unique!(dst.data, src.data, op, device, α, β, Val(N))
+    _launch_unique!(dst, src, op, device, α, β, Val(N))
     return nothing
 end
 
 function TensorKit.add_transform_kernel!(
-        dst::GPUStridedSubblocks, src::GPUStridedSubblocks, p, conjsrc::Bool,
-        transformer::GenericTreeTransformer{T, N}, α, β, backend, allocator, ntasks::Int
-    ) where {T, N}
-    # GPU-side object to hold the treetransformer information
-    device = device_transformer(dst.data, transformer, linearize(p))
+        dst::AnyGPUVector, src::AnyGPUVector, p, conjsrc::Bool,
+        device::DeviceGenericTreeTransformer, α, β, backend, allocator, ntasks::Int
+    )
+    N = length(linearize(p))
     op = conjsrc ? conj : identity
     # one-tree blocks are a scaled permutation, which the unique kernel already handles; the
     # two kernels touch disjoint subblocks so the launch order does not matter
-    _launch_unique!(dst.data, src.data, op, device.unique_blocks, α, β, Val(N))
-    _launch_generic!(dst.data, src.data, op, device, α, β, Val(N))
+    _launch_unique!(dst, src, op, device.unique_blocks, α, β, Val(N))
+    _launch_generic!(dst, src, op, device, α, β, Val(N))
     return nothing
 end
 
