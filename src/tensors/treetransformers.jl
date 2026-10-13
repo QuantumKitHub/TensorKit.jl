@@ -226,9 +226,22 @@ end
     return TreeTransformer(A, fusiontreetransform, p, Vdst, Vsrc, conjsrc)
 end
 
+"""
+    device_treebraider(A, Vdst, Vsrc, p, conjsrc, levels)
+    device_treetransposer(A, Vdst, Vsrc, p, conjsrc)
+
+Tree transformers for device storage types `A`, to which `treebraider` and `treetransposer`
+forward. Their methods are added by package extensions. Being separate functions, the device
+transformers have their own cache, which can be configured independently of the host ones.
+"""
+function device_treebraider end
+function device_treetransposer end
+@doc (@doc device_treebraider) device_treetransposer
+
 # Keep TensorKit's profiling categories for the phases instrumented by MemoizationKit.
 const TensorKitCachedFunction = Union{
     typeof(fusiontreebraid), typeof(fusiontreetranspose), typeof(treebraider), typeof(treetransposer),
+    typeof(device_treebraider), typeof(device_treetransposer),
     typeof(sectorstructure), typeof(degeneracystructure),
 }
 MemoizationKit.instrument_label(f::TensorKitCachedFunction, ::Val{:lookup}) = "bookkeeping: cache $(nameof(f))"

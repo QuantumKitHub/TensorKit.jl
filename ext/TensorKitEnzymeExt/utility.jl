@@ -147,6 +147,8 @@ end
 @inline EnzymeRules.inactive(::typeof(TensorKit.fusiontreetranspose), ::Any, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.treetransposer), ::Any...) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.treebraider), ::Any...) = nothing
+@inline EnzymeRules.inactive(::typeof(TensorKit.device_treetransposer), ::Any...) = nothing
+@inline EnzymeRules.inactive(::typeof(TensorKit.device_treebraider), ::Any...) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.insertleftunit), ::HomSpace, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.insertrightunit), ::HomSpace, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.removeunit), ::HomSpace, ::Any) = nothing
