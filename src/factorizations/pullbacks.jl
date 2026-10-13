@@ -27,7 +27,6 @@ for pullback! in (:qr_null_pullback!, :lq_null_pullback!)
         return Δt
     end
 end
-_notrunc_ind(t) = SectorDict(c => Colon() for c in blocksectors(t))
 
 for pullback! in (:eig_vals_pullback!, :eigh_vals_pullback!)
     @eval function MAK.$pullback!(
@@ -38,20 +37,20 @@ for pullback! in (:eig_vals_pullback!, :eigh_vals_pullback!)
     end
 end
 function MAK.svd_vals_pullback!(
-        Δt::AbstractTensorMap, t, USVᴴ::Tuple{<:AbstractTensorMap, Diagonal, <:AbstractTensorMap}, ΔS, ind;
+        Δt::AbstractTensorMap, t, USVᴴ::Tuple{<:AbstractTensorMap, Diagonal, <:AbstractTensorMap}, ΔS, inds;
         kwargs...
     )
-    return MAK.svd_vals_pullback!(Δt, t, (USVᴴ[1], MAK.diagonal(parent(USVᴴ[2])), USVᴴ[3]), ΔS, ind; kwargs...)
+    return MAK.svd_vals_pullback!(Δt, t, (USVᴴ[1], MAK.diagonal(parent(USVᴴ[2])), USVᴴ[3]), ΔS, inds; kwargs...)
 end
 
 for pullback! in (:svd_pullback!, :eig_pullback!, :eigh_pullback!)
     @eval function MAK.$pullback!(
-            Δt::AbstractTensorMap, t, F, ΔF, inds = _notrunc_ind(Δt);
+            Δt::AbstractTensorMap, t, F, ΔF, inds = Colon();
             kwargs...
         )
         foreachblock(Δt) do c, (Δb,)
             b = nothing_or_block(t, c)
-            ind = get(inds, c, nothing)
+            ind = (inds isa Colon) ? inds : get(inds, c, nothing)
             isnothing(ind) && return nothing
             Fc = nothing_or_block.(F, Ref(c))
             ΔFc = nothing_or_block.(ΔF, Ref(c))
@@ -59,11 +58,6 @@ for pullback! in (:svd_pullback!, :eig_pullback!, :eigh_pullback!)
             return nothing
         end
         return Δt
-    end
-    @eval function MAK.$pullback!(
-            Δt::AbstractTensorMap, t, F, ΔF, ::Colon; kwargs...
-        )
-        return MAK.$pullback!(Δt, t, F, ΔF, _notrunc_ind(Δt); kwargs...)
     end
 end
 
