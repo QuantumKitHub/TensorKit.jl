@@ -28,17 +28,17 @@ end
 
 for pushforward! in (:eig_vals_pushforward!, :eigh_vals_pushforward!)
     @eval function MAK.$pushforward!(
-            Δt::AbstractTensorMap, ::Nothing, DV::Tuple{Diagonal, <:AbstractTensorMap}, ΔD, inds;
+            Δt::AbstractTensorMap, t, DV::Tuple{Diagonal, <:AbstractTensorMap}, ΔD, inds;
             kwargs...
         )
-        return MAK.$pushforward!(Δt, nothing, (MAK.diagonal(parent(DV[1])), DV[2]), ΔD, inds; kwargs...)
+        return MAK.$pushforward!(Δt, t, (MAK.diagonal(parent(DV[1])), DV[2]), ΔD, inds; kwargs...)
     end
 end
 function MAK.svd_vals_pushforward!(
-        Δt::AbstractTensorMap, ::Nothing, USVᴴ::Tuple{<:AbstractTensorMap, Diagonal, <:AbstractTensorMap}, ΔS, ind;
+        Δt::AbstractTensorMap, t, USVᴴ::Tuple{<:AbstractTensorMap, Diagonal, <:AbstractTensorMap}, ΔS, ind;
         kwargs...
     )
-    return MAK.svd_vals_pushforward!(Δt, nothing, (USVᴴ[1], MAK.diagonal(parent(USVᴴ[2])), USVᴴ[3]), ΔS, ind; kwargs...)
+    return MAK.svd_vals_pushforward!(Δt, t, (USVᴴ[1], MAK.diagonal(parent(USVᴴ[2])), USVᴴ[3]), ΔS, ind; kwargs...)
 end
 
 for pushforward! in (:svd_pushforward!, :eig_pushforward!, :eigh_pushforward!)
