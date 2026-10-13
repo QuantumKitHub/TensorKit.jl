@@ -41,7 +41,7 @@ for f! in (
     @eval function MAK.$f!(t::AbstractTensorMap, F, alg::AbstractAlgorithm)
         $(f! in (:eig_full!, :eigh_full!) && :(LinearAlgebra.checksquare(t)))
         @timeit_debug GLOBAL_TIMER $(string(f!)) begin
-            foreachblock(t, F...) do _, (tblock, Fblocks...)
+            foreachblockvalue(t, F...) do (tblock, Fblocks...)
                 @timeit_debug GLOBAL_TIMER "dense: MatrixAlgebraKit" begin
                     Fblocks′ = $f!(tblock, Fblocks, alg)
                     # deal with the case where the output is not in-place
@@ -66,7 +66,7 @@ for f! in (
     @eval function MAK.$f!(t::AbstractTensorMap, N, alg::AbstractAlgorithm)
         $(f! in (:eig_vals!, :eigh_vals!, :project_hermitian!, :project_antihermitian!, :exponential!) && :(LinearAlgebra.checksquare(t)))
         @timeit_debug GLOBAL_TIMER $(string(f!)) begin
-            foreachblock(t, N) do _, (tblock, Nblock)
+            foreachblockvalue(t, N) do (tblock, Nblock)
                 @timeit_debug GLOBAL_TIMER "dense: MatrixAlgebraKit" begin
                     Nblock′ = $f!(tblock, Nblock, alg)
                     # deal with the case where the output is not the same as the input
@@ -83,7 +83,7 @@ end
 function MAK.exponential!((τ, t)::Tuple{E, T}, N, alg::AbstractAlgorithm) where {E <: Number, T <: AbstractTensorMap}
     LinearAlgebra.checksquare(t)
     @timeit_debug GLOBAL_TIMER "exponential!" begin
-        foreachblock(t, N) do _, (tblock, Nblock)
+        foreachblockvalue(t, N) do (tblock, Nblock)
             @timeit_debug GLOBAL_TIMER "dense: MatrixAlgebraKit" begin
                 Nblock′ = exponential!((τ, tblock), Nblock, alg)
                 # deal with the case where the output is not the same as the input

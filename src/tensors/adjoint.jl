@@ -28,6 +28,8 @@ storagetype(::Type{AdjointTensorMap{T, S, N₁, N₂, TT}}) where {T, S, N₁, N
 block(t::AdjointTensorMap, s::Sector) = block(parent(t), s)'
 
 blocks(t::AdjointTensorMap) = BlockIterator(t, blocks(parent(t)))
+positionalblocks(t::AdjointTensorMap) = AdjointBlocks(positionalblocks(parent(t)))
+positionalblocks(t::AdjointTensorMap, sectors) = AdjointBlocks(positionalblocks(parent(t), sectors))
 
 function blocktype(::Type{AdjointTensorMap{T, S, N₁, N₂, TT}}) where {T, S, N₁, N₂, TT}
     return Base.promote_op(adjoint, blocktype(TT))

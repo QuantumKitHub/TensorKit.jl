@@ -8,7 +8,7 @@ export copy_oftype, factorisation_scalartype, one!, truncspace
 using ..TensorKit
 using ..TensorKit: AdjointTensorMap, DictGradedSpace, SectorDict, SectorVector,
     TupleGradedSpace,
-    blocktype, foreachblock, one!,
+    blocktype, foreachblock, foreachblockvalue, one!,
     similar_diagonal, similarstoragetype
 using ..TensorKit: GLOBAL_TIMER
 using TimerOutputs: @timeit_debug

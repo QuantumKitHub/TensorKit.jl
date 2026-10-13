@@ -168,6 +168,12 @@ function block(d::DiagonalTensorMap, s::Sector)
 end
 
 blocks(t::DiagonalTensorMap) = BlockIterator(t, diagonalblockstructure(space(t)))
+positionalblocks(t::DiagonalTensorMap) =
+    DiagonalBlocks(VectorBlocks(t.data, collect(values(diagonalblockstructure(space(t))))))
+function positionalblocks(t::DiagonalTensorMap, sectors)
+    structure = diagonalblockstructure(space(t))
+    return DiagonalBlocks(VectorBlocks(t.data, [get(structure, c, 1:0) for c in sectors]))
+end
 function blocktype(::Type{DiagonalTensorMap{T, S, A}}) where {T, S, A}
     return Diagonal{T, SubArray{T, 1, A, Tuple{UnitRange{Int}}, true}}
 end
