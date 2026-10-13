@@ -542,10 +542,10 @@ end
 @cached function fusiontreetranspose(
         src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, p::Index2Tuple{N₁, N₂}
     )::fusiontreetransposetype(src, p) where {I, N₁, N₂}
-    p1, p2 = p
+    p₁, p₂ = p
 
     N = N₁ + N₂
-    p = linearizepermutation(p1, p2, numout(src), numin(src))
+    p = linearizepermutation(p₁, p₂, numout(src), numin(src))
 
     dst, U = repartition(src, N₁)
     length(p) == 0 && return dst => U

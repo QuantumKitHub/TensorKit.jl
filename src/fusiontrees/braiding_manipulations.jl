@@ -305,19 +305,19 @@ end
         src::Union{FusionTreePair{I}, FusionTreeBlock{I}},
         p::Index2Tuple{N₁, N₂}, levels::Index2Tuple
     )::fusiontreebraidtype(src, p) where {I, N₁, N₂}
-    p1, p2 = p
-    l1, l2 = levels
+    p₁, p₂ = p
+    l₁, l₂ = levels
     if src isa FusionTreePair
         f₁, f₂ = src
-        p′ = linearizepermutation(p1, p2, length(f₁), length(f₂))
-        levels = (l1..., reverse(l2)...)
-        (f, f0), coeff1 = repartition((f₁, f₂), N₁ + N₂)
-        f′, coeff2 = braid(f, p′, levels)
-        (f₁′, f₂′), coeff3 = repartition((f′, f0), N₁)
-        return (f₁′, f₂′) => coeff1 * coeff2 * coeff3
+        p′ = linearizepermutation(p₁, p₂, length(f₁), length(f₂))
+        levels = (l₁..., reverse(l₂)...)
+        (f, f₀), coeff₁ = repartition((f₁, f₂), N₁ + N₂)
+        f′, coeff₂ = braid(f, p′, levels)
+        (f₁′, f₂′), coeff₃ = repartition((f′, f₀), N₁)
+        return (f₁′, f₂′) => coeff₁ * coeff₂ * coeff₃
     else
-        p′ = linearizepermutation(p1, p2, numout(src), numin(src))
-        levels = (l1..., reverse(l2)...)
+        p′ = linearizepermutation(p₁, p₂, numout(src), numin(src))
+        levels = (l₁..., reverse(l₂)...)
 
         dst, U = repartition(src, numind(src))
 
