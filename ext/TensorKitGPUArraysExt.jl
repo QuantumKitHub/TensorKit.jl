@@ -271,8 +271,16 @@ function DeviceGenericTreeTransformer(
     )
 end
 
+TensorKit.treebraider(
+    A::Type{<:AnyGPUVector}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
+    conjsrc::Bool, levels::IndexTuple
+) = TensorKit.device_treebraider(A, Vdst, Vsrc, p, conjsrc, levels)
+TensorKit.treetransposer(
+    A::Type{<:AnyGPUVector}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
+) = TensorKit.device_treetransposer(A, Vdst, Vsrc, p, conjsrc)
+
 # Cache the device transformer directly, constructing the cached host version only on a miss.
-@cached function TensorKit.treebraider(
+@cached function TensorKit.device_treebraider(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
         conjsrc::Bool, levels::IndexTuple
     ) where {TA <: AnyGPUVector}
@@ -280,7 +288,7 @@ end
     return device_transformer(A, host, linearize(p))
 end
 
-@cached function TensorKit.treetransposer(
+@cached function TensorKit.device_treetransposer(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
     ) where {TA <: AnyGPUVector}
     host = TensorKit.treetransposer(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc)
