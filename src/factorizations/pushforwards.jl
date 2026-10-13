@@ -2,22 +2,13 @@ for pushforward! in (
         :qr_pushforward!, :lq_pushforward!, :left_polar_pushforward!, :right_polar_pushforward!,
     )
     @eval function MAK.$pushforward!(
-            Δt::AbstractTensorMap, t::AbstractTensorMap, F, ΔF; kwargs...
+            Δt::AbstractTensorMap, t, F, ΔF; kwargs...
         )
-        foreachblock(Δt, t) do c, (Δb, b)
+        foreachblock(Δt) do c, (Δb,)
+            b = nothing_or_block(t, c)
             Fc = block.(F, Ref(c))
             ΔFc = block.(ΔF, Ref(c))
             return MAK.$pushforward!(Δb, b, Fc, ΔFc; kwargs...)
-        end
-        return Δt
-    end
-    @eval function MAK.$pushforward!(
-            Δt::AbstractTensorMap, ::Nothing, F, ΔF; kwargs...
-        )
-        foreachblock(Δt) do c, (Δb,)
-            Fc = block.(F, Ref(c))
-            ΔFc = block.(ΔF, Ref(c))
-            return MAK.$pushforward!(Δb, nothing, Fc, ΔFc; kwargs...)
         end
         return Δt
     end
