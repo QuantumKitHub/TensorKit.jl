@@ -197,7 +197,11 @@ function _construct_braidingtensors!(ex, preargs, indexmap, non_braiding) # ex i
             end
             if foundV1 && foundV2
                 s = gensym(:τ)
-                storageex = Expr(:call, GlobalRef(TensorKit, :promote_storagetype), non_braiding...)
+                scalarex = Expr(
+                    :call, :promote_type,
+                    map(t -> Expr(:call, GlobalRef(TensorKit, :scalartype), t), non_braiding)...
+                )
+                storageex = Expr(:call, GlobalRef(TensorKit, :promote_storagetype), scalarex, non_braiding...)
                 braidingex = Expr(:call, GlobalRef(TensorKit, :braidingtensortype), V1, V2, storageex)
                 constructex = Expr(:call, braidingex, V1, V2)
                 push!(preargs, Expr(:(=), s, constructex))
