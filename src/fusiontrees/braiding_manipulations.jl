@@ -16,8 +16,13 @@ tree with non-zero coefficient, namely `f` with coefficient `1`. This keyword ha
 if `BraidingStyle(sectortype(f)) isa SymmetricBraiding`.
 """
 function artin_braid(f::FusionTree{I, N}, i; inv::Bool = false) where {I, N}
-    1 <= i < N || throw(ArgumentError(lazy"Cannot swap outputs i=$i and i+1 out of only $N outputs"))
     @assert FusionStyle(I) === UniqueFusion()
+    return _artin_braid_single(f, i, inv)
+end
+# also for a tree that is the only one with its uncoupled sectors, whose braid is again a single
+# tree (`only` throws otherwise)
+function _artin_braid_single(f::FusionTree{I, N}, i, inv::Bool) where {I, N}
+    1 <= i < N || throw(ArgumentError(lazy"Cannot swap outputs i=$i and i+1 out of only $N outputs"))
 
     uncoupled = f.uncoupled
     a, b = uncoupled[i], uncoupled[i + 1]
@@ -53,7 +58,7 @@ function artin_braid(f::FusionTree{I, N}, i; inv::Bool = false) where {I, N}
 
     if i == 1
         c = N > 2 ? inner[1] : coupled′
-        R = oftype(oneT, (inv ? conj(Rsymbol(b, a, c)) : Rsymbol(a, b, c)))
+        R = oftype(oneT, (inv ? conj(only(Rsymbol(b, a, c))) : only(Rsymbol(a, b, c))))
         f′ = FusionTree{I}(uncoupled′, coupled′, isdual′, inner, vertices)
         return f′ => R
     end
@@ -64,13 +69,13 @@ function artin_braid(f::FusionTree{I, N}, i; inv::Bool = false) where {I, N}
     a = inner_extended[i - 1]
     c = inner_extended[i]
     e = inner_extended[i + 1]
-    c′ = only(a ⊗ d)
+    c′ = FusionStyle(I) isa UniqueFusion ? only(a ⊗ d) : only(_artin_channels(a, b, d, e))
     coeff = oftype(
         oneT,
         if inv
-            conj(Rsymbol(d, c, e) * Fsymbol(d, a, b, e, c′, c)) * Rsymbol(d, a, c′)
+            conj(only(Rsymbol(d, c, e)) * only(Fsymbol(d, a, b, e, c′, c))) * only(Rsymbol(d, a, c′))
         else
-            Rsymbol(c, d, e) * conj(Fsymbol(d, a, b, e, c′, c) * Rsymbol(a, d, c′))
+            only(Rsymbol(c, d, e)) * conj(only(Fsymbol(d, a, b, e, c′, c)) * only(Rsymbol(a, d, c′)))
         end
     )
     inner′ = TupleTools.setindex(inner, c′, i - 1)
@@ -326,6 +331,21 @@ end
 
         p = linearizepermutation(p1, p2, numout(src), numin(src))
         levels = (l1..., reverse(l2)...)
+
+        if length(src) == 1 # then so is every intermediate block: the braid is a product of scalars
+            (f, f₀), coeff = _bend_single(_bendleft_single, only(fusiontrees(src)), Val(numin(src)))
+            for s in permutation2swaps(p)
+                _check_levels(BraidingStyle(I), levels, s)
+                inv = levels[s] > levels[s + 1]
+                f, c = _artin_braid_single(f, s, inv)
+                coeff *= c
+                l = levels[s]
+                levels = TupleTools.setindex(levels, levels[s + 1], s)
+                levels = TupleTools.setindex(levels, l, s + 1)
+            end
+            (f₁′, f₂′), c = _bend_single(_bendright_single, (f, f₀), Val(N₂))
+            return FusionTreeBlock([(f₁′, f₂′)]) => fill(coeff * c, 1, 1)
+        end
 
         # the intermediate blocks keep their trees in the order in which they are produced,
         # and only the result is brought into canonical order
