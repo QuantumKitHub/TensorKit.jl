@@ -1,7 +1,4 @@
-<picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/QuantumKitHub/TensorKit.jl/blob/main/docs/src/assets/logo-dark.svg">
-    <img alt="TensorKit.jl logo" src="https://github.com/QuantumKitHub/TensorKit.jl/blob/main/docs/src/assets/logo.svg" width="150">
-</picture>
+<img alt="TensorKit.jl logo" src="./docs/src/assets/logo_readme.svg" width="150">
 
 # TensorKit.jl
 
