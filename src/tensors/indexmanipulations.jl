@@ -631,20 +631,12 @@ function add_transform!(
     else
         p2 = (linearize(p), ()) # only the linear permutation matters for the array kernels
         ntasks = get_num_transformer_threads(tdst)
-        dst, src = _transform_subblocks(tdst, tsrc, transformer)
+        dst, src = subblockdata(tdst), subblockdata(tsrc)
         add_transform_kernel!(dst, src, p2, conjsrc, transformer, α, β, backend, allocator, ntasks)
     end
 
     return tdst
 end
-
-# TensorMaps address their flat data directly, other tensor types go through `subblock`
-_transform_subblocks(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, ::UniqueTreeTransformer) =
-    subblockdata(tdst), subblockdata(tsrc)
-_transform_subblocks(tdst::TensorMap, tsrc::TensorMap, transformer::GenericTreeTransformer) =
-    StridedSubblocks(tdst, transformer.structure_dst), StridedSubblocks(tsrc, transformer.structure_src)
-_transform_subblocks(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, ::GenericTreeTransformer) =
-    subblocks(tdst), subblocks(tsrc)
 
 # Don't thread if overhead is not worth it
 get_num_transformer_threads(t::AbstractTensorMap) =
@@ -675,75 +667,63 @@ end
 end
 @inline _srcblock(iter::SubblockIterator, i::Int, sz, p::Index2Tuple) = iter[i], p
 
-# The kernel operates on the subblocks addressed by position, so that for `TensorMap`s this only
-# depends on `numind`, `eltype` and the transformer data, not on the sectortype.
-const TransformSubblocks = Union{StridedSubblocks, SubblockIterator}
+# storage type of the workspace for the kernels
+_bufferstoragetype(data::DenseVector) = typeof(data)
+_bufferstoragetype(iter::SubblockIterator) = storagetype(iter)
+
 function add_transform_kernel!(
-        dst::TransformSubblocks, src::TransformSubblocks, p, conjsrc::Bool,
-        transformer::GenericTreeTransformer, α, β, backend, allocator, ntasks::Int
+        dst, src, p, conjsrc::Bool, transformer::GenericTreeTransformer, α, β, backend, allocator, ntasks::Int
     )
+    add_transform_kernel!(dst, src, p, conjsrc, transformer.unique, α, β, backend, allocator, ntasks)
+    nblocks = length(transformer.tree_offsets) - 1
+    nblocks == 0 && return nothing
+    # One max-sized workspace per task (a single one that is reused by all blocks when
+    # serial), allocated on the calling thread before any task spawns, so that also
+    # allocators that are not thread-safe can be used.
     bufsize = buffersize(transformer)
-    if bufsize == 0 # no recoupling needed: every block consists of a single tree
-        taskforeach(transformer.data, ntasks) do (U, inds_dst, inds_src)
-            _add_transform_block!(dst, src, p, conjsrc, U, inds_dst, inds_src, nothing, α, β, backend, allocator)
-        end
-    else
-        # One max-sized workspace per task (a single one that is reused by all blocks when
-        # serial), allocated on the calling thread before any task spawns, so that also
-        # allocators that are not thread-safe can be used.
-        cp = TO.allocator_checkpoint!(allocator)
-        @timeit_debug GLOBAL_TIMER "alloc: buffers" buffers = [
-            TO.tensoralloc(storagetype(dst), bufsize, Val(true), allocator)
-                for _ in 1:min(length(transformer.data), ntasks)
-        ]
-        taskforeach(transformer.data, buffers) do (U, inds_dst, inds_src), buffer
-            _add_transform_block!(dst, src, p, conjsrc, U, inds_dst, inds_src, buffer, α, β, backend, allocator)
-        end
-        foreach(Base.Fix2(TO.tensorfree!, allocator), buffers)
-        TO.allocator_reset!(allocator, cp)
+    cp = TO.allocator_checkpoint!(allocator)
+    @timeit_debug GLOBAL_TIMER "alloc: buffers" buffers = [
+        TO.tensoralloc(_bufferstoragetype(dst), bufsize, Val(true), allocator) for _ in 1:min(nblocks, ntasks)
+    ]
+    taskforeach(1:nblocks, buffers) do b, buffer
+        _add_transform_block!(dst, src, p, conjsrc, transformer, b, buffer, α, β, backend, allocator)
     end
+    foreach(Base.Fix2(TO.tensorfree!, allocator), buffers)
+    TO.allocator_reset!(allocator, cp)
     return nothing
 end
 
-# `U` is either a scalar coefficient with integer positions (unique fusion), or a recoupling
-# matrix with vectors of positions (generic).
+# pack → recoupling matmul → unpack for the multi-tree block `b`
 function _add_transform_block!(
-        dst::TransformSubblocks, src::TransformSubblocks, p, conjsrc::Bool, U, inds_dst, inds_src, buffer,
-        α, β, backend, allocator
+        dst, src, p, conjsrc::Bool, transformer::GenericTreeTransformer, b::Int, buffer, α, β, backend, allocator
     )
-    if length(U) == 1 # single tree: no matmul needed
-        @timeit_debug GLOBAL_TIMER "dense: tensoradd" @inbounds TO.tensoradd!(
-            dst[only(inds_dst)], src[only(inds_src)], p, conjsrc, α * only(U), β, backend, allocator
+    (; coeffs, structs_dst, structs_src, tree_offsets, coeff_offsets) = transformer
+    trees = (tree_offsets[b] + 1):tree_offsets[b + 1]
+    L = length(trees)
+    U = reshape(view(coeffs, (coeff_offsets[b] + 1):coeff_offsets[b + 1]), L, L)
+    sz = size(_dstblock(dst, structs_dst[first(trees)]))
+    blocksize = prod(sz)
+    ptriv = (ntuple(identity, length(sz)), ())
+    buffer_dst = StridedView(buffer, (blocksize, L), (1, blocksize), 0)
+    buffer_src = StridedView(buffer, (blocksize, L), (1, blocksize), blocksize * L)
+
+    # 1. Extract: copy each source block into column i of buffer_src as a flat vector,
+    #    applying the permutation such that the layout is that of the destination.
+    @timeit_debug GLOBAL_TIMER "dense: pack" for (i, k) in enumerate(trees)
+        src_k, p_k = _srcblock(src, structs_src[k], sz, p)
+        TO.tensoradd!(sreshape(view(buffer_src, :, i), sz), src_k, p_k, conjsrc, One(), Zero(), backend, allocator)
+    end
+
+    # 2. Recoupling: buffer_dst = buffer_src * U^T  (each output tree is a linear
+    #    combination of input trees weighted by the recoupling coefficients).
+    @timeit_debug GLOBAL_TIMER "dense: recouple mul!" _recouple!(buffer, buffer_dst, buffer_src, U)
+
+    # 3. Insert: add column j of buffer_dst to the destination, applying the scaling α.
+    @timeit_debug GLOBAL_TIMER "dense: unpack" for (j, k) in enumerate(trees)
+        TO.tensoradd!(
+            _dstblock(dst, structs_dst[k]), sreshape(view(buffer_dst, :, j), sz),
+            ptriv, false, α, β, backend, allocator
         )
-    else # Multi-tree block: pack → recoupling matmul → unpack.
-        rows, cols = size(U)
-        sz_src = size(@inbounds(src[first(inds_src)]))
-        blocksize = prod(sz_src)
-        ptriv = (ntuple(identity, length(sz_src)), ())
-        buffer_dst = StridedView(buffer, (blocksize, rows), (1, blocksize), 0)
-        buffer_src = StridedView(buffer, (blocksize, cols), (1, blocksize), blocksize * rows)
-
-        # 1. Extract: copy each source block into column i of buffer_src as a flat vector,
-        #    using a trivial permutation so the layout is canonical before the matmul.
-        @timeit_debug GLOBAL_TIMER "dense: pack" @inbounds for (i, isrc) in enumerate(inds_src)
-            TO.tensoradd!(
-                sreshape(view(buffer_src, :, i), sz_src), src[isrc],
-                ptriv, conjsrc, One(), Zero(), backend, allocator
-            )
-        end
-
-        # 2. Recoupling: buffer_dst = buffer_src * U^T  (each output tree is a linear
-        #    combination of input trees weighted by the recoupling coefficients).
-        @timeit_debug GLOBAL_TIMER "dense: recouple mul!" _recouple!(buffer, buffer_dst, buffer_src, U)
-
-        # 3. Insert: scatter column j of buffer_dst into the destination, applying the
-        #    actual index permutation p and the scaling α in the same tensoradd! call.
-        @timeit_debug GLOBAL_TIMER "dense: unpack" @inbounds for (j, idst) in enumerate(inds_dst)
-            TO.tensoradd!(
-                dst[idst], sreshape(view(buffer_dst, :, j), sz_src),
-                p, false, α, β, backend, allocator
-            )
-        end
     end
     return nothing
 end
@@ -761,7 +741,7 @@ function _recouple!(
 end
 # on the CPU, views of reinterpreted arrays are not `StridedMatrix`, so `mul!` would not use BLAS
 function _recouple!(
-        buffer::CPUStorage{Complex{R}}, buffer_dst::StridedView, buffer_src::StridedView, U::Matrix{R}
+        buffer::CPUStorage{Complex{R}}, buffer_dst::StridedView, buffer_src::StridedView, U::StridedMatrix{R}
     ) where {R <: LinearAlgebra.BlasReal}
     rbuffer = reinterpret(R, buffer)
     LinearAlgebra.BLAS.gemm!('N', 'T', one(R), _realview(rbuffer, buffer_src), U, zero(R), _realview(rbuffer, buffer_dst))

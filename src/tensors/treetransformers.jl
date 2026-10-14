@@ -11,7 +11,6 @@ of `tsrc` itself; when `conjsrc` is `true` the fusion trees that are transformed
 """
 abstract type TreeTransformer end
 
-# `StridedSubblocks` report their storage as the `StridedView` parent type, which is `Memory` there
 @static if isdefined(Core, :Memory)
     const CPUStorage{T} = Union{Array{T}, Memory{T}}
 else
@@ -80,29 +79,6 @@ end
 
 Adapt.@adapt_structure UniqueTreeTransformer
 
-function UniqueTreeTransformer(coeffs, structs_dst, structs_src)
-    work_offsets = pushfirst!(cumsum(map(s -> prod(first(s)), structs_dst)), 0)
-    return UniqueTreeTransformer(coeffs, structs_dst, structs_src, work_offsets)
-end
-
-# (recoupling matrix, destination positions, source positions)
-const GenericTransformerData{T} = Tuple{Matrix{T}, Vector{Int}, Vector{Int}}
-
-"""
-    GenericTreeTransformer{T, N} <: TreeTransformer
-
-Tree transformation for sectors with multiple fusion channels, where the subblocks of a
-[`FusionTreeBlock`](@ref) map onto the subblocks of the transformed block through a recoupling
-matrix, stored as `(U, inds_dst, inds_src)`, where `U[j, i]` maps source `i` onto destination `j`.
-The subblock structures of the destination and source spaces are kept alongside, such that the
-[`StridedSubblocks`](@ref) of both tensors can be created without further lookups.
-"""
-struct GenericTreeTransformer{T, N} <: TreeTransformer
-    data::Vector{GenericTransformerData{T}}
-    structure_dst::Vector{StridedStructure{N}}
-    structure_src::Vector{StridedStructure{N}}
-end
-
 function UniqueTreeTransformer(
         ::Type{A}, layout_dst::SubblockLayout, layout_src::SubblockLayout, transform, p, Vdst, Vsrc, conjsrc::Bool
     ) where {A}
@@ -124,8 +100,10 @@ function UniqueTreeTransformer(
     end
 
     structure_dst = degeneracystructure(Vdst).subblockstructure
-    structs_dst = _dst_locators(layout_dst, structure_dst)
-    structs_src = _src_locators(layout_src, Vsrc, inds_src, linearize(p))
+    structure_src = degeneracystructure(Vsrc).subblockstructure
+    structs_dst = layout_dst isa StridedLayout ? structure_dst : Base.OneTo(length(structure_dst))
+    p′ = linearize(p)
+    structs_src = map(isrc -> _src_locator(layout_src, structure_src, isrc, p′), inds_src)
     work_offsets = pushfirst!(cumsum(map(s -> prod(first(s)), structure_dst)), 0)
     transformer = UniqueTreeTransformer(coeffs, structs_dst, structs_src, work_offsets)
 
@@ -135,25 +113,51 @@ function UniqueTreeTransformer(
     return transformer
 end
 
-# the destination locators of a unique transformer are in canonical order
-_dst_locators(::StridedLayout, structure::Vector{<:StridedStructure}) = structure
-_dst_locators(::PositionalLayout, structure::Vector{<:StridedStructure}) = Base.OneTo(length(structure))
+# locators of subblock `i` for the different `SubblockLayout`s
+_dst_locator(::StridedLayout, structure, i::Int) = structure[i]
+_dst_locator(::PositionalLayout, structure, i::Int) = i
+function _src_locator(::StridedLayout, structure, i::Int, p::IndexTuple)
+    _, strides, offset = structure[i]
+    return (TupleTools.getindices(strides, p), offset)
+end
+_src_locator(::PositionalLayout, structure, i::Int, p::IndexTuple) = i
 
-_src_locators(::PositionalLayout, Vsrc, inds_src::Vector{Int}, p) = inds_src
-function _src_locators(::StridedLayout, Vsrc, inds_src::Vector{Int}, p::IndexTuple{N}) where {N}
-    structure_src = degeneracystructure(Vsrc).subblockstructure
-    return map(inds_src) do isrc
-        _, strides_src, offset_src = structure_src[isrc]
-        return (TupleTools.getindices(strides_src, p), offset_src)
-    end::Vector{Tuple{NTuple{N, Int}, Int}}
+dstlocatortype(::StridedLayout, N) = StridedStructure{N}
+dstlocatortype(::PositionalLayout, N) = Int
+srclocatortype(::StridedLayout, N) = Tuple{NTuple{N, Int}, Int}
+srclocatortype(::PositionalLayout, N) = Int
+
+"""
+    GenericTreeTransformer{T, U, VC, VD, VS, VO} <: TreeTransformer
+
+Tree transformation for sectors with multiple fusion channels, where the subblocks of a
+[`FusionTreeBlock`](@ref) map onto the subblocks of the transformed block through a square
+recoupling matrix. Blocks that consist of a single tree are stored as the
+[`UniqueTreeTransformer`](@ref) `unique`, while for the others block `b` consists of the entries
+`tree_offsets[b] + 1:tree_offsets[b + 1]` of the locators `structs_dst` and `structs_src`, with
+the same conventions as for `UniqueTreeTransformer`, and its recoupling matrix `U` is stored in
+column-major order as `coeffs[coeff_offsets[b] + 1:coeff_offsets[b + 1]]`, where `U[j, i]` maps
+source `i` onto destination `j`. The `work_offsets` count the number of destination elements
+preceding every block, followed by their total, and the blocks are sorted by decreasing work.
+"""
+struct GenericTreeTransformer{
+        T, U <: UniqueTreeTransformer{T}, VC <: AbstractVector{T}, VD <: AbstractVector, VS <: AbstractVector,
+        VO <: AbstractVector{Int},
+    } <: TreeTransformer
+    unique::U
+    coeffs::VC
+    structs_dst::VD
+    structs_src::VS
+    tree_offsets::VO
+    coeff_offsets::VO
+    work_offsets::VO
 end
 
-dstlocatortype(::StridedLayout, N) = Vector{StridedStructure{N}}
-dstlocatortype(::PositionalLayout, N) = Base.OneTo{Int}
-srclocatortype(::StridedLayout, N) = Vector{Tuple{NTuple{N, Int}, Int}}
-srclocatortype(::PositionalLayout, N) = Vector{Int}
+Adapt.@adapt_structure GenericTreeTransformer
 
-function GenericTreeTransformer(::Type{A}, transform, p, Vdst, Vsrc, conjsrc::Bool) where {A}
+function GenericTreeTransformer(
+        ::Type{A}, layout_dst::SubblockLayout, layout_src::SubblockLayout, transform, p, Vdst, Vsrc, conjsrc::Bool
+    ) where {A}
     t₀ = Base.time()
     spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
     # the fusion blocks that are transformed are those of the adjoint space for a conjugated source
@@ -165,7 +169,7 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst, Vsrc, conjsrc::Bo
 
     fblocks = @timeit_debug GLOBAL_TIMER "bookkeeping: fusionblocks" fusionblocks(Vsrc′)
     nblocks = length(fblocks)
-    data = Vector{GenericTransformerData{T}}(undef, nblocks)
+    data = Vector{Tuple{Matrix{T}, Vector{Int}, Vector{Int}}}(undef, nblocks)
     weights = Vector{Int}(undef, nblocks)
 
     nthreads = get_num_manipulation_threads()
@@ -173,6 +177,7 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst, Vsrc, conjsrc::Bo
         taskforeach(1:nblocks, nthreads) do i
             fs_src = fblocks[i]
             fs_dst, U = transform(fs_src)
+            LinearAlgebra.checksquare(U)
             @timeit_debug GLOBAL_TIMER "bookkeeping: subblock positions" begin
                 # the token into the fusion tree `Indices` is the subblock position
                 inds_src = map(fusiontrees(fs_src)) do (f₁, f₂)
@@ -197,7 +202,36 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst, Vsrc, conjsrc::Bo
 
     # sort by (approximate) weight to facilitate multi-threading strategies
     @timeit_debug GLOBAL_TIMER "bookkeeping: sort" Base.permute!(data, sortperm(weights; rev = true))
-    transformer = GenericTreeTransformer{T, numind(Vdst)}(data, structure_dst, structure_src)
+
+    N = numind(Vdst)
+    p′ = linearize(p)
+    unique_coeffs = T[]
+    unique_dst = dstlocatortype(layout_dst, N)[]
+    unique_src = srclocatortype(layout_src, N)[]
+    unique_offsets = [0]
+    coeffs = T[]
+    structs_dst = dstlocatortype(layout_dst, N)[]
+    structs_src = srclocatortype(layout_src, N)[]
+    tree_offsets, coeff_offsets, work_offsets = [0], [0], [0]
+    for (U, inds_dst, inds_src) in data
+        if length(U) == 1
+            push!(unique_coeffs, only(U))
+            push!(unique_dst, _dst_locator(layout_dst, structure_dst, only(inds_dst)))
+            push!(unique_src, _src_locator(layout_src, structure_src, only(inds_src), p′))
+            push!(unique_offsets, last(unique_offsets) + prod(first(structure_dst[only(inds_dst)])))
+        else
+            append!(coeffs, U)
+            append!(structs_dst, (_dst_locator(layout_dst, structure_dst, i) for i in inds_dst))
+            append!(structs_src, (_src_locator(layout_src, structure_src, i, p′) for i in inds_src))
+            push!(tree_offsets, length(structs_dst))
+            push!(coeff_offsets, length(coeffs))
+            push!(work_offsets, last(work_offsets) + size(U, 1) * prod(structure_dst[first(inds_dst)][1]))
+        end
+    end
+    unique = UniqueTreeTransformer(unique_coeffs, unique_dst, unique_src, unique_offsets)
+    transformer = GenericTreeTransformer(
+        unique, coeffs, structs_dst, structs_src, tree_offsets, coeff_offsets, work_offsets
+    )
 
     Δt = Base.time() - t₀
     @debug(
@@ -212,28 +246,24 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst, Vsrc, conjsrc::Bo
 end
 
 """
-    buffersize(transformer::TreeTransformer) -> Int
+    buffersize(transformer::GenericTreeTransformer) -> Int
 
 Compute the workspace size required to pack, recouple and unpack the largest multi-tree
-block, i.e. `prod(sz_src) * (rows + cols)` where `(rows, cols) = size(U)` is the size of
-the recoupling matrix.
+block, i.e. twice the number of destination elements of that block.
 """
-buffersize(::UniqueTreeTransformer) = 0
-function buffersize(transformer::GenericTreeTransformer)
-    structure_src = transformer.structure_src
-    return maximum(transformer.data; init = 0) do (U, _, inds_src)
-        return length(U) == 1 ? 0 : prod(structure_src[first(inds_src)][1]) * sum(size(U))
-    end
-end
+buffersize(transformer::GenericTreeTransformer) = 2 * maximum(diff(transformer.work_offsets); init = 0)
 
 function treetransformertype(::Type{A}, layout_dst, layout_src, Vdst, Vsrc) where {A}
     I = sectortype(Vdst)
     T = recoupling_scalartype(A, sectorscalartype(I))
     N = numind(Vdst)
-    FusionStyle(I) == UniqueFusion() || return GenericTreeTransformer{T, N}
-    return UniqueTreeTransformer{
-        T, Vector{T}, dstlocatortype(layout_dst, N), srclocatortype(layout_src, N), Vector{Int},
-    }
+    D, S = dstlocatortype(layout_dst, N), srclocatortype(layout_src, N)
+    if FusionStyle(I) == UniqueFusion()
+        Dᵤ = layout_dst isa StridedLayout ? Vector{D} : Base.OneTo{Int}
+        return UniqueTreeTransformer{T, Vector{T}, Dᵤ, Vector{S}, Vector{Int}}
+    end
+    U = UniqueTreeTransformer{T, Vector{T}, Vector{D}, Vector{S}, Vector{Int}}
+    return GenericTreeTransformer{T, U, Vector{T}, Vector{D}, Vector{S}, Vector{Int}}
 end
 
 function TreeTransformer(
@@ -243,7 +273,7 @@ function TreeTransformer(
     I = sectortype(Vdst)
     return FusionStyle(I) == UniqueFusion() ?
         UniqueTreeTransformer(A, layout_dst, layout_src, transform, p, Vdst, Vsrc, conjsrc) :
-        GenericTreeTransformer(A, transform, p, Vdst, Vsrc, conjsrc)
+        GenericTreeTransformer(A, layout_dst, layout_src, transform, p, Vdst, Vsrc, conjsrc)
 end
 
 # braid is special because it has levels
