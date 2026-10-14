@@ -86,7 +86,8 @@ function _artin_channels(a::I, b::I, d::I, e::I) where {I <: Sector}
 end
 
 function artin_braid(
-        src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false, canonical::Val = Val(true)
+        src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false, canonical::Val = Val(true),
+        buffers = (nothing, nothing) # a tree vector and a matrix that may be overwritten
     ) where {I, N}
     1 <= i < N || throw(ArgumentError("Cannot swap outputs i=$i and i+1 out of only $N outputs"))
     isempty(src) && return src => zeros(sectorscalartype(I), 0, 0)
@@ -100,11 +101,12 @@ function artin_braid(
     isdual = src.isdual[1]
     isdual′ = TupleTools.setindex(isdual, isdual[i], i + 1)
     isdual′ = TupleTools.setindex(isdual′, isdual[i + 1], i)
-    rows = TreeRows(I, (uncoupled′, ()), (isdual′, ()), length(src), canonical)
+    rows = TreeRows(I, (uncoupled′, ()), (isdual′, ()), length(src), canonical, buffers[1])
 
     oneT = one(sectorscalartype(I))
 
-    U = zeros(sectorscalartype(I), max(length(rows.trees), length(src)), length(src)) # see `bendright`
+    U = buffers[2] isa Matrix{typeof(oneT)} ? fill!(buffers[2], zero(oneT)) :
+        zeros(sectorscalartype(I), max(length(rows.trees), length(src)), length(src)) # see `bendright`
 
     if isunit(a) || isunit(b) # braiding with trivial sector: simple and always possible
         for (col, (f, f₂)) in enumerate(fusiontrees(src))
@@ -329,12 +331,18 @@ end
         # and only the result is brought into canonical order
         dst, U = repartition_noncanonical(src, Val(numind(src)))
 
+        # the swaps keep the size of the block, so that the tree vector and the matrices of the
+        # previous step are recycled (except for the trees of `src`, which are part of the key)
+        buffers = (nothing, nothing)
+        U_spare = nothing
         braid_style = BraidingStyle(I)
         for s in permutation2swaps(p)
             _check_levels(braid_style, levels, s)
             inv = levels[s] > levels[s + 1]
-            dst, U_tmp = artin_braid(dst, s; inv, canonical = Val(false))
-            U = U_tmp * U
+            dst′, U_tmp = artin_braid(dst, s; inv, canonical = Val(false), buffers)
+            buffers = (dst.trees === src.trees ? nothing : dst.trees, U_tmp)
+            dst = dst′
+            U_spare, U = U, U_spare isa typeof(U_tmp) ? mul!(U_spare, U_tmp, U) : U_tmp * U
             l = levels[s]
             levels = TupleTools.setindex(levels, levels[s + 1], s)
             levels = TupleTools.setindex(levels, l, s + 1)

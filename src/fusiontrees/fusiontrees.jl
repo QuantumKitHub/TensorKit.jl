@@ -262,7 +262,8 @@ end
 # transformation matrix. With `Val(true)`, these are the trees of the destination block in their
 # canonical order; with `Val(false)`, the trees are added in the order in which they are produced,
 # which avoids constructing the destination block. The latter is used for the intermediate blocks
-# of a composite manipulation, of which only the result is brought into canonical order.
+# of a composite manipulation, of which only the result is brought into canonical order; the tree
+# vector of an intermediate block that is no longer needed can then be passed on as `buffer`.
 # With `Val(false)`, the source block has to be complete: the destination block then has as many
 # trees (`n`), and an incomplete source block raises an error if its destination block has more.
 struct TreeRows{F, D}
@@ -270,11 +271,14 @@ struct TreeRows{F, D}
     index::Union{D, Nothing} # `nothing`: few trees, the rows are found by a linear search
     n::Int
 end
-function TreeRows(::Type{I}, uncoupled, isdual, n::Int, ::Val{canonical}) where {I, canonical}
+function TreeRows(
+        ::Type{I}, uncoupled, isdual, n::Int, ::Val{canonical}, buffer = nothing
+    ) where {I, canonical}
+    F = fusiontreetype(I, length(uncoupled[1]), length(uncoupled[2]))
     trees = if canonical
         fusiontrees(FusionTreeBlock{I}(uncoupled, isdual; sizehint = n))
     else
-        sizehint!(Vector{fusiontreetype(I, length(uncoupled[1]), length(uncoupled[2]))}(), n)
+        buffer isa Vector{F} ? empty!(buffer) : sizehint!(Vector{F}(), n)
     end
     K = Base.promote_op(treeindex_data, eltype(trees))
     index = n > 32 ? Dict{K, Int}(treeindex_data(f) => i for (i, f) in enumerate(trees)) : nothing
