@@ -12,7 +12,7 @@ using TensorKit.TensorOperations: linearize, DefaultAllocator
 using TensorKit.Factorizations
 using TensorKit.Factorizations: AbstractAlgorithm
 using TensorKit: SectorDict, tensormaptype, scalar, similarstoragetype, AdjointTensorMap, scalartype, project_symmetric_and_check
-using TensorKit: UniqueTreeTransformer, GenericTreeTransformer, @cached, TensorMapSpace, Index2Tuple, IndexTuple
+using TensorKit: UniqueTreeTransformer, GenericTreeTransformer, StridedLayout, @cached, TensorMapSpace, Index2Tuple, IndexTuple
 import TensorKit: randisometry, rand, randn, fill_braidingsubblock!, add_transform_kernel!
 
 function TensorKit.fill_braidingsubblock!(data::TD, val) where {T, TD <: Union{<:AnyGPUMatrix{T}, <:StridedViews.StridedView{T, 4, <:AnyGPUArray{T}}}}
@@ -126,45 +126,19 @@ end
 
 # Device-side tree transformers
 # -----------------------------
-# A `TreeTransformer` stores the mapping between subblock positions (plus recoupling
-# coefficients) and the `StridedStructure`s of the source and destination spaces.
-# We resolve the positions into sizes/strides/offsets and pack all the information on the
-# CPU side into dense vectors of numbers, plus some accounting information so we know how
-# to unpack in the kernel. Also, we can permute the source strides "in advance" on the CPU side.
-# We also precompute the strides of the subblock each kernel index will work on,
-# so that the GPU thread can recover the Cartesian coordinates it will need for input/ouput,
-# and a running `work_offsets` count of destination elements, so that a kernel can run one
-# thread per output element and recover which input that element belongs with.
+# A `UniqueTreeTransformer` with `StridedLayout`s only consists of vectors of `isbits` elements, and
+# is moved to the device as is. For the `GenericTreeTransformer`, we resolve the positions into
+# sizes/strides/offsets and pack all the information on the CPU side into dense vectors of numbers,
+# plus some accounting information so we know how to unpack in the kernel. In both cases, the
+# source strides are permuted "in advance" on the CPU side, and a running `work_offsets` count of
+# destination elements allows a kernel to run one thread per output element and recover which
+# input that element belongs with.
 # Some possible TODO here:
 # - Try cuTILE as this is a classic tile programming problem
 # - Use shared memory to coalesce the reads
 # - Use a 2D grid for the Generic case
 
 const TreeStructure{N} = Tuple{NTuple{N, Int}, Int}
-
-"""
-    UniqueTransformerBlock{T, N}
-
-`isbits` descriptor for a subblock that is a *single* scaled permutation:
-an entry of a `UniqueTreeTransformer` or a unique (one-tree) block of a
-`GenericTreeTransformer`.
-"""
-struct UniqueTransformerBlock{T, N}
-    coeff::T
-    sz::NTuple{N, Int}
-    dense_strides::NTuple{N, Int}
-    strides_dst::NTuple{N, Int}
-    offsets_dst::Int
-    permuted_strides_src::NTuple{N, Int}  # source strides, permuted by `p`
-    offsets_src::Int
-end
-
-# device-side simple struct that GPU kernels can use
-struct DeviceUniqueTreeTransformer{VB <: AbstractVector{<:UniqueTransformerBlock}, VO <: AbstractVector{Int}}
-    blocks::VB
-    work_offsets::VO
-    nwork::Int
-end
 
 """
     GenericTransformerBlock{N}
@@ -184,7 +158,7 @@ end
 
 # force all the type signatures here to make sure doing something wrong fails
 # before the kernel launch. Kernel error dumps are awful and hard to interpret.
-struct DeviceGenericTreeTransformer{VO <: AbstractVector{Int}, DA <: DeviceUniqueTreeTransformer{<:Any, VO}, VB <: AbstractVector{<:GenericTransformerBlock}, VC <: AbstractVector{<:Number}, VS <: AbstractVector{<:Tuple{<:Tuple{Vararg{Int}}, Int}}}
+struct DeviceGenericTreeTransformer{VO <: AbstractVector{Int}, DA <: UniqueTreeTransformer, VB <: AbstractVector{<:GenericTransformerBlock}, VC <: AbstractVector{<:Number}, VS <: AbstractVector{<:Tuple{<:Tuple{Vararg{Int}}, Int}}}
     unique_blocks::DA  # length(U) = 1 blocks, can be handled by unique kernel
     blocks::VB
     work_offsets::VO
@@ -197,38 +171,12 @@ end
 # strides of a dense array of shape `sz`
 _dense_strides(size::Dims) = (1, Base.front(cumprod(size))...)
 
-# `permute(Vsrc, p) == Vdst` is enforced when the transformer is built, so the permuted
-# source shape always matches `sz_dst` and the two views share Cartesian inds.
-function _unique_block(
-        coeff::T, (size_dst, strides_dst, offsets_dst), (_, strides_src, offsets_src), p
-    ) where {T}
-    return UniqueTransformerBlock{T, length(size_dst)}(
-        coeff, size_dst, _dense_strides(size_dst), strides_dst, offsets_dst,
-        TupleTools.getindices(strides_src, p), offsets_src
-    )
-end
-
-function _work_offsets(work)
-    offsets = cumsum(work)
-    pushfirst!(offsets, 0)
-    total = pop!(offsets)
-    return offsets, total
-end
-
-function DeviceUniqueTreeTransformer(transformer::UniqueTreeTransformer{T, N}, p) where {T, N}
-    (; structure_dst, structure_src) = transformer
-    blocks = UniqueTransformerBlock{T, N}[
-        _unique_block(coeff, structure_dst[idst], structure_src[isrc], p)
-            for (coeff, idst, isrc) in transformer.data
-    ]
-    work_offsets, nwork = _work_offsets(prod(blk.sz) for blk in blocks)
-    return DeviceUniqueTreeTransformer(blocks, work_offsets, nwork)
-end
-
 function DeviceGenericTreeTransformer(
         transformer::GenericTreeTransformer{T, N}, p
     ) where {T, N}
-    unique_blocks = UniqueTransformerBlock{T, N}[]
+    unique_coeffs = T[]
+    unique_dst = TensorKit.StridedStructure{N}[]
+    unique_src = TreeStructure{N}[]
     blocks = GenericTransformerBlock{N}[]
     coeffs = T[]
     structs_dst = TreeStructure{N}[]
@@ -237,11 +185,10 @@ function DeviceGenericTreeTransformer(
     (; structure_dst, structure_src) = transformer
     for (U, inds_dst, inds_src) in transformer.data
         if length(U) == 1 # same as the unique (Abelian) case
-            push!(
-                unique_blocks, _unique_block(
-                    only(U), structure_dst[only(inds_dst)], structure_src[only(inds_src)], p
-                )
-            )
+            _, strides_src, offset_src = structure_src[only(inds_src)]
+            push!(unique_coeffs, only(U))
+            push!(unique_dst, structure_dst[only(inds_dst)])
+            push!(unique_src, (TupleTools.getindices(strides_src, p), offset_src))
         else
             # all trees in a block share the same subblock size
             size_dst = first(structure_dst[first(inds_dst)])
@@ -263,27 +210,28 @@ function DeviceGenericTreeTransformer(
         end
     end
 
-    unique_offsets, unique_nwork = _work_offsets(prod(blk.sz) for blk in unique_blocks)
-    work_offsets, nwork = _work_offsets(blk.rows * prod(blk.sz) for blk in blocks)
+    work_offsets, nwork = TensorKit._work_offsets(blk.rows * prod(blk.sz) for blk in blocks)
     return DeviceGenericTreeTransformer(
-        DeviceUniqueTreeTransformer(unique_blocks, unique_offsets, unique_nwork),
+        UniqueTreeTransformer(unique_coeffs, unique_dst, unique_src),
         blocks, work_offsets, nwork, coeffs, structs_dst, structs_src
     )
 end
 
 # Cache the device transformer directly, constructing the cached host version only on a miss.
+# Other layouts are transformed on the host, through the positional subblocks.
 @cached function TensorKit.treebraider(
-        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
-        conjsrc::Bool, levels::IndexTuple
+        A::Type{TA}, layout_dst::StridedLayout, layout_src::StridedLayout,
+        Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool, levels::IndexTuple
     ) where {TA <: AnyGPUVector}
-    host = TensorKit.treebraider(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc, levels)
+    host = TensorKit.treebraider(Vector{scalartype(A)}, layout_dst, layout_src, Vdst, Vsrc, p, conjsrc, levels)
     return device_transformer(A, host, linearize(p))
 end
 
 @cached function TensorKit.treetransposer(
-        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
+        A::Type{TA}, layout_dst::StridedLayout, layout_src::StridedLayout,
+        Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
     ) where {TA <: AnyGPUVector}
-    host = TensorKit.treetransposer(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc)
+    host = TensorKit.treetransposer(Vector{scalartype(A)}, layout_dst, layout_src, Vdst, Vsrc, p, conjsrc)
     return device_transformer(A, host, linearize(p))
 end
 
@@ -305,29 +253,25 @@ function __init__()
     return nothing
 end
 
+# Adaptor that uploads arrays to the storage of `proto`, preserving their element types, since
+# metadata and coefficients have different element types.
+struct DeviceUpload{P <: AnyGPUVector}
+    proto::P
+end
+Adapt.adapt_storage(to::DeviceUpload, x::AbstractArray) = copy!(similar(to.proto, eltype(x), size(x)), x)
+
 # Allocations must outlive any GPUArrays allocation-cache scope around the operation.
 function device_transformer(A, transformer::UniqueTreeTransformer, p)
-    packed = DeviceUniqueTreeTransformer(transformer, p)
-    return GPUArrays.@uncached begin
-        proto = A(undef, 0)
-        # Metadata and coefficients have different element types; preserve each on upload.
-        upload(x) = copy!(similar(proto, eltype(x), size(x)), x)
-        DeviceUniqueTreeTransformer(upload(packed.blocks), upload(packed.work_offsets), packed.nwork)
-    end
+    return GPUArrays.@uncached adapt(DeviceUpload(A(undef, 0)), transformer)
 end
 
 function device_transformer(A, transformer::GenericTreeTransformer, p)
     packed = DeviceGenericTreeTransformer(transformer, p)
     return GPUArrays.@uncached begin
-        proto = A(undef, 0)
-        upload(x) = copy!(similar(proto, eltype(x), size(x)), x)
-        unique = packed.unique_blocks
-        device_unique = DeviceUniqueTreeTransformer(
-            upload(unique.blocks), upload(unique.work_offsets), unique.nwork
-        )
+        to = DeviceUpload(A(undef, 0))
         DeviceGenericTreeTransformer(
-            device_unique, upload(packed.blocks), upload(packed.work_offsets), packed.nwork,
-            upload(packed.coeffs), upload(packed.structs_dst), upload(packed.structs_src)
+            adapt(to, packed.unique_blocks), adapt(to, packed.blocks), adapt(to, packed.work_offsets),
+            packed.nwork, adapt(to, packed.coeffs), adapt(to, packed.structs_dst), adapt(to, packed.structs_src)
         )
     end
 end
@@ -353,7 +297,7 @@ end
 end
 
 # Cartesian coordinates of the `w`-th (0-based) entry of a dense subblock of shape `sz`.
-@inline function _coordinates(w, size::NTuple{N, Int}, dense_strides::NTuple{N, Int}) where {N}
+@inline function _coordinates(w, size::NTuple{N, Int}, dense_strides::NTuple{N, Int} = _dense_strides(size)) where {N}
     return ntuple(n -> (w ÷ dense_strides[n]) % size[n], Val(N))
 end
 
@@ -366,18 +310,19 @@ end
 # One thread per destination element in `data_dst`. `op` is `identity` or `conj`, and is
 # applied to the source data only (not to the coefficients).
 @kernel function unique_batched_permute_kernel!(
-        data_dst, data_src, op, blocks, work_offsets, α, β, nwork, ::Val{N}
+        data_dst, data_src, op, coeffs, structs_dst, structs_src, work_offsets, α, β, nwork, ::Val{N}
     ) where {N}
     # w = @index(Global, Linear) - 1 does not work due to JLArrays bug
     w = @index(Global, Linear)
     w -= 1
     if w < nwork
         b = _searchblock(work_offsets, w)
-        blk = @inbounds blocks[b]
-        coords = _coordinates(w - (@inbounds work_offsets[b]), blk.sz, blk.dense_strides)
-        i_dst = _linear_index(coords, blk.strides_dst, blk.offsets_dst)
-        i_src = _linear_index(coords, blk.permuted_strides_src, blk.offsets_src)
-        @inbounds data_dst[i_dst] = α * blk.coeff * op(data_src[i_src]) + β * data_dst[i_dst]
+        sz, strides_dst, offset_dst = @inbounds structs_dst[b]
+        strides_src, offset_src = @inbounds structs_src[b]
+        coords = _coordinates(w - (@inbounds work_offsets[b]), sz)
+        i_dst = _linear_index(coords, strides_dst, offset_dst)
+        i_src = _linear_index(coords, strides_src, offset_src)
+        @inbounds data_dst[i_dst] = α * coeffs[b] * op(data_src[i_src]) + β * data_dst[i_dst]
     end
 end
 
@@ -426,11 +371,11 @@ end
     end
 end
 
-function _launch_unique!(data_dst, data_src, op, transformer, α, β, ::Val{N}) where {N}
-    nwork = transformer.nwork
+function _launch_unique!(data_dst, data_src, op, transformer::UniqueTreeTransformer, α, β, ::Val{N}) where {N}
+    (; coeffs, structs_dst, structs_src, work_offsets, nwork) = transformer
     nwork == 0 && return nothing
     unique_batched_permute_kernel!(get_backend(data_dst))(
-        data_dst, data_src, op, transformer.blocks, transformer.work_offsets, α, β, nwork,
+        data_dst, data_src, op, coeffs, structs_dst, structs_src, work_offsets, α, β, nwork,
         Val(N); ndrange = nwork
     )
     return nothing
@@ -448,14 +393,12 @@ function _launch_generic!(data_dst, data_src, op, transformer, α, β, ::Val{N})
 end
 
 # we don't want/need the `StridedSubblocks` here because that information is already in the transformer
-TensorKit._transform_subblocks(
-    tdst::TensorMap, tsrc::TensorMap,
-    transformer::Union{DeviceUniqueTreeTransformer, DeviceGenericTreeTransformer}
-) = (tdst.data, tsrc.data)
+TensorKit._transform_subblocks(tdst::TensorMap, tsrc::TensorMap, ::DeviceGenericTreeTransformer) =
+    (tdst.data, tsrc.data)
 
 function TensorKit.add_transform_kernel!(
         dst::AnyGPUVector, src::AnyGPUVector, p, conjsrc::Bool,
-        device::DeviceUniqueTreeTransformer, α, β, backend, allocator, ntasks::Int
+        device::UniqueTreeTransformer, α, β, backend, allocator, ntasks::Int
     )
     N = length(linearize(p))
     op = conjsrc ? conj : identity

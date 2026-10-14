@@ -639,21 +639,49 @@ function add_transform!(
 end
 
 # TensorMaps address their flat data directly, other tensor types go through `subblock`
-_transform_subblocks(tdst::TensorMap, tsrc::TensorMap, transformer) =
+_transform_subblocks(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, ::UniqueTreeTransformer) =
+    subblockdata(tdst), subblockdata(tsrc)
+_transform_subblocks(tdst::TensorMap, tsrc::TensorMap, transformer::GenericTreeTransformer) =
     StridedSubblocks(tdst, transformer.structure_dst), StridedSubblocks(tsrc, transformer.structure_src)
-_transform_subblocks(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, transformer) =
+_transform_subblocks(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, ::GenericTreeTransformer) =
     subblocks(tdst), subblocks(tsrc)
 
 # Don't thread if overhead is not worth it
 get_num_transformer_threads(t::AbstractTensorMap) =
     dim(t) <= Strided.MINTHREADLENGTH ? 1 : get_num_transformer_threads()
 
+# The kernels only depend on the storage, `numind`, `eltype` and the transformer data, not on the sectortype.
+function add_transform_kernel!(
+        dst, src, p, conjsrc::Bool, transformer::UniqueTreeTransformer, α, β, backend, allocator, ntasks::Int
+    )
+    (; coeffs, structs_dst, structs_src) = transformer
+    taskforeach(eachindex(coeffs), ntasks) do i
+        @inbounds dst_i = _dstblock(dst, structs_dst[i])
+        @inbounds src_i, p_i = _srcblock(src, structs_src[i], size(dst_i), p)
+        @timeit_debug GLOBAL_TIMER "dense: tensoradd" TO.tensoradd!(
+            dst_i, src_i, p_i, conjsrc, α * @inbounds(coeffs[i]), β, backend, allocator
+        )
+    end
+    return nothing
+end
+
+# subblock accessors for the `SubblockLayout`s, where `p` is already applied to strided sources
+Base.@propagate_inbounds _dstblock(data::DenseVector, (sz, str, offset)::StridedStructure) =
+    StridedView(data, sz, str, offset)
+Base.@propagate_inbounds _dstblock(iter::SubblockIterator, i::Int) = iter[i]
+Base.@propagate_inbounds function _srcblock(
+        data::DenseVector, (str, offset)::Tuple{NTuple{N, Int}, Int}, sz::NTuple{N, Int}, p::Index2Tuple
+    ) where {N}
+    return StridedView(data, sz, str, offset), (ntuple(identity, Val(N)), ())
+end
+Base.@propagate_inbounds _srcblock(iter::SubblockIterator, i::Int, sz, p::Index2Tuple) = iter[i], p
+
 # The kernel operates on the subblocks addressed by position, so that for `TensorMap`s this only
 # depends on `numind`, `eltype` and the transformer data, not on the sectortype.
 const TransformSubblocks = Union{StridedSubblocks, SubblockIterator}
 function add_transform_kernel!(
         dst::TransformSubblocks, src::TransformSubblocks, p, conjsrc::Bool,
-        transformer::TreeTransformer, α, β, backend, allocator, ntasks::Int
+        transformer::GenericTreeTransformer, α, β, backend, allocator, ntasks::Int
     )
     bufsize = buffersize(transformer)
     if bufsize == 0 # no recoupling needed: every block consists of a single tree
