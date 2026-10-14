@@ -78,7 +78,16 @@ function artin_braid(f::FusionTree{I, N}, i; inv::Bool = false) where {I, N}
     return f′ => coeff
 end
 
-function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where {I, N}
+# the inner lines `c′` of `a ⊗ d → c′ → c′ ⊗ b → e`, i.e. `intersect(a ⊗ d, e ⊗ conj(b))`,
+# without constructing the second fusion product for sectors with a simple unit
+function _artin_channels(a::I, b::I, d::I, e::I) where {I <: Sector}
+    UnitStyle(I) isa SimpleUnit || return intersect(a ⊗ d, e ⊗ conj(b))
+    return Iterators.filter(c′ -> !iszero(Nsymbol(c′, b, e)), a ⊗ d)
+end
+
+function artin_braid(
+        src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false, canonical::Val = Val(true)
+    ) where {I, N}
     1 <= i < N || throw(ArgumentError("Cannot swap outputs i=$i and i+1 out of only $N outputs"))
     isempty(src) && return src => zeros(sectorscalartype(I), 0, 0)
 
@@ -91,12 +100,11 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
     isdual = src.isdual[1]
     isdual′ = TupleTools.setindex(isdual, isdual[i], i + 1)
     isdual′ = TupleTools.setindex(isdual′, isdual[i + 1], i)
-    dst = FusionTreeBlock{I}((uncoupled′, ()), (isdual′, ()); sizehint = length(src))
+    rows = TreeRows(I, (uncoupled′, ()), (isdual′, ()), length(src), canonical)
 
     oneT = one(sectorscalartype(I))
 
-    indexmap = treeindex_map(dst)
-    U = zeros(sectorscalartype(I), length(dst), length(src))
+    U = zeros(sectorscalartype(I), max(length(rows.trees), length(src)), length(src)) # see `bendright`
 
     if isunit(a) || isunit(b) # braiding with trivial sector: simple and always possible
         for (col, (f, f₂)) in enumerate(fusiontrees(src))
@@ -113,10 +121,10 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
                 vertices′ = TupleTools.setindex(vertices′, vertices[i - 1], i)
             end
             f′ = FusionTree{I}(uncoupled′, coupled′, isdual′, inner′, vertices′)
-            row = indexmap[treeindex_data((f′, f₂))]
+            row = row!(rows, (f′, f₂))
             @inbounds U[row, col] = oneT
         end
-        return dst => U
+        return FusionTreeBlock(rows.trees) => U
     end
 
     BraidingStyle(I) isa NoBraiding &&
@@ -132,7 +140,7 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
             if FusionStyle(I) isa MultiplicityFreeFusion
                 R = oftype(oneT, (inv ? conj(Rsymbol(b, a, c)) : Rsymbol(a, b, c)))
                 f′ = FusionTree{I}(uncoupled′, coupled′, isdual′, inner, vertices)
-                row = indexmap[treeindex_data((f′, f₂))]
+                row = row!(rows, (f′, f₂))
                 @inbounds U[row, col] = R
             else # GenericFusion
                 μ = vertices[1]
@@ -142,7 +150,7 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
                     iszero(R) && continue
                     vertices′ = TupleTools.setindex(vertices, ν, 1)
                     f′ = FusionTree{I}(uncoupled′, coupled′, isdual′, inner, vertices′)
-                    row = indexmap[treeindex_data((f′, f₂))]
+                    row = row!(rows, (f′, f₂))
                     @inbounds U[row, col] = R
                 end
             end
@@ -155,29 +163,30 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
         c = inner_extended[i]
         e = inner_extended[i + 1]
         if FusionStyle(I) isa MultiplicityFreeFusion
-            for c′ in intersect(a ⊗ d, e ⊗ conj(b))
+            R = inv ? Rsymbol(d, c, e) : Rsymbol(c, d, e)
+            for c′ in _artin_channels(a, b, d, e)
                 coeff = if inv
-                    conj(Rsymbol(d, c, e) * Fsymbol(d, a, b, e, c′, c)) * Rsymbol(d, a, c′)
+                    conj(R * Fsymbol(d, a, b, e, c′, c)) * Rsymbol(d, a, c′)
                 else
-                    Rsymbol(c, d, e) * conj(Fsymbol(d, a, b, e, c′, c) * Rsymbol(a, d, c′))
+                    R * conj(Fsymbol(d, a, b, e, c′, c) * Rsymbol(a, d, c′))
                 end
                 iszero(coeff) && continue
                 inner′ = TupleTools.setindex(inner, c′, i - 1)
                 f′ = FusionTree{I}(uncoupled′, coupled′, isdual′, inner′)
-                row = indexmap[treeindex_data((f′, f₂))]
+                row = row!(rows, (f′, f₂))
                 @inbounds U[row, col] = coeff
             end
         else # GenericFusion
-            for c′ in intersect(a ⊗ d, e ⊗ conj(b))
-                Rmat1 = inv ? Rsymbol(d, c, e)' : Rsymbol(c, d, e)
+            Rmat1 = inv ? Rsymbol(d, c, e)' : Rsymbol(c, d, e)
+            μ = vertices[i - 1]
+            ν = vertices[i]
+            for c′ in _artin_channels(a, b, d, e)
                 Rmat2 = inv ? Rsymbol(d, a, c′)' : Rsymbol(a, d, c′)
                 Fmat = Fsymbol(d, a, b, e, c′, c)
-                μ = vertices[i - 1]
-                ν = vertices[i]
-                for σ in 1:Nsymbol(a, d, c′)
-                    for λ in 1:Nsymbol(c′, b, e)
+                for σ in axes(Rmat2, 1)
+                    for λ in axes(Fmat, 2)
                         coeff = zero(oneT)
-                        for ρ in 1:Nsymbol(d, c, e), κ in 1:Nsymbol(d, a, c′)
+                        for ρ in axes(Rmat1, 2), κ in axes(Rmat2, 2)
                             coeff += Rmat1[ν, ρ] * conj(Fmat[κ, λ, μ, ρ]) *
                                 conj(Rmat2[σ, κ])
                         end
@@ -186,7 +195,7 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
                         vertices′ = TupleTools.setindex(vertices′, λ, i)
                         inner′ = TupleTools.setindex(inner, c′, i - 1)
                         f′ = FusionTree{I}(uncoupled′, coupled′, isdual′, inner′, vertices′)
-                        row = indexmap[treeindex_data((f′, f₂))]
+                        row = row!(rows, (f′, f₂))
                         @inbounds U[row, col] = coeff
                     end
                 end
@@ -194,7 +203,7 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
         end
     end
 
-    return dst => U
+    return FusionTreeBlock(rows.trees) => U
 end
 
 # braid fusion tree
@@ -316,13 +325,15 @@ end
         p = linearizepermutation(p1, p2, numout(src), numin(src))
         levels = (l1..., reverse(l2)...)
 
-        dst, U = repartition(src, numind(src))
+        # the intermediate blocks keep their trees in the order in which they are produced,
+        # and only the result is brought into canonical order
+        dst, U = repartition_noncanonical(src, Val(numind(src)))
 
         braid_style = BraidingStyle(I)
         for s in permutation2swaps(p)
             _check_levels(braid_style, levels, s)
             inv = levels[s] > levels[s + 1]
-            dst, U_tmp = artin_braid(dst, s; inv)
+            dst, U_tmp = artin_braid(dst, s; inv, canonical = Val(false))
             U = U_tmp * U
             l = levels[s]
             levels = TupleTools.setindex(levels, levels[s + 1], s)
@@ -330,11 +341,11 @@ end
         end
 
         if N₂ == 0
-            return dst => U
+            return canonicalize(dst, U)
         else
-            dst, U_tmp = repartition(dst, N₁)
+            dst, U_tmp = repartition_noncanonical(dst, Val(N₁))
             U = U_tmp * U
-            return dst => U
+            return canonicalize(dst, U)
         end
     end
 end

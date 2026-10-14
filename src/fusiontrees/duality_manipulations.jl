@@ -66,7 +66,7 @@ function bendright((f₁, f₂)::FusionTreePair)
 
     return (f₁′, f₂′) => coeff
 end
-function bendright(src::FusionTreeBlock)
+function bendright(src::FusionTreeBlock, canonical::Val = Val(true))
     I = sectortype(src)
     N₁ = numout(src)
     N₂ = numin(src)
@@ -80,9 +80,10 @@ function bendright(src::FusionTreeBlock)
         (src.isdual[2]..., !(src.isdual[1][N₁])),
     )
 
-    dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst; sizehint = length(src))
-    indexmap = treeindex_map(dst)
-    U = zeros(fusionscalartype(I), length(dst), length(src))
+    rows = TreeRows(I, uncoupled_dst, isdual_dst, length(src), canonical)
+    # the canonical destination block has more trees than `src` if `src` holds only some of the
+    # trees with its uncoupled sectors (as in `planar_trace`)
+    U = zeros(fusionscalartype(I), max(length(rows.trees), length(src)), length(src))
 
     for (col, (f₁, f₂)) in enumerate(fusiontrees(src))
         (a, b, c), (f₁′, f₂′) = _bendright_treepair((f₁, f₂))
@@ -92,7 +93,7 @@ function bendright(src::FusionTreeBlock)
         end
         if FusionStyle(I) isa MultiplicityFreeFusion
             coeff = coeff₀ * Bsymbol(a, b, c)
-            row = indexmap[treeindex_data((f₁′, f₂′))]
+            row = row!(rows, (f₁′, f₂′))
             @inbounds U[row, col] = coeff
         else
             Bmat = Bsymbol(a, b, c)
@@ -106,12 +107,12 @@ function bendright(src::FusionTreeBlock)
                 iszero(coeff) && continue
                 vertices₂ = N₂ > 0 ? (f₂.vertices..., ν) : ()
                 f₂′ = FusionTree(uncoupled₂, coupled₂, isdual₂, inner₂, vertices₂)
-                row = indexmap[treeindex_data((f₁′, f₂′))]
+                row = row!(rows, (f₁′, f₂′))
                 @inbounds U[row, col] = coeff
             end
         end
     end
-    return dst => U
+    return FusionTreeBlock(rows.trees) => U
 end
 
 @doc """
@@ -145,7 +146,7 @@ end
 
 # !! note that this is more or less a copy of bendright through
 # (f1, f2) => conj(coeff) for ((f2, f1), coeff) in bendleft(src)
-function bendleft(src::FusionTreeBlock)
+function bendleft(src::FusionTreeBlock, canonical::Val = Val(true))
     I = sectortype(src)
     N₁ = numout(src)
     N₂ = numin(src)
@@ -159,9 +160,10 @@ function bendleft(src::FusionTreeBlock)
         TupleTools.front(src.isdual[2]),
     )
 
-    dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst; sizehint = length(src))
-    indexmap = treeindex_map(dst)
-    U = zeros(fusionscalartype(I), length(dst), length(src))
+    rows = TreeRows(I, uncoupled_dst, isdual_dst, length(src), canonical)
+    # the canonical destination block has more trees than `src` if `src` holds only some of the
+    # trees with its uncoupled sectors (as in `planar_trace`)
+    U = zeros(fusionscalartype(I), max(length(rows.trees), length(src)), length(src))
 
     for (col, (f₁, f₂)) in enumerate(fusiontrees(src))
         (a, b, c), (f₂′, f₁′) = _bendright_treepair((f₂, f₁))
@@ -171,7 +173,7 @@ function bendleft(src::FusionTreeBlock)
         end
         if FusionStyle(I) isa MultiplicityFreeFusion
             coeff = coeff₀ * Bsymbol(a, b, c)
-            row = indexmap[treeindex_data((f₁′, f₂′))]
+            row = row!(rows, (f₁′, f₂′))
             @inbounds U[row, col] = conj(coeff)
         else
             Bmat = Bsymbol(a, b, c)
@@ -185,12 +187,12 @@ function bendleft(src::FusionTreeBlock)
                 iszero(coeff) && continue
                 vertices₁ = N₁ > 0 ? (f₁.vertices..., ν) : ()
                 f₁′ = FusionTree(uncoupled₁, coupled₁, isdual₁, inner₁, vertices₁)
-                row = indexmap[treeindex_data((f₁′, f₂′))]
+                row = row!(rows, (f₁′, f₂′))
                 @inbounds U[row, col] = conj(coeff)
             end
         end
     end
-    return dst => U
+    return FusionTreeBlock(rows.trees) => U
 end
 
 @doc """
@@ -478,7 +480,7 @@ return dst, U
 # it, so that it is visible to the generator's world age. Otherwise a precompile workload that
 # first triggers `repartition` fails with `UndefVarError: _repartition_body` (at runtime the
 # first call happens at a later world age, which masks the ordering issue).
-function _repartition_body(N)
+function _repartition_body(N, canonical = true)
     if N == 0
         ex = quote
             T = fusionscalartype(sectortype(src))
@@ -491,13 +493,14 @@ function _repartition_body(N)
         end
     else
         f = N < 0 ? bendleft : bendright
+        args = canonical ? () : (Val(false),)
         ex_rep = Expr(:block)
         for _ in 1:(abs(N) - 1)
-            push!(ex_rep.args, :((dst, Utmp) = $f(dst)))
+            push!(ex_rep.args, :((dst, Utmp) = $f(dst, $(args...))))
             push!(ex_rep.args, :(U = Utmp * U))
         end
         ex = quote
-            dst, U = $f(src)
+            dst, U = $f(src, $(args...))
             $ex_rep
             return dst => U
         end
@@ -506,6 +509,10 @@ function _repartition_body(N)
 end
 @generated function repartition(src::Union{FusionTreePair, FusionTreeBlock}, ::Val{N}) where {N}
     return _repartition_body(numout(src) - N)
+end
+# the same for a block, with the trees of the result in the order in which they are produced
+@generated function repartition_noncanonical(src::FusionTreeBlock, ::Val{N}) where {N}
+    return _repartition_body(numout(src) - N, false)
 end
 
 """
