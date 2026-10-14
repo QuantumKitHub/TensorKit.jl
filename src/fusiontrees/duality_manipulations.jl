@@ -54,15 +54,18 @@ function _bendright_treepair((f₁, f₂)::FusionTreePair)
 end
 
 function bendright((f₁, f₂)::FusionTreePair)
-    I = sectortype((f₁, f₂))
+    @assert FusionStyle((f₁, f₂)) === UniqueFusion()
+    return _bendright_single((f₁, f₂))
+end
+# also for a final fusion vertex without multiplicity (`only` throws otherwise)
+function _bendright_single((f₁, f₂)::FusionTreePair)
     N₁ = numout((f₁, f₂))
-    @assert FusionStyle(I) === UniqueFusion()
     (a, b, c), (f₁′, f₂′) = _bendright_treepair((f₁, f₂))
 
     # compute the coefficient
     coeff₀ = sqrtdim(c) * invsqrtdim(a)
     f₁.isdual[N₁] && (coeff₀ *= conj(frobenius_schur_phase(dual(b))))
-    coeff = coeff₀ * Bsymbol(a, b, c)
+    coeff = coeff₀ * only(Bsymbol(a, b, c))
 
     return (f₁′, f₂′) => coeff
 end
@@ -142,6 +145,18 @@ function bendleft((f₁, f₂)::FusionTreePair)
     @assert FusionStyle((f₁, f₂)) === UniqueFusion()
     (f₂′, f₁′), coeff = bendright((f₂, f₁))
     return (f₁′, f₂′) => conj(coeff)
+end
+function _bendleft_single((f₁, f₂)::FusionTreePair)
+    (f₂′, f₁′), coeff = _bendright_single((f₂, f₁))
+    return (f₁′, f₂′) => conj(coeff)
+end
+
+# `n` bends of a tree pair that stays a single tree pair, and the product of their coefficients
+_bend_single(bend, f, ::Val{0}) = f => one(sectorscalartype(sectortype(f)))
+function _bend_single(bend, f, ::Val{n}) where {n}
+    f′, c′ = bend(f)
+    f″, c″ = _bend_single(bend, f′, Val(n - 1))
+    return f″ => c′ * c″
 end
 
 # !! note that this is more or less a copy of bendright through
