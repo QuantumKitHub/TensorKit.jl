@@ -210,7 +210,8 @@ function DeviceGenericTreeTransformer(
         end
     end
 
-    work_offsets, nwork = TensorKit._work_offsets(blk.rows * prod(blk.sz) for blk in blocks)
+    work_offsets = pushfirst!(cumsum(map(blk -> blk.rows * prod(blk.sz), blocks)), 0)
+    nwork = last(work_offsets)
     return DeviceGenericTreeTransformer(
         UniqueTreeTransformer(unique_coeffs, unique_dst, unique_src),
         blocks, work_offsets, nwork, coeffs, structs_dst, structs_src
@@ -279,8 +280,8 @@ end
 # COV_EXCL_START
 # kernels are not reachable by coverage
 
-# largest `i` with `offsets[i] <= w`. This corresponds to the
-# block which  this kernel thread will work on. Since this is
+# largest `i` with `offsets[i] <= w`. For `0 <= w < offsets[end]`, this corresponds to the
+# (nonempty) block which this kernel thread will work on. Since this is
 # used inside a GPU kernel, searchsortedlast/searchsortedfirst
 # won't work.
 @inline function _searchblock(offsets, w)
@@ -310,12 +311,12 @@ end
 # One thread per destination element in `data_dst`. `op` is `identity` or `conj`, and is
 # applied to the source data only (not to the coefficients).
 @kernel function unique_batched_permute_kernel!(
-        data_dst, data_src, op, coeffs, structs_dst, structs_src, work_offsets, α, β, nwork, ::Val{N}
+        data_dst, data_src, op, coeffs, structs_dst, structs_src, work_offsets, α, β, ::Val{N}
     ) where {N}
     # w = @index(Global, Linear) - 1 does not work due to JLArrays bug
     w = @index(Global, Linear)
     w -= 1
-    if w < nwork
+    if w < @inbounds work_offsets[end]
         b = _searchblock(work_offsets, w)
         sz, strides_dst, offset_dst = @inbounds structs_dst[b]
         strides_src, offset_src = @inbounds structs_src[b]
@@ -372,11 +373,13 @@ end
 end
 
 function _launch_unique!(data_dst, data_src, op, transformer::UniqueTreeTransformer, α, β, ::Val{N}) where {N}
-    (; coeffs, structs_dst, structs_src, work_offsets, nwork) = transformer
-    nwork == 0 && return nothing
+    (; coeffs, structs_dst, structs_src, work_offsets) = transformer
+    # the subblocks are disjoint, so the total work is bounded by the destination length
+    ndrange = isempty(coeffs) ? 0 : length(data_dst)
+    ndrange == 0 && return nothing
     unique_batched_permute_kernel!(get_backend(data_dst))(
-        data_dst, data_src, op, coeffs, structs_dst, structs_src, work_offsets, α, β, nwork,
-        Val(N); ndrange = nwork
+        data_dst, data_src, op, coeffs, structs_dst, structs_src, work_offsets, α, β,
+        Val(N); ndrange
     )
     return nothing
 end

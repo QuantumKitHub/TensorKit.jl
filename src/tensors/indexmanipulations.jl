@@ -656,25 +656,24 @@ function add_transform_kernel!(
     )
     (; coeffs, structs_dst, structs_src) = transformer
     taskforeach(eachindex(coeffs), ntasks) do i
-        @inbounds dst_i = _dstblock(dst, structs_dst[i])
-        @inbounds src_i, p_i = _srcblock(src, structs_src[i], size(dst_i), p)
+        dst_i = _dstblock(dst, structs_dst[i])
+        src_i, p_i = _srcblock(src, structs_src[i], size(dst_i), p)
         @timeit_debug GLOBAL_TIMER "dense: tensoradd" TO.tensoradd!(
-            dst_i, src_i, p_i, conjsrc, α * @inbounds(coeffs[i]), β, backend, allocator
+            dst_i, src_i, p_i, conjsrc, α * coeffs[i], β, backend, allocator
         )
     end
     return nothing
 end
 
 # subblock accessors for the `SubblockLayout`s, where `p` is already applied to strided sources
-Base.@propagate_inbounds _dstblock(data::DenseVector, (sz, str, offset)::StridedStructure) =
-    StridedView(data, sz, str, offset)
-Base.@propagate_inbounds _dstblock(iter::SubblockIterator, i::Int) = iter[i]
-Base.@propagate_inbounds function _srcblock(
+@inline _dstblock(data::DenseVector, (sz, str, offset)::StridedStructure) = StridedView(data, sz, str, offset)
+@inline _dstblock(iter::SubblockIterator, i::Int) = iter[i]
+@inline function _srcblock(
         data::DenseVector, (str, offset)::Tuple{NTuple{N, Int}, Int}, sz::NTuple{N, Int}, p::Index2Tuple
     ) where {N}
     return StridedView(data, sz, str, offset), (ntuple(identity, Val(N)), ())
 end
-Base.@propagate_inbounds _srcblock(iter::SubblockIterator, i::Int, sz, p::Index2Tuple) = iter[i], p
+@inline _srcblock(iter::SubblockIterator, i::Int, sz, p::Index2Tuple) = iter[i], p
 
 # The kernel operates on the subblocks addressed by position, so that for `TensorMap`s this only
 # depends on `numind`, `eltype` and the transformer data, not on the sectortype.

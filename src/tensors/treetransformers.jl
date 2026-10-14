@@ -65,8 +65,8 @@ destination subblock with a scalar coefficient. Entry `i` describes the transfor
   permuted by `p`, such that both share the destination sizes.
 - `PositionalLayout`: the subblock positions, and `p` is applied when transforming.
 
-The `work_offsets` are the number of destination elements preceding every entry, and `nwork` their
-total, such that the work can be distributed per element. All fields are vectors of `isbits`
+The `n + 1` `work_offsets` are the number of destination elements preceding every entry, followed by
+their total, such that the work can be distributed per element. All fields are vectors of `isbits`
 elements, such that the same structure can be moved to other devices with `Adapt.adapt`.
 """
 struct UniqueTreeTransformer{
@@ -76,24 +76,13 @@ struct UniqueTreeTransformer{
     structs_dst::VD
     structs_src::VS
     work_offsets::VO
-    nwork::Int
 end
 
 Adapt.@adapt_structure UniqueTreeTransformer
 
-function UniqueTreeTransformer(coeffs::AbstractVector, structs_dst::AbstractVector{<:StridedStructure}, structs_src::AbstractVector)
-    work_offsets, nwork = _work_offsets(prod(first(s)) for s in structs_dst)
-    return UniqueTreeTransformer(coeffs, structs_dst, structs_src, work_offsets, nwork)
-end
-
-function _work_offsets(work)
-    offsets = Int[]
-    total = 0
-    for w in work
-        push!(offsets, total)
-        total += w
-    end
-    return offsets, total
+function UniqueTreeTransformer(coeffs, structs_dst, structs_src)
+    work_offsets = pushfirst!(cumsum(map(s -> prod(first(s)), structs_dst)), 0)
+    return UniqueTreeTransformer(coeffs, structs_dst, structs_src, work_offsets)
 end
 
 # (recoupling matrix, destination positions, source positions)
@@ -123,8 +112,7 @@ function UniqueTreeTransformer(
 
     src_trees, dst_trees = fusiontrees(Vsrc), fusiontrees(Vdst)
     T = recoupling_scalartype(A, sectorscalartype(sectortype(Vdst)))
-    # the transformation is a bijection between the fusion trees, so the entries are stored in the
-    # canonical order of the destination
+    # the transformation is a bijection between the trees, so we use the canonical destination order
     coeffs = Vector{T}(undef, length(src_trees))
     inds_src = Vector{Int}(undef, length(src_trees))
 
@@ -138,8 +126,8 @@ function UniqueTreeTransformer(
     structure_dst = degeneracystructure(Vdst).subblockstructure
     structs_dst = _dst_locators(layout_dst, structure_dst)
     structs_src = _src_locators(layout_src, Vsrc, inds_src, linearize(p))
-    work_offsets, nwork = _work_offsets(prod(first(s)) for s in structure_dst)
-    transformer = UniqueTreeTransformer(coeffs, structs_dst, structs_src, work_offsets, nwork)
+    work_offsets = pushfirst!(cumsum(map(s -> prod(first(s)), structure_dst)), 0)
+    transformer = UniqueTreeTransformer(coeffs, structs_dst, structs_src, work_offsets)
 
     Δt = Base.time() - t₀
     @debug(lazy"Treetransformer for $Vsrc to $Vdst via $p", conjsrc, nblocks = length(coeffs), Δt)
