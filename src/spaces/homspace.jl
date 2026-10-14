@@ -210,13 +210,18 @@ grouped by their uncoupled charges.
 function fusionblocks(W::HomSpace)
     I = sectortype(W)
     N₁, N₂ = numout(W), numin(W)
-    isdual_src = (map(isdual, codomain(W)), map(isdual, domain(W)))
-    fblocks = Vector{FusionTreeBlock{I, N₁, N₂, fusiontreetype(I, N₁, N₂)}}()
-    for dom_uncoupled_src in sectors(domain(W)), cod_uncoupled_src in sectors(codomain(W))
-        fs_src = FusionTreeBlock{I}((cod_uncoupled_src, dom_uncoupled_src), isdual_src)
-        isempty(fs_src) || push!(fblocks, fs_src)
+    F = fusiontreetype(I, N₁, N₂)
+    # group the (cached) fusion trees of `W` by their uncoupled sectors
+    groups = Dict{Tuple{NTuple{N₁, I}, NTuple{N₂, I}}, Vector{F}}()
+    for (f₁, f₂) in fusiontrees(W)
+        push!(get!(Vector{F}, groups, (f₁.uncoupled, f₂.uncoupled)), (f₁, f₂))
     end
-    return fblocks
+    # in the order of `sectors(domain(W))` (outer) and `sectors(codomain(W))` (inner), each of
+    # which runs fastest over its first space
+    position(V) = Dict{I, Int}(s => i for (i, s) in enumerate(sectors(V)))
+    codpos, dompos = map(position, codomain(W)), map(position, domain(W))
+    rank((u₁, u₂)) = (reverse(map(getindex, dompos, u₂)), reverse(map(getindex, codpos, u₁)))
+    return map(u -> FusionTreeBlock(groups[u]), sort!(collect(keys(groups)); by = rank))
 end
 
 function diagonalblockstructure(W::HomSpace)
