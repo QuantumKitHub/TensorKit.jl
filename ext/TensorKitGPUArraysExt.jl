@@ -196,6 +196,7 @@ end
 
 # strides of a dense array of shape `sz`
 _dense_strides(size::Dims) = (1, Base.front(cumprod(size))...)
+_dense_strides(::Tuple{}) = ()
 
 # `permute(Vsrc, p) == Vdst` is enforced when the transformer is built, so the permuted
 # source shape always matches `sz_dst` and the two views share Cartesian inds.
@@ -271,8 +272,16 @@ function DeviceGenericTreeTransformer(
     )
 end
 
+TensorKit.treebraider(
+    A::Type{<:AnyGPUVector}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
+    conjsrc::Bool, levels::IndexTuple
+) = TensorKit.device_treebraider(A, Vdst, Vsrc, p, conjsrc, levels)
+TensorKit.treetransposer(
+    A::Type{<:AnyGPUVector}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
+) = TensorKit.device_treetransposer(A, Vdst, Vsrc, p, conjsrc)
+
 # Cache the device transformer directly, constructing the cached host version only on a miss.
-@cached function TensorKit.treebraider(
+@cached function TensorKit.device_treebraider(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
         conjsrc::Bool, levels::IndexTuple
     ) where {TA <: AnyGPUVector}
@@ -280,29 +289,11 @@ end
     return device_transformer(A, host, linearize(p))
 end
 
-@cached function TensorKit.treetransposer(
+@cached function TensorKit.device_treetransposer(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
     ) where {TA <: AnyGPUVector}
     host = TensorKit.treetransposer(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc)
     return device_transformer(A, host, linearize(p))
-end
-
-const DEFAULT_DEVICECACHE_SIZE = 1000
-
-function __init__()
-    # extensions can't modify GLOBAL_CACHES during precompilation, so register explicitly
-    append!(
-        TensorKit.GLOBAL_CACHES, (
-            Symbol("TensorKitGPUArraysExt.GLOBAL_TREEBRAIDER_CACHE") => GLOBAL_TREEBRAIDER_CACHE,
-            Symbol("TensorKitGPUArraysExt.GLOBAL_TREETRANSPOSER_CACHE") => GLOBAL_TREETRANSPOSER_CACHE,
-        )
-    )
-
-    # device-caches should probably have smaller sizes:
-    resize!(GLOBAL_TREEBRAIDER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
-    resize!(GLOBAL_TREETRANSPOSER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
-
-    return nothing
 end
 
 # Allocations must outlive any GPUArrays allocation-cache scope around the operation.

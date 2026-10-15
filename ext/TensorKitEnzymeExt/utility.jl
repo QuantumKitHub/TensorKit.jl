@@ -26,7 +26,7 @@ pullback_dC!(ΔC, β::Number) = scale!(ΔC, conj(β))
 @inline EnzymeRules.inactive_type(::Type{<:TensorKit.GenericTreeTransformer}) = true
 @inline EnzymeRules.inactive_type(::Type{<:TensorKit.UniqueTreeTransformer}) = true
 @inline EnzymeRules.inactive_type(::Type{<:TensorKit.VectorSpace}) = true
-@inline EnzymeRules.inactive_type(::Type{<:TensorKit.LRU}) = true
+@inline EnzymeRules.inactive_type(::Type{<:TensorKit.MemoizationKit.AbstractCache}) = true
 
 function EnzymeRules.augmented_primal(
         config::EnzymeRules.RevConfigWidth{1},
@@ -142,13 +142,13 @@ end
 @inline EnzymeRules.inactive(::typeof(TensorKit.fusiontrees), ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.fusiontrees), ::Any, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.fusiontrees), ::Any, ::Any, ::Any) = nothing
-@inline EnzymeRules.inactive(::typeof(TensorKit.fsbraid), ::Any) = nothing
-@inline EnzymeRules.inactive(::typeof(TensorKit.fsbraid), ::Any, ::Any) = nothing
+@inline EnzymeRules.inactive(::typeof(TensorKit.fusiontreebraid), ::Any, ::Any, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.artin_braid), ::Any, ::Any) = nothing
-@inline EnzymeRules.inactive(::typeof(TensorKit.fstranspose), ::Any) = nothing
-@inline EnzymeRules.inactive(::typeof(TensorKit.fstranspose), ::Any, ::Any) = nothing
+@inline EnzymeRules.inactive(::typeof(TensorKit.fusiontreetranspose), ::Any, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.treetransposer), ::Any...) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.treebraider), ::Any...) = nothing
+@inline EnzymeRules.inactive(::typeof(TensorKit.device_treetransposer), ::Any...) = nothing
+@inline EnzymeRules.inactive(::typeof(TensorKit.device_treebraider), ::Any...) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.insertleftunit), ::HomSpace, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.insertrightunit), ::HomSpace, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.removeunit), ::HomSpace, ::Any) = nothing

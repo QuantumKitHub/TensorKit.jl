@@ -524,28 +524,28 @@ function Base.transpose(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tu
     N == length(p[1]) + length(p[2]) || throw(ArgumentError("invalid permutation p = $p of length N = $N"))
     p′ = linearizepermutation(p..., numout(src), numin(src))
     iscyclicpermutation(p′) || throw(ArgumentError("invalid cyclic or planar permutation p = $p"))
-    return fstranspose((src, p))
+    return fusiontreetranspose(src, p)
 end
 
-const FSPTransposeKey{I, N₁, N₂} = Tuple{FusionTreePair{I}, Index2Tuple{N₁, N₂}}
-const FSBTransposeKey{I, N₁, N₂} = Tuple{FusionTreeBlock{I}, Index2Tuple{N₁, N₂}}
-
-Base.@assume_effects :foldable function _fsdicttype(::Type{T}) where {I, N₁, N₂, T <: FSPTransposeKey{I, N₁, N₂}}
-    E = fusionscalartype(I)
-    return Pair{fusiontreetype(I, N₁, N₂), E}
-end
-Base.@assume_effects :foldable function _fsdicttype(::Type{T}) where {I, N₁, N₂, T <: FSBTransposeKey{I, N₁, N₂}}
-    F₁ = fusiontreetype(I, N₁)
-    F₂ = fusiontreetype(I, N₂)
-    E = fusionscalartype(I)
-    return Pair{FusionTreeBlock{I, N₁, N₂, Tuple{F₁, F₂}}, Matrix{E}}
+Base.@assume_effects :foldable function fusiontreetransposetype(
+        src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, ::Index2Tuple{N₁, N₂}
+    ) where {I, N₁, N₂}
+    T = fusionscalartype(I)
+    if src isa FusionTreePair
+        return Pair{fusiontreetype(I, N₁, N₂), T}
+    else
+        F = Tuple{fusiontreetype(I, N₁), fusiontreetype(I, N₂)}
+        return Pair{FusionTreeBlock{I, N₁, N₂, F}, Matrix{T}}
+    end
 end
 
-@cached function fstranspose(key::K)::_fsdicttype(K) where {I, N₁, N₂, K <: Union{FSPTransposeKey{I, N₁, N₂}, FSBTransposeKey{I, N₁, N₂}}}
-    src, (p1, p2) = key
+@cached function fusiontreetranspose(
+        src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, p::Index2Tuple{N₁, N₂}
+    )::fusiontreetransposetype(src, p) where {I, N₁, N₂}
+    p₁, p₂ = p
 
     N = N₁ + N₂
-    p = linearizepermutation(p1, p2, numout(src), numin(src))
+    p = linearizepermutation(p₁, p₂, numout(src), numin(src))
 
     dst, U = repartition(src, N₁)
     length(p) == 0 && return dst => U
@@ -567,10 +567,8 @@ end
     return dst => U
 end
 
-CacheStyle(::typeof(fstranspose), k::FSPTransposeKey{I}) where {I} =
-    FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalLRUCache()
-CacheStyle(::typeof(fstranspose), k::FSBTransposeKey{I}) where {I} =
-    FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalLRUCache()
+CacheStyle(::typeof(fusiontreetranspose), src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, args...) where {I} =
+    FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalCache()
 
 # COMPOSITE DUALITY MANIPULATIONS PART 2: Planar traces
 #-------------------------------------------------------------------
