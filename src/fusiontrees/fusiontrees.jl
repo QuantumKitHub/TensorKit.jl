@@ -140,24 +140,19 @@ function FusionTreeBlock{I}(
     end
 
     # note: cs is unique due to ⊗ returning unique fusion results
-    cs = if UnitStyle(I) isa SimpleUnit
-        # a superset of the coupled sectors suffices, as there are no fusion trees for the others:
-        # this avoids the fusion product of the longer side
-        if N₁ == 0 || N₂ == 0
-            [unit(I)]
-        else
-            sort!(vec(collect(⊗(uncoupled[N₁ <= N₂ ? 1 : 2]...)))) # `vec`: products of `ProductSector`s have a shape
-        end
-    elseif N₁ == 0
-        sort!(collect(filter(isunit, ⊗(uncoupled[2]...))))
-    elseif N₂ == 0
-        sort!(collect(filter(isunit, ⊗(uncoupled[1]...))))
+    # a superset of the coupled sectors suffices, as there are no fusion trees for the others:
+    # the units, or the fusion product of the shorter side, which avoids that of the longer side
+    # (`vec`: the units and products of `ProductSector`s have a shape)
+    cs = if N₁ == 0 || N₂ == 0
+        sort!(vec(collect(allunits(I))))
     else
-        sort!(collect(intersect(⊗(uncoupled[1]...), ⊗(uncoupled[2]...))))
+        sort!(vec(collect(⊗(uncoupled[N₁ <= N₂ ? 1 : 2]...))))
     end
 
     for c in cs
-        isempty(fusiontrees(uncoupled[1], c, isdual[1])) && continue
+        # the shorter side has fusion trees for every candidate, the longer side not necessarily
+        longer = N₁ <= N₂ ? fusiontrees(uncoupled[2], c, isdual[2]) : fusiontrees(uncoupled[1], c, isdual[1])
+        isempty(longer) && continue
         for f₂ in fusiontrees(uncoupled[2], c, isdual[2]),
                 f₁ in fusiontrees(uncoupled[1], c, isdual[1])
             push!(trees, (f₁, f₂))
