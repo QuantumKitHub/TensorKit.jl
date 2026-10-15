@@ -646,15 +646,29 @@ get_num_transformer_threads(t::AbstractTensorMap) =
 function add_transform_kernel!(
         dst, src, p, conjsrc::Bool, transformer::UniqueTreeTransformer, α, β, backend, allocator, ntasks::Int
     )
-    (; coeffs, structs_dst, structs_src) = transformer
-    taskforeach(eachindex(coeffs), ntasks) do i
-        dst_i = _dstblock(dst, structs_dst[i])
-        src_i, p_i = _srcblock(src, structs_src[i], size(dst_i), p)
-        @timeit_debug GLOBAL_TIMER "dense: tensoradd" TO.tensoradd!(
-            dst_i, src_i, p_i, conjsrc, α * coeffs[i], β, backend, allocator
-        )
+    (; coeffs, structs_dst, structs_src, work_offsets) = transformer
+    taskforeach(_workchunks(work_offsets, ntasks), ntasks) do entries
+        for i in entries
+            dst_i = _dstblock(dst, structs_dst[i])
+            src_i, p_i = _srcblock(src, structs_src[i], size(dst_i), p)
+            @timeit_debug GLOBAL_TIMER "dense: tensoradd" TO.tensoradd!(
+                dst_i, src_i, p_i, conjsrc, α * coeffs[i], β, backend, allocator
+            )
+        end
     end
     return nothing
+end
+
+# Split the entries into contiguous chunks with approximately equal numbers of destination
+# elements, a few per task such that tasks can still balance blocks of different sizes.
+function _workchunks(work_offsets::AbstractVector{Int}, ntasks::Int)
+    n = length(work_offsets) - 1
+    (ntasks == 1 || n == 0) && return [1:n]
+    nchunks = min(n, 4 * ntasks)
+    starts = view(work_offsets, 1:n)
+    firsts = [searchsortedfirst(starts, cld(c * last(work_offsets), nchunks)) for c in 0:(nchunks - 1)]
+    push!(firsts, n + 1)
+    return [firsts[c]:(firsts[c + 1] - 1) for c in 1:nchunks if firsts[c] < firsts[c + 1]]
 end
 
 # subblock accessors for the `SubblockLayout`s, where `p` is already applied to strided sources
