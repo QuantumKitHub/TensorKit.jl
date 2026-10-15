@@ -221,7 +221,8 @@ function fusionblocks(W::HomSpace)
     position(V) = Dict{I, Int}(s => i for (i, s) in enumerate(sectors(V)))
     codpos, dompos = map(position, codomain(W)), map(position, domain(W))
     rank((u₁, u₂)) = (reverse(map(getindex, dompos, u₂)), reverse(map(getindex, codpos, u₁)))
-    return map(u -> FusionTreeBlock(groups[u]), sort!(collect(keys(groups)); by = rank))
+    us = collect(keys(groups))
+    return map(i -> FusionTreeBlock(groups[us[i]]), sortperm(map(rank, us))) # each rank computed once
 end
 
 function diagonalblockstructure(W::HomSpace)
