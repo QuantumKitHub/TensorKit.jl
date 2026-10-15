@@ -141,10 +141,12 @@ function FusionTreeBlock{I}(
 
     # note: cs is unique due to ⊗ returning unique fusion results
     # a superset of the coupled sectors suffices, as there are no fusion trees for the others:
-    # the units, or the fusion product of the shorter side, which avoids that of the longer side
-    # (`vec`: the units and products of `ProductSector`s have a shape)
-    cs = if N₁ == 0 || N₂ == 0
-        sort!(vec(collect(allunits(I))))
+    # the unit of the other side, or the fusion product of the shorter side, which avoids that of
+    # the longer side (`vec`: products of `ProductSector`s have a shape)
+    cs = if N₁ == 0
+        [leftunit(first(uncoupled[2]))]
+    elseif N₂ == 0
+        [leftunit(first(uncoupled[1]))]
     else
         sort!(vec(collect(⊗(uncoupled[N₁ <= N₂ ? 1 : 2]...))))
     end
