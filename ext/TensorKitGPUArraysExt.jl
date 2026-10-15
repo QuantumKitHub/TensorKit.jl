@@ -135,7 +135,7 @@ end
 # - Use a 2D grid for the Generic case
 
 # strides of a dense array of shape `sz`
-_dense_strides(size::Dims) = (1, Base.front(cumprod(size))...)
+_dense_strides(size::Dims) = Base.front((1, cumprod(size)...))
 
 # Cache the device transformer directly, constructing the cached host version only on a miss.
 # Other layouts are transformed on the host, through the positional subblocks.

@@ -496,9 +496,6 @@ end
 
 # Getting and setting the data at the subblock level
 # --------------------------------------------------
-StridedSubblocks(t::TensorMap) = StridedSubblocks(t.data, degeneracystructure(space(t)).subblockstructure)
-StridedSubblocks(t::TensorMap, structure::Vector{<:StridedStructure}) = StridedSubblocks(t.data, structure)
-
 # the subblocks of a `TensorMap` are strided views into its flat data, which the subblock
 # structure of its space describes directly
 SubblockIterator(t::TensorMap) = SubblockIterator(t, subblockstructure(space(t)))
