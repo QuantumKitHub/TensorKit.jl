@@ -140,18 +140,29 @@ function FusionTreeBlock{I}(
     end
 
     # note: cs is unique due to ⊗ returning unique fusion results
-    cs = if N₁ == 0
-        sort!(collect(filter(isunit, ⊗(uncoupled[2]...))))
-    elseif N₂ == 0
-        sort!(collect(filter(isunit, ⊗(uncoupled[1]...))))
+    # a superset of the coupled sectors suffices, as there are no fusion trees for the others:
+    # the unit of the other side, or the fusion product of the shorter side, which avoids that of
+    # the longer side (`vec`: products of `ProductSector`s have a shape)
+    cs = if N₁ == 0 || N₂ == 0
+        # the only unit that can couple: on the left of the first and on the right of the last sector
+        us = N₁ == 0 ? uncoupled[2] : uncoupled[1]
+        leftunit(first(us)) == rightunit(last(us)) ? [leftunit(first(us))] : I[]
     else
-        sort!(collect(intersect(⊗(uncoupled[1]...), ⊗(uncoupled[2]...))))
+        sort!(vec(collect(⊗(uncoupled[N₁ <= N₂ ? 1 : 2]...))))
     end
 
-    for c in cs,
-            f₂ in fusiontrees(uncoupled[2], c, isdual[2]),
-            f₁ in fusiontrees(uncoupled[1], c, isdual[1])
-        push!(trees, (f₁, f₂))
+    for c in cs
+        # the shorter side has fusion trees for every candidate, the longer side not necessarily
+        # (with several units, `c` must also have the units at the ends of the longer side)
+        us = N₁ <= N₂ ? uncoupled[2] : uncoupled[1]
+        UnitStyle(I) isa SimpleUnit || N₁ == 0 || N₂ == 0 ||
+            (leftunit(c) == leftunit(first(us)) && rightunit(c) == rightunit(last(us))) || continue
+        longer = N₁ <= N₂ ? fusiontrees(uncoupled[2], c, isdual[2]) : fusiontrees(uncoupled[1], c, isdual[1])
+        isempty(longer) && continue
+        for f₂ in fusiontrees(uncoupled[2], c, isdual[2]),
+                f₁ in fusiontrees(uncoupled[1], c, isdual[1])
+            push!(trees, (f₁, f₂))
+        end
     end
     return FusionTreeBlock(trees)
 end
