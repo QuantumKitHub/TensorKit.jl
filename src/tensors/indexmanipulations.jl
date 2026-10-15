@@ -737,7 +737,7 @@ function _recouple!(
         buffer::CPUStorage{Complex{R}}, buffer_dst::StridedView, buffer_src::StridedView, U::Matrix{R}
     ) where {R <: LinearAlgebra.BlasReal}
     rbuffer = reinterpret(R, buffer)
-    LinearAlgebra.BLAS.gemm!('N', 'T', one(R), _realview(rbuffer, buffer_src), U, zero(R), _realview(rbuffer, buffer_dst))
+    LinearAlgebra.BLAS.gemm!('N', 'T', true, _realview(rbuffer, buffer_src), U, false, _realview(rbuffer, buffer_dst))
     return nothing
 end
 # real view of the complex column-major view `b` into the reinterpreted buffer `rbuffer`

@@ -314,7 +314,6 @@ InnerProductStyle(t::AbstractTensorMap) = InnerProductStyle(typeof(t))
 
 numout(t::AbstractTensorMap) = numout(typeof(t))
 numin(t::AbstractTensorMap) = numin(typeof(t))
-numind(t::AbstractTensorMap) = numind(typeof(t))
 
 # tensor characteristics: data structure and properties
 #------------------------------------------------------
