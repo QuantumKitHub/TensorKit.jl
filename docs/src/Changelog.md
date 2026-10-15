@@ -30,10 +30,13 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 - Require TensorKitSectors v0.3.10
 - `@cached` can be used from other modules, such as package extensions, which then own the cache of the methods they add; these caches are shown with their module in `global_cache_info` after registration in `__init__` (internal)
 - The `TreeTransformer`s used in index manipulations are now constructed and cached per storagetype of the destination tensor, which is also a dispatch point for storage-specific transformers with their own cache (internal)
+- The CPU and GPU index manipulations share a single `TreeTransformer` structure per fusion style, which stores the subblock locations alongside the recoupling coefficients and is moved to the GPU with `Adapt`; the kernels operate on the flat data of a `TensorMap` directly (internal) ([#578](https://github.com/QuantumKitHub/TensorKit.jl/issues/578))
 
 ### Deprecated
 
 ### Removed
+
+- `StridedSubblocks`, which is superseded by the subblock locations stored in the `TreeTransformer`s (internal)
 
 ### Fixed
 
@@ -42,6 +45,7 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 ### Performance
 
 - Recoupling matrices are stored such that they can leverage BLAS, also for mixed complex tensor with real recoupling coefficients.
+- Index manipulations with many large subblocks visit the subblocks in the order of the destination tensor, which is up to ~15% faster.
 
 ## [0.17.2](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.1...v0.17.2) - 2026-09-20
 
