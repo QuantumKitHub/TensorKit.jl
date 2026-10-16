@@ -103,7 +103,6 @@ MAK.zero!(t::AbstractTensorMap) = zerovector!(t)
 for f in [
         :lq_full, :lq_compact, :lq_null,
         :qr_full, :qr_compact, :qr_null,
-        :schur_full, :schur_vals,
         :eig_full, :eig_vals, :eig_trunc, :eig_trunc_no_error,
         :eigh_full, :eigh_vals, :eigh_trunc, :eigh_trunc_no_error,
         :svd_full, :svd_compact, :svd_trunc, :svd_trunc_no_error, :svd_vals,

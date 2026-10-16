@@ -332,7 +332,7 @@ end
         if N₂ == 0
             return dst => U
         else
-            dst, U_tmp = repartition(dst, N₁)
+            dst, U_tmp = repartition(dst::FusionTreeBlock{I}, N₁)
             U = U_tmp * U
             return dst => U
         end
