@@ -551,7 +551,6 @@ for V in spacelist
         #         u = unitary(T, V1 ⊗ V2, V1 ⊗ V2)
         #         @test @constinferred(cond(u)) ≈ one(real(T))
         #         @test @constinferred(rank(u)) == dim(V1 ⊗ V2)
-
         #         t = AMDGPU.rand(T, zerospace(V1), W)
         #         @test rank(t) == 0
         #         t2 = AMDGPU.rand(T, zerospace(V1) * zerospace(V2), zerospace(V1) * zerospace(V2))
@@ -614,8 +613,6 @@ for V in spacelist
         end
 
         @testset "Isometric projections" begin
-            # rocSOLVER's gesvdx (Bisection) returns wrong singular vectors for degenerate
-            # singular values, so pin the algorithm instead of relying on the default
             alg = PolarViaSVD(QRIteration())
             for T in eltypes,
                     t in (
