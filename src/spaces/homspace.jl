@@ -220,7 +220,8 @@ function fusionblocks(W::HomSpace)
     # which runs fastest over its first space (the sectors of a dual space are sorted by their dual)
     key(V, s) = isdual(V) ? dual(s) : s
     rank((u₁, u₂)) = (reverse(map(key, domain(W).spaces, u₂)), reverse(map(key, codomain(W).spaces, u₁)))
-    return map(u -> FusionTreeBlock(groups[u]), sort!(collect(keys(groups)); by = rank))
+    us = collect(keys(groups))
+    return map(i -> FusionTreeBlock(groups[us[i]]), sortperm(map(rank, us))) # each rank computed once
 end
 
 function diagonalblockstructure(W::HomSpace)
