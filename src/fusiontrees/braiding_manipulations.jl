@@ -328,6 +328,7 @@ end
         return (f₁′, f₂′) => coeff1 * coeff2 * coeff3
     else
         src, (p1, p2), (l1, l2) = key
+        src = src::FusionTreeBlock{I}
 
         p = linearizepermutation(p1, p2, numout(src), numin(src))
         levels = (l1..., reverse(l2)...)
