@@ -53,6 +53,12 @@ end
 
 Adapt.adapt_structure(to, x::AdjointTensorMap) = adjoint(Adapt.adapt(to, parent(x)))
 
+function LinearAlgebra.norm(t::AdjointTensorMap, p::Real = 2)
+    InnerProductStyle(t) === EuclideanInnerProduct() || throw_invalid_innerproduct(:norm)
+    p == Inf && return norm(parent(t), p)
+    return _norm(blocks(t), p, float(zero(real(scalartype(t)))))
+end
+
 # Show
 #------
 function Base.showarg(io::IO, t::AdjointTensorMap, toplevel::Bool)

@@ -257,12 +257,7 @@ LinearAlgebra.dot(t1::AbstractTensorMap, t2::AbstractTensorMap) = inner(t1, t2)
 function LinearAlgebra.norm(t::AbstractTensorMap, p::Real = 2)
     InnerProductStyle(t) === EuclideanInnerProduct() || throw_invalid_innerproduct(:norm)
     init = float(zero(real(scalartype(t))))
-    if p == Inf
-        # can bypass the block iterator for the Inf case
-        return maximum(abs, t.data; init)
-    else
-        return _norm(blocks(t), p, init)
-    end
+    return _norm(blocks(t), p, init)
 end
 function _norm(blockiter, p::Real, init::Number)
     if p == Inf

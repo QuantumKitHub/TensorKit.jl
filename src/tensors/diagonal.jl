@@ -375,6 +375,12 @@ end
 function LinearAlgebra.isposdef(d::DiagonalTensorMap)
     return all(isposdef, d.data)
 end
+function LinearAlgebra.norm(t::DiagonalTensorMap, p::Real = 2)
+    InnerProductStyle(t) === EuclideanInnerProduct() || throw_invalid_innerproduct(:norm)
+    init = float(zero(real(scalartype(t))))
+    p == Inf && return maximum(abs, t.data; init)
+    return _norm(blocks(t), p, init)
+end
 
 # matrix functions
 for f in
