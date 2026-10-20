@@ -41,13 +41,14 @@ args = parse_args(ARGS; custom = ["fast"])
 # --fast: skip AD tests and inject fast_tests=true into each worker sandbox
 fast = !isnothing(args.custom["fast"])
 
-# Enzyme workers end up needing ~4 GB, but the default job count assumes ~2 GB per worker.
-# Cap the number of jobs by increasing the per-worker memory budget unless --jobs was given.
+# Enzyme workers peak at ~4.5 GB, but the default job count
+# assumes ~2 GB per worker. Cap the number of jobs by increasing the per-worker memory budget
+# unless --jobs was given; with 4 GB, 16 GB CI runners would run out of memory and be killed.
 selected = copy(testsuite)
 ParallelTestRunner.filter_tests!(selected, args)
 has_enzyme = any(startswith("enzyme"), keys(selected))
 if isnothing(args.jobs) && has_enzyme
-    njobs = clamp(Int(Sys.free_memory() ÷ (4 * Int64(2)^30)), 1, Sys.CPU_THREADS)
+    njobs = clamp(Int(Sys.free_memory() ÷ (5 * Int64(2)^30)), 1, Sys.CPU_THREADS)
     # On Windows with Julia 1.10, memory pressure makes recycled workers too slow to start:
     # Malt gives up if a new worker does not connect within 30 s, which aborts the whole run.
     Sys.iswindows() && VERSION < v"1.11" && (njobs = min(njobs, 2))
