@@ -1,5 +1,5 @@
 nothing_or_block(x, c) = isnothing(x) ? x : block(x, c)
-nothing_or_block(x::Diagonal, c) = block(MAK.diagonal(parent(x)), c)
+nothing_or_block(x::Diagonal{T, <:SectorVector{T}}, c) where {T} = block(MAK.diagonal(parent(x)), c)
 
 for pullback! in (
         :qr_pullback!, :lq_pullback!, :left_polar_pullback!, :right_polar_pullback!,

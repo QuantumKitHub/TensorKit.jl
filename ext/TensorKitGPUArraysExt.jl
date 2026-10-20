@@ -195,7 +195,7 @@ struct DeviceGenericTreeTransformer{VO <: AbstractVector{Int}, DA <: DeviceUniqu
 end
 
 # strides of a dense array of shape `sz`
-_dense_strides(size::Dims) = (1, Base.front(cumprod(size))...)
+_dense_strides(size::Dims) = Base.front((1, cumprod(size)...))
 
 # `permute(Vsrc, p) == Vdst` is enforced when the transformer is built, so the permuted
 # source shape always matches `sz_dst` and the two views share Cartesian inds.

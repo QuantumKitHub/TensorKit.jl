@@ -371,7 +371,7 @@ end
         if N₂ == 0
             return canonicalize(dst, U)
         else
-            dst, U_tmp = repartition_noncanonical(dst, Val(N₁))
+            dst, U_tmp = repartition_noncanonical(dst::FusionTreeBlock{I}, Val(N₁))
             U = U_tmp * U
             return canonicalize(dst, U)
         end

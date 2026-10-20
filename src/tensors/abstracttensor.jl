@@ -238,7 +238,7 @@ See also [`numin`](@ref) and [`numind`](@ref).
 """ numout
 
 numout(x) = numout(typeof(x))
-numout(T::Type) = throw(MethodError(numout, T)) # avoid infinite recursion
+numout(T::Type) = throw(MethodError(numout, (T,))) # avoid infinite recursion
 numout(::Type{<:AbstractTensorMap{T, S, N₁}}) where {T, S, N₁} = N₁
 
 @doc """
@@ -252,7 +252,7 @@ See also [`numout`](@ref) and [`numind`](@ref).
 """ numin
 
 numin(x) = numin(typeof(x))
-numin(T::Type) = throw(MethodError(numin, T)) # avoid infinite recursion
+numin(T::Type) = throw(MethodError(numin, (T,))) # avoid infinite recursion
 numin(::Type{<:AbstractTensorMap{T, S, N₁, N₂}}) where {T, S, N₁, N₂} = N₂
 
 """
@@ -314,7 +314,6 @@ InnerProductStyle(t::AbstractTensorMap) = InnerProductStyle(typeof(t))
 
 numout(t::AbstractTensorMap) = numout(typeof(t))
 numin(t::AbstractTensorMap) = numin(typeof(t))
-numind(t::AbstractTensorMap) = numind(typeof(t))
 
 # tensor characteristics: data structure and properties
 #------------------------------------------------------
