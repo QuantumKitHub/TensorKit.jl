@@ -23,7 +23,8 @@ using MatrixAlgebraKit
 import MatrixAlgebraKit as MAK
 using MatrixAlgebraKit: AbstractAlgorithm, TruncatedAlgorithm, DiagonalAlgorithm
 using MatrixAlgebraKit: TruncationStrategy, NoTruncation, TruncationByValue, TruncationByError,
-    TruncationIntersection, TruncationUnion, TruncationByFilter, TruncationByOrder
+    TruncationIntersection, TruncationUnion, TruncationByFilter, TruncationByOrder,
+    TruncationMultiplets
 using MatrixAlgebraKit: diagview
 
 include("utility.jl")
