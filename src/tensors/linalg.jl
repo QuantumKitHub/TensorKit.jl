@@ -262,7 +262,7 @@ end
 function _norm(blockiter, p::Real, init::Number)
     if p == Inf
         return mapreduce(max, blockiter; init = init) do (c, b)
-            return isempty(b) ? init : oftype(init, LinearAlgebra.normInf(b))
+            return maximum(abs, b; init)
         end
     elseif p > 0 # finite positive p
         np = init
