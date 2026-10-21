@@ -2,7 +2,7 @@ using Adapt, AMDGPU
 using Test, TestExtras
 using TensorKit
 using LinearAlgebra: LinearAlgebra
-using MatrixAlgebraKit: DefaultAlgorithm, diagview
+using MatrixAlgebraKit: DefaultAlgorithm, Jacobi, PolarViaSVD, QRIteration, diagview
 const AMDGPUExt = Base.get_extension(TensorKit, :TensorKitAMDGPUExt)
 @assert !isnothing(AMDGPUExt) "Failed to load TensorKit - AMDGPU extension"
 const ROCTensorMap = getglobal(AMDGPUExt, :ROCTensorMap)
@@ -260,63 +260,73 @@ for V in spacelist
                         AMDGPU.rand(T, (V1 ⊗ V2), (V3 ⊗ V4 ⊗ V5)'), AMDGPU.rand(T, (V1 ⊗ V2 ⊗ V3)', (V4 ⊗ V5))',
                         DiagonalTensorMap(AMDGPU.rand(T, reduceddim(V1)), V1),
                     )
+                # rocSOLVER's batched gesvd (QRIteration, the default) can hit hipErrorIllegalAddress on the
+                # zero-padded ragged batches MatrixAlgebraKit builds, which poisons the HIP context for every later test,
+                # see https://github.com/ROCm/rocm-libraries/issues/12188
+                # use Jacobi (which does not support DiagonalTensorMap) until this is fixed
+                alg = t isa DiagonalTensorMap ? DefaultAlgorithm() : Jacobi()
 
-                u, s, vᴴ = @constinferred svd_full(t)
+                u, s, vᴴ = @constinferred svd_full(t, alg)
                 @test u * s * vᴴ ≈ t
                 @test isunitary(u)
                 @test isunitary(vᴴ)
 
-                u, s, vᴴ = @constinferred svd_full(t, DefaultAlgorithm())
-                @test u * s * vᴴ ≈ t
-                @test isunitary(u)
-                @test isunitary(vᴴ)
+                # the default algorithm is QRIteration, see above
+                # u, s, vᴴ = @constinferred svd_full(t, DefaultAlgorithm())
+                # @test u * s * vᴴ ≈ t
+                # @test isunitary(u)
+                # @test isunitary(vᴴ)
 
-                u, s, vᴴ = @constinferred svd_compact(t)
+                u, s, vᴴ = @constinferred svd_compact(t, alg)
                 @test u * s * vᴴ ≈ t
                 @test isisometric(u)
                 @test isposdef(s)
                 @test isisometric(vᴴ; side = :right)
 
-                u, s, vᴴ = @constinferred svd_compact(t, DefaultAlgorithm())
-                @test u * s * vᴴ ≈ t
-                @test isisometric(u)
-                @test isposdef(s)
-                @test isisometric(vᴴ; side = :right)
+                # the default algorithm is QRIteration, see above
+                # u, s, vᴴ = @constinferred svd_compact(t, DefaultAlgorithm())
+                # @test u * s * vᴴ ≈ t
+                # @test isisometric(u)
+                # @test isposdef(s)
+                # @test isisometric(vᴴ; side = :right)
 
-                s′ = @constinferred svd_vals(t)
+                s′ = @constinferred svd_vals(t, alg)
                 @test parent(s′) ≈ parent(diagview(s))
                 @test s′ isa TensorKit.SectorVector
 
-                s′ = @constinferred svd_vals(t, DefaultAlgorithm())
-                @test parent(s′) ≈ parent(diagview(s))
-                @test s′ isa TensorKit.SectorVector
+                # the default algorithm is QRIteration, see above
+                # s′ = @constinferred svd_vals(t, DefaultAlgorithm())
+                # @test parent(s′) ≈ parent(diagview(s))
+                # @test s′ isa TensorKit.SectorVector
 
                 s2 = @constinferred DiagonalTensorMap(s′)
                 @test s2 ≈ s
 
-                v, c = @constinferred left_orth(t; alg = :svd)
+                v, c = @constinferred left_orth(t; alg)
                 @test v * c ≈ t
                 @test isisometric(v)
 
-                c, vᴴ = @constinferred right_orth(t; alg = :svd)
+                c, vᴴ = @constinferred right_orth(t; alg)
                 @test c * vᴴ ≈ t
                 @test isisometric(vᴴ; side = :right)
 
-                N = @constinferred left_null(t; alg = :svd)
+                N = @constinferred left_null(t; alg = :svd, svd = alg)
                 @test isisometric(N)
                 @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
 
-                N = @constinferred left_null(t; trunc = (; atol = 100 * eps(norm(t))))
+                N = @constinferred left_null(t; trunc = (; atol = 100 * eps(norm(t))), svd = alg)
                 @test isisometric(N)
                 @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
 
-                Nᴴ = @constinferred right_null(t; alg = :svd)
-                @test isisometric(Nᴴ; side = :right)
-                @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
+                # right_null(t; alg = :svd, svd = alg) ignores `svd` and uses QRIteration
+                # uncomment once the ROCm bug above is fixed
+                # Nᴴ = @constinferred right_null(t; alg = :svd)
+                # @test isisometric(Nᴴ; side = :right)
+                # @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
 
-                Nᴴ = @constinferred right_null(t; trunc = (; atol = 100 * eps(norm(t))))
-                @test isisometric(Nᴴ; side = :right)
-                @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
+                # Nᴴ = @constinferred right_null(t; trunc = (; atol = 100 * eps(norm(t))))
+                # @test isisometric(Nᴴ; side = :right)
+                # @test norm(t * Nᴴ') ≈ 0 atol = 100 * eps(norm(t))
             end
 
             # empty tensor
@@ -345,6 +355,11 @@ for V in spacelist
         end
 
         @testset "truncated SVD" begin
+            # rocSOLVER's batched gesvd (QRIteration, the default) can hit hipErrorIllegalAddress on the
+            # zero-padded ragged batches MatrixAlgebraKit builds, which poisons the HIP context for every later test,
+            # see https://github.com/ROCm/rocm-libraries/issues/12188
+            # use Jacobi until this is fixed
+            alg = Jacobi()
             for T in eltypes,
                     t in (
                         AMDGPU.randn(T, W, W), AMDGPU.randn(T, W, W)',
@@ -355,22 +370,23 @@ for V in spacelist
 
                 @constinferred normalize!(t)
 
-                U, S, Vᴴ, ϵ = @constinferred svd_trunc(t; trunc = notrunc())
+                U, S, Vᴴ, ϵ = @constinferred svd_trunc(t; trunc = notrunc(), alg)
                 @test U * S * Vᴴ ≈ t
                 @test ϵ ≈ 0
                 @test isisometric(U)
                 @test isisometric(Vᴴ; side = :right)
 
-                U, S, Vᴴ, ϵ = @constinferred svd_trunc(t, DefaultAlgorithm(; trunc = notrunc()))
-                @test U * S * Vᴴ ≈ t
-                @test ϵ ≈ 0
-                @test isisometric(U)
-                @test isisometric(Vᴴ; side = :right)
+                # the default algorithm is QRIteration, see above
+                # U, S, Vᴴ, ϵ = @constinferred svd_trunc(t, DefaultAlgorithm(; trunc = notrunc()))
+                # @test U * S * Vᴴ ≈ t
+                # @test ϵ ≈ 0
+                # @test isisometric(U)
+                # @test isisometric(Vᴴ; side = :right)
 
                 # dimension of S is a float for IsingBimodule
                 nvals = round(Int, dim(domain(S)) / 2)
                 trunc = truncrank(nvals)
-                U1, S1, Vᴴ1, ϵ1 = @constinferred svd_trunc(t; trunc)
+                U1, S1, Vᴴ1, ϵ1 = @constinferred svd_trunc(t; trunc, alg)
                 @test t * Vᴴ1' ≈ U1 * S1
                 @test isisometric(U1)
                 @test isisometric(Vᴴ1; side = :right)
@@ -379,7 +395,7 @@ for V in spacelist
 
                 λ = minimum(diagview(S1))
                 trunc = trunctol(; atol = λ - 10eps(λ))
-                U2, S2, Vᴴ2, ϵ2 = @constinferred svd_trunc(t; trunc)
+                U2, S2, Vᴴ2, ϵ2 = @constinferred svd_trunc(t; trunc, alg)
                 @test t * Vᴴ2' ≈ U2 * S2
                 @test isisometric(U2)
                 @test isisometric(Vᴴ2; side = :right)
@@ -391,7 +407,7 @@ for V in spacelist
                 @test ϵ1 ≈ ϵ2
 
                 trunc = truncspace(space(S2, 1))
-                U3, S3, Vᴴ3, ϵ3 = @constinferred svd_trunc(t; trunc)
+                U3, S3, Vᴴ3, ϵ3 = @constinferred svd_trunc(t; trunc, alg)
                 @test t * Vᴴ3' ≈ U3 * S3
                 @test isisometric(U3)
                 @test isisometric(Vᴴ3; side = :right)
@@ -399,7 +415,7 @@ for V in spacelist
                 @test space(S3, 1) ≾ space(S2, 1)
 
                 for trunc in (truncerror(; atol = ϵ2), truncerror(; rtol = ϵ2 / norm(t)))
-                    U4, S4, Vᴴ4, ϵ4 = @constinferred svd_trunc(t; trunc)
+                    U4, S4, Vᴴ4, ϵ4 = @constinferred svd_trunc(t; trunc, alg)
                     @test t * Vᴴ4' ≈ U4 * S4
                     @test isisometric(U4)
                     @test isisometric(Vᴴ4; side = :right)
@@ -408,7 +424,7 @@ for V in spacelist
                 end
 
                 trunc = truncrank(nvals) & trunctol(; atol = λ - 10eps(λ))
-                U5, S5, Vᴴ5, ϵ5 = @constinferred svd_trunc(t; trunc)
+                U5, S5, Vᴴ5, ϵ5 = @constinferred svd_trunc(t; trunc, alg)
                 @test t * Vᴴ5' ≈ U5 * S5
                 @test isisometric(U5)
                 @test isisometric(Vᴴ5; side = :right)
@@ -470,7 +486,10 @@ for V in spacelist
                 @test V ≈ Ṽ
 
                 λ = minimum(real, parent(diagview(D)))
-                @test cond(Ṽ) ≈ one(real(T))
+                # cond calls svd_vals, which hits rocSOLVER's batched gesvd crash,
+                # see https://github.com/ROCm/rocm-libraries/issues/12188
+                # uncomment once this is fixed
+                # @test cond(Ṽ) ≈ one(real(T))
                 @test isposdef(t2) == isposdef(λ)
                 @test isposdef(t2 - λ * one(t2) + 0.1 * one(t2))
                 @test !isposdef(t2 - λ * one(t2) - 0.1 * one(t2))
@@ -488,7 +507,10 @@ for V in spacelist
                 @test d′ isa TensorKit.SectorVector
 
                 λ = minimum(real, parent(diagview(d)))
-                @test cond(v) ≈ one(real(T))
+                # cond calls svd_vals, which hits rocSOLVER's batched gesvd crash,
+                # see https://github.com/ROCm/rocm-libraries/issues/12188
+                # uncomment once this is fixed
+                # @test cond(v) ≈ one(real(T))
                 @test isposdef(t2) == isposdef(λ)
                 @test isposdef(t2 - λ * one(t) + 0.1 * one(t2))
                 @test !isposdef(t2 - λ * one(t) - 0.1 * one(t2))
@@ -503,46 +525,49 @@ for V in spacelist
             end
         end
 
-        @testset "Condition number and rank" begin
-            for T in eltypes,
-                    t in (
-                        AMDGPU.rand(T, W, W), AMDGPU.rand(T, W, W)',
-                        AMDGPU.rand(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)'), AMDGPU.rand(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5))',
-                        AMDGPU.rand(T, (V1 ⊗ V2), (V3 ⊗ V4 ⊗ V5)'), AMDGPU.rand(T, (V1 ⊗ V2 ⊗ V3)', (V4 ⊗ V5))',
-                        DiagonalTensorMap(AMDGPU.rand(T, reduceddim(V1)), V1),
-                    )
+        # rocSOLVER's batched gesvd (QRIteration) can hit hipErrorIllegalAddress on the zero-padded ragged
+        # batches MatrixAlgebraKit builds, which poisons the HIP context for every later test,
+        # see https://github.com/ROCm/rocm-libraries/issues/12188
+        # uncomment once this is fixed
+        # @testset "Condition number and rank" begin
+        #     for T in eltypes,
+        #             t in (
+        #                 AMDGPU.rand(T, W, W), AMDGPU.rand(T, W, W)',
+        #                 AMDGPU.rand(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)'), AMDGPU.rand(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5))',
+        #                 AMDGPU.rand(T, (V1 ⊗ V2), (V3 ⊗ V4 ⊗ V5)'), AMDGPU.rand(T, (V1 ⊗ V2 ⊗ V3)', (V4 ⊗ V5))',
+        #                 DiagonalTensorMap(AMDGPU.rand(T, reduceddim(V1)), V1),
+        #             )
 
-                d1, d2 = dim(codomain(t)), dim(domain(t))
-                r = rank(t)
-                @test r ≈ min(d1, d2)
-                @test typeof(r) == typeof(d1)
-                M = left_null(t)
-                @test @constinferred(rank(M)) + r ≈ d1
-                Mᴴ = right_null(t)
-                @test rank(Mᴴ) + r ≈ d2
-            end
-            for T in eltypes
-                u = unitary(T, V1 ⊗ V2, V1 ⊗ V2)
-                @test @constinferred(cond(u)) ≈ one(real(T))
-                @test @constinferred(rank(u)) == dim(V1 ⊗ V2)
-
-                t = AMDGPU.rand(T, zerospace(V1), W)
-                @test rank(t) == 0
-                t2 = AMDGPU.rand(T, zerospace(V1) * zerospace(V2), zerospace(V1) * zerospace(V2))
-                @test rank(t2) == 0
-                @test cond(t2) == 0.0
-            end
-            #=for T in eltypes, t in (
-                        AMDGPU.rand(T, W, W),
-                        AMDGPU.rand(T, W, W)',
-                    )
-                project_hermitian!(t)
-                vals = @constinferred LinearAlgebra.eigvals(t)
-                λmax = maximum(abs, parent(vals))
-                λmin = minimum(abs, parent(vals))
-                @test cond(t) ≈ λmax / λmin
-            end=# # ROCSOLVER doesn't provide geev
-        end
+        #         d1, d2 = dim(codomain(t)), dim(domain(t))
+        #         r = rank(t)
+        #         @test r ≈ min(d1, d2)
+        #         @test typeof(r) == typeof(d1)
+        #         M = left_null(t)
+        #         @test @constinferred(rank(M)) + r ≈ d1
+        #         Mᴴ = right_null(t)
+        #         @test rank(Mᴴ) + r ≈ d2
+        #     end
+        #     for T in eltypes
+        #         u = unitary(T, V1 ⊗ V2, V1 ⊗ V2)
+        #         @test @constinferred(cond(u)) ≈ one(real(T))
+        #         @test @constinferred(rank(u)) == dim(V1 ⊗ V2)
+        #         t = AMDGPU.rand(T, zerospace(V1), W)
+        #         @test rank(t) == 0
+        #         t2 = AMDGPU.rand(T, zerospace(V1) * zerospace(V2), zerospace(V1) * zerospace(V2))
+        #         @test rank(t2) == 0
+        #         @test cond(t2) == 0.0
+        #     end
+        #     #=for T in eltypes, t in (
+        #                 AMDGPU.rand(T, W, W),
+        #                 AMDGPU.rand(T, W, W)',
+        #             )
+        #         project_hermitian!(t)
+        #         vals = @constinferred LinearAlgebra.eigvals(t)
+        #         λmax = maximum(abs, parent(vals))
+        #         λmin = minimum(abs, parent(vals))
+        #         @test cond(t) ≈ λmax / λmin
+        #     end=# # ROCSOLVER doesn't provide geev
+        # end
 
         @testset "Hermitian projections" begin
             for T in eltypes,
@@ -588,6 +613,7 @@ for V in spacelist
         end
 
         @testset "Isometric projections" begin
+            alg = PolarViaSVD(QRIteration())
             for T in eltypes,
                     t in (
                         AMDGPU.randn(T, W, W),
@@ -595,25 +621,25 @@ for V in spacelist
                         AMDGPU.randn(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)'),
                         AMDGPU.randn(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5))',
                     )
-                t2 = project_isometric(t)
+                t2 = project_isometric(t, alg)
                 @test isisometric(t2)
                 t2′ = @constinferred project_isometric(t, DefaultAlgorithm())
                 @test isisometric(t2′)
                 @test t2′ * ((t2′)' * t) ≈ t
 
-                t3 = project_isometric(t2)
+                t3 = project_isometric(t2, alg)
                 @test t3 ≈ t2 # stability of the projection
                 @test t2 * (t2' * t) ≈ t
 
                 tc = similar(t)
-                t3 = @constinferred project_isometric!(copy!(tc, t), t2)
+                t3 = @constinferred project_isometric!(copy!(tc, t), t2, alg)
                 @test t3 === t2
                 @test isisometric(t2)
 
                 # test that t2 is closer to A then any other isometry
                 for k in 1:10
                     δt = AMDGPU.randn!(similar(t))
-                    t3 = project_isometric(t + δt / 100)
+                    t3 = project_isometric(t + δt / 100, alg)
                     @test norm(t - t3) > norm(t - t2)
                 end
             end
