@@ -337,6 +337,34 @@ function MAK.findtruncated_svd(values::SectorVector, strategy::TruncationUnion)
     return SectorDict{eltype(sectors), eltype(vals)}(sectors, vals)
 end
 
+# Degenerate values can occur in different blocks, for example when the sectors are related by
+# a symmetry, so groups of degenerate values are determined across all blocks simultaneously.
+function MAK.findtruncated(values::SectorVector, strategy::TruncationDegenerate)
+    return _findtruncated_degenerate(values, MAK.findtruncated(values, strategy.strategy), strategy)
+end
+function MAK.findtruncated_svd(values::SectorVector, strategy::TruncationDegenerate)
+    return _findtruncated_degenerate(values, MAK.findtruncated_svd(values, strategy.strategy), strategy)
+end
+
+function _findtruncated_degenerate(values::SectorVector, inds, strategy::TruncationDegenerate)
+    keep = similar(values, Bool)
+    keep_host = collect(parent(_ind_to_mask!(keep, inds)))
+    values_host = collect(parent(values))
+    perm = sortperm(values_host; by = abs, rev = true)
+    MAK._keep_degenerate!(keep_host, values_host, perm, strategy)
+    copyto!(parent(keep), keep_host)
+    return keep
+end
+
+_ind_to_mask!(keep::SectorVector{Bool}, inds::SectorVector{Bool}) = copyto!(keep, inds)
+function _ind_to_mask!(keep::SectorVector{Bool}, inds::SectorDict)
+    fill!(parent(keep), false)
+    for (c, ind) in pairs(inds)
+        keep[c][ind] .= true
+    end
+    return keep
+end
+
 # Truncation error
 # ----------------
 MAK.truncation_error(values::SectorVector, ind) = MAK.truncation_error!(copy(values), ind)
