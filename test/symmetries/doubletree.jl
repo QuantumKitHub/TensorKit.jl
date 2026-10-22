@@ -235,6 +235,26 @@ using TensorKitSectors
         end
     end
 
+    I <: ProductSector && FusionStyle(I) isa MultipleFusion && @testset "Double fusion tree: factorized product sector" begin
+        # the factorized manipulations agree with the manipulations of the full product sector
+        i0 = rand(1:(2N))
+        p = mod1.(i0 .+ (1:(2N)), 2N)
+        p′ = tuple(getindex.(Ref(vcat(1:N, (2N):-1:(N + 1))), p)...)
+        n = rand(0:(2N))
+        pt = (p′[1:n], p′[(2N):-1:(n + 1)])
+        results = [(transpose(src, pt), TK.fstranspose((src, pt)))]
+        if BraidingStyle(I) isa HasBraiding
+            p = (randperm(2N)...,)
+            pb = (p[1:n], p[(n + 1):(2N)])
+            levels = (ntuple(identity, N), ntuple(i -> i + N, N))
+            push!(results, (TK.braid(src, pb, levels), TK.fsbraid((src, pb, levels))))
+        end
+        for ((dst, U), (dst′, U′)) in results
+            @test fusiontrees(dst) == fusiontrees(dst′)
+            @test U ≈ U′
+        end
+    end
+
     @testset "Double fusion tree: planar trace" begin
         if FusionStyle(I) isa UniqueFusion
             f1, f1 = src
