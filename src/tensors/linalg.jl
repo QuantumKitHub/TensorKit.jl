@@ -256,12 +256,13 @@ LinearAlgebra.dot(t1::AbstractTensorMap, t2::AbstractTensorMap) = inner(t1, t2)
 
 function LinearAlgebra.norm(t::AbstractTensorMap, p::Real = 2)
     InnerProductStyle(t) === EuclideanInnerProduct() || throw_invalid_innerproduct(:norm)
-    return _norm(blocks(t), p, float(zero(real(scalartype(t)))))
+    init = float(zero(real(scalartype(t))))
+    return _norm(blocks(t), p, init)
 end
 function _norm(blockiter, p::Real, init::Number)
     if p == Inf
         return mapreduce(max, blockiter; init = init) do (c, b)
-            return isempty(b) ? init : oftype(init, LinearAlgebra.normInf(b))
+            return oftype(init, maximum(abs, b; init))
         end
     elseif p > 0 # finite positive p
         np = init
@@ -276,9 +277,13 @@ function _norm(blockiter, p::Real, init::Number)
 end
 function LinearAlgebra.norm(t::TensorMap, p::Real = 2)
     InnerProductStyle(t) === EuclideanInnerProduct() || throw_invalid_innerproduct(:norm)
+    init = float(zero(real(scalartype(t))))
     # performance specialization:
-    FusionStyle(sectortype(t)) isa UniqueFusion && return norm(t.data, p)
-    return _norm(blocks(t), p, float(zero(real(scalartype(t)))))
+    if FusionStyle(sectortype(t)) isa UniqueFusion
+        return p == Inf ? maximum(abs, t.data; init) : norm(t.data, p)
+    else
+        return _norm(blocks(t), p, init)
+    end
 end
 
 _default_rtol(t) = eps(real(float(scalartype(t)))) * min(dim(domain(t)), dim(codomain(t)))

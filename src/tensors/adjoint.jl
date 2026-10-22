@@ -53,6 +53,8 @@ end
 
 Adapt.adapt_structure(to, x::AdjointTensorMap) = adjoint(Adapt.adapt(to, parent(x)))
 
+LinearAlgebra.norm(t::AdjointTensorMap, p::Real = 2) = norm(parent(t), p)
+
 # Show
 #------
 function Base.showarg(io::IO, t::AdjointTensorMap, toplevel::Bool)
