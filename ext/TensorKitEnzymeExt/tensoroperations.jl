@@ -65,17 +65,17 @@ function EnzymeRules.reverse(
     Δα = pullback_dα(α, C, AB)
     Δβ = pullback_dβ(β, C, Cval)
 
-    if !is_inactive(A) && !is_inactive(C)
+    if !is_inactive(config, A) && !is_inactive(config, C)
         TensorKit.blas_contract_pullback_ΔA!(
             A.dval, C.dval, Aval, pA.val, Bval, pB.val, pAB.val, α.val, backend.val, allocator.val
         ) # this typically returns nothing
     end
-    if !is_inactive(B) && !is_inactive(C)
+    if !is_inactive(config, B) && !is_inactive(config, C)
         TensorKit.blas_contract_pullback_ΔB!(
             B.dval, C.dval, Aval, pA.val, Bval, pB.val, pAB.val, α.val, backend.val, allocator.val
         ) # this typically returns nothing
     end
-    !is_inactive(C) && pullback_dC!(C.dval, β.val) # this typically returns nothing
+    !is_inactive(config, C) && pullback_dC!(C.dval, β.val) # this typically returns nothing
     return nothing, nothing, nothing, nothing, nothing, nothing, Δα, Δβ, nothing, nothing
 end
 
