@@ -22,10 +22,10 @@ function EnzymeRules.augmented_primal(
         backend::Const,
         allocator::Const
     ) where {RT}
-    Ccache = isa(β, Const) || is_inactive(config, C) ? nothing : copy(C.val)
-    A_needs_cache = EnzymeRules.overwritten(config)[3] && !(typeof(B) <: Const) && !(typeof(C) <: Const) && !is_inactive(config, A)
+    Ccache = isa(β, Const) ? nothing : copy(C.val)
+    A_needs_cache = EnzymeRules.overwritten(config)[3] && !(typeof(B) <: Const) && !(typeof(C) <: Const)
     Acache = A_needs_cache ? copy(A.val) : nothing
-    B_needs_cache = EnzymeRules.overwritten(config)[5] && !(typeof(A) <: Const) && !(typeof(C) <: Const) && !is_inactive(config, B)
+    B_needs_cache = EnzymeRules.overwritten(config)[5] && !(typeof(A) <: Const) && !(typeof(C) <: Const)
     Bcache = B_needs_cache ? copy(B.val) : nothing
     AB = if !isa(α, Const)
         AB = TO.tensorcontract(A.val, pA.val, false, B.val, pB.val, false, pAB.val, One(), backend.val, allocator.val)
@@ -65,17 +65,17 @@ function EnzymeRules.reverse(
     Δα = pullback_dα(α, C, AB)
     Δβ = pullback_dβ(β, C, Cval)
 
-    if !is_inactive(A) && !is_inactive(C)
+    if !isa(A, Const)
         TensorKit.blas_contract_pullback_ΔA!(
             A.dval, C.dval, Aval, pA.val, Bval, pB.val, pAB.val, α.val, backend.val, allocator.val
         ) # this typically returns nothing
     end
-    if !is_inactive(B) && !is_inactive(C)
+    if !isa(B, Const)
         TensorKit.blas_contract_pullback_ΔB!(
             B.dval, C.dval, Aval, pA.val, Bval, pB.val, pAB.val, α.val, backend.val, allocator.val
         ) # this typically returns nothing
     end
-    !is_inactive(C) && pullback_dC!(C.dval, β.val) # this typically returns nothing
+    !isa(C, Const) && pullback_dC!(C.dval, β.val) # this typically returns nothing
     return nothing, nothing, nothing, nothing, nothing, nothing, Δα, Δβ, nothing, nothing
 end
 
