@@ -1,5 +1,6 @@
 using Adapt, AMDGPU
 using Test, TestExtras
+using Random
 using TensorKit, Combinatorics
 ad = adapt(Array)
 const AMDGPUExt = Base.get_extension(TensorKit, :TensorKitAMDGPUExt)
@@ -9,6 +10,8 @@ const rocrand = getglobal(AMDGPUExt, :rocrand)
 const rocrandn = getglobal(AMDGPUExt, :rocrandn)
 const rocrand! = getglobal(AMDGPUExt, :rocrand!)
 using AMDGPU: rand as rocrand, rand! as rocrand!, randn as rocrandn, randn! as rocrandn!
+
+Random.seed!(123456)
 
 spacelist = default_spacelist(fast_tests)
 

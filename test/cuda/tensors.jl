@@ -1,10 +1,13 @@
 using Adapt, CUDA, CUDA.cuRAND, cuTENSOR
 using Test, TestExtras
+using Random
 using TensorKit, Combinatorics
 ad = adapt(Array)
 const CUDAExt = Base.get_extension(TensorKit, :TensorKitCUDAExt)
 @assert !isnothing(CUDAExt)
 const CuTensorMap = getglobal(CUDAExt, :CuTensorMap)
+
+Random.seed!(123456)
 
 spacelist = default_spacelist(fast_tests)
 
