@@ -376,6 +376,9 @@ function Base.show(io::IO, t::FusionTree{I}) where {I <: Sector}
     end
 end
 
+# blocks of products of at least two sectors, see `product_transform`
+const ProductSectorBlock = FusionTreeBlock{<:ProductSector{<:Tuple{Any, Any, Vararg}}}
+
 # Fusion tree iterators
 include("iterator.jl")
 
@@ -383,6 +386,89 @@ include("iterator.jl")
 include("basic_manipulations.jl")
 include("duality_manipulations.jl")
 include("braiding_manipulations.jl")
+
+# Product sectors
+# ---------------
+# The fusion trees of a `ProductSector` are pairs of fusion trees of its first factor (head) and of
+# its remaining factors (tail), such that the manipulations of a block are the Kronecker products
+# of the manipulations of the head and tail blocks.
+
+headsector(s::ProductSector) = first(s.sectors)
+tailsector(s::ProductSector{<:Tuple{Any, Any}}) = last(s.sectors)
+tailsector(s::ProductSector) = ProductSector(Base.tail(s.sectors))
+
+# the vertex labels of a product are the linear indices of the head and tail labels, tail first
+vertexlines(f::FusionTree) = (f.uncoupled[1], f.innerlines..., f.coupled)
+vertexmultiplicities(f::FusionTree) =
+    ntuple(i -> Nsymbol(vertexlines(f)[i], f.uncoupled[i + 1], vertexlines(f)[i + 1]), length(f) - 1)
+
+maptree(proj, f::FusionTree, vertices) = FusionTree(
+    map(proj, f.uncoupled), proj(f.coupled), f.isdual, map(proj, f.innerlines), vertices
+)
+function headtail(f::FusionTree)
+    vertices_h = vertices_t = f.vertices
+    if FusionStyle(f) isa GenericFusion && length(f) > 1
+        ns = vertexmultiplicities(maptree(tailsector, f, map(Returns(1), f.vertices)))
+        vertices_h = map((μ, n) -> div(μ - 1, n) + 1, f.vertices, ns)
+        vertices_t = map((μ, n) -> mod(μ - 1, n) + 1, f.vertices, ns)
+    end
+    return maptree(headsector, f, vertices_h), maptree(tailsector, f, vertices_t)
+end
+function ⊠(h::FusionTree, t::FusionTree)
+    vertices = h.vertices
+    if FusionStyle(h.coupled ⊠ t.coupled) isa GenericFusion && length(h) > 1
+        vertices = map((μ, ν, n) -> ν + (μ - 1) * n, h.vertices, t.vertices, vertexmultiplicities(t))
+    end
+    return FusionTree(
+        map(⊠, h.uncoupled, t.uncoupled), h.coupled ⊠ t.coupled, h.isdual,
+        map(⊠, h.innerlines, t.innerlines), vertices
+    )
+end
+
+# the distinct tree pairs of one factor, and the position of every tree pair among them
+function distincttrees(trees, othertrees)
+    FusionStyle(first(trees[1])) isa UniqueFusion && return trees[1:1], fill(1, length(trees))
+    FusionStyle(first(othertrees[1])) isa UniqueFusion && return trees, eachindex(trees)
+    distinct = unique(trees)
+    return distinct, indexin(trees, distinct)
+end
+
+# apply `transform` to the block `src` through its head and tail factors, with the resulting block
+# in canonical order and the recoupling matrix with scalar type `T`
+function product_transform(transform::F, ::Type{T}, src::FusionTreeBlock{I}) where {F, T, I}
+    trees = map(fusiontrees(src)) do (f₁, f₂)
+        h₁, t₁ = headtail(f₁)
+        h₂, t₂ = headtail(f₂)
+        return (h₁, h₂), (t₁, t₂)
+    end
+    trees_h, trees_t = map(first, trees), map(last, trees)
+    src_h, cols_h = distincttrees(trees_h, trees_t)
+    src_t, cols_t = distincttrees(trees_t, trees_h)
+    dst_h, U_h = transform(FusionTreeBlock(src_h))
+    dst_t, U_t = transform(FusionTreeBlock(src_t))
+
+    dst = FusionTreeBlock(
+        vec([(h₁ ⊠ t₁, h₂ ⊠ t₂) for (h₁, h₂) in fusiontrees(dst_h), (t₁, t₂) in fusiontrees(dst_t)])
+    )
+    U = Matrix{T}(undef, length(dst), length(src))
+    for (col, i, j) in zip(axes(U, 2), cols_h, cols_t)
+        row = 0
+        for jt in axes(U_t, 1), jh in axes(U_h, 1)
+            U[row += 1, col] = U_h[jh, i] * U_t[jt, j]
+        end
+    end
+
+    canonical = FusionTreeBlock{I}(dst.uncoupled, dst.isdual; sizehint = length(dst))
+    fusiontrees(canonical) == fusiontrees(dst) && return dst => U
+    # trees missing from `dst` (for incomplete `src`, as in `planar_trace`) get zero rows
+    indexmap = treeindex_map(dst)
+    U′ = zeros(T, length(canonical), length(src))
+    for (row, f) in enumerate(fusiontrees(canonical))
+        i = get(indexmap, treeindex_data(f), 0)
+        i == 0 || (U′[row, :] = view(U, i, :))
+    end
+    return canonical => U′
+end
 
 # auxiliary routines
 # _abelianinner: generate the inner indices for given outer indices in the abelian case
