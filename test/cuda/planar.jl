@@ -1,6 +1,7 @@
 using Test, TestExtras
 using Adapt
 using TensorOperations, CUDA, cuTENSOR
+using Random
 using TensorKit
 using TensorKit: type_repr
 using TensorKit: PlanarTrivial, ℙ
@@ -9,6 +10,8 @@ using TensorKit: planaradd!, planartrace!, planarcontract!
 const CUDAExt = Base.get_extension(TensorKit, :TensorKitCUDAExt)
 @assert !isnothing(CUDAExt)
 const CuTensorMap = getglobal(CUDAExt, :CuTensorMap)
+
+Random.seed!(123456)
 
 spacelist = default_spacelist(fast_tests)
 

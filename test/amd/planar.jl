@@ -1,6 +1,7 @@
 using Test, TestExtras
 using Adapt
 using TensorOperations, AMDGPU
+using Random
 using TensorKit
 using TensorKit: type_repr
 using TensorKit: PlanarTrivial, ℙ
@@ -9,6 +10,8 @@ using TensorKit: planaradd!, planartrace!, planarcontract!
 const AMDGPUExt = Base.get_extension(TensorKit, :TensorKitAMDGPUExt)
 @assert !isnothing(AMDGPUExt)
 const ROCTensorMap = getglobal(AMDGPUExt, :ROCTensorMap)
+
+Random.seed!(123456)
 
 spacelist = default_spacelist(fast_tests)
 

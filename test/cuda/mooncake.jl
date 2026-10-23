@@ -4,6 +4,7 @@ using Mooncake
 using Random
 using CUDA, cuTENSOR, Adapt
 
+Random.seed!(123456)
 rng = Random.default_rng()
 
 spacelist = ad_spacelist(fast_tests)

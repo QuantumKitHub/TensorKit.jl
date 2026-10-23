@@ -2,12 +2,15 @@ using Adapt, CUDA, CUDA.cuRAND, cuTENSOR
 using Test, TestExtras
 using TensorKit
 using LinearAlgebra: LinearAlgebra
+using Random
 using MatrixAlgebraKit: DefaultAlgorithm, Jacobi, diagview
 const CUDAExt = Base.get_extension(TensorKit, :TensorKitCUDAExt)
 @assert !isnothing(CUDAExt) "Failed to load TensorKit - CUDA extension"
 const CuTensorMap = getglobal(CUDAExt, :CuTensorMap)
 
 using CUDA.CUBLAS
+
+Random.seed!(123456)
 
 spacelist = factorization_spacelist(fast_tests)
 eltypes = (Float32, ComplexF64)
