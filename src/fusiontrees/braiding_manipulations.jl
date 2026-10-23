@@ -69,7 +69,7 @@ function _artin_braid_single(f::FusionTree{I, N}, i, inv::Bool) where {I, N}
     a = inner_extended[i - 1]
     c = inner_extended[i]
     e = inner_extended[i + 1]
-    c′ = FusionStyle(I) isa UniqueFusion ? only(a ⊗ d) : only(_artin_channels(a, b, d, e))
+    c′ = _artin_channel(a, b, d, e)
     coeff = oftype(
         oneT,
         if inv
@@ -89,13 +89,24 @@ function _artin_channels(a::I, b::I, d::I, e::I) where {I <: Sector}
     UnitStyle(I) isa SimpleUnit || return intersect(a ⊗ d, e ⊗ conj(b))
     return Iterators.filter(c′ -> !iszero(Nsymbol(c′, b, e)), a ⊗ d)
 end
+# the only such line, for a fusion tree that braids into a single one
+_artin_channel(a, b, d, e) = _artin_channel(FusionStyle(a), a, b, d, e)
+_artin_channel(::UniqueFusion, a, b, d, e) = only(a ⊗ d)
+_artin_channel(::FusionStyle, a, b, d, e) = first(_artin_channels(a, b, d, e))
 
-function artin_braid(
-        src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false, canonical::Val = Val(true),
-        buffers = (nothing, nothing) # a tree vector and a matrix that may be overwritten
+function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where {I, N}
+    n = length(src) # braiding a complete block keeps its size
+    return artin_braid!(Matrix{sectorscalartype(I)}(undef, n, n), src, i; inv) # zeroed by `artin_braid!`
+end
+# `U` is overwritten with the braid matrix of `src`, a complete block; the trees of the result are
+# in canonical order or in the order in which they are produced, which recycles `trees` if given
+function artin_braid!(
+        U::AbstractMatrix, src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false,
+        canonical::Val = Val(true), trees = nothing
     ) where {I, N}
     1 <= i < N || throw(ArgumentError("Cannot swap outputs i=$i and i+1 out of only $N outputs"))
-    isempty(src) && return src => zeros(sectorscalartype(I), 0, 0)
+    size(U) == (length(src), length(src)) || throw(DimensionMismatch(lazy"braid matrix of size $(size(U)) for a block of $(length(src)) trees"))
+    isempty(src) && return src => U
 
     uncoupled = src.uncoupled[1]
     a, b = uncoupled[i], uncoupled[i + 1]
@@ -106,12 +117,10 @@ function artin_braid(
     isdual = src.isdual[1]
     isdual′ = TupleTools.setindex(isdual, isdual[i], i + 1)
     isdual′ = TupleTools.setindex(isdual′, isdual[i + 1], i)
-    rows = TreeRows(I, (uncoupled′, ()), (isdual′, ()), length(src), canonical, buffers[1])
+    rows = TreeRows(I, (uncoupled′, ()), (isdual′, ()), length(src), canonical, trees)
 
     oneT = one(sectorscalartype(I))
-
-    U = buffers[2] isa Matrix{typeof(oneT)} ? fill!(buffers[2], zero(oneT)) :
-        zeros(sectorscalartype(I), max(length(rows.trees), length(src)), length(src)) # see `bendright`
+    fill!(U, zero(oneT))
 
     if isunit(a) || isunit(b) # braiding with trivial sector: simple and always possible
         for (col, (f, f₂)) in enumerate(fusiontrees(src))
@@ -354,14 +363,15 @@ end
 
         # the swaps keep the size of the block, so that the tree vector and the matrices of the
         # previous step are recycled (except for the trees of `src`, which are part of the key)
-        buffers = (nothing, nothing)
+        trees = nothing
+        U_tmp = Matrix{sectorscalartype(I)}(undef, length(dst), length(dst))
         U_spare = nothing
         braid_style = BraidingStyle(I)
         for s in permutation2swaps(p)
             _check_levels(braid_style, levels, s)
             inv = levels[s] > levels[s + 1]
-            dst′, U_tmp = artin_braid(dst, s; inv, canonical = Val(false), buffers)
-            buffers = (dst.trees === src.trees ? nothing : dst.trees, U_tmp)
+            dst′, _ = artin_braid!(U_tmp, dst, s; inv, canonical = Val(false), trees)
+            trees = dst.trees === src.trees ? nothing : dst.trees
             dst = dst′
             U_spare, U = U, U_spare isa typeof(U_tmp) ? mul!(U_spare, U_tmp, U) : U_tmp * U
             l = levels[s]
