@@ -377,7 +377,7 @@ function Base.show(io::IO, t::FusionTree{I}) where {I <: Sector}
 end
 
 # blocks of products of at least two sectors, see `product_transform`
-const ProductSectorBlock = FusionTreeBlock{<:ProductSector{<:Tuple{Any, Any, Vararg}}}
+const ProductSectorBlock = FusionTreeBlock{<:ProductSector{<:Tuple{Sector, Sector, Vararg{Sector}}}}
 
 # Fusion tree iterators
 include("iterator.jl")
@@ -394,8 +394,11 @@ include("braiding_manipulations.jl")
 # of the manipulations of the head and tail blocks.
 
 headsector(s::ProductSector) = first(s.sectors)
-tailsector(s::ProductSector{<:Tuple{Any, Any}}) = last(s.sectors)
+tailsector(s::ProductSector{<:Tuple{Sector, Sector}}) = last(s.sectors)
 tailsector(s::ProductSector) = ProductSector(Base.tail(s.sectors))
+headsectortype(::Type{ProductSector{T}}) where {T} = fieldtype(T, 1)
+tailsectortype(::Type{ProductSector{Tuple{H, T}}}) where {H <: Sector, T <: Sector} = T
+tailsectortype(::Type{ProductSector{T}}) where {T} = ProductSector{Base.tuple_type_tail(T)}
 
 # the vertex labels of a product are the linear indices of the head and tail labels, tail first
 vertexlines(f::FusionTree) = (f.uncoupled[1], f.innerlines..., f.coupled)
@@ -425,6 +428,22 @@ function ⊠(h::FusionTree, t::FusionTree)
     )
 end
 
+# the canonical order of a product block is that of the Kronecker product of the head and tail
+# blocks, with the head running fastest
+productblock(head::FusionTreeBlock, tail::FusionTreeBlock) = FusionTreeBlock(
+    vec([(h₁ ⊠ t₁, h₂ ⊠ t₂) for (h₁, h₂) in fusiontrees(head), (t₁, t₂) in fusiontrees(tail)])
+)
+function FusionTreeBlock{I}(
+        uncoupled::Tuple{NTuple{N₁, I}, NTuple{N₂, I}},
+        isdual::Tuple{NTuple{N₁, Bool}, NTuple{N₂, Bool}};
+        sizehint::Int = 0
+    ) where {I <: ProductSector{<:Tuple{Sector, Sector, Vararg{Sector}}}, N₁, N₂}
+    head = FusionTreeBlock{headsectortype(I)}(map.(headsector, uncoupled), isdual)
+    isempty(head) && return FusionTreeBlock(Vector{fusiontreetype(I, N₁, N₂)}())
+    tail = FusionTreeBlock{tailsectortype(I)}(map.(tailsector, uncoupled), isdual)
+    return productblock(head, tail)
+end
+
 # the distinct tree pairs of one factor, and the position of every tree pair among them
 function distincttrees(trees, othertrees)
     FusionStyle(first(trees[1])) isa UniqueFusion && return trees[1:1], fill(1, length(trees))
@@ -433,8 +452,8 @@ function distincttrees(trees, othertrees)
     return distinct, indexin(trees, distinct)
 end
 
-# apply `transform` to the block `src` through its head and tail factors, with the resulting block
-# in canonical order and the recoupling matrix with scalar type `T`
+# apply `transform` to the block `src` through its head and tail factors, with the recoupling
+# matrix with scalar type `T`
 function product_transform(transform::F, ::Type{T}, src::FusionTreeBlock{I}) where {F, T, I}
     trees = map(fusiontrees(src)) do (f₁, f₂)
         h₁, t₁ = headtail(f₁)
@@ -447,9 +466,7 @@ function product_transform(transform::F, ::Type{T}, src::FusionTreeBlock{I}) whe
     dst_h, U_h = transform(FusionTreeBlock(src_h))
     dst_t, U_t = transform(FusionTreeBlock(src_t))
 
-    dst = FusionTreeBlock(
-        vec([(h₁ ⊠ t₁, h₂ ⊠ t₂) for (h₁, h₂) in fusiontrees(dst_h), (t₁, t₂) in fusiontrees(dst_t)])
-    )
+    dst = productblock(dst_h, dst_t)
     U = Matrix{T}(undef, length(dst), length(src))
     for (col, i, j) in zip(axes(U, 2), cols_h, cols_t)
         row = 0
@@ -457,17 +474,7 @@ function product_transform(transform::F, ::Type{T}, src::FusionTreeBlock{I}) whe
             U[row += 1, col] = U_h[jh, i] * U_t[jt, j]
         end
     end
-
-    canonical = FusionTreeBlock{I}(dst.uncoupled, dst.isdual; sizehint = length(dst))
-    fusiontrees(canonical) == fusiontrees(dst) && return dst => U
-    # trees missing from `dst` (for incomplete `src`, as in `planar_trace`) get zero rows
-    indexmap = treeindex_map(dst)
-    U′ = zeros(T, length(canonical), length(src))
-    for (row, f) in enumerate(fusiontrees(canonical))
-        i = get(indexmap, treeindex_data(f), 0)
-        i == 0 || (U′[row, :] = view(U, i, :))
-    end
-    return canonical => U′
+    return dst => U
 end
 
 # auxiliary routines
