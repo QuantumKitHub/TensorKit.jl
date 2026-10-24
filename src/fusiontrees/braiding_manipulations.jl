@@ -287,7 +287,7 @@ function braid(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple, leve
     return fsbraid((src, p, levels))
 end
 function braid(src::ProductSectorBlock, p::Index2Tuple, levels::Index2Tuple)
-    isempty(src) && return fsbraid((src, p, levels))
+    (isempty(src) || FusionStyle(src) isa UniqueFusion) && return fsbraid((src, p, levels))
     return product_transform(sectorscalartype(sectortype(src)), src) do x
         return braid(x, p, levels)
     end
