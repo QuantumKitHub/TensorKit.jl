@@ -287,7 +287,7 @@ function braid(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple, leve
     return fsbraid((src, p, levels))
 end
 function braid(src::ProductSectorBlock, p::Index2Tuple, levels::Index2Tuple)
-    (isempty(src) || FusionStyle(src) isa UniqueFusion) && return fsbraid((src, p, levels))
+    isempty(src) && return fsbraid((src, p, levels))
     return product_transform(sectorscalartype(sectortype(src)), src) do x
         return braid(x, p, levels)
     end
@@ -318,10 +318,6 @@ end
         return (f₁′, f₂′) => coeff1 * coeff2 * coeff3
     else
         src, (p1, p2), (l1, l2) = key
-        if FusionStyle(I) isa UniqueFusion && length(src) == 1 # a single tree pair
-            f, coeff = fsbraid((only(fusiontrees(src)), (p1, p2), (l1, l2)))
-            return FusionTreeBlock([f]) => fill(coeff, 1, 1)
-        end
 
         p = linearizepermutation(p1, p2, numout(src), numin(src))
         levels = (l1..., reverse(l2)...)
