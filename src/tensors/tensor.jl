@@ -2,12 +2,12 @@
 # general tensor implementation with arbitrary symmetries
 #==========================================================#
 """
-    struct TensorMap{T, S<:IndexSpace, N₁, N₂, A<:DenseVector{T}} <: AbstractTensorMap{T, S, N₁, N₂}
+    struct TensorMap{T<:Number, S<:IndexSpace, N₁, N₂, A<:DenseVector{T}} <: AbstractTensorMap{T, S, N₁, N₂}
 
 Specific subtype of [`AbstractTensorMap`](@ref) for representing tensor maps (morphisms in
 a tensor category), where the data is stored in a dense vector.
 """
-struct TensorMap{T, S <: IndexSpace, N₁, N₂, A <: DenseVector{T}} <: AbstractTensorMap{T, S, N₁, N₂}
+struct TensorMap{T <: Number, S <: IndexSpace, N₁, N₂, A <: DenseVector{T}} <: AbstractTensorMap{T, S, N₁, N₂}
     data::A
     space::TensorMapSpace{S, N₁, N₂}
 

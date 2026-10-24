@@ -1,6 +1,6 @@
 # DiagonalTensorMap
 #==========================================================#
-struct DiagonalTensorMap{T, S <: IndexSpace, A <: DenseVector{T}} <: AbstractTensorMap{T, S, 1, 1}
+struct DiagonalTensorMap{T <: Number, S <: IndexSpace, A <: DenseVector{T}} <: AbstractTensorMap{T, S, 1, 1}
     data::A
     domain::S # equals codomain
 
