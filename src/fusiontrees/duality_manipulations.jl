@@ -526,6 +526,12 @@ function Base.transpose(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tu
     iscyclicpermutation(p′) || throw(ArgumentError("invalid cyclic or planar permutation p = $p"))
     return fstranspose((src, p))
 end
+function Base.transpose(src::ProductSectorBlock, p::Index2Tuple)
+    (isempty(src) || FusionStyle(src) isa UniqueFusion) && return fstranspose((src, p))
+    return product_transform(fusionscalartype(sectortype(src)), src) do x
+        return transpose(x, p)
+    end
+end
 
 const FSPTransposeKey{I, N₁, N₂} = Tuple{FusionTreePair{I}, Index2Tuple{N₁, N₂}}
 const FSBTransposeKey{I, N₁, N₂} = Tuple{FusionTreeBlock{I}, Index2Tuple{N₁, N₂}}
@@ -543,6 +549,10 @@ end
 
 @cached function fstranspose(key::K)::_fsdicttype(K) where {I, N₁, N₂, K <: Union{FSPTransposeKey{I, N₁, N₂}, FSBTransposeKey{I, N₁, N₂}}}
     src, (p1, p2) = key
+    if K <: FSBTransposeKey && FusionStyle(I) isa UniqueFusion && length(src) == 1 # a single tree pair
+        f, coeff = fstranspose((only(fusiontrees(src)), (p1, p2)))
+        return FusionTreeBlock([f]) => fill(coeff, 1, 1)
+    end
 
     N = N₁ + N₂
     p = linearizepermutation(p1, p2, numout(src), numin(src))
