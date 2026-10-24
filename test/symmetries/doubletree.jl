@@ -235,6 +235,31 @@ using TensorKitSectors
         end
     end
 
+    FusionStyle(I) isa UniqueFusion || !(BraidingStyle(I) isa HasBraiding) ||
+        @testset "Double fusion tree: braiding a block with a single tree" begin
+        a, b = random_fusion(I, Val(2))
+        cs = filter(c -> Nsymbol(a, b, c) == 1, collect(a ⊗ b))
+        if !isempty(cs)
+            src1 = FusionTreeBlock{I}(((a, b), (rand(cs),)), ((rand(Bool), rand(Bool)), (rand(Bool),)))
+            @test length(src1) == 1
+            for n in 0:3
+                p = (randperm(3)...,)
+                p1, p2 = p[1:n], p[(n + 1):3]
+                ip = invperm(p)
+                ilevels = TupleTools.getindices((1, 2, 3), p)
+                dst, U = @constinferred TensorKit.braid(src1, (p1, p2), ((1, 2), (3,)))
+                @test length(dst) == 1 && size(U) == (1, 1)
+                dst′, U′ = @constinferred TensorKit.braid(dst, (ip[1:2], ip[3:3]), (ilevels[1:n], ilevels[(n + 1):3]))
+                @test dst′ == src1
+                @test _isone(U * U′)
+                if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
+                    A1 = fusiontensor(only(fusiontrees(src1)))
+                    @test permutedims(A1, (p1..., p2...)) ≈ only(U) * fusiontensor(only(fusiontrees(dst)))
+                end
+            end
+        end
+    end
+
     @testset "Double fusion tree: planar trace" begin
         if FusionStyle(I) isa UniqueFusion
             f1, f1 = src
