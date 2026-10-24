@@ -1,6 +1,6 @@
 # DiagonalTensorMap
 #==========================================================#
-struct DiagonalTensorMap{T, S <: IndexSpace, A <: DenseVector{T}} <: AbstractTensorMap{T, S, 1, 1}
+struct DiagonalTensorMap{T <: Number, S <: IndexSpace, A <: DenseVector{T}} <: AbstractTensorMap{T, S, 1, 1}
     data::A
     domain::S # equals codomain
 
@@ -33,9 +33,9 @@ storagetype(::Type{<:DiagonalTensorMap{T, S, A}}) where {T, S, A <: DenseVector{
 #--------------------------------
 # undef constructors
 """
-    DiagonalTensorMap{T}(undef, domain::S) where {T,S<:IndexSpace}
+    DiagonalTensorMap{T}(undef, domain::S) where {T, S <: IndexSpace}
     # expert mode: select storage type `A`
-    DiagonalTensorMap{T,S,A}(undef, domain::S) where {T,S<:IndexSpace,A<:DenseVector{T}}
+    DiagonalTensorMap{T, S, A}(undef, domain::S) where {T, S <: IndexSpace, A <: DenseVector{T}}
 
 Construct a `DiagonalTensorMap` with uninitialized data.
 """
