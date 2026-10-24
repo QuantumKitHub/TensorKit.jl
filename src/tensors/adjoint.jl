@@ -1,12 +1,12 @@
 # AdjointTensorMap: lazy adjoint
 #==========================================================#
 """
-    struct AdjointTensorMap{T, S, N₁, N₂, TT<:AbstractTensorMap} <: AbstractTensorMap{T, S, N₁, N₂}
+    struct AdjointTensorMap{T<:Number, S<:IndexSpace, N₁, N₂, TT<:AbstractTensorMap} <: AbstractTensorMap{T, S, N₁, N₂}
 
 Specific subtype of [`AbstractTensorMap`](@ref) that is a lazy wrapper for representing the
 adjoint of an instance of [`AbstractTensorMap`](@ref).
 """
-struct AdjointTensorMap{T, S, N₁, N₂, TT <: AbstractTensorMap{T, S, N₂, N₁}} <:
+struct AdjointTensorMap{T <: Number, S <: IndexSpace, N₁, N₂, TT <: AbstractTensorMap{T, S, N₂, N₁}} <:
     AbstractTensorMap{T, S, N₁, N₂}
     parent::TT
 end
