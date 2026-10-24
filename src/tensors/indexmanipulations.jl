@@ -646,15 +646,22 @@ get_num_transformer_threads(t::AbstractTensorMap) =
 function add_transform_kernel!(
         dst, src, p, conjsrc::Bool, transformer::UniqueTreeTransformer, α, β, backend, allocator, ntasks::Int
     )
-    (; coeffs, structs_dst, structs_src, work_offsets) = transformer
-    taskforeach(_workchunks(work_offsets, ntasks), ntasks) do entries
-        for i in entries
-            dst_i = _dstblock(dst, structs_dst[i])
-            src_i, p_i = _srcblock(src, structs_src[i], size(dst_i), p)
-            @timeit_debug GLOBAL_TIMER "dense: tensoradd" TO.tensoradd!(
-                dst_i, src_i, p_i, conjsrc, α * coeffs[i], β, backend, allocator
-            )
-        end
+    taskforeach(_workchunks(transformer.work_offsets, ntasks), ntasks) do entries
+        _add_transform_entries!(dst, src, p, conjsrc, transformer, entries, α, β, backend, allocator)
+    end
+    return nothing
+end
+
+function _add_transform_entries!(
+        dst, src, p, conjsrc::Bool, transformer::UniqueTreeTransformer, entries, α, β, backend, allocator
+    )
+    (; coeffs, structs_dst, structs_src) = transformer
+    for i in entries
+        dst_i = _dstblock(dst, structs_dst[i])
+        src_i, p_i = _srcblock(src, structs_src[i], size(dst_i), p)
+        @timeit_debug GLOBAL_TIMER "dense: tensoradd" TO.tensoradd!(
+            dst_i, src_i, p_i, conjsrc, α * coeffs[i], β, backend, allocator
+        )
     end
     return nothing
 end
@@ -688,19 +695,27 @@ _bufferstoragetype(iter::SubblockIterator) = storagetype(iter)
 function add_transform_kernel!(
         dst, src, p, conjsrc::Bool, transformer::GenericTreeTransformer, α, β, backend, allocator, ntasks::Int
     )
-    add_transform_kernel!(dst, src, p, conjsrc, transformer.unique, α, β, backend, allocator, ntasks)
+    (; unique) = transformer
     nblocks = length(transformer.tree_offsets) - 1
-    nblocks == 0 && return nothing
+    nblocks == 0 && return add_transform_kernel!(dst, src, p, conjsrc, unique, α, β, backend, allocator, ntasks)
+    # A single pass over all work, such that tasks do not wait for each other in between: the
+    # multi-tree blocks, sorted by decreasing weight, followed by the chunks of single-tree blocks.
+    items = [(true, b:b) for b in 1:nblocks]
+    append!(items, ((false, entries) for entries in _workchunks(unique.work_offsets, ntasks)))
     # One max-sized workspace per task (a single one that is reused by all blocks when
     # serial), allocated on the calling thread before any task spawns, so that also
     # allocators that are not thread-safe can be used.
     bufsize = buffersize(transformer)
     cp = TO.allocator_checkpoint!(allocator)
     @timeit_debug GLOBAL_TIMER "alloc: buffers" buffers = [
-        TO.tensoralloc(_bufferstoragetype(dst), bufsize, Val(true), allocator) for _ in 1:min(nblocks, ntasks)
+        TO.tensoralloc(_bufferstoragetype(dst), bufsize, Val(true), allocator) for _ in 1:min(length(items), ntasks)
     ]
-    taskforeach(1:nblocks, buffers) do b, buffer
-        _add_transform_block!(dst, src, p, conjsrc, transformer, b, buffer, α, β, backend, allocator)
+    taskforeach(items, buffers) do (multitree, r), buffer
+        if multitree
+            _add_transform_block!(dst, src, p, conjsrc, transformer, first(r), buffer, α, β, backend, allocator)
+        else
+            _add_transform_entries!(dst, src, p, conjsrc, unique, r, α, β, backend, allocator)
+        end
     end
     foreach(Base.Fix2(TO.tensorfree!, allocator), buffers)
     TO.allocator_reset!(allocator, cp)
