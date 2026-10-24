@@ -527,7 +527,7 @@ function Base.transpose(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tu
     return fstranspose((src, p))
 end
 function Base.transpose(src::ProductSectorBlock, p::Index2Tuple)
-    isempty(src) && return fstranspose((src, p))
+    (isempty(src) || FusionStyle(src) isa UniqueFusion) && return fstranspose((src, p))
     return product_transform(fusionscalartype(sectortype(src)), src) do x
         return transpose(x, p)
     end
