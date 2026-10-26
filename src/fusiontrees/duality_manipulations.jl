@@ -528,9 +528,10 @@ function Base.transpose(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tu
 end
 function Base.transpose(src::ProductSectorBlock, p::Index2Tuple)
     isempty(src) && return fstranspose((src, p))
+    # the return type is asserted since inference gives up on the recursion on older Julia versions
     return product_transform(fusionscalartype(sectortype(src)), src) do x
         return transpose(x, p)
-    end
+    end::_fsdicttype(typeof((src, p)))
 end
 
 const FSPTransposeKey{I, N₁, N₂} = Tuple{FusionTreePair{I}, Index2Tuple{N₁, N₂}}
