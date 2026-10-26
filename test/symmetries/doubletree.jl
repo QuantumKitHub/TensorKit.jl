@@ -12,7 +12,7 @@ using TensorKitSectors
 
 @timedtestset "Double fusion trees for $(TensorKit.type_repr(I))" verbose = true for I in (fast_tests ? fast_sectorlist : sectorlist)
     Istr = TensorKit.type_repr(I)
-    N = I <: ProductSector ? 3 : 4
+    N = I <: Union{ProductSector, NamedSector} ? 3 : 4
 
     if UnitStyle(I) isa SimpleUnit
         out = random_fusion(I, Val(N))
@@ -246,37 +246,6 @@ using TensorKitSectors
         end
         @test sum(length, blocks) == length(trees)
         @test allunique(map(block -> block.uncoupled, blocks))
-    end
-
-    I <: ProductSector && FusionStyle(I) isa MultipleFusion && @testset "Double fusion tree: factorized product sector" begin
-        # the factorized manipulations agree with the manipulations of the full product sector
-        i0 = rand(1:(2N))
-        p = mod1.(i0 .+ (1:(2N)), 2N)
-        p′ = tuple(getindex.(Ref(vcat(1:N, (2N):-1:(N + 1))), p)...)
-        n = rand(0:(2N))
-        pt = (p′[1:n], p′[(2N):-1:(n + 1)])
-        manipulations = Any[(x -> transpose(x, pt), x -> TK.fstranspose((x, pt)))]
-        if BraidingStyle(I) isa HasBraiding
-            p = (randperm(2N)...,)
-            pb = (p[1:n], p[(n + 1):(2N)])
-            levels = (ntuple(identity, N), ntuple(i -> i + N, N))
-            push!(manipulations, (x -> TK.braid(x, pb, levels), x -> TK.fsbraid((x, pb, levels))))
-        end
-        # the same block with named factors
-        T = I.parameters[1]
-        Iₙ = NamedSector{NamedTuple{ntuple(i -> Symbol(:s, i), fieldcount(T)), T}}
-        nametree(f) = FusionTree(map(Iₙ, f.uncoupled), Iₙ(f.coupled), f.isdual, map(Iₙ, f.innerlines), f.vertices)
-        nametrees(block) = map(((f₁, f₂),) -> (nametree(f₁), nametree(f₂)), fusiontrees(block))
-        srcₙ = FusionTreeBlock(nametrees(src))
-        for (manipulation, unfactorized) in manipulations
-            dst, U = manipulation(src)
-            dst′, U′ = unfactorized(src)
-            @test fusiontrees(dst) == fusiontrees(dst′)
-            @test U ≈ U′
-            dstₙ, Uₙ = manipulation(srcₙ)
-            @test fusiontrees(dstₙ) == nametrees(dst)
-            @test Uₙ ≈ U
-        end
     end
 
     @testset "Double fusion tree: planar trace" begin

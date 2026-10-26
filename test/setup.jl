@@ -158,7 +158,8 @@ uniquefusionsectorlist = (
 )
 simplefusionsectorlist = (
     CU1Irrep, SU2Irrep, FibonacciAnyon, IsingAnyon,
-    FermionParity ⊠ U1Irrep ⊠ SU2Irrep, FermionParity ⊠ SU2Irrep ⊠ SU2Irrep,
+    @NamedSector{f::FermionParity, s::SU2Irrep, c::U1Irrep}, # named Hubbard-like
+    FermionParity ⊠ SU2Irrep ⊠ SU2Irrep,
     ZNElement{6, 3} ⊠ SU2Irrep, # complex F symbols, anyonic braiding
     Z3Element{1} ⊠ FibonacciAnyon ⊠ FibonacciAnyon, # complex F symbols, no braiding
 )

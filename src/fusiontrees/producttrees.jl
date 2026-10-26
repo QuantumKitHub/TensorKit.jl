@@ -53,16 +53,11 @@ end
 unpartition(::Type{ProductSector{T}}, g, a) where {T} =
     ProductSector{T}(interleave(T, factortuple(g), factortuple(a)))
 
-headsector(s::ProductSector) =
-    ismixedproduct(typeof(s)) ? first(partitionfactors(s)) : firstfactor(s)
-tailsector(s::ProductSector) =
-    ismixedproduct(typeof(s)) ? last(partitionfactors(s)) : otherfactors(s)
-headsectortype(::Type{I}) where {I <: ProductSector} =
-    ismixedproduct(I) ? first(partitionfactortypes(I)) : firstfactortype(I)
-tailsectortype(::Type{I}) where {I <: ProductSector} =
-    ismixedproduct(I) ? last(partitionfactortypes(I)) : otherfactorstype(I)
-joinsectors(::Type{I}, h, t) where {I <: ProductSector} =
-    ismixedproduct(I) ? unpartition(I, h, t) : h ⊠ t
+headsector(s::ProductSector) = ismixedproduct(typeof(s)) ? first(partitionfactors(s)) : firstfactor(s)
+tailsector(s::ProductSector) = ismixedproduct(typeof(s)) ? last(partitionfactors(s)) : otherfactors(s)
+headsectortype(::Type{I}) where {I <: ProductSector} = ismixedproduct(I) ? first(partitionfactortypes(I)) : firstfactortype(I)
+tailsectortype(::Type{I}) where {I <: ProductSector} = ismixedproduct(I) ? last(partitionfactortypes(I)) : otherfactorstype(I)
+joinsectors(::Type{I}, h, t) where {I <: ProductSector} = ismixedproduct(I) ? unpartition(I, h, t) : h ⊠ t
 
 # named products are split and joined as the corresponding `ProductSector`
 productsectortype(::Type{NamedSector{NamedTuple{K, T}}}) where {K, T} = ProductSector{T}
@@ -90,9 +85,10 @@ function headtail(f::FusionTree)
     return maptree(headsector, f, vertices_h), maptree(tailsector, f, vertices_t)
 end
 function jointree(::Type{I}, h::FusionTree, t::FusionTree) where {I}
-    vertices = h.vertices
-    if FusionStyle(I) isa GenericFusion && length(h) > 1
+    vertices = if FusionStyle(I) isa GenericFusion && length(h) > 1
         vertices = map((μ, ν, n) -> ν + (μ - 1) * n, h.vertices, t.vertices, vertexmultiplicities(t))
+    else
+        h.vertices
     end
     lift(a, b) = joinsectors(I, a, b)
     return fusiontreetype(I, length(h))(
@@ -103,14 +99,11 @@ end
 
 # the canonical order of a product block is that of the Kronecker product of the head and tail
 # blocks, with the head running fastest
-productblock(::Type{I}, head::FusionTreeBlock, tail::FusionTreeBlock) where {I} = FusionTreeBlock(
-    vec(
-        [
-            (jointree(I, h₁, t₁), jointree(I, h₂, t₂))
-                for (h₁, h₂) in fusiontrees(head), (t₁, t₂) in fusiontrees(tail)
-        ]
-    )
-)
+function productblock(::Type{I}, head::FusionTreeBlock, tail::FusionTreeBlock) where {I}
+    trees = [(jointree(I, h₁, t₁), jointree(I, h₂, t₂)) for (h₁, h₂) in fusiontrees(head), (t₁, t₂) in fusiontrees(tail)]
+    return FusionTreeBlock(vec(trees))
+end
+
 function FusionTreeBlock{I}(
         uncoupled::Tuple{NTuple{N₁, I}, NTuple{N₂, I}},
         isdual::Tuple{NTuple{N₁, Bool}, NTuple{N₂, Bool}};
@@ -118,9 +111,11 @@ function FusionTreeBlock{I}(
     ) where {I <: ProductSectorType, N₁, N₂}
     # a block of `UniqueFusion` sectors has a single tree pair, in any order
     FusionStyle(I) isa UniqueFusion && return fusiontreeblock(I, uncoupled, isdual; sizehint)
+
     # the tail holds the `UniqueFusion` factors of a mixed product, which are cheaper to construct
     tail = FusionTreeBlock{tailsectortype(I)}(map.(tailsector, uncoupled), isdual)
     isempty(tail) && return FusionTreeBlock(Vector{fusiontreetype(I, N₁, N₂)}())
+
     head = FusionTreeBlock{headsectortype(I)}(map.(headsector, uncoupled), isdual)
     return productblock(I, head, tail)
 end
@@ -141,8 +136,7 @@ function factor_transform(transform::F, ::Type{T}, src::FusionTreeBlock) where {
     return FusionTreeBlock(map(first, dst)) => LinearAlgebra.diagm(T[last(d) for d in dst])
 end
 
-# apply `transform` to the block `src` through its head and tail, with the recoupling
-# matrix with scalar type `T`
+# apply `transform` to the block `src` through its head and tail, with the recoupling matrix with scalar type `T`
 function product_transform(transform::F, ::Type{T}, src::FusionTreeBlock{I}) where {F, T, I}
     if FusionStyle(I) isa UniqueFusion
         return factor_transform(transform, T, src)
