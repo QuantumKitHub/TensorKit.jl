@@ -655,9 +655,23 @@ function add_transform_kernel!(
         dst::TransformSubblocks, src::TransformSubblocks, p, conjsrc::Bool,
         transformer::TreeTransformer, α, β, backend, allocator, ntasks::Int
     )
+    return _add_transform_blocks!(dst, src, p, conjsrc, transformer, transformer.data, α, β, backend, allocator, ntasks)
+end
+# on the CPU, the small subblocks of `TensorMap`s are transformed in groups, the others one by one
+function add_transform_kernel!(
+        dst::StridedSubblocks{<:CPUStorage}, src::StridedSubblocks{<:CPUStorage}, p, conjsrc::Bool,
+        transformer::TreeTransformer, α, β, backend, allocator, ntasks::Int
+    )
+    _add_subblockgroups!(dst.data, src.data, conjsrc, transformer.groups, α, β, ntasks)
+    large = view(transformer.data, transformer.large)
+    return _add_transform_blocks!(dst, src, p, conjsrc, transformer, large, α, β, backend, allocator, ntasks)
+end
+
+function _add_transform_blocks!(dst, src, p, conjsrc::Bool, transformer, data, α, β, backend, allocator, ntasks::Int)
+    isempty(data) && return nothing
     bufsize = buffersize(transformer)
     if bufsize == 0 # no recoupling needed: every block consists of a single tree
-        taskforeach(transformer.data, ntasks) do (U, inds_dst, inds_src)
+        taskforeach(data, ntasks) do (U, inds_dst, inds_src)
             _add_transform_block!(dst, src, p, conjsrc, U, inds_dst, inds_src, nothing, α, β, backend, allocator)
         end
     else
@@ -667,9 +681,9 @@ function add_transform_kernel!(
         cp = TO.allocator_checkpoint!(allocator)
         @timeit_debug GLOBAL_TIMER "alloc: buffers" buffers = [
             TO.tensoralloc(storagetype(dst), bufsize, Val(true), allocator)
-                for _ in 1:min(length(transformer.data), ntasks)
+                for _ in 1:min(length(data), ntasks)
         ]
-        taskforeach(transformer.data, buffers) do (U, inds_dst, inds_src), buffer
+        taskforeach(data, buffers) do (U, inds_dst, inds_src), buffer
             _add_transform_block!(dst, src, p, conjsrc, U, inds_dst, inds_src, buffer, α, β, backend, allocator)
         end
         foreach(Base.Fix2(TO.tensorfree!, allocator), buffers)
@@ -716,6 +730,49 @@ function _add_transform_block!(
                 dst[idst], sreshape(view(buffer_dst, :, j), sz_src),
                 p, false, α, β, backend, allocator
             )
+        end
+    end
+    return nothing
+end
+
+function _add_subblockgroups!(A, B, conjsrc::Bool, groups, α, β, ntasks::Int)
+    return conjsrc ? _add_subblockgroups!(A, B, conj, groups, α, β, ntasks) :
+        _add_subblockgroups!(A, B, identity, groups, α, β, ntasks)
+end
+function _add_subblockgroups!(A, B, op, groups, α, β, ntasks::Int)
+    if ntasks == 1
+        foreach(group -> _add_subblockgroup!(A, B, op, group, eachindex(group.coeff), α, β), groups)
+    else
+        # tasks handle disjoint ranges of destination offsets, and thus disjoint subblocks
+        nchunks = 4 * ntasks
+        taskforeach(1:nchunks, ntasks) do c
+            lo, hi = div((c - 1) * length(A), nchunks), div(c * length(A), nchunks)
+            for group in groups
+                terms = searchsortedfirst(group.offset_dst, lo):(searchsortedfirst(group.offset_dst, hi) - 1)
+                _add_subblockgroup!(A, B, op, group, terms, α, β)
+            end
+        end
+    end
+    return nothing
+end
+
+# the metadata of the groups is built together with the transformer, which ensures the indices are inbounds
+function _add_subblockgroup!(A, B, op, group::SubblockGroup, terms, α, β)
+    (; rel_dst, rel_src, offset_dst, offset_src, coeff) = group
+    @inbounds for n in terms
+        o₁, o₂, a = offset_dst[n], offset_src[n], α * coeff[n]
+        if group.accumulate
+            @simd for k in eachindex(rel_dst)
+                A[o₁ + rel_dst[k]] += a * op(B[o₂ + rel_src[k]])
+            end
+        elseif iszero(β)
+            @simd for k in eachindex(rel_dst)
+                A[o₁ + rel_dst[k]] = a * op(B[o₂ + rel_src[k]])
+            end
+        else
+            @simd for k in eachindex(rel_dst)
+                A[o₁ + rel_dst[k]] = a * op(B[o₂ + rel_src[k]]) + β * A[o₁ + rel_dst[k]]
+            end
         end
     end
     return nothing
