@@ -19,8 +19,8 @@ firstfactortype(::Type{ProductSector{T}}) where {T} = fieldtype(T, 1)
 otherfactorstype(::Type{ProductSector{Tuple{H, T}}}) where {H <: Sector, T <: Sector} = T
 otherfactorstype(::Type{ProductSector{T}}) where {T} = ProductSector{Base.tuple_type_tail(T)}
 
-Base.@assume_effects :foldable function ismixedproduct(::Type{I}) where {I <: ProductSector}
-    isunique = map(S -> FusionStyle(S) isa UniqueFusion, TensorKitSectors._sectors(I))
+Base.@assume_effects :foldable function ismixedproduct(::Type{ProductSector{T}}) where {T}
+    isunique = map(S -> FusionStyle(S) isa UniqueFusion, fieldtypes(T))
     return any(isunique) && !all(isunique)
 end
 
@@ -67,7 +67,8 @@ headsectortype(::Type{I}) where {I <: NamedSector} = headsectortype(productsecto
 tailsectortype(::Type{I}) where {I <: NamedSector} = tailsectortype(productsectortype(I))
 joinsectors(::Type{I}, h, t) where {I <: NamedSector} = I(joinsectors(productsectortype(I), h, t))
 
-# the vertex labels of a product are the linear indices of the head and tail labels, tail first
+# the vertex labels of a product are the linear indices of the head and tail labels, with the tail
+# running fastest, such that a `UniqueFusion` tail leaves the labels of the head unchanged
 vertexlines(f::FusionTree) = (f.uncoupled[1], f.innerlines..., f.coupled)
 vertexmultiplicities(f::FusionTree) =
     ntuple(i -> Nsymbol(vertexlines(f)[i], f.uncoupled[i + 1], vertexlines(f)[i + 1]), length(f) - 1)
@@ -77,7 +78,9 @@ maptree(proj, f::FusionTree, vertices) = FusionTree(
 )
 function headtail(f::FusionTree)
     vertices_h = vertices_t = f.vertices
-    if FusionStyle(f) isa GenericFusion && length(f) > 1
+    if FusionStyle(tailsectortype(sectortype(f))) isa UniqueFusion
+        vertices_t = map(Returns(1), f.vertices)
+    elseif FusionStyle(f) isa GenericFusion && length(f) > 1
         ns = vertexmultiplicities(maptree(tailsector, f, map(Returns(1), f.vertices)))
         vertices_h = map((μ, n) -> div(μ - 1, n) + 1, f.vertices, ns)
         vertices_t = map((μ, n) -> mod(μ - 1, n) + 1, f.vertices, ns)
@@ -85,8 +88,8 @@ function headtail(f::FusionTree)
     return maptree(headsector, f, vertices_h), maptree(tailsector, f, vertices_t)
 end
 function jointree(::Type{I}, h::FusionTree, t::FusionTree) where {I}
-    vertices = if FusionStyle(I) isa GenericFusion && length(h) > 1
-        vertices = map((μ, ν, n) -> ν + (μ - 1) * n, h.vertices, t.vertices, vertexmultiplicities(t))
+    vertices = if FusionStyle(I) isa GenericFusion && length(h) > 1 && !(FusionStyle(t) isa UniqueFusion)
+        map((μ, ν, n) -> ν + (μ - 1) * n, h.vertices, t.vertices, vertexmultiplicities(t))
     else
         h.vertices
     end
@@ -109,7 +112,7 @@ function FusionTreeBlock{I}(
         isdual::Tuple{NTuple{N₁, Bool}, NTuple{N₂, Bool}};
         sizehint::Int = 0
     ) where {I <: ProductSectorType, N₁, N₂}
-    # a block of `UniqueFusion` sectors has a single tree pair, in any order
+    # blocks of `UniqueFusion` sectors are enumerated directly
     FusionStyle(I) isa UniqueFusion && return fusiontreeblock(I, uncoupled, isdual; sizehint)
 
     # the tail holds the `UniqueFusion` factors of a mixed product, which are cheaper to construct
