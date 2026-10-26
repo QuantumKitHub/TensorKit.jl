@@ -235,3 +235,14 @@ for V in spacelist
     end
     TensorKit.empty_globalcaches!()
 end
+
+@timedtestset "Permutations with small and large subblocks" begin
+    # subblocks up to `SUBBLOCKGROUP_MAXLENGTH` entries are transformed in groups, larger ones one by one
+    V = Vect[SU2Irrep](0 => 6, 1 // 2 => 6, 1 => 1)
+    t = rand(ComplexF64, V ⊗ V ⊗ V ← V)
+    @test maximum(length ∘ last, subblocks(t)) > TensorKit.SUBBLOCKGROUP_MAXLENGTH
+    a = convert(Array, t)
+    for p in (((1, 4), (2, 3)), ((3, 1, 4), (2,)))
+        @test convert(Array, permute(t, p)) ≈ permutedims(a, (p[1]..., p[2]...))
+    end
+end

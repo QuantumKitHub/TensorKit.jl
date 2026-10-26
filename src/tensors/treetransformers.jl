@@ -117,7 +117,9 @@ function UniqueTreeTransformer(::Type{A}, transform, p, Vdst::HomSpace, Vsrc::Ho
 
     structure_dst = degeneracystructure(Vdst).subblockstructure
     structure_src = degeneracystructure(Vsrc).subblockstructure
-    groups, large = subblockgroups(T, data, structure_dst, structure_src, linearize(p))
+    groups, large = @timeit_debug GLOBAL_TIMER "bookkeeping: subblock groups" subblockgroups(
+        T, data, structure_dst, structure_src, linearize(p)
+    )
     transformer = UniqueTreeTransformer(data, structure_dst, structure_src, groups, large)
 
     Δt = Base.time() - t₀
@@ -170,7 +172,9 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst::HomSpace, Vsrc::H
 
     # sort by (approximate) weight to facilitate multi-threading strategies
     @timeit_debug GLOBAL_TIMER "bookkeeping: sort" Base.permute!(data, sortperm(weights; rev = true))
-    groups, large = subblockgroups(T, data, structure_dst, structure_src, linearize(p))
+    groups, large = @timeit_debug GLOBAL_TIMER "bookkeeping: subblock groups" subblockgroups(
+        T, data, structure_dst, structure_src, linearize(p)
+    )
     transformer = GenericTreeTransformer{T, numind(Vdst)}(data, structure_dst, structure_src, groups, large)
 
     Δt = Base.time() - t₀

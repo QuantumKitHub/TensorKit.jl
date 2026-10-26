@@ -662,7 +662,9 @@ function add_transform_kernel!(
         dst::StridedSubblocks{<:CPUStorage}, src::StridedSubblocks{<:CPUStorage}, p, conjsrc::Bool,
         transformer::TreeTransformer, α, β, backend, allocator, ntasks::Int
     )
-    _add_subblockgroups!(dst.data, src.data, conjsrc, transformer.groups, α, β, ntasks)
+    @timeit_debug GLOBAL_TIMER "dense: subblock groups" _add_subblockgroups!(
+        dst.data, src.data, conjsrc, transformer.groups, α, β, ntasks
+    )
     large = view(transformer.data, transformer.large)
     return _add_transform_blocks!(dst, src, p, conjsrc, transformer, large, α, β, backend, allocator, ntasks)
 end
