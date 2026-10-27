@@ -27,18 +27,18 @@ _sectortuple(s::Sector) = (s,)
 # select the entries at compile-time positions, which keeps heterogeneous tuples inferable
 @generated _getentries(t::Tuple, ::Val{P}) where {P} = Expr(:tuple, (:(t[$i]) for i in P)...)
 
-function productparts(s::ProductSector)
+function deconstructsector(s::ProductSector)
     positions₁, positions₂ = _partpositions(typeof(s))
     return _sectorproduct(_getentries(s.sectors, Val(positions₁))),
         _sectorproduct(_getentries(s.sectors, Val(positions₂)))
 end
-Base.@assume_effects :foldable function productpartstypes(::Type{ProductSector{T}}) where {T}
+Base.@assume_effects :foldable function deconstructsectortype(::Type{ProductSector{T}}) where {T}
     return map(_partpositions(ProductSector{T})) do positions
         return length(positions) == 1 ? fieldtype(T, only(positions)) :
             ProductSector{Tuple{map(i -> fieldtype(T, i), positions)...}}
     end
 end
-function _joinparts(::Type{ProductSector{T}}, s₁::Sector, s₂::Sector) where {T}
+function reconstructsector(::Type{ProductSector{T}}, s₁::Sector, s₂::Sector) where {T}
     sectors = (_sectortuple(s₁)..., _sectortuple(s₂)...)
     positions = TupleTools.invperm(TupleTools.vcat(_partpositions(ProductSector{T})...))
     return ProductSector{T}(_getentries(sectors, Val(positions)))
@@ -46,10 +46,10 @@ end
 
 # named products are split and joined as the corresponding `ProductSector`
 _productsectortype(::Type{NamedSector{NamedTuple{K, T}}}) where {K, T} = ProductSector{T}
-productparts(s::NamedSector) = productparts(ProductSector(s))
-productpartstypes(::Type{I}) where {I <: NamedSector} = productpartstypes(_productsectortype(I))
-_joinparts(::Type{I}, s₁::Sector, s₂::Sector) where {I <: NamedSector} =
-    I(_joinparts(_productsectortype(I), s₁, s₂))
+deconstructsector(s::NamedSector) = deconstructsector(ProductSector(s))
+deconstructsectortype(::Type{I}) where {I <: NamedSector} = deconstructsectortype(_productsectortype(I))
+reconstructsector(::Type{I}, s₁::Sector, s₂::Sector) where {I <: NamedSector} =
+    I(reconstructsector(_productsectortype(I), s₁, s₂))
 
 # the vertex labels of a product are the linear indices of the labels of its parts, with the second
 # part running fastest, such that a `UniqueFusion` second part leaves the labels of the first unchanged
@@ -60,24 +60,25 @@ _vertexmultiplicities(f::FusionTree) =
 _maptree(proj, f::FusionTree, vertices) = FusionTree(
     map(proj, f.uncoupled), proj(f.coupled), f.isdual, map(proj, f.innerlines), vertices
 )
-function productparts(f::FusionTree)
+function deconstructtree(f::FusionTree)
     vertices₁ = vertices₂ = f.vertices
-    if FusionStyle(last(productpartstypes(sectortype(f)))) isa UniqueFusion
+    if FusionStyle(last(deconstructsectortype(sectortype(f)))) isa UniqueFusion
         vertices₂ = map(Returns(1), f.vertices)
     elseif FusionStyle(f) isa GenericFusion && length(f) > 1
-        ns = _vertexmultiplicities(_maptree(last ∘ productparts, f, map(Returns(1), f.vertices)))
+        ns = _vertexmultiplicities(_maptree(last ∘ deconstructsector, f, map(Returns(1), f.vertices)))
         vertices₁ = map((μ, n) -> div(μ - 1, n) + 1, f.vertices, ns)
         vertices₂ = map((μ, n) -> mod(μ - 1, n) + 1, f.vertices, ns)
     end
-    return _maptree(first ∘ productparts, f, vertices₁), _maptree(last ∘ productparts, f, vertices₂)
+    return _maptree(first ∘ deconstructsector, f, vertices₁),
+        _maptree(last ∘ deconstructsector, f, vertices₂)
 end
-function _joinparts(::Type{I}, f₁::FusionTree, f₂::FusionTree) where {I}
+function reconstructtree(::Type{I}, f₁::FusionTree, f₂::FusionTree) where {I}
     vertices = if FusionStyle(I) isa GenericFusion && length(f₁) > 1 && !(FusionStyle(f₂) isa UniqueFusion)
         map((μ, ν, n) -> ν + (μ - 1) * n, f₁.vertices, f₂.vertices, _vertexmultiplicities(f₂))
     else
         f₁.vertices
     end
-    join(a, b) = _joinparts(I, a, b)
+    join(a, b) = reconstructsector(I, a, b)
     return fusiontreetype(I, length(f₁))(
         map(join, f₁.uncoupled, f₂.uncoupled), join(f₁.coupled, f₂.coupled), f₁.isdual,
         map(join, f₁.innerlines, f₂.innerlines), vertices
@@ -88,7 +89,7 @@ end
 # parts, with the first part running fastest
 function productblock(::Type{I}, block₁::FusionTreeBlock, block₂::FusionTreeBlock) where {I}
     trees = [
-        (_joinparts(I, f₁, g₁), _joinparts(I, f₂, g₂))
+        (reconstructtree(I, f₁, g₁), reconstructtree(I, f₂, g₂))
             for (f₁, f₂) in fusiontrees(block₁), (g₁, g₂) in fusiontrees(block₂)
     ]
     return FusionTreeBlock(vec(trees))
@@ -103,11 +104,11 @@ function FusionTreeBlock{I}(
     FusionStyle(I) isa UniqueFusion && return fusiontreeblock(I, uncoupled, isdual; sizehint)
 
     # the second part holds the `UniqueFusion` sectors of a mixed product, which are cheaper to construct
-    I₁, I₂ = productpartstypes(I)
-    block₂ = FusionTreeBlock{I₂}(map.(last ∘ productparts, uncoupled), isdual)
+    I₁, I₂ = deconstructsectortype(I)
+    block₂ = FusionTreeBlock{I₂}(map.(last ∘ deconstructsector, uncoupled), isdual)
     isempty(block₂) && return FusionTreeBlock(Vector{fusiontreetype(I, N₁, N₂)}())
 
-    block₁ = FusionTreeBlock{I₁}(map.(first ∘ productparts, uncoupled), isdual)
+    block₁ = FusionTreeBlock{I₁}(map.(first ∘ deconstructsector, uncoupled), isdual)
     return productblock(I, block₁, block₂)
 end
 
@@ -117,7 +118,7 @@ function _distincttrees(trees)
     return distinct, indexin(trees, distinct)
 end
 # the tree pairs of the two parts of a tree pair
-_partstrees((f₁, f₂)) = map(tuple, productparts(f₁), productparts(f₂))
+_deconstructtrees((f₁, f₂)) = map(tuple, deconstructtree(f₁), deconstructtree(f₂))
 
 # apply `transform` to the block `src`, where every tree pair of a `UniqueFusion` block maps to a
 # single tree pair
@@ -131,19 +132,19 @@ end
 function product_transform(transform::F, ::Type{T}, src::FusionTreeBlock{I}) where {F, T, I}
     if FusionStyle(I) isa UniqueFusion
         return _unique_transform(transform, T, src)
-    elseif FusionStyle(last(productpartstypes(I))) isa UniqueFusion && numind(src) > 0
+    elseif FusionStyle(last(deconstructsectortype(I))) isa UniqueFusion && numind(src) > 0
         # the second part holds the `UniqueFusion` sectors of a mixed product, with a single tree pair
-        (g₁, g₂), coeff = transform(last(_partstrees(first(fusiontrees(src)))))
-        dst₁, U₁ = transform(FusionTreeBlock(map(first ∘ _partstrees, fusiontrees(src))))
+        (g₁, g₂), coeff = transform(last(_deconstructtrees(first(fusiontrees(src)))))
+        dst₁, U₁ = transform(FusionTreeBlock(map(first ∘ _deconstructtrees, fusiontrees(src))))
         dst = FusionTreeBlock(
-            map(((f₁, f₂),) -> (_joinparts(I, f₁, g₁), _joinparts(I, f₂, g₂)), fusiontrees(dst₁))
+            map(((f₁, f₂),) -> (reconstructtree(I, f₁, g₁), reconstructtree(I, f₂, g₂)), fusiontrees(dst₁))
         )
         U = Matrix{T}(undef, size(U₁))
         U .= coeff .* U₁
         return dst => U
     end
-    src₁, cols₁ = _distincttrees(map(first ∘ _partstrees, fusiontrees(src)))
-    src₂, cols₂ = _distincttrees(map(last ∘ _partstrees, fusiontrees(src)))
+    src₁, cols₁ = _distincttrees(map(first ∘ _deconstructtrees, fusiontrees(src)))
+    src₂, cols₂ = _distincttrees(map(last ∘ _deconstructtrees, fusiontrees(src)))
     dst₁, U₁ = _unique_transform(transform, T, FusionTreeBlock(src₁))
     dst₂, U₂ = _unique_transform(transform, T, FusionTreeBlock(src₂))
 
