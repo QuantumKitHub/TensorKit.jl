@@ -1,109 +1,96 @@
 # Product sectors
 # ---------------
-# FusionTree manipulations for `ProductSector` are done factor-by-factor: transformation matrices are
-# computed by kronecker product of the individual ones.
-# For efficiency we separate all `UniqueFusion` factors and handle these together, while handling the
-# rest one-by-one.
+# Fusion tree manipulations of a product sector are computed from those of two parts of the product,
+# as the Kronecker product of their recoupling matrices.
 
-# products of at least two sectors, also with named factors
-const MultiSectorTuple = Tuple{Sector, Sector, Vararg{Sector}}
+# products of at least two sectors, also with names
+const _MultiSectorTuple = Tuple{Sector, Sector, Vararg{Sector}}
 const ProductSectorType = Union{
-    ProductSector{<:MultiSectorTuple}, NamedSector{<:NamedTuple{<:Any, <:MultiSectorTuple}},
+    ProductSector{<:_MultiSectorTuple}, NamedSector{<:NamedTuple{<:Any, <:_MultiSectorTuple}},
 }
 const ProductSectorBlock = FusionTreeBlock{<:ProductSectorType}
 
-firstfactor(s::ProductSector) = first(s.sectors)
-otherfactors(s::ProductSector{<:Tuple{Sector, Sector}}) = last(s.sectors)
-otherfactors(s::ProductSector) = ProductSector(Base.tail(s.sectors))
-firstfactortype(::Type{ProductSector{T}}) where {T} = fieldtype(T, 1)
-otherfactorstype(::Type{ProductSector{Tuple{H, T}}}) where {H <: Sector, T <: Sector} = T
-otherfactorstype(::Type{ProductSector{T}}) where {T} = ProductSector{Base.tuple_type_tail(T)}
+# The two parts of a product are its non-`UniqueFusion` and its `UniqueFusion` sectors if it has both,
+# and otherwise its first and its remaining sectors, on which we recurse.
+Base.@assume_effects :foldable function _partpositions(::Type{ProductSector{T}}) where {T}
+    positions = ntuple(identity, fieldcount(T))
+    isunique = map(i -> FusionStyle(fieldtype(T, i)) isa UniqueFusion, positions)
+    any(isunique) && !all(isunique) &&
+        return Base.filter(i -> !isunique[i], positions), Base.filter(i -> isunique[i], positions)
+    return (first(positions),), Base.tail(positions)
+end
+# parts with a single sector are not wrapped in a `ProductSector`, to share the caches of that sector
+_sectorproduct(sectors::Tuple{Sector}) = only(sectors)
+_sectorproduct(sectors::Tuple) = ProductSector(sectors)
+_sectortuple(s::ProductSector) = s.sectors
+_sectortuple(s::Sector) = (s,)
+# select the entries at compile-time positions, which keeps heterogeneous tuples inferable
+@generated _getentries(t::Tuple, ::Val{P}) where {P} = Expr(:tuple, (:(t[$i]) for i in P)...)
 
-Base.@assume_effects :foldable function ismixedproduct(::Type{ProductSector{T}}) where {T}
-    isunique = map(S -> FusionStyle(S) isa UniqueFusion, fieldtypes(T))
-    return any(isunique) && !all(isunique)
+function productparts(s::ProductSector)
+    positions₁, positions₂ = _partpositions(typeof(s))
+    return _sectorproduct(_getentries(s.sectors, Val(positions₁))),
+        _sectorproduct(_getentries(s.sectors, Val(positions₂)))
 end
-
-# the non-`UniqueFusion` and the `UniqueFusion` factors, with `Trivial` for no factors
-partitionfactors(s::Sector) = FusionStyle(s) isa UniqueFusion ? (Trivial(), s) : (s, Trivial())
-function partitionfactors(s::ProductSector)
-    g, a = partitionfactors(otherfactors(s))
-    f = firstfactor(s)
-    return FusionStyle(f) isa UniqueFusion ? (g, f ⊠ a) : (f ⊠ g, a)
-end
-partitionfactortypes(::Type{I}) where {I <: Sector} =
-    FusionStyle(I) isa UniqueFusion ? (Trivial, I) : (I, Trivial)
-function partitionfactortypes(::Type{I}) where {I <: ProductSector}
-    G, A = partitionfactortypes(otherfactorstype(I))
-    F = firstfactortype(I)
-    return FusionStyle(F) isa UniqueFusion ? (G, F ⊠ A) : (F ⊠ G, A)
-end
-# the inverse of `partitionfactors` for the factors of `I`
-factortuple(s::ProductSector) = s.sectors
-factortuple(::Trivial) = ()
-factortuple(s::Sector) = (s,)
-interleave(::Type{Tuple{}}, gs, as) = ()
-function interleave(::Type{T}, gs, as) where {T <: Tuple}
-    return if FusionStyle(fieldtype(T, 1)) isa UniqueFusion
-        (first(as), interleave(Base.tuple_type_tail(T), gs, Base.tail(as))...)
-    else
-        (first(gs), interleave(Base.tuple_type_tail(T), Base.tail(gs), as)...)
+Base.@assume_effects :foldable function productpartstypes(::Type{ProductSector{T}}) where {T}
+    return map(_partpositions(ProductSector{T})) do positions
+        return length(positions) == 1 ? fieldtype(T, only(positions)) :
+            ProductSector{Tuple{map(i -> fieldtype(T, i), positions)...}}
     end
 end
-unpartition(::Type{ProductSector{T}}, g, a) where {T} =
-    ProductSector{T}(interleave(T, factortuple(g), factortuple(a)))
-
-headsector(s::ProductSector) = ismixedproduct(typeof(s)) ? first(partitionfactors(s)) : firstfactor(s)
-tailsector(s::ProductSector) = ismixedproduct(typeof(s)) ? last(partitionfactors(s)) : otherfactors(s)
-headsectortype(::Type{I}) where {I <: ProductSector} = ismixedproduct(I) ? first(partitionfactortypes(I)) : firstfactortype(I)
-tailsectortype(::Type{I}) where {I <: ProductSector} = ismixedproduct(I) ? last(partitionfactortypes(I)) : otherfactorstype(I)
-joinsectors(::Type{I}, h, t) where {I <: ProductSector} = ismixedproduct(I) ? unpartition(I, h, t) : h ⊠ t
+function _joinparts(::Type{ProductSector{T}}, s₁::Sector, s₂::Sector) where {T}
+    sectors = (_sectortuple(s₁)..., _sectortuple(s₂)...)
+    positions = TupleTools.invperm(TupleTools.vcat(_partpositions(ProductSector{T})...))
+    return ProductSector{T}(_getentries(sectors, Val(positions)))
+end
 
 # named products are split and joined as the corresponding `ProductSector`
-productsectortype(::Type{NamedSector{NamedTuple{K, T}}}) where {K, T} = ProductSector{T}
-headsector(s::NamedSector) = headsector(ProductSector(s))
-tailsector(s::NamedSector) = tailsector(ProductSector(s))
-headsectortype(::Type{I}) where {I <: NamedSector} = headsectortype(productsectortype(I))
-tailsectortype(::Type{I}) where {I <: NamedSector} = tailsectortype(productsectortype(I))
-joinsectors(::Type{I}, h, t) where {I <: NamedSector} = I(joinsectors(productsectortype(I), h, t))
+_productsectortype(::Type{NamedSector{NamedTuple{K, T}}}) where {K, T} = ProductSector{T}
+productparts(s::NamedSector) = productparts(ProductSector(s))
+productpartstypes(::Type{I}) where {I <: NamedSector} = productpartstypes(_productsectortype(I))
+_joinparts(::Type{I}, s₁::Sector, s₂::Sector) where {I <: NamedSector} =
+    I(_joinparts(_productsectortype(I), s₁, s₂))
 
-# the vertex labels of a product are the linear indices of the head and tail labels, with the tail
-# running fastest, such that a `UniqueFusion` tail leaves the labels of the head unchanged
-vertexlines(f::FusionTree) = (f.uncoupled[1], f.innerlines..., f.coupled)
-vertexmultiplicities(f::FusionTree) =
-    ntuple(i -> Nsymbol(vertexlines(f)[i], f.uncoupled[i + 1], vertexlines(f)[i + 1]), length(f) - 1)
+# the vertex labels of a product are the linear indices of the labels of its parts, with the second
+# part running fastest, such that a `UniqueFusion` second part leaves the labels of the first unchanged
+_vertexlines(f::FusionTree) = (f.uncoupled[1], f.innerlines..., f.coupled)
+_vertexmultiplicities(f::FusionTree) =
+    ntuple(i -> Nsymbol(_vertexlines(f)[i], f.uncoupled[i + 1], _vertexlines(f)[i + 1]), length(f) - 1)
 
-maptree(proj, f::FusionTree, vertices) = FusionTree(
+_maptree(proj, f::FusionTree, vertices) = FusionTree(
     map(proj, f.uncoupled), proj(f.coupled), f.isdual, map(proj, f.innerlines), vertices
 )
-function headtail(f::FusionTree)
-    vertices_h = vertices_t = f.vertices
-    if FusionStyle(tailsectortype(sectortype(f))) isa UniqueFusion
-        vertices_t = map(Returns(1), f.vertices)
+function productparts(f::FusionTree)
+    vertices₁ = vertices₂ = f.vertices
+    if FusionStyle(last(productpartstypes(sectortype(f)))) isa UniqueFusion
+        vertices₂ = map(Returns(1), f.vertices)
     elseif FusionStyle(f) isa GenericFusion && length(f) > 1
-        ns = vertexmultiplicities(maptree(tailsector, f, map(Returns(1), f.vertices)))
-        vertices_h = map((μ, n) -> div(μ - 1, n) + 1, f.vertices, ns)
-        vertices_t = map((μ, n) -> mod(μ - 1, n) + 1, f.vertices, ns)
+        ns = _vertexmultiplicities(_maptree(last ∘ productparts, f, map(Returns(1), f.vertices)))
+        vertices₁ = map((μ, n) -> div(μ - 1, n) + 1, f.vertices, ns)
+        vertices₂ = map((μ, n) -> mod(μ - 1, n) + 1, f.vertices, ns)
     end
-    return maptree(headsector, f, vertices_h), maptree(tailsector, f, vertices_t)
+    return _maptree(first ∘ productparts, f, vertices₁), _maptree(last ∘ productparts, f, vertices₂)
 end
-function jointree(::Type{I}, h::FusionTree, t::FusionTree) where {I}
-    vertices = if FusionStyle(I) isa GenericFusion && length(h) > 1 && !(FusionStyle(t) isa UniqueFusion)
-        map((μ, ν, n) -> ν + (μ - 1) * n, h.vertices, t.vertices, vertexmultiplicities(t))
+function _joinparts(::Type{I}, f₁::FusionTree, f₂::FusionTree) where {I}
+    vertices = if FusionStyle(I) isa GenericFusion && length(f₁) > 1 && !(FusionStyle(f₂) isa UniqueFusion)
+        map((μ, ν, n) -> ν + (μ - 1) * n, f₁.vertices, f₂.vertices, _vertexmultiplicities(f₂))
     else
-        h.vertices
+        f₁.vertices
     end
-    lift(a, b) = joinsectors(I, a, b)
-    return fusiontreetype(I, length(h))(
-        map(lift, h.uncoupled, t.uncoupled), lift(h.coupled, t.coupled), h.isdual,
-        map(lift, h.innerlines, t.innerlines), vertices
+    join(a, b) = _joinparts(I, a, b)
+    return fusiontreetype(I, length(f₁))(
+        map(join, f₁.uncoupled, f₂.uncoupled), join(f₁.coupled, f₂.coupled), f₁.isdual,
+        map(join, f₁.innerlines, f₂.innerlines), vertices
     )
 end
 
-# the canonical order of a product block is that of the Kronecker product of the head and tail
-# blocks, with the head running fastest
-function productblock(::Type{I}, head::FusionTreeBlock, tail::FusionTreeBlock) where {I}
-    trees = [(jointree(I, h₁, t₁), jointree(I, h₂, t₂)) for (h₁, h₂) in fusiontrees(head), (t₁, t₂) in fusiontrees(tail)]
+# the canonical order of a product block is that of the Kronecker product of the blocks of its
+# parts, with the first part running fastest
+function productblock(::Type{I}, block₁::FusionTreeBlock, block₂::FusionTreeBlock) where {I}
+    trees = [
+        (_joinparts(I, f₁, g₁), _joinparts(I, f₂, g₂))
+            for (f₁, f₂) in fusiontrees(block₁), (g₁, g₂) in fusiontrees(block₂)
+    ]
     return FusionTreeBlock(vec(trees))
 end
 
@@ -115,56 +102,57 @@ function FusionTreeBlock{I}(
     # blocks of `UniqueFusion` sectors are enumerated directly
     FusionStyle(I) isa UniqueFusion && return fusiontreeblock(I, uncoupled, isdual; sizehint)
 
-    # the tail holds the `UniqueFusion` factors of a mixed product, which are cheaper to construct
-    tail = FusionTreeBlock{tailsectortype(I)}(map.(tailsector, uncoupled), isdual)
-    isempty(tail) && return FusionTreeBlock(Vector{fusiontreetype(I, N₁, N₂)}())
+    # the second part holds the `UniqueFusion` sectors of a mixed product, which are cheaper to construct
+    I₁, I₂ = productpartstypes(I)
+    block₂ = FusionTreeBlock{I₂}(map.(last ∘ productparts, uncoupled), isdual)
+    isempty(block₂) && return FusionTreeBlock(Vector{fusiontreetype(I, N₁, N₂)}())
 
-    head = FusionTreeBlock{headsectortype(I)}(map.(headsector, uncoupled), isdual)
-    return productblock(I, head, tail)
+    block₁ = FusionTreeBlock{I₁}(map.(first ∘ productparts, uncoupled), isdual)
+    return productblock(I, block₁, block₂)
 end
 
 # the distinct tree pairs, and the position of every tree pair among them
-function distincttrees(trees)
+function _distincttrees(trees)
     distinct = unique(trees)
     return distinct, indexin(trees, distinct)
 end
-headtrees((f₁, f₂)) = (first(headtail(f₁)), first(headtail(f₂)))
-tailtrees((f₁, f₂)) = (last(headtail(f₁)), last(headtail(f₂)))
+# the tree pairs of the two parts of a tree pair
+_partstrees((f₁, f₂)) = map(tuple, productparts(f₁), productparts(f₂))
 
 # apply `transform` to the block `src`, where every tree pair of a `UniqueFusion` block maps to a
 # single tree pair
-function factor_transform(transform::F, ::Type{T}, src::FusionTreeBlock) where {F, T}
+function _unique_transform(transform::F, ::Type{T}, src::FusionTreeBlock) where {F, T}
     FusionStyle(src) isa UniqueFusion || return transform(src)
     dst = map(transform, fusiontrees(src))
     return FusionTreeBlock(map(first, dst)) => LinearAlgebra.diagm(T[last(d) for d in dst])
 end
 
-# apply `transform` to the block `src` through its head and tail, with the recoupling matrix with scalar type `T`
+# apply `transform` to the block `src` through its parts, with the recoupling matrix with scalar type `T`
 function product_transform(transform::F, ::Type{T}, src::FusionTreeBlock{I}) where {F, T, I}
     if FusionStyle(I) isa UniqueFusion
-        return factor_transform(transform, T, src)
-    elseif FusionStyle(tailsectortype(I)) isa UniqueFusion && numind(src) > 0
-        # the tail holds the `UniqueFusion` factors of a mixed product, with a single tree pair
-        (t₁, t₂), coeff = transform(tailtrees(first(fusiontrees(src))))
-        dst_h, U_h = transform(FusionTreeBlock(map(headtrees, fusiontrees(src))))
+        return _unique_transform(transform, T, src)
+    elseif FusionStyle(last(productpartstypes(I))) isa UniqueFusion && numind(src) > 0
+        # the second part holds the `UniqueFusion` sectors of a mixed product, with a single tree pair
+        (g₁, g₂), coeff = transform(last(_partstrees(first(fusiontrees(src)))))
+        dst₁, U₁ = transform(FusionTreeBlock(map(first ∘ _partstrees, fusiontrees(src))))
         dst = FusionTreeBlock(
-            map(((h₁, h₂),) -> (jointree(I, h₁, t₁), jointree(I, h₂, t₂)), fusiontrees(dst_h))
+            map(((f₁, f₂),) -> (_joinparts(I, f₁, g₁), _joinparts(I, f₂, g₂)), fusiontrees(dst₁))
         )
-        U = Matrix{T}(undef, size(U_h))
-        U .= coeff .* U_h
+        U = Matrix{T}(undef, size(U₁))
+        U .= coeff .* U₁
         return dst => U
     end
-    src_h, cols_h = distincttrees(map(headtrees, fusiontrees(src)))
-    src_t, cols_t = distincttrees(map(tailtrees, fusiontrees(src)))
-    dst_h, U_h = factor_transform(transform, T, FusionTreeBlock(src_h))
-    dst_t, U_t = factor_transform(transform, T, FusionTreeBlock(src_t))
+    src₁, cols₁ = _distincttrees(map(first ∘ _partstrees, fusiontrees(src)))
+    src₂, cols₂ = _distincttrees(map(last ∘ _partstrees, fusiontrees(src)))
+    dst₁, U₁ = _unique_transform(transform, T, FusionTreeBlock(src₁))
+    dst₂, U₂ = _unique_transform(transform, T, FusionTreeBlock(src₂))
 
-    dst = productblock(I, dst_h, dst_t)
+    dst = productblock(I, dst₁, dst₂)
     U = Matrix{T}(undef, length(dst), length(src))
-    for (col, i, j) in zip(axes(U, 2), cols_h, cols_t)
+    for (col, i, j) in zip(axes(U, 2), cols₁, cols₂)
         row = 0
-        for jt in axes(U_t, 1), jh in axes(U_h, 1)
-            U[row += 1, col] = U_h[jh, i] * U_t[jt, j]
+        for j₂ in axes(U₂, 1), j₁ in axes(U₁, 1)
+            U[row += 1, col] = U₁[j₁, i] * U₂[j₂, j]
         end
     end
     return dst => U
