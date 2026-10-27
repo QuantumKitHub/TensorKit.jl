@@ -1,5 +1,6 @@
 using Adapt, AMDGPU
 using Test, TestExtras
+using Random
 using TensorKit
 using LinearAlgebra: LinearAlgebra
 using MatrixAlgebraKit: DefaultAlgorithm, Jacobi, PolarViaSVD, QRIteration, diagview
@@ -8,6 +9,8 @@ const AMDGPUExt = Base.get_extension(TensorKit, :TensorKitAMDGPUExt)
 const ROCTensorMap = getglobal(AMDGPUExt, :ROCTensorMap)
 
 using AMDGPU.rocBLAS
+
+Random.seed!(123456)
 
 spacelist = factorization_spacelist(fast_tests)
 eltypes = (Float64, ComplexF64)
