@@ -43,7 +43,7 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 - Recoupling matrices are stored such that they can leverage BLAS, also for mixed complex tensor with real recoupling coefficients.
 - Constructing a `FusionTreeBlock` only takes the fusion product of the shorter side, and `fusionblocks` groups the cached fusion trees of the space instead of constructing a block for every combination of sectors (internal)
-- Fusion tree block manipulations of (named) product sectors are computed factor by factor, as Kronecker products of the manipulations of the `UniqueFusion` and the other factors, such that they share the caches of the individual factors ([#592](https://github.com/QuantumKitHub/TensorKit.jl/pull/592))
+- Fusion tree block manipulations of (named) product sectors are computed as Kronecker products of the manipulations of their parts, splitting off the `UniqueFusion` sectors, such that they share the caches of the individual sectors ([#592](https://github.com/QuantumKitHub/TensorKit.jl/pull/592))
 
 ## [0.17.2](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.1...v0.17.2) - 2026-09-20
 
