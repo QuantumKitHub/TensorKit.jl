@@ -356,7 +356,10 @@ function _findtruncated_multiplets(values::SectorVector, inds, strategy::Truncat
     return keep
 end
 
-_ind_to_mask!(keep::SectorVector{Bool}, inds::SectorVector{Bool}) = copyto!(keep, inds)
+function _ind_to_mask!(keep::SectorVector{Bool}, inds::SectorVector{Bool})
+    copyto!(parent(keep), parent(inds))
+    return keep
+end
 function _ind_to_mask!(keep::SectorVector{Bool}, inds::SectorDict)
     fill!(parent(keep), false)
     for (c, ind) in pairs(inds)
