@@ -210,13 +210,20 @@ grouped by their uncoupled charges.
 function fusionblocks(W::HomSpace)
     I = sectortype(W)
     N₁, N₂ = numout(W), numin(W)
-    isdual_src = (map(isdual, codomain(W)), map(isdual, domain(W)))
-    fblocks = Vector{FusionTreeBlock{I, N₁, N₂, fusiontreetype(I, N₁, N₂)}}()
-    for dom_uncoupled_src in sectors(domain(W)), cod_uncoupled_src in sectors(codomain(W))
-        fs_src = FusionTreeBlock{I}((cod_uncoupled_src, dom_uncoupled_src), isdual_src)
-        isempty(fs_src) || push!(fblocks, fs_src)
+    F = fusiontreetype(I, N₁, N₂)
+    # group the (cached) fusion trees of `W` by their uncoupled sectors,
+    # in the order in which these first occur
+    blocks = FusionTreeBlock{I, N₁, N₂, F}[]
+    trees_of = Dict{Tuple{NTuple{N₁, I}, NTuple{N₂, I}}, Vector{F}}()
+    for (f₁, f₂) in fusiontrees(W)
+        trees = get!(trees_of, (f₁.uncoupled, f₂.uncoupled)) do
+            newtrees = F[]
+            push!(blocks, FusionTreeBlock(newtrees))
+            return newtrees
+        end
+        push!(trees, (f₁, f₂))
     end
-    return fblocks
+    return blocks
 end
 
 function diagonalblockstructure(W::HomSpace)

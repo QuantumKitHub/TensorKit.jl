@@ -235,6 +235,19 @@ using TensorKitSectors
         end
     end
 
+    UnitStyle(I) isa SimpleUnit && @testset "Double fusion tree: blocks of a HomSpace" begin
+        V = Vect[I](Dict(s => 1 for s in (out..., incoming)))
+        W = V ⊗ V' ← V ⊗ V' # never empty: the unit couples both sides
+        trees = collect(fusiontrees(W))
+        blocks = TK.fusionblocks(W)
+        # every block holds the trees of `W` with its uncoupled sectors, in the same order
+        for block in blocks
+            @test fusiontrees(block) == filter(f -> (f[1].uncoupled, f[2].uncoupled) == block.uncoupled, trees)
+        end
+        @test sum(length, blocks) == length(trees)
+        @test allunique(map(block -> block.uncoupled, blocks))
+    end
+
     @testset "Double fusion tree: planar trace" begin
         if FusionStyle(I) isa UniqueFusion
             f1, f1 = src
