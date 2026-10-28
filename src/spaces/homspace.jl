@@ -179,10 +179,11 @@ See also [`degeneracystructure`](@ref), [`subblockstructure`](@ref).
 blockstructure(W::HomSpace) = Dictionary(blocksectors(W), degeneracystructure(W).blockstructure)
 
 """
-    fusiontrees(W::HomSpace) -> Indices{Tuple{F₁,F₂}}
+    fusiontrees(W::HomSpace) -> FusionTreePairs{F₁,F₂}
 
-Return an `Indices` of all valid fusion tree pairs `(f₁, f₂)` for `W`, providing a
-bijection to sequential integer positions via `gettoken`/`gettokenvalue`. The result is
+Return the `FusionTreePairs` of all valid fusion tree pairs `(f₁, f₂)` for `W`, an
+`AbstractIndices` providing a bijection to sequential integer positions via
+`gettoken`/`gettokenvalue`. The result is
 cached based on the sector structure of `W` (ignoring degeneracy dimensions), so
 `HomSpace`s that share the same sectors, dualities, and index count will reuse the same
 object.
@@ -192,14 +193,14 @@ See also [`sectorstructure`](@ref), [`subblockstructure`](@ref).
 fusiontrees(W::HomSpace) = sectorstructure(W).fusiontrees
 
 """
-    subblockstructure(W::HomSpace) -> Dictionary
+    subblockstructure(W::HomSpace) -> AbstractDictionary
 
-Return a `Dictionary` mapping each fusion tree pair `(f₁, f₂)` to its
+Return an `AbstractDictionary` mapping each fusion tree pair `(f₁, f₂)` to its
 [`StridedStructure`](@ref) `(sizes, strides, offset)`.
 
 See also [`degeneracystructure`](@ref), [`blockstructure`](@ref).
 """
-subblockstructure(W::HomSpace) = Dictionary(fusiontrees(W), degeneracystructure(W).subblockstructure)
+subblockstructure(W::HomSpace) = FusionTreePairDict(fusiontrees(W), degeneracystructure(W).subblockstructure)
 
 """
     fusionblocks(W::HomSpace)
@@ -211,19 +212,41 @@ function fusionblocks(W::HomSpace)
     I = sectortype(W)
     N₁, N₂ = numout(W), numin(W)
     F = fusiontreetype(I, N₁, N₂)
-    # group the (cached) fusion trees of `W` by their uncoupled sectors,
-    # in the order in which these first occur
-    blocks = FusionTreeBlock{I, N₁, N₂, F}[]
-    trees_of = Dict{Tuple{NTuple{N₁, I}, NTuple{N₂, I}}, Vector{F}}()
-    for (f₁, f₂) in fusiontrees(W)
-        trees = get!(trees_of, (f₁.uncoupled, f₂.uncoupled)) do
-            newtrees = F[]
-            push!(blocks, FusionTreeBlock(newtrees))
-            return newtrees
+    ts = fusiontrees(W)
+    # group the (cached) splitting and fusion trees of every coupled sector of `W` by their
+    # uncoupled sectors: a block combines the groups of both sides with the same uncoupled
+    # sectors, in the order in which these first occur in `fusiontrees(W)`
+    parts = Vector{Tuple{Vector{Int}, Vector{Int}}}[]
+    part_of = Dict{Tuple{NTuple{N₁, I}, NTuple{N₂, I}}, Int}()
+    for (r₁, r₂) in zip(ts.ranges₁, ts.ranges₂)
+        g₁ = _groupbyuncoupled(NTuple{N₁, I}, ts.trees₁, r₁)
+        g₂ = _groupbyuncoupled(NTuple{N₂, I}, ts.trees₂, r₂)
+        for (u₂, is₂) in pairs(g₂), (u₁, is₁) in pairs(g₁)
+            k = get!(part_of, (u₁, u₂)) do
+                push!(parts, Tuple{Vector{Int}, Vector{Int}}[])
+                return length(parts)
+            end
+            push!(parts[k], (is₂, is₁))
         end
-        push!(trees, (f₁, f₂))
     end
-    return blocks
+    # every block is filled once, at its final size
+    return map(parts) do ps
+        trees = Vector{F}(undef, sum(((is₂, is₁),) -> length(is₂) * length(is₁), ps))
+        k = 0
+        for (is₂, is₁) in ps, i₂ in is₂, i₁ in is₁
+            trees[k += 1] = (gettokenvalue(ts.trees₁, i₁), gettokenvalue(ts.trees₂, i₂))
+        end
+        return FusionTreeBlock(trees)
+    end
+end
+# the positions in `r` of `trees`, grouped by their uncoupled sectors in the order in which
+# these first occur
+function _groupbyuncoupled(::Type{U}, trees, r) where {U}
+    groups = Dictionary{U, Vector{Int}}()
+    for i in r
+        push!(get!(Vector{Int}, groups, gettokenvalue(trees, i).uncoupled), i)
+    end
+    return groups
 end
 
 function diagonalblockstructure(W::HomSpace)
