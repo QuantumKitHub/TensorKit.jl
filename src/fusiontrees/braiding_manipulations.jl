@@ -368,6 +368,23 @@ function permute(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple)
 end
 
 """
+    twist(src::Union{FusionTreePair, FusionTreeBlock}, inds; inv::Bool = false) -> (src, θ)
+
+Apply a twist to the uncoupled legs `inds` of the fusion-splitting tree pair or block `src`,
+where `inds` is either a collection of leg indices or an `NTuple{N, Bool}` mask over all legs.
+The twist is diagonal in the fusion tree basis, so this returns `src` itself together with the
+scalar factor `θ`, which is shared by all trees in a block. If `inv = true`, use the inverse twist.
+"""
+function twist(src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, inds; inv::Bool = false) where {I}
+    uncoupled₁, uncoupled₂ = src isa FusionTreeBlock ? src.uncoupled : (src[1].uncoupled, src[2].uncoupled)
+    uncoupled = (uncoupled₁..., uncoupled₂...)
+    N = length(uncoupled)
+    mask = inds isa NTuple{N, Bool} ? inds : ntuple(i -> i in inds, N)
+    θ = prod(map((m, a) -> m ? twist(a) : one(twist(a)), mask, uncoupled); init = one(sectorscalartype(I)))
+    return src, inv ? θ' : θ
+end
+
+"""
     flip((f₁, f₂)::FusionTreePair, i::Int; inv::Bool = false)
     -> SingletonDict{FusionTreePair, <:Number}
 

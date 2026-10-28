@@ -23,6 +23,7 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 ### Added
 
 - Enzyme rules for `planartrace!`, with a pullback that also supports adjoint tensors
+- `twist(src, inds; inv = false)` for fusion tree pairs and blocks, returning `src` together with the scalar twist factor of the legs `inds`, which can be given as indices or as a `Bool` mask
 
 ### Changed
 
@@ -35,6 +36,8 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 ### Fixed
 
 ### Performance
+
+- `twist!` and `twist` on a `TensorMap` use a cached tree transformer and the index manipulation kernel instead of a loop over all fusion trees, which removes the per-subblock bookkeeping and turns a twist of a GPU tensor into a single kernel launch ([#595](https://github.com/QuantumKitHub/TensorKit.jl/issues/595))
 
 ## [0.17.3](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.2...v0.17.3) - 2026-10-30
 

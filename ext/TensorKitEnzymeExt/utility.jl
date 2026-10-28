@@ -151,6 +151,7 @@ end
 @inline EnzymeRules.inactive(::typeof(TensorKit.treetransposer), ::Any...) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.treebraider), ::Any...) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.treetracer), ::Any...) = nothing
+@inline EnzymeRules.inactive(::typeof(TensorKit.treetwister), ::Any...) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.insertleftunit), ::HomSpace, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.insertrightunit), ::HomSpace, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.removeunit), ::HomSpace, ::Any) = nothing

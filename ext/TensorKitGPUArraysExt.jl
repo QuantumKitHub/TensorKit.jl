@@ -394,6 +394,13 @@ end
     return device_transformer(A, host, p, q)
 end
 
+@cached function TensorKit.treetwister(
+        A::Type{TA}, V::TensorMapSpace, twistmask::NTuple{N, Bool}, inv::Bool
+    ) where {TA <: AnyGPUVector, N}
+    host = TensorKit.treetwister(Vector{scalartype(A)}, V, twistmask, inv)
+    return device_transformer(A, host, linearize((codomainind(V), domainind(V))))
+end
+
 const DEFAULT_DEVICECACHE_SIZE = 1000
 
 function __init__()
@@ -405,6 +412,7 @@ function __init__()
             Symbol("TensorKitGPUArraysExt.GLOBAL_DIAGONAL_TREEBRAIDER_CACHE") => GLOBAL_DIAGONAL_TREEBRAIDER_CACHE,
             Symbol("TensorKitGPUArraysExt.GLOBAL_DIAGONAL_TREETRANSPOSER_CACHE") => GLOBAL_DIAGONAL_TREETRANSPOSER_CACHE,
             Symbol("TensorKitGPUArraysExt.GLOBAL_TREETRACER_CACHE") => GLOBAL_TREETRACER_CACHE,
+            Symbol("TensorKitGPUArraysExt.GLOBAL_TREETWISTER_CACHE") => GLOBAL_TREETWISTER_CACHE,
         )
     )
 
@@ -414,6 +422,7 @@ function __init__()
     resize!(GLOBAL_DIAGONAL_TREEBRAIDER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
     resize!(GLOBAL_DIAGONAL_TREETRANSPOSER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
     resize!(GLOBAL_TREETRACER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
+    resize!(GLOBAL_TREETWISTER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
 
     return nothing
 end

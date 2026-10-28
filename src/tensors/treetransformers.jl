@@ -306,4 +306,12 @@ end
     return TraceTransformer(A, Vdst, Vsrc, p, q)
 end
 
+# a twist maps every tree pair onto itself, so this is a `UniqueTreeTransformer` for all sectors
+@cached function treetwister(
+        A::Type{TA}, V::TensorMapSpace, twistmask::NTuple{N, Bool}, inv::Bool
+    )::UniqueTreeTransformer{recoupling_scalartype(A, sectorscalartype(sectortype(V))), N} where {TA, N}
+    fusiontreetwister(f) = twist(f, twistmask; inv)
+    return UniqueTreeTransformer(A, fusiontreetwister, (codomainind(V), domainind(V)), V, V, false)
+end
+
 # default cachestyle is GlobalLRUCache
