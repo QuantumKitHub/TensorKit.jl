@@ -287,6 +287,13 @@ end
     return device_transformer(A, host, linearize(p))
 end
 
+@cached function TensorKit.treetwister(
+        A::Type{TA}, V::TensorMapSpace, twistmask::NTuple{N, Bool}, inv::Bool
+    ) where {TA <: AnyGPUVector, N}
+    host = TensorKit.treetwister(Vector{scalartype(A)}, V, twistmask, inv)
+    return device_transformer(A, host, linearize((codomainind(V), domainind(V))))
+end
+
 const DEFAULT_DEVICECACHE_SIZE = 1000
 
 function __init__()
@@ -295,12 +302,14 @@ function __init__()
         TensorKit.GLOBAL_CACHES, (
             Symbol("TensorKitGPUArraysExt.GLOBAL_TREEBRAIDER_CACHE") => GLOBAL_TREEBRAIDER_CACHE,
             Symbol("TensorKitGPUArraysExt.GLOBAL_TREETRANSPOSER_CACHE") => GLOBAL_TREETRANSPOSER_CACHE,
+            Symbol("TensorKitGPUArraysExt.GLOBAL_TREETWISTER_CACHE") => GLOBAL_TREETWISTER_CACHE,
         )
     )
 
     # device-caches should probably have smaller sizes:
     resize!(GLOBAL_TREEBRAIDER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
     resize!(GLOBAL_TREETRANSPOSER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
+    resize!(GLOBAL_TREETWISTER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
 
     return nothing
 end

@@ -67,14 +67,7 @@ function twist!(t::AbstractTensorMap, inds; inv::Bool = false)
     (scalartype(t) <: Real && !(sectorscalartype(sectortype(t)) <: Real)) &&
         throw(ArgumentError("Can't in-place twist a real tensor with complex sector type"))
     has_shared_twist(t, inds) && return t
-
-    N₁ = numout(t)
-    for (f₁, f₂) in fusiontrees(t)
-        θ = prod(i -> i <= N₁ ? twist(f₁.uncoupled[i]) : twist(f₂.uncoupled[i - N₁]), inds)
-        inv && (θ = θ')
-        scale!(t[f₁, f₂], θ)
-    end
-    return t
+    return _twist!(t, t, inds, inv)
 end
 
 """
@@ -92,8 +85,25 @@ function twist(t::AbstractTensorMap, inds; inv::Bool = false, copy::Bool = false
         return copy ? Base.copy(t) : t
     end
     tdst = similar(t, promote_twist(t))
-    copy!(tdst, t)
-    return twist!(tdst, inds; inv)
+    return _twist!(tdst, t, inds, inv)
+end
+
+# `tdst = twist(tsrc, inds; inv)`, where `tdst` and `tsrc` are allowed to be the same tensor
+function _twist!(tdst::TensorMap, tsrc::TensorMap, inds, inv::Bool)
+    V = space(tsrc)
+    twistmask = ntuple(i -> i in inds, numind(V))
+    transformer = treetwister(storagetype(tdst), V, twistmask, inv)
+    return add_transform!(
+        tdst, tsrc, (codomainind(V), domainind(V)), false, transformer,
+        One(), Zero(), TO.DefaultBackend(), TO.DefaultAllocator()
+    )
+end
+function _twist!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, inds, inv::Bool)
+    for (f₁, f₂) in fusiontrees(tsrc)
+        _, θ = twist((f₁, f₂), inds; inv)
+        scale!(tdst[f₁, f₂], tsrc[f₁, f₂], θ)
+    end
+    return tdst
 end
 
 # =========================
@@ -605,6 +615,7 @@ end
     Vdst, Vsrc = space(tdst), space(tsrc)
     @boundscheck spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
     all(has_array_view, (tdst, tsrc)) && return _dense_transform!(tdst, tsrc, p, conjsrc, α, β, backend, allocator)
+    _is_trivial_transform(tsrc, p, conjsrc) && return add!(tdst, tsrc, α, β)
     transformer = treebraider(storagetype(tdst), Vdst, Vsrc, p, conjsrc, levels)
     return add_transform!(tdst, tsrc, p, conjsrc, transformer, α, β, backend, allocator)
 end
@@ -616,6 +627,7 @@ end
     Vdst, Vsrc = space(tdst), space(tsrc)
     @boundscheck spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
     all(has_array_view, (tdst, tsrc)) && return _dense_transform!(tdst, tsrc, p, conjsrc, α, β, backend, allocator)
+    _is_trivial_transform(tsrc, p, conjsrc) && return add!(tdst, tsrc, α, β)
     transformer = treetransposer(storagetype(tdst), Vdst, Vsrc, p, conjsrc)
     return add_transform!(tdst, tsrc, p, conjsrc, transformer, α, β, backend, allocator)
 end
@@ -626,17 +638,15 @@ function add_transform!(
         tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, conjsrc::Bool, transformer,
         α::Number, β::Number, backend, allocator
     )
-    if !conjsrc && p[1] === codomainind(tsrc) && p[2] === domainind(tsrc)
-        add!(tdst, tsrc, α, β)
-    else
-        p2 = (linearize(p), ()) # only the linear permutation matters for the array kernels
-        ntasks = get_num_transformer_threads(tdst)
-        dst, src = _transform_subblocks(tdst, tsrc, transformer)
-        add_transform_kernel!(dst, src, p2, conjsrc, transformer, α, β, backend, allocator, ntasks)
-    end
-
+    p2 = (linearize(p), ()) # only the linear permutation matters for the array kernels
+    ntasks = get_num_transformer_threads(tdst)
+    dst, src = _transform_subblocks(tdst, tsrc, transformer)
+    add_transform_kernel!(dst, src, p2, conjsrc, transformer, α, β, backend, allocator, ntasks)
     return tdst
 end
+
+_is_trivial_transform(tsrc, p::Index2Tuple, conjsrc::Bool) =
+    !conjsrc && p[1] === codomainind(tsrc) && p[2] === domainind(tsrc)
 
 # TensorMaps address their flat data directly, other tensor types go through `subblock`
 _transform_subblocks(tdst::TensorMap, tsrc::TensorMap, transformer) =
