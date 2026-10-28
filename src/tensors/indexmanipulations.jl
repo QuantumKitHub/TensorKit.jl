@@ -559,6 +559,9 @@ end
     )
     return nothing
 end
+# disambiguation with the generic method
+spacecheck_transform(f::typeof(twist), Vdst::TensorMapSpace, Vsrc::TensorMapSpace, inds::Index2Tuple) =
+    invoke(spacecheck_transform, Tuple{typeof(twist), TensorMapSpace, TensorMapSpace, Any}, f, Vdst, Vsrc, inds)
 @noinline function spacecheck_transform(::typeof(braid), Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, levels::IndexTuple)
     check_spacetype(Vdst, Vsrc)
     braid(Vsrc, p, levels) == Vdst ||
