@@ -390,6 +390,19 @@ function TO.isblasdestination(A::AbstractTensorMap, ipAB::Index2Tuple)
     return scalartype(A) <: LinearAlgebra.BlasFloat && has_shared_permute(A, ipAB)
 end
 
+# `tdst = twist(permute(tsrc, p), inds)`, with the twist folded into the coefficients of the permutation
+function permute_twist!(tdst::TensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, inds, backend, allocator)
+    tsrc′, p′, _, conjsrc = _unwrap_source(tsrc, p, nothing, false)
+    # other tensor types, such as diagonal GPU tensors, rely on the dispatch of `tensoradd!`
+    if !(tsrc′ isa TensorMap)
+        TO.tensoradd!(tdst, tsrc, p, false, One(), Zero(), backend, allocator)
+        return twist!(tdst, inds)
+    end
+    twistmask = ntuple(in(inds), numind(tdst))
+    transformer = treepermuter(storagetype(tdst), space(tdst), space(tsrc′), p′, conjsrc, twistmask)
+    return add_transform!(tdst, tsrc′, p′, conjsrc, transformer, One(), Zero(), backend, allocator)
+end
+
 function blas_contract!(
         C::AbstractTensorMap,
         A::AbstractTensorMap, pA::Index2Tuple,
@@ -425,8 +438,11 @@ function blas_contract!(
     # Bring A in the correct form for BLAS contraction
     if copyA
         Anew = @timeit_debug GLOBAL_TIMER "alloc: buffers" TO.tensoralloc_add(TC, A, pA, false, Val(true), allocator)
-        Anew = TO.tensoradd!(Anew, A, pA, false, One(), Zero(), backend, allocator)
-        twistA && twist!(Anew, filter(!isdual ∘ Base.Fix1(space, Anew), domainind(Anew)))
+        if twistA
+            permute_twist!(Anew, A, pA, filter(!isdual ∘ Base.Fix1(space, Anew), domainind(Anew)), backend, allocator)
+        else
+            Anew = TO.tensoradd!(Anew, A, pA, false, One(), Zero(), backend, allocator)
+        end
     else
         Anew = permute(A, pA)
     end
@@ -435,8 +451,11 @@ function blas_contract!(
     # Bring B in the correct form for BLAS contraction
     if copyB
         Bnew = @timeit_debug GLOBAL_TIMER "alloc: buffers" TO.tensoralloc_add(TC, B, pB, false, Val(true), allocator)
-        Bnew = TO.tensoradd!(Bnew, B, pB, false, One(), Zero(), backend, allocator)
-        twistB && twist!(Bnew, filter(isdual ∘ Base.Fix1(space, Bnew), codomainind(Bnew)))
+        if twistB
+            permute_twist!(Bnew, B, pB, filter(isdual ∘ Base.Fix1(space, Bnew), codomainind(Bnew)), backend, allocator)
+        else
+            Bnew = TO.tensoradd!(Bnew, B, pB, false, One(), Zero(), backend, allocator)
+        end
     else
         Bnew = permute(B, pB)
     end

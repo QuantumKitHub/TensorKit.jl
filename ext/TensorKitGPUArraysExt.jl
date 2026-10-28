@@ -387,6 +387,14 @@ end
     return device_transformer(A, host, linearize(p))
 end
 
+@cached function TensorKit.treepermuter(
+        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
+        conjsrc::Bool, twistmask::NTuple{N, Bool}
+    ) where {TA <: AnyGPUVector, N}
+    host = TensorKit.treepermuter(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc, twistmask)
+    return device_transformer(A, host, linearize(p))
+end
+
 @cached function TensorKit.treetracer(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, q::Index2Tuple
     ) where {TA <: AnyGPUVector}
@@ -410,6 +418,7 @@ function __init__()
         TensorKit.GLOBAL_CACHES, (
             Symbol("TensorKitGPUArraysExt.GLOBAL_TREEBRAIDER_CACHE") => GLOBAL_TREEBRAIDER_CACHE,
             Symbol("TensorKitGPUArraysExt.GLOBAL_TREETRANSPOSER_CACHE") => GLOBAL_TREETRANSPOSER_CACHE,
+            Symbol("TensorKitGPUArraysExt.GLOBAL_TREEPERMUTER_CACHE") => GLOBAL_TREEPERMUTER_CACHE,
             Symbol("TensorKitGPUArraysExt.GLOBAL_DIAGONAL_TREEBRAIDER_CACHE") => GLOBAL_DIAGONAL_TREEBRAIDER_CACHE,
             Symbol("TensorKitGPUArraysExt.GLOBAL_DIAGONAL_TREETRANSPOSER_CACHE") => GLOBAL_DIAGONAL_TREETRANSPOSER_CACHE,
             Symbol("TensorKitGPUArraysExt.GLOBAL_DIAGONAL_TREETWISTER_CACHE") => GLOBAL_DIAGONAL_TREETWISTER_CACHE,
@@ -421,6 +430,7 @@ function __init__()
     # device-caches should probably have smaller sizes:
     resize!(GLOBAL_TREEBRAIDER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
     resize!(GLOBAL_TREETRANSPOSER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
+    resize!(GLOBAL_TREEPERMUTER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
     resize!(GLOBAL_DIAGONAL_TREEBRAIDER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
     resize!(GLOBAL_DIAGONAL_TREETRANSPOSER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
     resize!(GLOBAL_DIAGONAL_TREETWISTER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)

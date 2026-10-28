@@ -202,6 +202,20 @@ end
     return TreeTransformer(A, fusiontreetransform, p, Vdst, Vsrc, conjsrc)
 end
 
+# permutation for symmetric braidings followed by a twist of the destination legs in `twistmask`,
+# which is diagonal in the fusion tree basis and therefore folded into the recoupling coefficients
+@cached function treepermuter(
+        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool,
+        twistmask::NTuple{N, Bool}
+    )::treetransformertype(A, Vdst, Vsrc) where {TA, N}
+    p′ = conjsrc ? adjointtensorindices(Vsrc, p) : p
+    function fusiontreepermuter(f)
+        f′, U = permute(f, p′)
+        return f′, U * last(twist(f′, twistmask))
+    end
+    return TreeTransformer(A, fusiontreepermuter, p, Vdst, Vsrc, conjsrc)
+end
+
 
 """
     TraceTransformer{T, N₁, N₂}
