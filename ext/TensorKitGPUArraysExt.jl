@@ -379,6 +379,10 @@ TensorKit.treebraider(
 TensorKit.treetransposer(
     A::Type{<:AnyGPUVector}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
 ) = TensorKit.device_treetransposer(A, Vdst, Vsrc, p, conjsrc)
+TensorKit.treepermuter(
+    A::Type{<:AnyGPUVector}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
+    conjsrc::Bool, twistmask::NTuple{N, Bool}
+) where {N} = TensorKit.device_treepermuter(A, Vdst, Vsrc, p, conjsrc, twistmask)
 TensorKit.treetracer(
     A::Type{<:AnyGPUVector}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, q::Index2Tuple
 ) = TensorKit.device_treetracer(A, Vdst, Vsrc, p, q)
@@ -400,6 +404,14 @@ end
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
     ) where {TA <: AnyGPUVector}
     host = TensorKit.treetransposer(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc)
+    return device_transformer(A, host, linearize(p))
+end
+
+@cached function TensorKit.device_treepermuter(
+        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
+        conjsrc::Bool, twistmask::NTuple{N, Bool}
+    ) where {TA <: AnyGPUVector, N}
+    host = TensorKit.treepermuter(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc, twistmask)
     return device_transformer(A, host, linearize(p))
 end
 

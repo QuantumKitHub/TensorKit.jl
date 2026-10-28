@@ -44,6 +44,7 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 - `taskforeach` with a single worker is a plain loop without an atomic counter, which lowers the cost per subblock of single-threaded index manipulations and planar traces
 - Tree transformers for sectors with multiple fusion channels share equal recoupling matrices, which only depend on the sectors, instead of storing one copy per transformer
 - The cached braids and transposes of fusion tree blocks keep their recoupling matrices in the scalar type of the tree transformers that use them, instead of a copy in that type for every transformer
+- Contractions of fermionic tensors fold the twist of one of the operands into the permutation that copies it, instead of twisting the copy in a separate pass ([#595](https://github.com/QuantumKitHub/TensorKit.jl/issues/595))
 
 ## [0.17.3](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.2...v0.17.3) - 2026-10-30
 

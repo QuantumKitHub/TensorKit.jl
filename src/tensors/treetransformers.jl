@@ -224,6 +224,20 @@ end
     return TreeTransformer(A, fusiontreetransform, p, Vdst, Vsrc, conjsrc)
 end
 
+# permutation for symmetric braidings followed by a twist of the destination legs in `twistmask`,
+# which is diagonal in the fusion tree basis and therefore folded into the recoupling coefficients
+@cached function treepermuter(
+        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool,
+        twistmask::NTuple{N, Bool}
+    )::treetransformertype(A, Vdst, Vsrc) where {TA, N}
+    p′ = conjsrc ? adjointtensorindices(Vsrc, p) : p
+    function fusiontreepermuter(f)
+        f′, U = permute(f, p′)
+        return f′, U * last(twist(f′, twistmask))
+    end
+    return TreeTransformer(A, fusiontreepermuter, p, Vdst, Vsrc, conjsrc)
+end
+
 
 """
     TraceTransformer{T, N₁, N₂}
@@ -346,27 +360,30 @@ end
 """
     device_treebraider(A, Vdst, Vsrc, p, conjsrc, levels)
     device_treetransposer(A, Vdst, Vsrc, p, conjsrc)
+    device_treepermuter(A, Vdst, Vsrc, p, conjsrc, twistmask)
     device_treetracer(A, Vdst, Vsrc, p, q)
     device_treetwister(A, Vdst, Vsrc, p, conjsrc, twistmask, inv)
 
 Tree transformers for device storage types `A`, to which `treebraider`, `treetransposer`,
-`treetracer` and `treetwister` forward. Their methods are added by package extensions. Being
+`treepermuter`, `treetracer` and `treetwister` forward. Their methods are added by package extensions. Being
 separate functions, the device transformers have their own caches, which can be configured
 independently of the host ones.
 """
 function device_treebraider end
 function device_treetransposer end
+function device_treepermuter end
 function device_treetracer end
 function device_treetwister end
 @doc (@doc device_treebraider) device_treetransposer
+@doc (@doc device_treebraider) device_treepermuter
 @doc (@doc device_treebraider) device_treetracer
 @doc (@doc device_treebraider) device_treetwister
 
 # Keep TensorKit's profiling categories for the phases instrumented by MemoizationKit.
 const TensorKitCachedFunction = Union{
     typeof(fusiontreebraid), typeof(fusiontreetranspose),
-    typeof(treebraider), typeof(treetransposer), typeof(treetracer), typeof(treetwister),
-    typeof(device_treebraider), typeof(device_treetransposer), typeof(device_treetracer), typeof(device_treetwister),
+    typeof(treebraider), typeof(treetransposer), typeof(treepermuter), typeof(treetracer), typeof(treetwister),
+    typeof(device_treebraider), typeof(device_treetransposer), typeof(device_treepermuter), typeof(device_treetracer), typeof(device_treetwister),
     typeof(sectorstructure), typeof(degeneracystructure),
 }
 MemoizationKit.instrument_label(f::TensorKitCachedFunction, ::Val{:lookup}) = "bookkeeping: cache $(nameof(f))"
