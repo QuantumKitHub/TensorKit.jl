@@ -157,10 +157,16 @@ function FusionTreeBlock{I}(
         us = N₁ <= N₂ ? uncoupled[2] : uncoupled[1]
         UnitStyle(I) isa SimpleUnit || N₁ == 0 || N₂ == 0 ||
             (leftunit(c) == leftunit(first(us)) && rightunit(c) == rightunit(last(us))) || continue
-        longer = N₁ <= N₂ ? fusiontrees(uncoupled[2], c, isdual[2]) : fusiontrees(uncoupled[1], c, isdual[1])
-        isempty(longer) && continue
-        for f₂ in fusiontrees(uncoupled[2], c, isdual[2]),
-                f₁ in fusiontrees(uncoupled[1], c, isdual[1])
+        if N₁ <= N₂
+            ftrees₂ = fusiontrees(uncoupled[2], c, isdual[2])
+            isempty(ftrees₂) && continue
+            ftrees₁ = fusiontrees(uncoupled[1], c, isdual[1])
+        else
+            ftrees₁ = fusiontrees(uncoupled[1], c, isdual[1])
+            isempty(ftrees₁) && continue
+            ftrees₂ = fusiontrees(uncoupled[2], c, isdual[2])
+        end
+        for f₂ in ftrees₂, f₁ in ftrees₁
             push!(trees, (f₁, f₂))
         end
     end
