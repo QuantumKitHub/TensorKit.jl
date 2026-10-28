@@ -288,10 +288,11 @@ end
 end
 
 @cached function TensorKit.treetwister(
-        A::Type{TA}, V::TensorMapSpace, twistmask::NTuple{N, Bool}, inv::Bool
+        A::Type{TA}, V::TensorMapSpace, conjsrc::Bool, twistmask::NTuple{N, Bool}, inv::Bool
     ) where {TA <: AnyGPUVector, N}
-    host = TensorKit.treetwister(Vector{scalartype(A)}, V, twistmask, inv)
-    return device_transformer(A, host, linearize((codomainind(V), domainind(V))))
+    host = TensorKit.treetwister(Vector{scalartype(A)}, V, conjsrc, twistmask, inv)
+    _, p = TensorKit.twistpermutation(V, conjsrc)
+    return device_transformer(A, host, linearize(p))
 end
 
 const DEFAULT_DEVICECACHE_SIZE = 1000

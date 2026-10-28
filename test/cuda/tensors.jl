@@ -313,15 +313,21 @@ for V in spacelist
             t = cuRAND.rand(ComplexF64, V1 ⊗ V2 ⊗ V3 ← (V4 ⊗ V5)')
             ht = adapt(Array, t)
             for inds in (1, (2, 4), [1, 3, 5]), inv in (false, true)
-                @test adapt(Array, twist(t, inds; inv)) ≈ twist(ht, inds; inv)
-                @test adapt(Array, twist!(copy(t), inds; inv)) ≈ twist!(copy(ht), inds; inv)
+                ref = twist(ht, inds; inv)
+                @test adapt(Array, twist(t, inds; inv)) ≈ ref
+                @test adapt(Array, twist!(copy(t), inds; inv)) ≈ ref
+                # adjoint operands
+                @test adapt(Array, twist(t', inds; inv)) ≈ twist(copy(ht'), inds; inv)
+                t2 = copy(t)
+                twist!(t2', inds; inv)
+                @test adapt(Array, t2)' ≈ twist(copy(ht'), inds; inv)
             end
             @test twist(twist(t, 2), 2; inv = true) ≈ t
             if !TensorKit.has_shared_twist(t, (1, 3, 5))
                 twistmask = (true, false, true, false, true)
-                twister = TensorKit.treetwister(storagetype(t), space(t), twistmask, false)
+                twister = TensorKit.treetwister(storagetype(t), space(t), false, twistmask, false)
                 @test twister isa getglobal(GPUArraysExt, :DeviceUniqueTreeTransformer)
-                @test twister === TensorKit.treetwister(storagetype(t), space(t), twistmask, false)
+                @test twister === TensorKit.treetwister(storagetype(t), space(t), false, twistmask, false)
             end
         end
         symmetricbraiding && @timedtestset "Full trace: test self-consistency" begin
