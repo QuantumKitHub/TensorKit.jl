@@ -24,6 +24,7 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 - Re-export `NamedSector` and `@NamedSector` from TensorKitSectors
 - `twist(src, inds; inv = false)` for fusion tree pairs and blocks, returning `src` together with the scalar twist factor of the legs `inds`, which can be given as indices or as a `Bool` mask
+- `twist!(tdst, tsrc, inds, α = 1, β = 0, [backend], [allocator]; inv = false)` computing `tdst = β * tdst + α * twist(tsrc, inds; inv)`, in line with `permute!` and `braid!`, together with Mooncake and Enzyme rules; `twist` now also accepts `backend` and `allocator` keywords
 
 ### Changed
 

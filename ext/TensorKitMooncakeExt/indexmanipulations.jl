@@ -161,6 +161,93 @@ function Mooncake.rrule!!(
 end
 
 # both are needed for correctly capturing every dispatch
+@is_primitive(
+    DefaultCtx,
+    ReverseMode,
+    Tuple{
+        typeof(TK.twist!),
+        AbstractTensorMap,
+        AbstractTensorMap, Any,
+        Number, Number, Vararg{Any},
+    }
+)
+@is_primitive(
+    DefaultCtx,
+    ReverseMode,
+    Tuple{
+        typeof(Core.kwcall), @NamedTuple{inv::Bool}, typeof(TK.twist!),
+        AbstractTensorMap,
+        AbstractTensorMap, Any,
+        Vararg{Any},
+    }
+)
+
+function Mooncake.rrule!!(
+        ::CoDual{typeof(TK.twist!)},
+        C_ΔC::CoDual{<:AbstractTensorMap},
+        A_ΔA::CoDual{<:AbstractTensorMap}, inds_Δinds::CoDual,
+        α_Δα::CoDual{<:Number}, β_Δβ::CoDual{<:Number},
+        ba_Δba::CoDual...
+    )
+    C_ΔC, pullback = twist!_rrule(C_ΔC, A_ΔA, inds_Δinds, false, (α_Δα, β_Δβ, ba_Δba...))
+    twist!_pullback(Δ::NoRData) = (NoRData(), pullback(Δ)...)
+    return C_ΔC, twist!_pullback
+end
+function Mooncake.rrule!!(
+        ::CoDual{typeof(Core.kwcall)}, kwargs_Δkwargs::CoDual{@NamedTuple{inv::Bool}}, ::CoDual{typeof(TK.twist!)},
+        C_ΔC::CoDual{<:AbstractTensorMap},
+        A_ΔA::CoDual{<:AbstractTensorMap}, inds_Δinds::CoDual,
+        args_Δargs::CoDual...
+    )
+    inv = primal(kwargs_Δkwargs).inv
+    C_ΔC, pullback = twist!_rrule(C_ΔC, A_ΔA, inds_Δinds, inv, args_Δargs)
+    twist!_pullback(Δ::NoRData) = (NoRData(), NoRData(), NoRData(), pullback(Δ)...)
+    return C_ΔC, twist!_pullback
+end
+
+# `args_Δargs` holds the optional `α`, `β`, backend and allocator, where a missing `α` or `β` is constant
+function twist!_rrule(C_ΔC, A_ΔA, inds_Δinds, inv, args_Δargs)
+    # prepare arguments
+    C, ΔC = arrayify(C_ΔC)
+    A, ΔA = arrayify(A_ΔA)
+    inds = primal(inds_Δinds)
+    args = primal.(args_Δargs)
+    α = length(args) >= 1 ? args[1] : One()
+    β = length(args) >= 2 ? args[2] : Zero()
+    ba = length(args) >= 3 ? args[3:end] : ()
+
+    C_cache = copy(C)
+
+    # if we need to compute Δa, it is faster to allocate an intermediate twisted A
+    # and store that instead of repeating the twist in the pullback each time.
+    # effectively, we replace `twist!` by `add ∘ twist`.
+    Ap = if _needs_tangent(α)
+        Ap = twist(A, inds; inv, copy = true)
+        add!(C, Ap, α, β)
+        Ap
+    else
+        TK.twist!(C, A, inds, α, β, ba...; inv)
+        nothing
+    end
+
+    function pullback(::NoRData)
+        copy!(C, C_cache)
+
+        TK.twist_pb(ΔA, A, ΔC, C, inds, α, ba...; inv)
+        ΔAr = NoRData()
+
+        Δαr = length(args) >= 1 ? pullback_dα(α, ΔC, Ap) : nothing
+        Δβr = length(args) >= 2 ? pullback_dβ(β, ΔC, C) : nothing
+        ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
+
+        Δargsr = (Δαr, Δβr, map(Returns(NoRData()), ba)...)[1:length(args)]
+        return ΔCr, ΔAr, NoRData(), Δargsr...
+    end
+
+    return C_ΔC, pullback
+end
+
+# both are needed for correctly capturing every dispatch
 @is_primitive DefaultCtx ReverseMode Tuple{typeof(flip), AbstractTensorMap, Any}
 @is_primitive DefaultCtx ReverseMode Tuple{typeof(Core.kwcall), @NamedTuple{inv::Bool}, typeof(flip), AbstractTensorMap, Any}
 

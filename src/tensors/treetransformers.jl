@@ -202,20 +202,17 @@ end
     return TreeTransformer(A, fusiontreetransform, p, Vdst, Vsrc, conjsrc)
 end
 
-# a twist maps every tree pair onto itself, so this is a `UniqueTreeTransformer` for all sectors;
-# it twists the legs `twistmask` of `conjsrc ? V' : V`, reading the subblocks of a source with space `V`
+# a twist maps every tree pair onto itself, so this is a `UniqueTreeTransformer` for all sectors,
+# where `p` only relabels the legs of a conjugated source
 @cached function treetwister(
-        A::Type{TA}, V::TensorMapSpace, conjsrc::Bool, twistmask::NTuple{N, Bool}, inv::Bool
-    )::UniqueTreeTransformer{recoupling_scalartype(A, sectorscalartype(sectortype(V))), N} where {TA, N}
-    Vdst, p = twistpermutation(V, conjsrc)
-    fusiontreetwister(f) = twist(f, twistmask; inv)
-    return UniqueTreeTransformer(A, fusiontreetwister, p, Vdst, V, conjsrc)
-end
-
-# destination space of a twist of `conjsrc ? V' : V`, and the permutation of the legs of `V` it applies
-function twistpermutation(V::TensorMapSpace, conjsrc::Bool)
-    conjsrc || return V, (codomainind(V), domainind(V))
-    return V', adjointtensorindices(V', (codomainind(V'), domainind(V')))
+        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool,
+        twistmask::NTuple{N, Bool}, inv::Bool
+    )::UniqueTreeTransformer{recoupling_scalartype(A, sectorscalartype(sectortype(Vdst))), N} where {TA, N}
+    # the twist mask is attached to the legs, so it follows the same relabeling as the levels in `treebraider`
+    Vsrc′ = conjsrc ? Vsrc' : Vsrc
+    twistmask′ = conjsrc ? TupleTools.getindices(twistmask, adjointtensorindices(Vsrc′, allind(Vsrc′))) : twistmask
+    fusiontreetwister(f) = twist(f, twistmask′; inv)
+    return UniqueTreeTransformer(A, fusiontreetwister, p, Vdst, Vsrc, conjsrc)
 end
 
 # default cachestyle is GlobalLRUCache

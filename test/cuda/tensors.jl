@@ -325,9 +325,10 @@ for V in spacelist
             @test twist(twist(t, 2), 2; inv = true) ≈ t
             if !TensorKit.has_shared_twist(t, (1, 3, 5))
                 twistmask = (true, false, true, false, true)
-                twister = TensorKit.treetwister(storagetype(t), space(t), false, twistmask, false)
+                p = (codomainind(t), domainind(t))
+                twister = TensorKit.treetwister(storagetype(t), space(t), space(t), p, false, twistmask, false)
                 @test twister isa getglobal(GPUArraysExt, :DeviceUniqueTreeTransformer)
-                @test twister === TensorKit.treetwister(storagetype(t), space(t), false, twistmask, false)
+                @test twister === TensorKit.treetwister(storagetype(t), space(t), space(t), p, false, twistmask, false)
             end
         end
         symmetricbraiding && @timedtestset "Full trace: test self-consistency" begin

@@ -57,60 +57,60 @@ end
 Apply a twist to the `i`th index of `t`, or all indices in `inds`, storing the result in `t`.
 If `inv=true`, use the inverse twist.
 
+    twist!(tdst, tsrc, inds, α = 1, β = 0, [backend], [allocator]; inv::Bool = false) -> tdst
+
+Compute `tdst = β * tdst + α * twist(tsrc, inds; inv)`, writing the result into `tdst`.
+Optionally specify a `backend` and `allocator` for the underlying array operation.
+
 See [`twist`](@ref) for creating a new tensor.
 """
 function twist!(t::AbstractTensorMap, inds; inv::Bool = false)
-    if !all(in(allind(t)), inds)
-        msg = "Can't twist indices $inds of a tensor with only $(numind(t)) indices."
-        throw(ArgumentError(msg))
-    end
+    spacecheck_transform(twist, space(t), space(t), inds)
     (scalartype(t) <: Real && !(sectorscalartype(sectortype(t)) <: Real)) &&
         throw(ArgumentError("Can't in-place twist a real tensor with complex sector type"))
     has_shared_twist(t, inds) && return t
-    return _twist!(t, t, inds, inv)
+    return @inbounds twist!(t, t, inds, One(), Zero(); inv)
+end
+@propagate_inbounds function twist!(
+        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, inds,
+        α::Number = One(), β::Number = Zero(),
+        backend::AbstractBackend = TO.DefaultBackend(), allocator = TO.DefaultAllocator();
+        inv::Bool = false
+    )
+    @boundscheck spacecheck_transform(twist, space(tdst), space(tsrc), inds)
+    @timeit_debug GLOBAL_TIMER "twist!" begin
+        twistmask = ntuple(i -> i in inds, numind(tsrc))
+        p = (codomainind(tsrc), domainind(tsrc))
+        tdst′, tsrc′, p′, twistmask′, conjsrc′, α′, β′ = unwrap_adjoints(tdst, tsrc, p, twistmask, false, α, β)
+        # like `α`, the twist is conjugated by an adjoint destination
+        inv′ = inv ⊻ (tdst isa AdjointTensorMap)
+        @inbounds _twist!(tdst′, tsrc′, p′, conjsrc′, twistmask′, inv′, α′, β′, backend, allocator)
+    end
+    return tdst
 end
 
 """
-    twist(tsrc::AbstractTensorMap, i::Int; inv::Bool = false, copy::Bool = false) -> tdst
-    twist(tsrc::AbstractTensorMap, inds; inv::Bool = false, copy::Bool = false) -> tdst
+    twist(
+        tsrc::AbstractTensorMap, inds; inv::Bool = false, copy::Bool = false,
+        backend = DefaultBackend(), allocator = DefaultAllocator()
+    ) -> tdst
 
-Apply a twist to the `i`th index of `tsrc` and return the result as a new tensor.
+Apply a twist to the `i`th index of `tsrc`, or all indices in `inds`, and return the result as a new tensor.
 If `inv = true`, use the inverse twist.
 If `copy = false`, `tdst` might share data with `tsrc` whenever possible. Otherwise, a copy is always made.
+Optionally specify a `backend` and `allocator` for the underlying array operation.
 
 See [`twist!`](@ref) for storing the result in place.
 """
-function twist(t::AbstractTensorMap, inds; inv::Bool = false, copy::Bool = false)
-    if has_shared_twist(t, inds)
-        return copy ? Base.copy(t) : t
-    end
+function twist(
+        t::AbstractTensorMap, inds; inv::Bool = false,
+        copy::Bool = false, backend::AbstractBackend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
+    )
+    has_shared_twist(t, inds) && return copy ? Base.copy(t) : t
+
+    # general case
     tdst = similar(t, promote_twist(t))
-    return _twist!(tdst, t, inds, inv)
-end
-
-const TensorMapOrAdjoint = Union{TensorMap, AdjointTensorMap{<:Any, <:Any, <:Any, <:Any, <:TensorMap}}
-
-# `tdst = twist(tsrc, inds; inv)`, where `tdst` and `tsrc` are allowed to be the same tensor
-function _twist!(tdst::TensorMapOrAdjoint, tsrc::TensorMapOrAdjoint, inds, inv::Bool)
-    twistmask = ntuple(i -> i in inds, numind(tdst))
-    # the twist acts on the legs of `tdst`, which is the inverse twist of the legs of its parent
-    if tdst isa AdjointTensorMap
-        tp = parent(tdst)
-        twistmask = TupleTools.getindices(twistmask, adjointtensorindices(tp, allind(tp)))
-        inv = !inv
-    end
-    p = (codomainind(tsrc), domainind(tsrc))
-    tdst′, tsrc′, p′, _, conjsrc, α, β = unwrap_adjoints(tdst, tsrc, p, nothing, false, One(), Zero())
-    transformer = treetwister(storagetype(tdst′), space(tsrc′), conjsrc, twistmask, inv)
-    add_transform!(tdst′, tsrc′, p′, conjsrc, transformer, α, β, TO.DefaultBackend(), TO.DefaultAllocator())
-    return tdst
-end
-function _twist!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, inds, inv::Bool)
-    for (f₁, f₂) in fusiontrees(tsrc)
-        _, θ = twist((f₁, f₂), inds; inv)
-        scale!(tdst[f₁, f₂], tsrc[f₁, f₂], θ)
-    end
-    return tdst
+    return @inbounds twist!(tdst, t, inds, One(), Zero(), backend, allocator; inv)
 end
 
 # =========================
@@ -543,6 +543,22 @@ end
     Vsrc′, p′ = conjsrc ? (Vsrc', adjointtensorindices(Vsrc, p)) : (Vsrc, p)
     return spacecheck_transform(f, Vdst, Vsrc′, p′)
 end
+@noinline function spacecheck_transform(::typeof(twist), Vdst::TensorMapSpace, Vsrc::TensorMapSpace, inds)
+    check_spacetype(Vdst, Vsrc)
+    all(in(allind(Vsrc)), inds) ||
+        throw(ArgumentError(lazy"Can't twist indices $inds of a tensor with only $(numind(Vsrc)) indices."))
+    Vdst == Vsrc ||
+        throw(
+        SpaceMismatch(
+            lazy"""
+            incompatible spaces for `twist(Vsrc, $inds) -> Vdst`
+            Vsrc = $Vsrc
+            Vdst = $Vdst
+            """
+        )
+    )
+    return nothing
+end
 @noinline function spacecheck_transform(::typeof(braid), Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, levels::IndexTuple)
     check_spacetype(Vdst, Vsrc)
     braid(Vsrc, p, levels) == Vdst ||
@@ -579,9 +595,9 @@ Base.@deprecate(
 # with `p` indexing the legs of `tsrc`. Adjoint wrappers are absorbed into `conjsrc`, `p`, `levels`
 # and the scalars, such that the actual work always happens on the subblocks of the parent tensors.
 
-# levels are attached to the legs: relabel them from the legs of `t'` to those of `t`
+# levels (or a twist mask) are attached to the legs: relabel them from the legs of `t'` to those of `t`
 _adjoint_levels(t, ::Nothing) = nothing
-_adjoint_levels(t, levels::IndexTuple) = TupleTools.getindices(levels, adjointtensorindices(t, allind(t)))
+_adjoint_levels(t, levels::Tuple) = TupleTools.getindices(levels, adjointtensorindices(t, allind(t)))
 
 _unwrap_source(tsrc::AbstractTensorMap, p, levels, conjsrc::Bool) = (tsrc, p, levels, conjsrc)
 function _unwrap_source(tsrc::AdjointTensorMap, p, levels, conjsrc::Bool)
@@ -636,6 +652,16 @@ end
     all(has_array_view, (tdst, tsrc)) && return _dense_transform!(tdst, tsrc, p, conjsrc, α, β, backend, allocator)
     _is_trivial_transform(tsrc, p, conjsrc) && return add!(tdst, tsrc, α, β)
     transformer = treetransposer(storagetype(tdst), Vdst, Vsrc, p, conjsrc)
+    return add_transform!(tdst, tsrc, p, conjsrc, transformer, α, β, backend, allocator)
+end
+
+# counterpart of `_braid!` for `twist!`, where `p` only relabels the legs of a conjugated source
+@propagate_inbounds function _twist!(
+        tdst, tsrc, p::Index2Tuple, conjsrc::Bool, twistmask::Tuple{Vararg{Bool}}, inv::Bool, α, β, backend, allocator
+    )
+    Vdst, Vsrc = space(tdst), space(tsrc)
+    @boundscheck spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
+    transformer = treetwister(storagetype(tdst), Vdst, Vsrc, p, conjsrc, twistmask, inv)
     return add_transform!(tdst, tsrc, p, conjsrc, transformer, α, β, backend, allocator)
 end
 

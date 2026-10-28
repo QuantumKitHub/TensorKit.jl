@@ -188,9 +188,20 @@ for V in spacelist
                     @test twist!(t2', inds; inv) ≈ ref
                     @test t2 ≈ ref'
                     # adjoint destination
-                    @test TensorKit._twist!(similar(t)', tref, inds, inv) ≈ ref
+                    @test twist!(similar(t)', tref, inds; inv) ≈ ref
                     @test twist(twist(t', inds), inds; inv = true) ≈ tref
                 end
+                # accumulation into the destination
+                α = T <: Complex ? T(2.1 + 0.3im) : T(2.1)
+                β = T <: Complex ? T(-0.7im) : T(-0.7)
+                tdst = rand(T, space(tref))
+                ref = β * tdst + α * twist(tref, (2, 3))
+                @test @constinferred(twist!(copy(tdst), tref, (2, 3), α, β)) ≈ ref
+                @test twist!(copy(tdst), t', (2, 3), α, β) ≈ ref
+                D = copy(tdst')
+                twist!(D', t', (2, 3), α, β)
+                @test D' ≈ ref
+                @test twist!(copy(tdst), tref, (2, 3), α, β; inv = true) ≈ β * tdst + α * twist(tref, (2, 3); inv = true)
             end
         end
         symmetricbraiding && @timedtestset "Permutations: BraidingTensor source" begin

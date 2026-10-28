@@ -288,10 +288,10 @@ end
 end
 
 @cached function TensorKit.treetwister(
-        A::Type{TA}, V::TensorMapSpace, conjsrc::Bool, twistmask::NTuple{N, Bool}, inv::Bool
+        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
+        conjsrc::Bool, twistmask::NTuple{N, Bool}, inv::Bool
     ) where {TA <: AnyGPUVector, N}
-    host = TensorKit.treetwister(Vector{scalartype(A)}, V, conjsrc, twistmask, inv)
-    _, p = TensorKit.twistpermutation(V, conjsrc)
+    host = TensorKit.treetwister(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc, twistmask, inv)
     return device_transformer(A, host, linearize(p))
 end
 
