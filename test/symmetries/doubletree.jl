@@ -245,9 +245,7 @@ using TensorKitSectors
             @test fusiontrees(block) == filter(f -> (f[1].uncoupled, f[2].uncoupled) == block.uncoupled, trees)
         end
         @test sum(length, blocks) == length(trees)
-        # the blocks are ordered as `sectors(domain(W))` (outer) and `sectors(codomain(W))` (inner)
-        uncoupled = [(u₁, u₂) for u₂ in sectors(domain(W)) for u₁ in sectors(codomain(W))]
-        @test map(block -> block.uncoupled, blocks) == filter(u -> any(f -> (f[1].uncoupled, f[2].uncoupled) == u, trees), uncoupled)
+        @test allunique(map(block -> block.uncoupled, blocks))
     end
 
     @testset "Double fusion tree: planar trace" begin

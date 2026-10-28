@@ -211,17 +211,15 @@ function fusionblocks(W::HomSpace)
     I = sectortype(W)
     N₁, N₂ = numout(W), numin(W)
     F = fusiontreetype(I, N₁, N₂)
-    # group the (cached) fusion trees of `W` by their uncoupled sectors
-    groups = Dict{Tuple{NTuple{N₁, I}, NTuple{N₂, I}}, Vector{F}}()
+    # group the (cached) fusion trees of `W` by their uncoupled sectors, in the order in which
+    # these first occur
+    groups = Vector{F}[]
+    group_of = Dict{Tuple{NTuple{N₁, I}, NTuple{N₂, I}}, Vector{F}}()
     for (f₁, f₂) in fusiontrees(W)
-        push!(get!(Vector{F}, groups, (f₁.uncoupled, f₂.uncoupled)), (f₁, f₂))
+        group = get!(() -> push!(groups, F[])[end], group_of, (f₁.uncoupled, f₂.uncoupled))
+        push!(group, (f₁, f₂))
     end
-    # in the order of `sectors(domain(W))` (outer) and `sectors(codomain(W))` (inner), each of
-    # which runs fastest over its first space (the sectors of a dual space are sorted by their dual)
-    key(V, s) = isdual(V) ? dual(s) : s
-    rank((u₁, u₂)) = (reverse(map(key, domain(W).spaces, u₂)), reverse(map(key, codomain(W).spaces, u₁)))
-    us = collect(keys(groups))
-    return map(i -> FusionTreeBlock(groups[us[i]]), sortperm(map(rank, us))) # each rank computed once
+    return map(FusionTreeBlock, groups)
 end
 
 function diagonalblockstructure(W::HomSpace)
