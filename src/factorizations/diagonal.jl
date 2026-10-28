@@ -3,6 +3,7 @@
 _repack_diagonal(d::DiagonalTensorMap) = Diagonal(d.data)
 _repack_diagonal(d::SectorVector) = Diagonal(parent(d))
 
+MAK.diagonal(t::SectorVector) = DiagonalTensorMap(t)
 MAK.diagview(t::DiagonalTensorMap) = SectorVector(t.data, TensorKit.diagonalblockstructure(space(t)))
 
 for f in (

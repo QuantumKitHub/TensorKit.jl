@@ -13,6 +13,7 @@ end
 Base.parent(t::AdjointTensorMap) = t.parent
 parenttype(t::AdjointTensorMap) = parenttype(typeof(t))
 parenttype(::Type{AdjointTensorMap{T, S, N₁, N₂, TT}}) where {T, S, N₁, N₂, TT} = TT
+parenttype(::Type{Union{}}) = throw(MethodError(parenttype, (Union{},)))
 
 # Constructor: construct from taking adjoint of a tensor
 Base.adjoint(t::AdjointTensorMap) = parent(t)
@@ -51,6 +52,8 @@ Base.@propagate_inbounds function subblock(t::AdjointTensorMap, (f₁, f₂)::Tu
 end
 
 Adapt.adapt_structure(to, x::AdjointTensorMap) = adjoint(Adapt.adapt(to, parent(x)))
+
+LinearAlgebra.norm(t::AdjointTensorMap, p::Real = 2) = norm(parent(t), p)
 
 # Show
 #------

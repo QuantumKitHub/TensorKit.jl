@@ -35,8 +35,7 @@ end
 # -----------------------
 for f! in (
         :qr_compact!, :qr_full!, :lq_compact!, :lq_full!,
-        :eig_full!, :eigh_full!, :svd_compact!, :svd_full!,
-        :left_polar!, :right_polar!,
+        :eig_full!, :eigh_full!, :left_polar!, :right_polar!,
     )
     @eval function MAK.$f!(t::AbstractTensorMap, F, alg::AbstractAlgorithm)
         $(f! in (:eig_full!, :eigh_full!) && :(LinearAlgebra.checksquare(t)))
@@ -56,10 +55,38 @@ for f! in (
     end
 end
 
+# these have batched versions, use them if the driver supports it
+# which blocks are worth batching, and how to pack them, is decided by MatrixAlgebraKit
+for (f!, bf!) in ((:svd_compact!, :batched_svd_compact!), (:svd_full!, :batched_svd_full!))
+    @eval function MAK.$f!(t::AbstractTensorMap, F, alg::AbstractAlgorithm)
+        @timeit_debug GLOBAL_TIMER $(string(f!)) begin
+            U, S, Vᴴ = F
+            driver = get(alg.kwargs, :driver, MAK.DefaultDriver())
+            cs = collect(union(blocksectors.((t, U, S, Vᴴ))...))
+            if !isempty(cs) && MAK.supports_ragged_batch(MAK.$f!, alg, driver, storagetype(t))
+                As = [block(t, c) for c in cs]
+                Fs = ([block(U, c) for c in cs], [block(S, c) for c in cs], [block(Vᴴ, c) for c in cs])
+                @timeit_debug GLOBAL_TIMER "batched: MatrixAlgebraKit" MAK.$bf!(As, Fs, alg)
+                return F
+            end
+            foreachblock(t, U, S, Vᴴ) do _, (tblock, Fblocks...)
+                @timeit_debug GLOBAL_TIMER "dense: MatrixAlgebraKit" begin
+                    Fblocks′ = $f!(tblock, Fblocks, alg)
+                    # deal with the case where the output is not in-place
+                    for (b′, b) in zip(Fblocks′, Fblocks)
+                        b === b′ || copy!(b, b′)
+                    end
+                end
+                return nothing
+            end
+            return F
+        end
+    end
+end
+
 # Handle these separately because single output instead of tuple
 for f! in (
-        :qr_null!, :lq_null!,
-        :svd_vals!, :eig_vals!, :eigh_vals!,
+        :qr_null!, :lq_null!, :eig_vals!, :eigh_vals!,
         :project_hermitian!, :project_antihermitian!, :project_isometric!,
         :exponential!,
     )
@@ -76,6 +103,30 @@ for f! in (
             end
         end
         return N
+    end
+end
+
+# Handle these separately because single output instead of tuple AND batching is supported
+for (f!, bf!) in ((:svd_vals!, :batched_svd_vals!),)
+    @eval function MAK.$f!(t::AbstractTensorMap, S, alg::AbstractAlgorithm)
+        @timeit_debug GLOBAL_TIMER $(string(f!)) begin
+            driver = get(alg.kwargs, :driver, MAK.DefaultDriver())
+            cs = blocksectors(t)
+            if !isempty(cs) && MAK.supports_ragged_batch(MAK.$f!, alg, driver, storagetype(t))
+                As, Ss = last.(blocks(t)), last.(blocks(S))
+                @timeit_debug GLOBAL_TIMER "batched: MatrixAlgebraKit" MAK.$bf!(As, Ss, alg)
+                return S
+            end
+            foreachblock(t, S) do _, (tblock, Sblock)
+                @timeit_debug GLOBAL_TIMER "dense: MatrixAlgebraKit" begin
+                    Sblock′ = $f!(tblock, Sblock, alg)
+                    # deal with the case where the output is not the same as the input
+                    Sblock === Sblock′ || copy!(Sblock, Sblock′)
+                end
+                return nothing
+            end
+        end
+        return S
     end
 end
 
@@ -103,7 +154,6 @@ MAK.zero!(t::AbstractTensorMap) = zerovector!(t)
 for f in [
         :lq_full, :lq_compact, :lq_null,
         :qr_full, :qr_compact, :qr_null,
-        :schur_full, :schur_vals,
         :eig_full, :eig_vals, :eig_trunc, :eig_trunc_no_error,
         :eigh_full, :eigh_vals, :eigh_trunc, :eigh_trunc_no_error,
         :svd_full, :svd_compact, :svd_trunc, :svd_trunc_no_error, :svd_vals,

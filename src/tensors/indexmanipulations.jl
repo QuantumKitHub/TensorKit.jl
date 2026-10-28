@@ -219,7 +219,7 @@ See also [`permute`](@ref) for creating a new tensor.
         α::Number = One(), β::Number = Zero(),
         backend::AbstractBackend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
     )
-    @boundscheck spacecheck_transform(permute, tdst, tsrc, p)
+    @boundscheck spacecheck_transform(permute, space(tdst), space(tsrc), p)
     @timeit_debug GLOBAL_TIMER "permute!/braid!" begin
         tdst′, tsrc′, p′, _, conjsrc′, α′, β′ = unwrap_adjoints(tdst, tsrc, p, nothing, false, α, β)
         @inbounds _braid!(tdst′, tsrc′, p′, conjsrc′, allind(tsrc′), α′, β′, backend, allocator)
@@ -309,7 +309,7 @@ See also [`braid`](@ref) for creating a new tensor.
         α::Number = One(), β::Number = Zero(),
         backend::AbstractBackend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
     )
-    @boundscheck spacecheck_transform(braid, tdst, tsrc, p, levels)
+    @boundscheck spacecheck_transform(braid, space(tdst), space(tsrc), p, levels)
     @timeit_debug GLOBAL_TIMER "permute!/braid!" begin
         tdst′, tsrc′, p′, levels′, conjsrc′, α′, β′ = unwrap_adjoints(tdst, tsrc, p, levels, false, α, β)
         @inbounds _braid!(tdst′, tsrc′, p′, conjsrc′, levels′, α′, β′, backend, allocator)
@@ -382,7 +382,7 @@ end
         α::Number = One(), β::Number = Zero(),
         backend::AbstractBackend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
     )
-    @boundscheck spacecheck_transform(transpose, tdst, tsrc, p)
+    @boundscheck spacecheck_transform(transpose, space(tdst), space(tsrc), p)
     @timeit_debug GLOBAL_TIMER "transpose!" begin
         tdst′, tsrc′, p′, _, conjsrc′, α′, β′ = unwrap_adjoints(tdst, tsrc, p, nothing, false, α, β)
         @inbounds _transpose!(tdst′, tsrc′, p′, conjsrc′, α′, β′, backend, allocator)
@@ -505,8 +505,6 @@ for (operation, manipulation) in (
     end
 end
 
-spacecheck_transform(f, tdst::AbstractTensorMap, tsrc::AbstractTensorMap, args...) =
-    spacecheck_transform(f, space(tdst), space(tsrc), args...)
 @noinline function spacecheck_transform(f, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple)
     check_spacetype(Vdst, Vsrc)
     f(Vsrc, p) == Vdst ||
@@ -604,9 +602,10 @@ end
 @propagate_inbounds function _braid!(
         tdst, tsrc, p::Index2Tuple, conjsrc::Bool, levels::IndexTuple, α, β, backend, allocator
     )
-    @boundscheck spacecheck_transform(permute, tdst, tsrc, p, conjsrc)
+    Vdst, Vsrc = space(tdst), space(tsrc)
+    @boundscheck spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
     all(has_array_view, (tdst, tsrc)) && return _dense_transform!(tdst, tsrc, p, conjsrc, α, β, backend, allocator)
-    transformer = treebraider(tdst, tsrc, p, conjsrc, levels)
+    transformer = treebraider(storagetype(tdst), Vdst, Vsrc, p, conjsrc, levels)
     return add_transform!(tdst, tsrc, p, conjsrc, transformer, α, β, backend, allocator)
 end
 
@@ -614,9 +613,10 @@ end
 @propagate_inbounds function _transpose!(
         tdst, tsrc, p::Index2Tuple, conjsrc::Bool, α, β, backend, allocator
     )
-    @boundscheck spacecheck_transform(permute, tdst, tsrc, p, conjsrc)
+    Vdst, Vsrc = space(tdst), space(tsrc)
+    @boundscheck spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
     all(has_array_view, (tdst, tsrc)) && return _dense_transform!(tdst, tsrc, p, conjsrc, α, β, backend, allocator)
-    transformer = treetransposer(tdst, tsrc, p, conjsrc)
+    transformer = treetransposer(storagetype(tdst), Vdst, Vsrc, p, conjsrc)
     return add_transform!(tdst, tsrc, p, conjsrc, transformer, α, β, backend, allocator)
 end
 
@@ -705,21 +705,44 @@ function _add_transform_block!(
             )
         end
 
-        # 2. Recoupling: buffer_dst = α * buffer_src * U^T  (each output tree is a linear
+        # 2. Recoupling: buffer_dst = buffer_src * U^T  (each output tree is a linear
         #    combination of input trees weighted by the recoupling coefficients).
-        @timeit_debug GLOBAL_TIMER "dense: recouple mul!" begin
-            U′ = _adapt_recoupling(storagetype(dst), U)
-            mul!(buffer_dst, buffer_src, transpose(U′), α, Zero())
-        end
+        @timeit_debug GLOBAL_TIMER "dense: recouple mul!" _recouple!(buffer, buffer_dst, buffer_src, U)
 
         # 3. Insert: scatter column j of buffer_dst into the destination, applying the
-        #    actual index permutation p in the same tensoradd! call.
+        #    actual index permutation p and the scaling α in the same tensoradd! call.
         @timeit_debug GLOBAL_TIMER "dense: unpack" @inbounds for (j, idst) in enumerate(inds_dst)
             TO.tensoradd!(
                 dst[idst], sreshape(view(buffer_dst, :, j), sz_src),
-                p, false, One(), β, backend, allocator
+                p, false, α, β, backend, allocator
             )
         end
     end
     return nothing
+end
+
+# computes `buffer_dst = buffer_src * transpose(U)`, where both are column-major views into `buffer`
+_recouple!(buffer, buffer_dst, buffer_src, U) =
+    (mul!(buffer_dst, buffer_src, transpose(StridedView(U))); nothing)
+# real coefficients acting on complex data: recouple the real and imaginary parts in a single real gemm
+function _recouple!(
+        buffer::DenseVector{Complex{R}}, buffer_dst::StridedView, buffer_src::StridedView, U::AbstractMatrix{R}
+    ) where {R <: LinearAlgebra.BlasReal}
+    rbuffer = reinterpret(R, buffer)
+    mul!(_realview(rbuffer, buffer_dst), _realview(rbuffer, buffer_src), transpose(U))
+    return nothing
+end
+# on the CPU, views of reinterpreted arrays are not `StridedMatrix`, so `mul!` would not use BLAS
+function _recouple!(
+        buffer::CPUStorage{Complex{R}}, buffer_dst::StridedView, buffer_src::StridedView, U::Matrix{R}
+    ) where {R <: LinearAlgebra.BlasReal}
+    rbuffer = reinterpret(R, buffer)
+    LinearAlgebra.BLAS.gemm!('N', 'T', true, _realview(rbuffer, buffer_src), U, false, _realview(rbuffer, buffer_dst))
+    return nothing
+end
+# real view of the complex column-major view `b` into the reinterpreted buffer `rbuffer`
+function _realview(rbuffer::AbstractVector, b::StridedView)
+    rows, cols = size(b)
+    offset = 2 * b.offset
+    return reshape(view(rbuffer, (offset + 1):(offset + 2 * rows * cols)), 2 * rows, cols)
 end

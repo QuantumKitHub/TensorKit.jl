@@ -132,8 +132,8 @@ Optionally, a scalartype `T` for the destination can be supplied that might diff
 @inline promote_storagetype(A::AbstractTensorMap) = storagetype(A)
 @inline promote_storagetype(A::AbstractTensorMap, B::AbstractTensorMap, Cs::AbstractTensorMap...) =
     promote_storagetype(storagetype(A), storagetype(B), map(storagetype, Cs)...)
-@inline promote_storagetype(::Type{T}, A::AbstractTensorMap, B::AbstractTensorMap, Cs::AbstractTensorMap...) where {T <: Number} =
-    promote_storagetype(similarstoragetype(A, T), similarstoragetype(B, T), map(Base.Fix2(similarstoragetype, T), Cs)...)
+@inline promote_storagetype(::Type{T}, A::AbstractTensorMap, Bs::AbstractTensorMap...) where {T <: Number} =
+    promote_storagetype(similarstoragetype(A, T), map(Base.Fix2(similarstoragetype, T), Bs)...)
 
 @inline function promote_storagetype(
         ::Type{A}, ::Type{B}, Cs::Type{<:AbstractTensorMap}...
@@ -148,6 +148,7 @@ end
 
 # promotion system in the same spirit as base/promotion.jl
 promote_storagetype(::Type{Base.Bottom}, ::Type{Base.Bottom}) = Base.Bottom
+promote_storagetype(::Type{T}) where {T} = T
 promote_storagetype(::Type{T}, ::Type{T}) where {T} = T
 promote_storagetype(::Type{T}, ::Type{Base.Bottom}) where {T} = T
 promote_storagetype(::Type{Base.Bottom}, ::Type{T}) where {T} = T
@@ -237,7 +238,7 @@ See also [`numin`](@ref) and [`numind`](@ref).
 """ numout
 
 numout(x) = numout(typeof(x))
-numout(T::Type) = throw(MethodError(numout, T)) # avoid infinite recursion
+numout(T::Type) = throw(MethodError(numout, (T,))) # avoid infinite recursion
 numout(::Type{<:AbstractTensorMap{T, S, N₁}}) where {T, S, N₁} = N₁
 
 @doc """
@@ -251,7 +252,7 @@ See also [`numout`](@ref) and [`numind`](@ref).
 """ numin
 
 numin(x) = numin(typeof(x))
-numin(T::Type) = throw(MethodError(numin, T)) # avoid infinite recursion
+numin(T::Type) = throw(MethodError(numin, (T,))) # avoid infinite recursion
 numin(::Type{<:AbstractTensorMap{T, S, N₁, N₂}}) where {T, S, N₁, N₂} = N₂
 
 """
@@ -313,7 +314,6 @@ InnerProductStyle(t::AbstractTensorMap) = InnerProductStyle(typeof(t))
 
 numout(t::AbstractTensorMap) = numout(typeof(t))
 numin(t::AbstractTensorMap) = numin(typeof(t))
-numind(t::AbstractTensorMap) = numind(typeof(t))
 
 # tensor characteristics: data structure and properties
 #------------------------------------------------------
