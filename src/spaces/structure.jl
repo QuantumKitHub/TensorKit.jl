@@ -57,6 +57,7 @@ Base.length(t::FusionTreePairs) = last(t.offsets)
 Dictionaries.istokenizable(::FusionTreePairs) = true
 Dictionaries.tokentype(::FusionTreePairs) = Int
 Dictionaries.iteratetoken(t::FusionTreePairs, i::Int = 0) = i < length(t) ? (i + 1, i + 1) : nothing
+Dictionaries.iteratetoken_reverse(t::FusionTreePairs, i::Int = length(t) + 1) = i > 1 ? (i - 1, i - 1) : nothing
 # tokens as returned by `gettoken` look like those of `Indices`, with the position second
 function Dictionaries.gettoken(t::FusionTreePairs, (f₁, f₂))
     found₁, (_, i₁) = gettoken(t.trees₁, f₁)
@@ -119,7 +120,7 @@ See also [`degeneracystructure`](@ref), [`fusiontrees`](@ref), [`blocksectors`](
 """
 @cached function sectorstructure(W::S)::sectorstructuretype(W) where {S <: HomSpace}
     # the trees of both sides of every coupled sector; the pairs are not stored
-    bs = collect(_blocksectors(W))
+    bs = vec(collect(_blocksectors(W))) # `vec`: the units of a product sector have a shape
     F₁, F₂ = fusiontreetype(sectortype(S), numout(S)), fusiontreetype(sectortype(S), numin(S))
     sides₁ = map(c -> collect(fusiontrees(codomain(W), c)), bs)
     sides₂ = map(c -> collect(fusiontrees(domain(W), c)), bs)
