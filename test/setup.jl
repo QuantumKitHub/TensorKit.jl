@@ -10,6 +10,7 @@ export default_spacelist, factorization_spacelist, ad_spacelist
 export VIBM, VIBMRepA4
 export test_ad_rrule
 export _isunitary, _isone
+export TensorKitTestSuite, eval_show
 
 using Random
 using Test: @test
@@ -23,6 +24,9 @@ using MatrixAlgebraKit: MatrixAlgebraKit, diagview
 using ChainRulesCore: NoTangent
 using ChainRulesTestUtils: ChainRulesTestUtils, test_rrule
 using Zygote: Zygote, rrule_via_ad
+
+include(joinpath(@__DIR__, "testsuite", "TensorKitTestSuite.jl"))
+using .TensorKitTestSuite: eval_show
 
 Random.seed!(123456)
 
