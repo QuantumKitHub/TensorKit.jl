@@ -29,6 +29,15 @@ is_ci = get(ENV, "CI", "false") == "true"
                     EnzymeTestUtils.test_forward(twist!, TA, (A, TA), ([1, 3], Const); atol, rtol)
                 end
             end
+            α = randn(T)
+            β = randn(T)
+            C = randn!(similar(A, TensorKit.promote_twist(A)))
+            EnzymeTestUtils.test_reverse(twist!, TA, (copy(C), TA), (A, TA), ((1, 3), Const), (α, Active), (β, Active); atol, rtol, fkwargs = (inv = true,))
+            EnzymeTestUtils.test_forward(twist!, TA, (copy(C), TA), (A, TA), ((1, 3), Const), (α, Duplicated), (β, Duplicated); atol, rtol, fkwargs = (inv = false,))
+            if !is_ci
+                EnzymeTestUtils.test_reverse(twist!, TA, (copy(C), TA), (A, TA), ([2, 4], Const), (α, Const), (β, Const); atol, rtol)
+                EnzymeTestUtils.test_forward(twist!, TA, (copy(C), TA), (A, TA), ([2, 4], Const), (α, Const), (β, Const); atol, rtol)
+            end
             EnzymeTestUtils.test_reverse(flip, TA, (A, TA), (1, Const); atol, rtol, fkwargs = (inv = false,))
             EnzymeTestUtils.test_reverse(flip, TA, (A, TA), ([1, 3], Const); atol, rtol, fkwargs = (inv = true,))
             if !is_ci

@@ -82,6 +82,18 @@ eltypes = (Float64, ComplexF64)
             Mooncake.TestUtils.test_rule(rng, twist!, A, [1, 3]; atol, rtol, mode)
         end
 
+        α = randn(T)
+        β = randn(T)
+        C = randn!(similar(A, TensorKit.promote_twist(A)))
+        Mooncake.TestUtils.test_rule(rng, TensorKit.twist!, C, A, (1, 3), α, β; atol, rtol, mode)
+        Mooncake.TestUtils.test_rule(rng, Core.kwcall, (; inv = true), TensorKit.twist!, C, A, [2, 4], α, β; atol, rtol, mode)
+        Mooncake.TestUtils.test_rule(rng, Core.kwcall, (; inv = false), TensorKit.twist!, C, A, 1; atol, rtol, mode)
+        if !(T <: Real)
+            Mooncake.TestUtils.test_rule(rng, TensorKit.twist!, C, real(A), (1, 3), α, β; atol, rtol, mode)
+            Mooncake.TestUtils.test_rule(rng, TensorKit.twist!, C, A, (1, 3), real(α), real(β); atol, rtol, mode)
+        end
+        Mooncake.TestUtils.test_rule(rng, Core.kwcall, (; inv = true), twist, A, (1, 3); atol, rtol, mode, is_primitive = false)
+
         Mooncake.TestUtils.test_rule(rng, Core.kwcall, (; inv = false), flip, A, 1; atol, rtol, mode)
         Mooncake.TestUtils.test_rule(rng, Core.kwcall, (; inv = true), flip, A, [1, 3]; atol, rtol, mode)
         Mooncake.TestUtils.test_rule(rng, flip, A, 1; atol, rtol, mode)

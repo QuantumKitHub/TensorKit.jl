@@ -126,6 +126,7 @@ for V in spacelist
             test_rrule(transpose, A, ((2, 5, 4), (1, 3)); fkwargs = bakwargs)
             symmetricbraiding &&
                 test_rrule(permute, A, ((1, 3, 2), (5, 4)); fkwargs = bakwargs)
+            hasbraiding && test_rrule(twist, A, (2, 4); fkwargs = bakwargs)
 
             # `repartition` has no rrule of its own: it is differentiated by AD-ing through
             # its body down to the `transpose` rrule, so it has to be tested end-to-end
@@ -139,6 +140,7 @@ for V in spacelist
 
             hasbraiding && test_rrule(twist, A, 1)
             hasbraiding && test_rrule(twist, A, [1, 3])
+            hasbraiding && test_rrule(twist, A, [1, 3]; fkwargs = (; inv = true))
 
             hasbraiding && test_rrule(flip, A, 1)
             hasbraiding && test_rrule(flip, A, [1, 3, 4])
