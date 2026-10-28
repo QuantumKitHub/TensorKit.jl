@@ -37,7 +37,7 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 ### Performance
 
-- `twist!` and `twist` on a `TensorMap` use a cached tree transformer and the index manipulation kernel instead of a loop over all fusion trees, which removes the per-subblock bookkeeping and turns a twist of a GPU tensor into a single kernel launch ([#595](https://github.com/QuantumKitHub/TensorKit.jl/issues/595))
+- `twist!` and `twist` on a `TensorMap` or its adjoint use a cached tree transformer and the index manipulation kernel instead of a loop over all fusion trees, which removes the per-subblock bookkeeping and turns a twist of a GPU tensor into a single kernel launch ([#595](https://github.com/QuantumKitHub/TensorKit.jl/issues/595))
 
 ## [0.17.3](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.2...v0.17.3) - 2026-10-30
 

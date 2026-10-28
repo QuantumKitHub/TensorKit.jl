@@ -88,15 +88,22 @@ function twist(t::AbstractTensorMap, inds; inv::Bool = false, copy::Bool = false
     return _twist!(tdst, t, inds, inv)
 end
 
+const TensorMapOrAdjoint = Union{TensorMap, AdjointTensorMap{<:Any, <:Any, <:Any, <:Any, <:TensorMap}}
+
 # `tdst = twist(tsrc, inds; inv)`, where `tdst` and `tsrc` are allowed to be the same tensor
-function _twist!(tdst::TensorMap, tsrc::TensorMap, inds, inv::Bool)
-    V = space(tsrc)
-    twistmask = ntuple(i -> i in inds, numind(V))
-    transformer = treetwister(storagetype(tdst), V, twistmask, inv)
-    return add_transform!(
-        tdst, tsrc, (codomainind(V), domainind(V)), false, transformer,
-        One(), Zero(), TO.DefaultBackend(), TO.DefaultAllocator()
-    )
+function _twist!(tdst::TensorMapOrAdjoint, tsrc::TensorMapOrAdjoint, inds, inv::Bool)
+    twistmask = ntuple(i -> i in inds, numind(tdst))
+    # the twist acts on the legs of `tdst`, which is the inverse twist of the legs of its parent
+    if tdst isa AdjointTensorMap
+        tp = parent(tdst)
+        twistmask = TupleTools.getindices(twistmask, adjointtensorindices(tp, allind(tp)))
+        inv = !inv
+    end
+    p = (codomainind(tsrc), domainind(tsrc))
+    tdst′, tsrc′, p′, _, conjsrc, α, β = unwrap_adjoints(tdst, tsrc, p, nothing, false, One(), Zero())
+    transformer = treetwister(storagetype(tdst′), space(tsrc′), conjsrc, twistmask, inv)
+    add_transform!(tdst′, tsrc′, p′, conjsrc, transformer, α, β, TO.DefaultBackend(), TO.DefaultAllocator())
+    return tdst
 end
 function _twist!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, inds, inv::Bool)
     for (f₁, f₂) in fusiontrees(tsrc)
