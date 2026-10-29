@@ -92,24 +92,79 @@ function planartrace!(
     end
 
     @timeit_debug GLOBAL_TIMER "planartrace!" begin
-        if iszero(β)
-            fill!(C, β)
-        elseif !isone(β)
-            rmul!(C, β)
-        end
-        β′ = One()
-        for (f₁, f₂) in fusiontrees(A)
-            for ((f₁′, f₂′), coeff) in planar_trace((f₁, f₂), (p₁, p₂), (q₁, q₂))
-                @timeit_debug GLOBAL_TIMER "dense: trace" TO.tensortrace!(
-                    C[f₁′, f₂′],
-                    A[f₁, f₂], (p₁, p₂), (q₁, q₂), false,
-                    α * coeff, β′,
-                    backend, allocator
-                )
-            end
-        end
+        transformer = treetracer(storagetype(C), space(C), space(A), (p₁, p₂), (q₁, q₂))
+        dst, src = _transform_subblocks(C, A, transformer)
+        ntasks = get_num_transformer_threads(A)
+        trace_transform_kernel!(dst, src, (p₁, p₂), (q₁, q₂), transformer, α, β, backend, allocator, ntasks)
     end
     return C
+end
+
+# kernel for computing `tdst = β * tdst + α * tr(tsrc)`, with the planar trace encoded in `transformer`
+function trace_transform_kernel!(
+        dst::TransformSubblocks, src::TransformSubblocks, p::Index2Tuple, q::Index2Tuple,
+        transformer::TraceTransformer, α, β, backend, allocator, ntasks::Int
+    )
+    bufsize = buffersize(transformer)
+    if bufsize == 0 # every block has a single destination subblock
+        taskforeach(transformer.data, ntasks) do (U, inds_dst, inds_src)
+            _trace_transform_block!(dst, src, p, q, U, inds_dst, inds_src, nothing, α, β, backend, allocator)
+        end
+    else
+        # see `add_transform_kernel!` for the workspace strategy
+        cp = TO.allocator_checkpoint!(allocator)
+        @timeit_debug GLOBAL_TIMER "alloc: buffers" buffers = [
+            TO.tensoralloc(storagetype(dst), bufsize, Val(true), allocator)
+                for _ in 1:min(length(transformer.data), ntasks)
+        ]
+        taskforeach(transformer.data, buffers) do (U, inds_dst, inds_src), buffer
+            _trace_transform_block!(dst, src, p, q, U, inds_dst, inds_src, buffer, α, β, backend, allocator)
+        end
+        foreach(Base.Fix2(TO.tensorfree!, allocator), buffers)
+        TO.allocator_reset!(allocator, cp)
+    end
+    return nothing
+end
+
+function _trace_transform_block!(
+        dst::TransformSubblocks, src::TransformSubblocks, p::Index2Tuple, q::Index2Tuple,
+        U, inds_dst, inds_src, buffer, α, β, backend, allocator
+    )
+    if size(U, 1) == 1 # single destination: trace every source directly into it
+        idst = only(inds_dst)
+        if isempty(inds_src)
+            @inbounds iszero(β) ? zerovector!(dst[idst]) : scale!(dst[idst], β)
+            return nothing
+        end
+        @timeit_debug GLOBAL_TIMER "dense: trace" @inbounds begin
+            TO.tensortrace!(dst[idst], src[first(inds_src)], p, q, false, α * U[1, 1], β, backend, allocator)
+            for i in 2:length(inds_src)
+                TO.tensortrace!(dst[idst], src[inds_src[i]], p, q, false, α * U[1, i], One(), backend, allocator)
+            end
+        end
+    else # trace → recoupling matmul → unpack
+        rows, cols = size(U)
+        sz = size(@inbounds(dst[first(inds_dst)]))
+        ptriv = (ntuple(identity, length(sz)), ())
+        blocksize = prod(sz)
+        buffer_dst = StridedView(buffer, (blocksize, rows), (1, blocksize), 0)
+        buffer_src = StridedView(buffer, (blocksize, cols), (1, blocksize), blocksize * rows)
+
+        # the permutation is applied while tracing, such that unpacking is a plain addition
+        @timeit_debug GLOBAL_TIMER "dense: trace" @inbounds for (i, isrc) in enumerate(inds_src)
+            TO.tensortrace!(
+                sreshape(view(buffer_src, :, i), sz), src[isrc], p, q, false,
+                One(), Zero(), backend, allocator
+            )
+        end
+        @timeit_debug GLOBAL_TIMER "dense: recouple mul!" _recouple!(buffer, buffer_dst, buffer_src, U)
+        @timeit_debug GLOBAL_TIMER "dense: unpack" @inbounds for (j, idst) in enumerate(inds_dst)
+            TO.tensoradd!(
+                dst[idst], sreshape(view(buffer_dst, :, j), sz), ptriv, false, α, β, backend, allocator
+            )
+        end
+    end
+    return nothing
 end
 
 # insert default backend

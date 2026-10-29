@@ -249,28 +249,24 @@ using TensorKitSectors
     end
 
     @testset "Double fusion tree: planar trace" begin
+        p1 = ((N + 1, 1:N..., ((2N):-1:(N + 3))...), (N + 2,))
+        p2, q2 = ((2:N...,), (1, ((2N):-1:(N + 3))...)), ((N + 1,), (N + 2,))
         if FusionStyle(I) isa UniqueFusion
             f1, f1 = src
-            dst, U = transpose((f1, f1), ((N + 1, 1:N..., ((2N):-1:(N + 3))...), (N + 2,)))
-            d1 = zip((dst,), (U,))
+            dst, U = transpose((f1, f1), p1)
+            @test TK.trace_sectors_match(dst, q2)
+            dst2, U2 = @constinferred TK.planar_trace(dst, p2, q2)
+            d2 = Dict(dst2 => U2 * U)
         else
             f1, f1 = first(fusiontrees(src))
             src′ = FusionTreeBlock{I}((f1.uncoupled, f1.uncoupled), (f1.isdual, f1.isdual))
-            dst, U = transpose(src′, ((N + 1, 1:N..., ((2N):-1:(N + 3))...), (N + 2,)))
-            d1 = zip(fusiontrees(dst), U[:, 1])
+            dst, U = transpose(src′, p1)
+            @test TK.trace_sectors_match(dst, q2)
+            dst2, U2 = TK.planar_trace(dst, p2, q2)
+            d2 = Dict(zip(fusiontrees(dst2), U2 * U[:, 1]))
         end
 
         f1front, = TK.split(f1, N - 1)
-        T = sectorscalartype(I)
-        d2 = Dict{typeof((f1front, f1front)), T}()
-        for ((f1′, f2′), coeff′) in d1
-            for ((f1′′, f2′′), coeff′′) in TK.planar_trace(
-                    (f1′, f2′), ((2:N...,), (1, ((2N):-1:(N + 3))...)), ((N + 1,), (N + 2,))
-                )
-                coeff = coeff′ * coeff′′
-                d2[(f1′′, f2′′)] = get(d2, (f1′′, f2′′), zero(coeff)) + coeff
-            end
-        end
         for ((f1_, f2_), coeff) in d2
             if (f1_, f2_) == (f1front, f1front)
                 @test coeff ≈ dim(f1.coupled) / dim(f1front.coupled)

@@ -577,58 +577,85 @@ CacheStyle(::typeof(fstranspose), k::FSBTransposeKey{I}) where {I} =
 # -> composite manipulations that depend on the duality (rigidity) and pivotal structure
 # -> planar manipulations that do not require braiding, everything is in Fsymbol (A/Bsymbol)
 
-function planar_trace((f₁, f₂)::FusionTreePair, (p₁, p₂)::Index2Tuple, (q₁, q₂)::Index2Tuple)
+# leg positions of a planar trace of a tree pair with `N₁` outgoing and `N₂` incoming legs, after
+# repartitioning all legs to the outgoing side: the traced pairs `q′`, the remaining legs `r` in
+# increasing order and the permutation `p′` that is applied after removing the traced legs
+function _planar_trace_indices(::Val{N₁}, ::Val{N₂}, (p₁, p₂)::Index2Tuple, (q₁, q₂)::Index2Tuple) where {N₁, N₂}
     length(q₁) == length(q₂) ||
         throw(ArgumentError(lazy"trace index tuples q₁ and q₂ must have equal length, got $(length(q₁)) and $(length(q₂))"))
-    I = sectortype(f₁)
     N = length(p₁) + length(p₂) + 2 * length(q₁)
-    length(f₁) + length(f₂) == N ||
-        throw(ArgumentError(lazy"fusion tree pair has $(length(f₁) + length(f₂)) indices, but permutation expects $N = $(length(p₁)) + $(length(p₂)) + 2×$(length(q₁))"))
-    if isempty(q₁)
-        return transpose((f₁, f₂), (p₁, p₂))
-    end
-
-    linearindex = (
-        ntuple(identity, Val(length(f₁)))...,
-        reverse(length(f₁) .+ ntuple(identity, Val(length(f₂))))...,
-    )
-
+    N₁ + N₂ == N ||
+        throw(ArgumentError(lazy"fusion tree pair has $(N₁ + N₂) indices, but permutation expects $N = $(length(p₁)) + $(length(p₂)) + 2×$(length(q₁))"))
+    linearindex = (ntuple(identity, Val(N₁))..., reverse(N₁ .+ ntuple(identity, Val(N₂)))...)
     q₁′ = TupleTools.getindices(linearindex, q₁)
     q₂′ = TupleTools.getindices(linearindex, q₂)
-    p₁′, p₂′ = let q′ = (q₁′..., q₂′...)
-        (
-            map(l -> l - count(l .> q′), TupleTools.getindices(linearindex, p₁)),
-            map(l -> l - count(l .> q′), TupleTools.getindices(linearindex, p₂)),
-        )
-    end
+    q′ = (q₁′..., q₂′...)
+    p₁′ = map(l -> l - count(l .> q′), TupleTools.getindices(linearindex, p₁))
+    p₂′ = map(l -> l - count(l .> q′), TupleTools.getindices(linearindex, p₂))
+    r = TupleTools.sort(TupleTools.getindices(linearindex, (p₁..., p₂...)))
+    return (p₁′, p₂′), (q₁′, q₂′), r
+end
 
-    T = fusionscalartype(I)
-    F₁ = fusiontreetype(I, length(p₁))
-    F₂ = fusiontreetype(I, length(p₂))
-    newtrees = FusionTreeDict{Tuple{F₁, F₂}, T}()
-    if FusionStyle(I) isa UniqueFusion
-        (f₁′, f₂′), coeff′ = repartition((f₁, f₂), N)
-        for (f₁′′, coeff′′) in planar_trace(f₁′, (q₁′, q₂′))
-            (f12′′′, coeff′′′) = transpose((f₁′′, f₂′), (p₁′, p₂′))
-            coeff = coeff′ * coeff′′ * coeff′′′
-            iszero(coeff) || (newtrees[f12′′′] = get(newtrees, f12′′′, zero(coeff)) + coeff)
-        end
+# the sectors of the traced legs have to be dual to each other for a nonzero trace, where the
+# sector of an incoming leg is the dual of the corresponding uncoupled sector of the fusion tree
+function trace_sectors_match(src::Union{FusionTreePair, FusionTreeBlock}, (q₁, q₂)::Index2Tuple)
+    f₁, f₂ = src isa FusionTreePair ? src : first(fusiontrees(src))
+    N₁ = length(f₁)
+    legsector(i) = i <= N₁ ? f₁.uncoupled[i] : dual(f₂.uncoupled[i - N₁])
+    return all(map((i, j) -> legsector(i) == dual(legsector(j)), q₁, q₂))
+end
+
+"""
+    planar_trace((f₁, f₂)::FusionTreePair, (p₁, p₂)::Index2Tuple, (q₁, q₂)::Index2Tuple) -> (f₁′, f₂′) => coeff
+    planar_trace(src::FusionTreeBlock, (p₁, p₂)::Index2Tuple, (q₁, q₂)::Index2Tuple) -> dst => U
+
+Perform a planar trace of the legs `q₁[i]` with `q₂[i]` of a fusion tree pair, followed by a
+planar permutation `(p₁, p₂)` of the remaining legs. The sectors of the traced legs have to be
+dual to each other.
+
+For `FusionStyle(I) isa UniqueFusion`, the input is a single fusion tree pair, which is mapped
+to a single output tree pair with a coefficient. For generic `FusionStyle`s, the input and
+output consist of `FusionTreeBlock`s, where `src` and `dst` contain all tree pairs of the
+traced and remaining legs respectively, and `U[j, i]` is the coefficient of the `j`th tree pair
+of `dst` in the trace of the `i`th tree pair of `src`.
+"""
+function planar_trace(src::Union{FusionTreePair, FusionTreeBlock}, (p₁, p₂)::Index2Tuple, (q₁, q₂)::Index2Tuple)
+    src isa FusionTreePair && @assert FusionStyle(src) === UniqueFusion()
+    p′, q′, r = _planar_trace_indices(Val(numout(src)), Val(numin(src)), (p₁, p₂), (q₁, q₂))
+    trace_sectors_match(src, (q₁, q₂)) ||
+        throw(ArgumentError(lazy"sectors of the traced legs $q₁ and $q₂ are not dual to each other"))
+    isempty(q₁) && return transpose(src, (p₁, p₂))
+
+    # bend all legs to the outgoing side, where the trace only acts on the splitting trees
+    src′, U₁ = repartition(src, numind(src))
+    traced, U₂ = _planar_trace_splitting(src′, q′, r)
+    # for multiple fusion channels, the remaining legs need not couple to the unit
+    if traced isa FusionTreeBlock && isempty(traced)
+        I = sectortype(src)
+        F = fusiontreetype(I, length(p₁), length(p₂))
+        return FusionTreeBlock(F[]) => zeros(fusionscalartype(I), 0, length(src))
     else
-        # TODO: this is a bit of a hack to fix the traces for now
-        src = FusionTreeBlock([(f₁, f₂)])
-        dst, U = repartition(src, N)
-        for ((f₁′, f₂′), coeff′) in zip(fusiontrees(dst), U)
-            for (f₁′′, coeff′′) in planar_trace(f₁′, (q₁′, q₂′))
-                src′ = FusionTreeBlock([(f₁′′, f₂′)])
-                dst′, U′ = transpose(src′, (p₁′, p₂′))
-                for (f12′′′, coeff′′′) in zip(fusiontrees(dst′), U′)
-                    coeff = coeff′ * coeff′′ * coeff′′′
-                    iszero(coeff) || (newtrees[f12′′′] = get(newtrees, f12′′′, zero(coeff)) + coeff)
-                end
-            end
-        end
+        dst, U₃ = transpose(traced, p′)
+        return dst => U₃ * U₂ * U₁
     end
-    return newtrees
+end
+
+function _planar_trace_splitting((f, f₀)::FusionTreePair, q′, r)
+    f′, coeff = only(planar_trace(f, q′))
+    return (f′, f₀) => coeff
+end
+function _planar_trace_splitting(src::FusionTreeBlock, q′, r)
+    I = sectortype(src)
+    f₀, = first(fusiontrees(src))
+    uncoupled = TupleTools.getindices(f₀.uncoupled, r)
+    isdual = TupleTools.getindices(f₀.isdual, r)
+    dst = FusionTreeBlock{I}((uncoupled, ()), (isdual, ()))
+    U = zeros(fusionscalartype(I), length(dst), length(src))
+    positions = Dict(f => i for (i, (f, _)) in enumerate(fusiontrees(dst)))
+    for (j, (f, _)) in enumerate(fusiontrees(src)), (f′, coeff) in planar_trace(f, q′)
+        U[positions[f′], j] += coeff
+    end
+    return dst => U
 end
 
 """
