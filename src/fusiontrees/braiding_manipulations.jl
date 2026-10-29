@@ -193,7 +193,9 @@ function artin_braid!(
             for c′ in _artin_channels(a, b, d, e)
                 Rmat2 = inv ? Rsymbol(d, a, c′)' : Rsymbol(a, d, c′)
                 Fmat = Fsymbol(d, a, b, e, c′, c)
+                inner′ = TupleTools.setindex(inner, c′, i - 1)
                 for σ in axes(Rmat2, 1)
+                    vertices_σ = TupleTools.setindex(vertices, σ, i - 1)
                     for λ in axes(Fmat, 2)
                         coeff = zero(oneT)
                         for ρ in axes(Rmat1, 2), κ in axes(Rmat2, 2)
@@ -201,9 +203,7 @@ function artin_braid!(
                                 conj(Rmat2[σ, κ])
                         end
                         iszero(coeff) && continue
-                        vertices′ = TupleTools.setindex(vertices, σ, i - 1)
-                        vertices′ = TupleTools.setindex(vertices′, λ, i)
-                        inner′ = TupleTools.setindex(inner, c′, i - 1)
+                        vertices′ = TupleTools.setindex(vertices_σ, λ, i)
                         f′ = FusionTree{I}(uncoupled′, coupled′, isdual′, inner′, vertices′)
                         row = row!(rows, (f′, f₂))
                         @inbounds U[row, col] = coeff
