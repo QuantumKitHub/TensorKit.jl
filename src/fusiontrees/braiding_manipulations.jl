@@ -235,9 +235,8 @@ braid(f::FusionTree{I, N}, p::IndexTuple{N}, levels::IndexTuple{N}) where {I, N}
     braid(f, (p, ()), (levels, ()))
 function braid(f::FusionTree{I, N}, (p, _)::Index2Tuple{N, 0}, (levels, _)::Index2Tuple{N, 0}) where {I, N}
     TupleTools.isperm(p) || throw(ArgumentError(lazy"not a valid permutation: $p"))
-    @assert FusionStyle(I) isa UniqueFusion
     braid_style = BraidingStyle(I)
-    if braid_style isa SymmetricBraiding # this assumes Fsymbols are 1!
+    if FusionStyle(I) isa UniqueFusion && braid_style isa SymmetricBraiding # Fsymbols are 1
         coeff = one(sectorscalartype(I))
         for i in 1:N
             for j in 1:(i - 1)
@@ -322,34 +321,19 @@ end
 
 @cached function fsbraid(key::K)::_fsdicttype(K) where {I, N₁, N₂, K <: Union{FSPBraidKey{I, N₁, N₂}, FSBBraidKey{I, N₁, N₂}}}
     if K <: FSPBraidKey
-        ((f₁, f₂), (p1, p2), (l1, l2)) = key
-        p = linearizepermutation(p1, p2, length(f₁), length(f₂))
-        levels = (l1..., reverse(l2)...)
-        (f, f0), coeff1 = repartition((f₁, f₂), N₁ + N₂)
-        f′, coeff2 = braid(f, p, levels)
-        (f₁′, f₂′), coeff3 = repartition((f′, f0), N₁)
-        return (f₁′, f₂′) => coeff1 * coeff2 * coeff3
+        f, p, levels = key
+        return _braid_single(f::FusionTreePair{I}, p, levels)
     else
         src, (p1, p2), (l1, l2) = key
         src = src::FusionTreeBlock{I}
 
+        if length(src) == 1 # then so is every intermediate block: the braid is a product of scalars
+            f′, coeff = _braid_single(only(fusiontrees(src)), (p1, p2), (l1, l2))
+            return FusionTreeBlock([f′]) => fill(coeff, 1, 1)
+        end
+
         p = linearizepermutation(p1, p2, numout(src), numin(src))
         levels = (l1..., reverse(l2)...)
-
-        if length(src) == 1 # then so is every intermediate block: the braid is a product of scalars
-            (f, f₀), coeff = _bend_single(_bendleft_single, only(fusiontrees(src)), Val(numin(src)))
-            for s in permutation2swaps(p)
-                _check_levels(BraidingStyle(I), levels, s)
-                inv = levels[s] > levels[s + 1]
-                f, c = artin_braid(f, s; inv)
-                coeff *= c
-                l = levels[s]
-                levels = TupleTools.setindex(levels, levels[s + 1], s)
-                levels = TupleTools.setindex(levels, l, s + 1)
-            end
-            (f₁′, f₂′), c = _bend_single(_bendright_single, (f, f₀), Val(N₂))
-            return FusionTreeBlock([(f₁′, f₂′)]) => fill(coeff * c, 1, 1)
-        end
 
         # the intermediate blocks keep their trees in the order in which they are produced,
         # and only the result is brought into canonical order
@@ -381,6 +365,16 @@ end
             return canonicalize(dst, U)
         end
     end
+end
+
+# also for a tree pair that is the only one with its uncoupled sectors (`only` throws otherwise)
+function _braid_single((f₁, f₂)::FusionTreePair, (p1, p2)::Index2Tuple{N₁, N₂}, (l1, l2)::Index2Tuple) where {N₁, N₂}
+    p = linearizepermutation(p1, p2, length(f₁), length(f₂))
+    levels = (l1..., reverse(l2)...)
+    (f, f0), coeff1 = repartition((f₁, f₂), N₁ + N₂)
+    f′, coeff2 = braid(f, p, levels)
+    (f₁′, f₂′), coeff3 = repartition((f′, f0), N₁)
+    return (f₁′, f₂′) => coeff1 * coeff2 * coeff3
 end
 
 CacheStyle(::typeof(fsbraid), k::Union{FSPBraidKey{I}, FSBBraidKey{I}}) where {I} =

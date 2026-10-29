@@ -53,12 +53,8 @@ function _bendright_treepair((f₁, f₂)::FusionTreePair)
     return (a, b, c), (f₁′, f₂′)
 end
 
+# also for a final splitting vertex without multiplicity (`only` throws otherwise)
 function bendright((f₁, f₂)::FusionTreePair)
-    @assert FusionStyle((f₁, f₂)) === UniqueFusion()
-    return _bendright_single((f₁, f₂))
-end
-# also for a final fusion vertex without multiplicity (`only` throws otherwise)
-function _bendright_single((f₁, f₂)::FusionTreePair)
     N₁ = numout((f₁, f₂))
     (a, b, c), (f₁′, f₂′) = _bendright_treepair((f₁, f₂))
 
@@ -142,21 +138,8 @@ See also [`bendright`](@ref).
 """ bendleft
 
 function bendleft((f₁, f₂)::FusionTreePair)
-    @assert FusionStyle((f₁, f₂)) === UniqueFusion()
     (f₂′, f₁′), coeff = bendright((f₂, f₁))
     return (f₁′, f₂′) => conj(coeff)
-end
-function _bendleft_single((f₁, f₂)::FusionTreePair)
-    (f₂′, f₁′), coeff = _bendright_single((f₂, f₁))
-    return (f₁′, f₂′) => conj(coeff)
-end
-
-# `n` bends of a tree pair that stays a single tree pair, and the product of their coefficients
-_bend_single(bend, f, ::Val{0}) = f => one(sectorscalartype(sectortype(f)))
-function _bend_single(bend, f, ::Val{n}) where {n}
-    f′, c′ = bend(f)
-    f″, c″ = _bend_single(bend, f′, Val(n - 1))
-    return f″ => c′ * c″
 end
 
 # !! note that this is more or less a copy of bendright through
@@ -499,7 +482,7 @@ function _repartition_body(N, canonical = true)
     if N == 0
         ex = quote
             T = fusionscalartype(sectortype(src))
-            if FusionStyle(src) === UniqueFusion()
+            if src isa FusionTreePair
                 return src => one(T)
             else
                 U = copyto!(zeros(T, length(src), length(src)), LinearAlgebra.I)
