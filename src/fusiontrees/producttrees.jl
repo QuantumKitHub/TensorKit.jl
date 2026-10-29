@@ -24,13 +24,11 @@ _sectorproduct(sectors::Tuple{Sector}) = only(sectors)
 _sectorproduct(sectors::Tuple) = ProductSector(sectors)
 _sectortuple(s::ProductSector) = s.sectors
 _sectortuple(s::Sector) = (s,)
-# select the entries at compile-time positions, which keeps heterogeneous tuples inferable
-@generated _getentries(t::Tuple, ::Val{P}) where {P} = Expr(:tuple, (:(t[$i]) for i in P)...)
 
 function deconstructsector(s::ProductSector)
     positions₁, positions₂ = _partpositions(typeof(s))
-    return _sectorproduct(_getentries(s.sectors, Val(positions₁))),
-        _sectorproduct(_getentries(s.sectors, Val(positions₂)))
+    return _sectorproduct(TupleTools.getindices(s.sectors, positions₁)),
+        _sectorproduct(TupleTools.getindices(s.sectors, positions₂))
 end
 Base.@assume_effects :foldable function deconstructsectortype(::Type{ProductSector{T}}) where {T}
     return map(_partpositions(ProductSector{T})) do positions
@@ -41,7 +39,7 @@ end
 function reconstructsector(::Type{ProductSector{T}}, s₁::Sector, s₂::Sector) where {T}
     sectors = (_sectortuple(s₁)..., _sectortuple(s₂)...)
     positions = TupleTools.invperm(TupleTools.vcat(_partpositions(ProductSector{T})...))
-    return ProductSector{T}(_getentries(sectors, Val(positions)))
+    return ProductSector{T}(TupleTools.getindices(sectors, positions))
 end
 
 # named products are split and joined as the corresponding `ProductSector`
@@ -66,8 +64,9 @@ function deconstructtree(f::FusionTree)
         vertices₂ = map(Returns(1), f.vertices)
     elseif FusionStyle(f) isa GenericFusion && length(f) > 1
         ns = _vertexmultiplicities(_maptree(last ∘ deconstructsector, f, map(Returns(1), f.vertices)))
-        vertices₁ = map((μ, n) -> div(μ - 1, n) + 1, f.vertices, ns)
-        vertices₂ = map((μ, n) -> mod(μ - 1, n) + 1, f.vertices, ns)
+        vertices₁₂ = map((μ, n) -> (divrem(μ - 1, n) .+ 1), f.vertices, ns)
+        vertices₁ = first.(vertices₁₂)
+        vertices₂ = last.(vertices₁₂)
     end
     return _maptree(first ∘ deconstructsector, f, vertices₁),
         _maptree(last ∘ deconstructsector, f, vertices₂)
@@ -88,11 +87,14 @@ end
 # the canonical order of a product block is that of the Kronecker product of the blocks of its
 # parts, with the first part running fastest
 function productblock(::Type{I}, block₁::FusionTreeBlock, block₂::FusionTreeBlock) where {I}
-    trees = [
-        (reconstructtree(I, f₁, g₁), reconstructtree(I, f₂, g₂))
-            for (f₁, f₂) in fusiontrees(block₁), (g₁, g₂) in fusiontrees(block₂)
-    ]
-    return FusionTreeBlock(vec(trees))
+    trees = fusiontreetype(I, numout(block₁), numin(block₁))[]
+    sizehint!(trees, length(block₁) * length(block₂))
+    for (g₁, g₂) in fusiontrees(block₂)
+        for (f₁, f₂) in fusiontrees(block₁)
+            push!(trees, (reconstructtree(I, f₁, g₁), reconstructtree(I, f₂, g₂)))
+        end
+    end
+    return FusionTreeBlock(trees)
 end
 
 function FusionTreeBlock{I}(
@@ -125,7 +127,7 @@ _deconstructtrees((f₁, f₂)) = map(tuple, deconstructtree(f₁), deconstructt
 function _unique_transform(transform::F, ::Type{T}, src::FusionTreeBlock) where {F, T}
     FusionStyle(src) isa UniqueFusion || return transform(src)
     dst = map(transform, fusiontrees(src))
-    return FusionTreeBlock(map(first, dst)) => LinearAlgebra.diagm(T[last(d) for d in dst])
+    return FusionTreeBlock(map(first, dst)) => LinearAlgebra.diagm(convert.(T, last.(dst)))
 end
 
 # apply `transform` to the block `src` through its parts, with the recoupling matrix with scalar type `T`
