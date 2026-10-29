@@ -12,8 +12,9 @@ using TensorKit.TensorOperations: linearize, DefaultAllocator
 using TensorKit.Factorizations
 using TensorKit.Factorizations: AbstractAlgorithm
 using TensorKit: SectorDict, tensormaptype, scalar, similarstoragetype, AdjointTensorMap, scalartype, project_symmetric_and_check
-using TensorKit: UniqueTreeTransformer, GenericTreeTransformer, @cached, TensorMapSpace, Index2Tuple, IndexTuple
-import TensorKit: randisometry, rand, randn, fill_braidingsubblock!, add_transform_kernel!
+using TensorKit: UniqueTreeTransformer, GenericTreeTransformer, TraceTransformer, @cached, TensorMapSpace, Index2Tuple, IndexTuple
+using TensorKit: SubblockIterator
+import TensorKit: randisometry, rand, randn, fill_braidingsubblock!, add_transform_kernel!, trace_transform_kernel!
 
 function TensorKit.fill_braidingsubblock!(data::TD, val) where {T, TD <: Union{<:AnyGPUMatrix{T}, <:StridedViews.StridedView{T, 4, <:AnyGPUArray{T}}}}
     # COV_EXCL_START
@@ -271,6 +272,75 @@ function DeviceGenericTreeTransformer(
     )
 end
 
+"""
+    TraceTransformerBlock{N}
+
+Descriptor for a destination block of a `TraceTransformer`, indexing into the flat
+`coeffs`/`structs_dst`/`structs_src` vectors of a `DeviceTraceTransformer`.
+"""
+struct TraceTransformerBlock{N}
+    sz::NTuple{N, Int}
+    dense_strides::NTuple{N, Int}
+    rows::Int
+    cols::Int
+    u_offset::Int
+    dst_offset::Int
+    src_offset::Int
+end
+
+# (permuted strides of the remaining legs, sizes, dense strides and summed strides of the traced
+# pairs, offset): the traced entries of a source subblock are found through a single stride per pair
+const TraceSourceStructure{N, M} = Tuple{NTuple{N, Int}, NTuple{M, Int}, NTuple{M, Int}, NTuple{M, Int}, Int}
+
+struct DeviceTraceTransformer{VB <: AbstractVector{<:TraceTransformerBlock}, VO <: AbstractVector{Int}, VC <: AbstractVector{<:Number}, VD <: AbstractVector{<:Tuple{<:Tuple{Vararg{Int}}, Int}}, VS <: AbstractVector{<:TraceSourceStructure}}
+    blocks::VB
+    work_offsets::VO
+    nwork::Int
+    coeffs::VC # every `U`, concatenated in column-major order
+    structs_dst::VD
+    structs_src::VS
+end
+
+function DeviceTraceTransformer(transformer::TraceTransformer{T, N₁, N₂}, p, (q₁, q₂)) where {T, N₁, N₂}
+    lp = linearize(p)
+    M = length(q₁)
+    blocks = TraceTransformerBlock{N₁}[]
+    coeffs = T[]
+    structs_dst = TreeStructure{N₁}[]
+    structs_src = TraceSourceStructure{N₁, M}[]
+
+    (; structure_dst, structure_src) = transformer
+    for (U, inds_dst, inds_src) in transformer.data
+        # all destination trees in a block share the same subblock size
+        size_dst = first(structure_dst[first(inds_dst)])
+        push!(
+            blocks, TraceTransformerBlock{N₁}(
+                size_dst, _dense_strides(size_dst), size(U, 1), size(U, 2),
+                length(coeffs), length(structs_dst), length(structs_src)
+            )
+        )
+        append!(coeffs, U)
+        for idst in inds_dst
+            _, strides_dst, offset_dst = structure_dst[idst]
+            push!(structs_dst, (strides_dst, offset_dst))
+        end
+        for isrc in inds_src
+            size_src, strides_src, offset_src = structure_src[isrc]
+            size_traced = TupleTools.getindices(size_src, q₁)
+            strides_traced = TupleTools.getindices(strides_src, q₁) .+ TupleTools.getindices(strides_src, q₂)
+            push!(
+                structs_src, (
+                    TupleTools.getindices(strides_src, lp), size_traced,
+                    _dense_strides(size_traced), strides_traced, offset_src,
+                )
+            )
+        end
+    end
+
+    work_offsets, nwork = _work_offsets(blk.rows * prod(blk.sz) for blk in blocks)
+    return DeviceTraceTransformer(blocks, work_offsets, nwork, coeffs, structs_dst, structs_src)
+end
+
 # Cache the device transformer directly, constructing the cached host version only on a miss.
 @cached function TensorKit.treebraider(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
@@ -287,6 +357,13 @@ end
     return device_transformer(A, host, linearize(p))
 end
 
+@cached function TensorKit.treetracer(
+        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, q::Index2Tuple
+    ) where {TA <: AnyGPUVector}
+    host = TensorKit.treetracer(Vector{scalartype(A)}, Vdst, Vsrc, p, q)
+    return device_transformer(A, host, p, q)
+end
+
 const DEFAULT_DEVICECACHE_SIZE = 1000
 
 function __init__()
@@ -295,12 +372,14 @@ function __init__()
         TensorKit.GLOBAL_CACHES, (
             Symbol("TensorKitGPUArraysExt.GLOBAL_TREEBRAIDER_CACHE") => GLOBAL_TREEBRAIDER_CACHE,
             Symbol("TensorKitGPUArraysExt.GLOBAL_TREETRANSPOSER_CACHE") => GLOBAL_TREETRANSPOSER_CACHE,
+            Symbol("TensorKitGPUArraysExt.GLOBAL_TREETRACER_CACHE") => GLOBAL_TREETRACER_CACHE,
         )
     )
 
     # device-caches should probably have smaller sizes:
     resize!(GLOBAL_TREEBRAIDER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
     resize!(GLOBAL_TREETRANSPOSER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
+    resize!(GLOBAL_TREETRACER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
 
     return nothing
 end
@@ -327,6 +406,18 @@ function device_transformer(A, transformer::GenericTreeTransformer, p)
         )
         DeviceGenericTreeTransformer(
             device_unique, upload(packed.blocks), upload(packed.work_offsets), packed.nwork,
+            upload(packed.coeffs), upload(packed.structs_dst), upload(packed.structs_src)
+        )
+    end
+end
+
+function device_transformer(A, transformer::TraceTransformer, p, q)
+    packed = DeviceTraceTransformer(transformer, p, q)
+    return GPUArrays.@uncached begin
+        proto = A(undef, 0)
+        upload(x) = copy!(similar(proto, eltype(x), size(x)), x)
+        DeviceTraceTransformer(
+            upload(packed.blocks), upload(packed.work_offsets), packed.nwork,
             upload(packed.coeffs), upload(packed.structs_dst), upload(packed.structs_src)
         )
     end
@@ -360,7 +451,12 @@ end
 # finds the overall linear index in the output and input arrays corresponding to the **sublock**
 # coordinates currently being worked on
 @inline function _linear_index(coords::NTuple{N, Int}, strides::NTuple{N, Int}, offset) where {N}
-    return offset + sum(ntuple(n -> coords[n] * strides[n], Val(N))) + 1
+    # an explicit loop, since `sum` of an empty tuple (e.g. a full trace) does not compile for GPUs
+    i = offset + 1
+    for n in 1:N
+        i += coords[n] * strides[n]
+    end
+    return i
 end
 
 # One thread per destination element in `data_dst`. `op` is `identity` or `conj`, and is
@@ -426,6 +522,44 @@ end
     end
 end
 
+# COV_EXCL_START
+# One thread per destination element, as for the generic transformers, where every source
+# additionally contributes the sum over its traced entries.
+@kernel function batched_trace_kernel!(
+        data_dst, data_src, blocks, work_offsets, coeffs, structs_dst, structs_src, α, β, nwork
+    )
+    # w = @index(Global, Linear) - 1 does not work due to JLArrays bug
+    w = @index(Global, Linear)
+    w -= 1
+    if w < nwork
+        b = _searchblock(work_offsets, w)
+        blk = @inbounds blocks[b]
+        local_w = w - (@inbounds work_offsets[b])
+        blocksize = prod(blk.sz)
+        i = local_w ÷ blocksize  # 0-based destination tree
+        coords = _coordinates(local_w % blocksize, blk.sz, blk.dense_strides)
+
+        st_dst, offs_dst = @inbounds structs_dst[blk.dst_offset + i + 1]
+        i_dst = _linear_index(coords, st_dst, offs_dst)
+
+        acc = zero(promote_type(eltype(data_src), eltype(coeffs)))
+        @inbounds for j in 1:blk.cols
+            coeff = coeffs[blk.u_offset + 1 + i + (j - 1) * blk.rows]
+            iszero(coeff) && continue
+            pst_src, sz_tr, dense_tr, st_tr, offs_src = structs_src[blk.src_offset + j]
+            i_src = _linear_index(coords, pst_src, offs_src)
+            tr = zero(eltype(data_src))
+            for t in 0:(prod(sz_tr) - 1)
+                tr += data_src[i_src + _linear_index(_coordinates(t, sz_tr, dense_tr), st_tr, -1)]
+            end
+            acc += coeff * tr
+        end
+        # destinations without contributions are overwritten for `β == 0`
+        @inbounds data_dst[i_dst] = iszero(β) ? α * acc : α * acc + β * data_dst[i_dst]
+    end
+end
+# COV_EXCL_STOP
+
 function _launch_unique!(data_dst, data_src, op, transformer, α, β, ::Val{N}) where {N}
     nwork = transformer.nwork
     nwork == 0 && return nothing
@@ -450,7 +584,7 @@ end
 # we don't want/need the `StridedSubblocks` here because that information is already in the transformer
 TensorKit._transform_subblocks(
     tdst::TensorMap, tsrc::TensorMap,
-    transformer::Union{DeviceUniqueTreeTransformer, DeviceGenericTreeTransformer}
+    transformer::Union{DeviceUniqueTreeTransformer, DeviceGenericTreeTransformer, DeviceTraceTransformer}
 ) = (tdst.data, tsrc.data)
 
 function TensorKit.add_transform_kernel!(
@@ -473,6 +607,31 @@ function TensorKit.add_transform_kernel!(
     # two kernels touch disjoint subblocks so the launch order does not matter
     _launch_unique!(dst, src, op, device.unique_blocks, α, β, Val(N))
     _launch_generic!(dst, src, op, device, α, β, Val(N))
+    return nothing
+end
+
+function TensorKit.trace_transform_kernel!(
+        dst::AnyGPUVector, src::AnyGPUVector, p::Index2Tuple, q::Index2Tuple,
+        device::DeviceTraceTransformer, α, β, backend, allocator, ntasks::Int
+    )
+    device.nwork == 0 && return nothing
+    batched_trace_kernel!(get_backend(dst))(
+        dst, src, device.blocks, device.work_offsets, device.coeffs,
+        device.structs_dst, device.structs_src, α, β, device.nwork; ndrange = device.nwork
+    )
+    return nothing
+end
+
+# other tensor types are first converted to `TensorMap`s: tracing subblock by subblock with
+# `tensortrace!` is not an option, since cuTENSOR requires aligned data for the subblock views
+function TensorKit.trace_transform_kernel!(
+        dst::SubblockIterator, src::SubblockIterator, p::Index2Tuple, q::Index2Tuple,
+        device::DeviceTraceTransformer, α, β, backend, allocator, ntasks::Int
+    )
+    _tensormap(t) = t isa TensorMap ? t : copy!(similar(t, scalartype(t), space(t)), t)
+    tdst, tsrc = _tensormap(dst.t), _tensormap(src.t)
+    trace_transform_kernel!(tdst.data, tsrc.data, p, q, device, α, β, backend, allocator, ntasks)
+    tdst === dst.t || copy!(dst.t, tdst)
     return nothing
 end
 

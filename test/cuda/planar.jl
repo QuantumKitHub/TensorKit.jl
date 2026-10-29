@@ -74,6 +74,24 @@ for V in spacelist
     end
 end
 
+for V in spacelist
+    I = sectortype(first(V))
+    Istr = type_repr(I)
+    @timedtestset "planartrace + CUDA with symmetry: $Istr" begin
+        # (space, p, q) for a trace of neighbouring legs and a nested trace
+        cases = (
+            (V[1] ⊗ V[2] ⊗ V[3] ← V[4] ⊗ V[3], ((1, 2), (4,)), ((3,), (5,))),
+            (V[1] ⊗ V[2] ⊗ V[3] ⊗ V[4] ← V[3] ⊗ V[4], ((1,), (2,)), ((3, 4), (5, 6))),
+        )
+        for (W, p, q) in cases, (α, β) in ((0.7, 0.3), (1.0, 0.0))
+            A = randn(ComplexF64, W)
+            C = randn(ComplexF64, TensorKit.select(W, p))
+            Cgpu = planartrace!(adapt(CuArray, C), adapt(CuArray, A), p, q, α, β)
+            @test adapt(Vector{ComplexF64}, Cgpu) ≈ planartrace!(C, A, p, q, α, β)
+        end
+    end
+end
+
 @testset "planar methods" verbose = true begin
     @testset "planaradd" begin
         A = CUDA.randn(ℂ^2 ⊗ ℂ^3 ← ℂ^6 ⊗ ℂ^5 ⊗ ℂ^4)
