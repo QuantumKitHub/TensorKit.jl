@@ -30,8 +30,8 @@ if get(ENV, "BUILDKITE", "false") == "true"
     filter!(f, testsuite)
 end
 
-# ChainRules / Mooncake: skip on Apple CI and on Julia prerelease builds
-if (Sys.isapple() && get(ENV, "CI", "false") == "true") || !isempty(VERSION.prerelease)
+# ChainRules / Mooncake / Enzyme: skip on Julia prerelease builds
+if !isempty(VERSION.prerelease)
     filter!(!startswith("chainrules") ∘ first, testsuite)
     filter!(!startswith("mooncake") ∘ first, testsuite)
     filter!(!startswith("enzyme") ∘ first, testsuite)
