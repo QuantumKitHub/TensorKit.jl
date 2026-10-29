@@ -290,6 +290,8 @@ struct TreeRows{F, D}
     trees::Vector{F}
     index::Union{D, Nothing} # `nothing`: few trees, the rows are found by a linear search
     n::Int
+    # no default outer constructor, of which `D` would be unbound if `index === nothing`
+    TreeRows{F, D}(trees::Vector{F}, index, n::Int) where {F, D} = new{F, D}(trees, index, n)
 end
 function TreeRows(
         ::Type{I}, uncoupled, isdual, n::Int, ::Val{canonical}, buffer = nothing
