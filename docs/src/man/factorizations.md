@@ -44,3 +44,22 @@ P ≈ P * P
 t′ = permute(t, ((1,), (2, 3)));
 t′ ≈ t′ * P
 ```
+
+To compute only the `R` or `L` factor with QR/LQ-based `left_orth!` and `right_orth!`, pass a zero-dimensional tensor map as the basis output.
+Its blocks are empty matrices, so MatrixAlgebraKit skips constructing the orthogonal factor.
+The corestriction output must still have the usual intermediate space:
+
+```julia
+V = infimum(fuse(codomain(t)), fuse(domain(t)))
+V0 = zerospace(spacetype(t))
+Q0 = similar(t, V0 ← V0)
+
+R = similar(t, V ← domain(t))
+_, R = left_orth!(copy(t), (Q0, R))
+
+L = similar(t, codomain(t) ← V)
+L, _ = right_orth!(copy(t), (L, Q0))
+```
+
+For a `DiagonalTensorMap`, use an empty `DiagonalTensorMap` as the basis output instead.
+Differentiation of these R/L-only paths is not yet supported.
