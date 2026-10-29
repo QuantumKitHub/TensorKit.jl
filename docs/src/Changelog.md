@@ -18,18 +18,11 @@ When making changes to this project, please update the "Unreleased" section with
 
 When releasing a new version, move the "Unreleased" changes to a new version section with the release date.
 
-## [Unreleased](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.2...HEAD)
+## [Unreleased](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.3...HEAD)
 
 ### Added
 
-- Re-export `NamedSector` and `@NamedSector` from TensorKitSectors
-
 ### Changed
-
-- Extend VectorInterface compat to include v0.7
-- Require TensorKitSectors v0.3.10
-- `@cached` can be used from other modules, such as package extensions, which then own the cache of the methods they add; these caches are shown with their module in `global_cache_info` after registration in `__init__` (internal)
-- The `TreeTransformer`s used in index manipulations are now constructed and cached per storagetype of the destination tensor, which is also a dispatch point for storage-specific transformers with their own cache (internal)
 
 ### Deprecated
 
@@ -37,13 +30,54 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 ### Fixed
 
-- Documentation build failing on TensorKitSectors doctests
+### Performance
+
+## [0.17.3](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.2...v0.17.3) - 2026-10-30
+
+### Added
+
+- Batched SVD: `svd_full`, `svd_compact` and `svd_vals` now hand all blocks at once to MatrixAlgebraKit's ragged-batch drivers whenever the algorithm, driver and storage type support it, e.g. for GPU-backed tensors ([#567](https://github.com/QuantumKitHub/TensorKit.jl/pull/567))
+- Enzyme forward and reverse rules for factorizations (`qr`, `lq`, `eig`, `eigh`, `svd`, polar decompositions, and `project_hermitian`/`project_antihermitian`), including pushforward and pullback for `svd_vals`, with tests ([#464](https://github.com/QuantumKitHub/TensorKit.jl/pull/464))
+- Enzyme forward rules for `permute`, `transpose` and `braid` ([#573](https://github.com/QuantumKitHub/TensorKit.jl/pull/573))
+- ChainRules rule for `TensorMap(::DiagonalTensorMap)` ([#553](https://github.com/QuantumKitHub/TensorKit.jl/pull/553))
+- Re-export `NamedSector` and `@NamedSector` from TensorKitSectors ([#566](https://github.com/QuantumKitHub/TensorKit.jl/pull/566))
+- Support for MatrixAlgebraKit's `TruncationMultiplets` strategy, exported as `truncmultiplets`, which avoids truncating within multiplets of degenerate values, also when they are spread across different blocks ([#602](https://github.com/QuantumKitHub/TensorKit.jl/pull/602))
+- Precompilation workloads now cover planar contractions and traces for sector types without symmetric braiding, index manipulations of `AdjointTensorMap`s, and the remaining factorization entry points ([#557](https://github.com/QuantumKitHub/TensorKit.jl/pull/557), [#558](https://github.com/QuantumKitHub/TensorKit.jl/pull/558))
+- The test suite runs JET's package analysis on Julia 1.12 and later ([#570](https://github.com/QuantumKitHub/TensorKit.jl/pull/570))
+
+### Changed
+
+- Extend VectorInterface compat to include v0.7 ([#560](https://github.com/QuantumKitHub/TensorKit.jl/pull/560))
+- Require TensorKitSectors v0.3.10 ([#566](https://github.com/QuantumKitHub/TensorKit.jl/pull/566))
+- Require MatrixAlgebraKit v0.6.13 ([#602](https://github.com/QuantumKitHub/TensorKit.jl/pull/602))
+- `norm` accepts scalar types that are not subtypes of `Real` ([#576](https://github.com/QuantumKitHub/TensorKit.jl/pull/576))
+- `@cached` can be used from other modules, such as package extensions, which then own the cache of the methods they add; these caches are shown with their module in `global_cache_info` after registration in `__init__` (internal) ([#556](https://github.com/QuantumKitHub/TensorKit.jl/pull/556))
+- The `TreeTransformer`s used in index manipulations are now constructed and cached per storagetype of the destination tensor, which is also a dispatch point for storage-specific transformers with their own cache (internal) ([#556](https://github.com/QuantumKitHub/TensorKit.jl/pull/556))
+- The Enzyme extension drops rules that Enzyme derives correctly by itself, marks the fusion tree transformer constructors as inactive, and respects runtime-inactive arguments in the `blas_contract!` rule ([#575](https://github.com/QuantumKitHub/TensorKit.jl/pull/575), [#574](https://github.com/QuantumKitHub/TensorKit.jl/pull/574), [#590](https://github.com/QuantumKitHub/TensorKit.jl/pull/590))
+
+### Deprecated
+
+### Removed
+
+- The `DefaultAlgorithm` forwarding for `schur_full` and `schur_vals`, which have no tensor implementation ([#570](https://github.com/QuantumKitHub/TensorKit.jl/pull/570))
+
+### Fixed
+
+- `norm(t, Inf)` and `normalize!(t, Inf)` no longer rely on scalar indexing, so they work for GPU-backed tensors ([#586](https://github.com/QuantumKitHub/TensorKit.jl/pull/586))
+- Fixed the `promote_storagetype` call in the planar preprocessor ([#577](https://github.com/QuantumKitHub/TensorKit.jl/pull/577))
+- `@planar` with an explicit `order`, the `_extract_contraction_pairs` error message, a nonexistent `DimensionError` thrown in `linalg.jl` and malformed `MethodError`s in the `numout`/`numin` fallbacks: fixed various errors on untested paths reported by JET ([#570](https://github.com/QuantumKitHub/TensorKit.jl/pull/570))
+- Restored the custom Enzyme rule for `twist`, as Enzyme's own derivation segfaults on Julia 1.10 ([#559](https://github.com/QuantumKitHub/TensorKit.jl/pull/559))
+- The Enzyme rules for `permute` and `transpose` no longer alias the input when the permutation is trivial, such that all Enzyme rules also work on Julia 1.10 ([#579](https://github.com/QuantumKitHub/TensorKit.jl/pull/579))
+- Documentation build failing on TensorKitSectors doctests ([#566](https://github.com/QuantumKitHub/TensorKit.jl/pull/566))
 
 ### Performance
 
-- Recoupling matrices are stored such that they can leverage BLAS, also for mixed complex tensor with real recoupling coefficients.
-- Constructing a `FusionTreeBlock` only takes the fusion product of the shorter side, and `fusionblocks` groups the cached fusion trees of the space instead of constructing a block for every combination of sectors (internal)
+- `add_transform!` for GPU-backed tensors is reimplemented as KernelAbstractions kernels that parallelize over the output data instead of over fusion tree blocks, for Abelian and general symmetries, making index manipulations of symmetric tensors on the GPU orders of magnitude faster ([#533](https://github.com/QuantumKitHub/TensorKit.jl/pull/533), [#509](https://github.com/QuantumKitHub/TensorKit.jl/pull/509))
+- Constructing a `FusionTreeBlock` only takes the fusion product of the shorter side, and `fusionblocks` groups the cached fusion trees of the space instead of constructing a block for every combination of sectors (internal) ([#581](https://github.com/QuantumKitHub/TensorKit.jl/pull/581))
+- Recoupling matrices are stored such that they can leverage BLAS, also for mixed complex tensor with real recoupling coefficients ([#556](https://github.com/QuantumKitHub/TensorKit.jl/pull/556))
 - Fusion tree block manipulations of (named) product sectors are computed as Kronecker products of the manipulations of their parts, splitting off the `UniqueFusion` sectors, such that they share the caches of the individual sectors ([#592](https://github.com/QuantumKitHub/TensorKit.jl/pull/592))
+- The TensorOperations ChainRules rules no longer copy or retain `C` when `β = Zero()`, as is the case for every tensor allocated by `@tensor` ([#555](https://github.com/QuantumKitHub/TensorKit.jl/pull/555))
+- The Enzyme `norm` rule reuses the cached primal and the `tr` rule avoids an unnecessary copy ([#554](https://github.com/QuantumKitHub/TensorKit.jl/pull/554))
 
 ## [0.17.2](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.1...v0.17.2) - 2026-09-20
 
