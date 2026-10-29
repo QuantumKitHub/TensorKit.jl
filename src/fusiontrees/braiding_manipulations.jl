@@ -286,6 +286,13 @@ function braid(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple, leve
     @assert TupleTools.isperm((p[1]..., p[2]...))
     return fsbraid((src, p, levels))
 end
+function braid(src::ProductSectorBlock, p::Index2Tuple, levels::Index2Tuple)
+    isempty(src) && return fsbraid((src, p, levels))
+    # the return type is asserted since inference gives up on the recursion on older Julia versions
+    return product_transform(sectorscalartype(sectortype(src)), src) do x
+        return braid(x, p, levels)
+    end::_fsdicttype(typeof((src, p, levels)))
+end
 
 const FSPBraidKey{I, N₁, N₂} = Tuple{FusionTreePair{I}, Index2Tuple{N₁, N₂}, Index2Tuple}
 const FSBBraidKey{I, N₁, N₂} = Tuple{FusionTreeBlock{I}, Index2Tuple{N₁, N₂}, Index2Tuple}

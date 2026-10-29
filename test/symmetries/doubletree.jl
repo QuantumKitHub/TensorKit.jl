@@ -12,7 +12,7 @@ using TensorKitSectors
 
 @timedtestset "Double fusion trees for $(TensorKit.type_repr(I))" verbose = true for I in (fast_tests ? fast_sectorlist : sectorlist)
     Istr = TensorKit.type_repr(I)
-    N = I <: ProductSector ? 3 : 4
+    N = I <: Union{ProductSector, NamedSector} ? 3 : 4
 
     if UnitStyle(I) isa SimpleUnit
         out = random_fusion(I, Val(N))
