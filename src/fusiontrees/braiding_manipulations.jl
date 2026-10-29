@@ -93,10 +93,9 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
     return artin_braid!(Matrix{sectorscalartype(I)}(undef, n, n), src, i; inv) # zeroed by `artin_braid!`
 end
 # `U` is overwritten with the braid matrix of `src`, a complete block; the trees of the result are
-# in canonical order or in the order in which they are produced, which recycles `trees` if given
+# stored in `trees` if given
 function artin_braid!(
-        U::AbstractMatrix, src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false,
-        canonical::Val = Val(true), trees = nothing
+        U::AbstractMatrix, src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false, trees = nothing
     ) where {I, N}
     1 <= i < N || throw(ArgumentError("Cannot swap outputs i=$i and i+1 out of only $N outputs"))
     size(U) == (length(src), length(src)) || throw(DimensionMismatch(lazy"braid matrix of size $(size(U)) for a block of $(length(src)) trees"))
@@ -111,7 +110,7 @@ function artin_braid!(
     isdual = src.isdual[1]
     isdual′ = TupleTools.setindex(isdual, isdual[i], i + 1)
     isdual′ = TupleTools.setindex(isdual′, isdual[i + 1], i)
-    rows = TreeRows(I, (uncoupled′, ()), (isdual′, ()), length(src), canonical, trees)
+    rows = TreeRows(fusiontreetype(I, N, 0), length(src), trees)
 
     oneT = one(sectorscalartype(I))
     fill!(U, zero(oneT))
@@ -335,9 +334,7 @@ end
         p = linearizepermutation(p1, p2, numout(src), numin(src))
         levels = (l1..., reverse(l2)...)
 
-        # the intermediate blocks keep their trees in the order in which they are produced,
-        # and only the result is brought into canonical order
-        dst, U = repartition_noncanonical(src, Val(numind(src)))
+        dst, U = repartition(src, Val(numind(src)))
 
         # the swaps keep the size of the block, so that the tree vector and the matrices of the
         # previous step are recycled (except for the trees of `src`, which are part of the key)
@@ -348,7 +345,7 @@ end
         for s in permutation2swaps(p)
             _check_levels(braid_style, levels, s)
             inv = levels[s] > levels[s + 1]
-            dst′, _ = artin_braid!(U_tmp, dst, s; inv, canonical = Val(false), trees)
+            dst′, _ = artin_braid!(U_tmp, dst, s; inv, trees)
             trees = dst.trees === src.trees ? nothing : dst.trees
             dst = dst′
             U_spare, U = U, U_spare isa typeof(U_tmp) ? mul!(U_spare, U_tmp, U) : U_tmp * U
@@ -357,13 +354,9 @@ end
             levels = TupleTools.setindex(levels, l, s + 1)
         end
 
-        if N₂ == 0
-            return canonicalize(dst, U)
-        else
-            dst, U_tmp = repartition_noncanonical(dst::FusionTreeBlock{I}, Val(N₁))
-            U = U_tmp * U
-            return canonicalize(dst, U)
-        end
+        N₂ == 0 && return dst => U
+        dst, U_tmp = repartition(dst::FusionTreeBlock{I}, Val(N₁))
+        return dst => U_tmp * U
     end
 end
 

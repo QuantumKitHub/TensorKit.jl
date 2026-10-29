@@ -9,12 +9,12 @@ export sectorlist, fast_sectorlist
 export default_spacelist, factorization_spacelist, ad_spacelist
 export VIBM, VIBMRepA4
 export test_ad_rrule
-export _isunitary, _isone
+export _isunitary, _isone, _inorder
 
 using Random
 using Test: @test
 using TensorKit
-using TensorKit: ℙ, PlanarTrivial
+using TensorKit: ℙ, PlanarTrivial, FusionTreeBlock
 using TensorKitSectors
 using TensorOperations: IndexTuple, Index2Tuple
 using Base.Iterators: take, product
@@ -148,6 +148,15 @@ end
 _isunitary(x::Number; kwargs...) = isapprox(x * x', one(x); kwargs...)
 _isunitary(x; kwargs...) = isunitary(x; kwargs...)
 _isone(x; kwargs...) = isapprox(x, one(x); kwargs...)
+
+# the rows of the transformation matrix `U` onto the trees of `dst`, in the order of the trees of
+# `ref`, as block manipulations keep their trees in the order in which they are produced
+_inorder(U::Number, dst, ref) = (@test dst == ref; U)
+function _inorder(U::AbstractMatrix, dst::FusionTreeBlock, ref::FusionTreeBlock)
+    rows = indexin(fusiontrees(ref), fusiontrees(dst))
+    @test length(dst) == length(ref) && !any(isnothing, rows)
+    return U[something.(rows, 1), :]
+end
 
 
 uniquefusionsectorlist = (

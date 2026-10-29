@@ -117,8 +117,10 @@ const FusionTreePair{I, N₁, N₂} = Tuple{FusionTree{I, N₁}, FusionTree{I, N
 
 Collection of fusion-splitting tree pairs that share the same uncoupled sectors.
 Mostly internal structure to speed up non-`UniqueFusion` fusiontree manipulation computations.
-Braiding a block requires it to be complete, i.e. to contain all the fusion-splitting tree pairs
-with its uncoupled sectors and duality flags, as `FusionTreeBlock{I}(uncoupled, isdual)` does.
+Manipulating a block requires it to be complete, i.e. to contain all the fusion-splitting tree
+pairs with its uncoupled sectors and duality flags, as `FusionTreeBlock{I}(uncoupled, isdual)`
+does. The resulting block holds its trees in the order in which they are produced, rather than in
+the canonical order of `FusionTreeBlock{I}(uncoupled, isdual)`.
 """
 struct FusionTreeBlock{I, N₁, N₂, F <: FusionTreePair{I, N₁, N₂}}
     trees::Vector{F}
@@ -273,19 +275,11 @@ function treeindex_data((f₁, f₂))
         return false
     end
 end
-function treeindex_map(fs::FusionTreeBlock)
-    I = sectortype(fs)
-    return fusiontreedict(I)(treeindex_data(f) => ind for (ind, f) in enumerate(fusiontrees(fs)))
-end
 
-# The trees of the destination block of a block manipulation, and the row of each of them in the
-# transformation matrix. With `Val(true)`, these are the trees of the destination block in their
-# canonical order; with `Val(false)`, the trees are added in the order in which they are produced,
-# which avoids constructing the destination block. The latter is used for the intermediate blocks
-# of a composite manipulation, of which only the result is brought into canonical order; the tree
-# vector of an intermediate block that is no longer needed can then be passed on as `buffer`.
-# With `Val(false)`, the source block has to be complete: the destination block then has as many
-# trees (`n`), and an incomplete source block raises an error if its destination block has more.
+# The trees of the destination block of a block manipulation, in the order in which they are
+# produced, and the row of each of them in the transformation matrix. The source block has to be
+# complete, such that the destination block has as many trees (`n`); the tree vector of a block
+# that is no longer needed can be passed on as `buffer`.
 struct TreeRows{F, D}
     trees::Vector{F}
     index::Union{D, Nothing} # `nothing`: few trees, the rows are found by a linear search
@@ -293,18 +287,11 @@ struct TreeRows{F, D}
     # no default outer constructor, of which `D` would be unbound if `index === nothing`
     TreeRows{F, D}(trees::Vector{F}, index, n::Int) where {F, D} = new{F, D}(trees, index, n)
 end
-function TreeRows(
-        ::Type{I}, uncoupled, isdual, n::Int, ::Val{canonical}, buffer = nothing
-    ) where {I, canonical}
-    F = fusiontreetype(I, length(uncoupled[1]), length(uncoupled[2]))
-    trees = if canonical
-        fusiontrees(FusionTreeBlock{I}(uncoupled, isdual; sizehint = n))
-    else
-        buffer isa Vector{F} ? empty!(buffer) : sizehint!(Vector{F}(), n)
-    end
-    K = Base.promote_op(treeindex_data, eltype(trees))
-    index = n > 32 ? Dict{K, Int}(treeindex_data(f) => i for (i, f) in enumerate(trees)) : nothing
-    return TreeRows{eltype(trees), Dict{K, Int}}(trees, index, n)
+function TreeRows(::Type{F}, n::Int, buffer = nothing) where {F}
+    trees = buffer isa Vector{F} ? empty!(buffer) : sizehint!(Vector{F}(), n)
+    K = Base.promote_op(treeindex_data, F)
+    index = n > 32 ? Dict{K, Int}() : nothing
+    return TreeRows{F, Dict{K, Int}}(trees, index, n)
 end
 function row!(rows::TreeRows, f)
     key = treeindex_data(f)
@@ -315,20 +302,10 @@ function row!(rows::TreeRows, f)
     end
     isnothing(i) || return i
     length(rows.trees) < rows.n ||
-        throw(ArgumentError("braiding requires a complete `FusionTreeBlock`"))
+        throw(ArgumentError("manipulating a block requires it to be complete"))
     push!(rows.trees, f)
     isnothing(rows.index) || (rows.index[key] = length(rows.trees))
     return length(rows.trees)
-end
-
-# bring a block whose trees are not in canonical order, together with the transformation matrix
-# whose rows correspond to these trees, into canonical order
-function canonicalize(src::FusionTreeBlock{I}, U::AbstractMatrix) where {I}
-    length(src) == 1 && return src => U
-    rows = TreeRows(I, src.uncoupled, src.isdual, length(src), Val(true))
-    U′ = zeros(eltype(U), length(rows.trees), size(U, 2))
-    U′[map(f -> row!(rows, f), fusiontrees(src)), :] = U
-    return FusionTreeBlock(rows.trees) => U′
 end
 
 
