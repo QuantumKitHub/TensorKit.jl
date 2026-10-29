@@ -69,7 +69,9 @@ function twist!(t::AbstractTensorMap, inds; inv::Bool = false)
     (scalartype(t) <: Real && !(sectorscalartype(sectortype(t)) <: Real)) &&
         throw(ArgumentError("Can't in-place twist a real tensor with complex sector type"))
     has_shared_twist(t, inds) && return t
-    return @inbounds twist!(t, t, inds, One(), Zero(); inv)
+    # returning `t` rather than the result of `twist!` avoids an Enzyme crash on Julia 1.10
+    @inbounds twist!(t, t, inds, One(), Zero(); inv)
+    return t
 end
 @propagate_inbounds function twist!(
         tdst::AbstractTensorMap, tsrc::AbstractTensorMap, inds,

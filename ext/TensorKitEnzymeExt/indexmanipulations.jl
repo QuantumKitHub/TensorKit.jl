@@ -278,7 +278,6 @@ function EnzymeRules.forward(
 end
 
 # in-place twist: the source and destination are the same tensor
-# (calling the wrapper `twist!(t, inds)` here crashes Enzyme on Julia 1.10)
 function EnzymeRules.augmented_primal(
         config::EnzymeRules.RevConfigWidth{1},
         func::Const{typeof(TK.twist!)},
@@ -287,7 +286,7 @@ function EnzymeRules.augmented_primal(
         inds::Const;
         inv::Bool = false
     ) where {RT}
-    TK.twist!(t.val, t.val, inds.val; inv)
+    TK.twist!(t.val, inds.val; inv)
     primal = EnzymeRules.needs_primal(config) ? t.val : nothing
     shadow = EnzymeRules.needs_shadow(config) ? t.dval : nothing
     return EnzymeRules.AugmentedReturn(primal, shadow, nothing)
@@ -301,7 +300,7 @@ function EnzymeRules.reverse(
         inds::Const;
         inv::Bool = false
     ) where {RT}
-    !isa(t, Const) && TK.twist!(t.dval, t.dval, inds.val; inv = !inv)
+    !isa(t, Const) && TK.twist!(t.dval, inds.val; inv = !inv)
     return (nothing, nothing)
 end
 function EnzymeRules.forward(
@@ -312,8 +311,8 @@ function EnzymeRules.forward(
         inds::Annotation;
         inv::Bool = false
     ) where {RT}
-    TK.twist!(t.val, t.val, inds.val; inv)
-    !isa(t, Const) && TK.twist!(t.dval, t.dval, inds.val; inv)
+    TK.twist!(t.val, inds.val; inv)
+    !isa(t, Const) && TK.twist!(t.dval, inds.val; inv)
     if EnzymeRules.needs_primal(config) && EnzymeRules.needs_shadow(config)
         return t
     elseif EnzymeRules.needs_primal(config)
