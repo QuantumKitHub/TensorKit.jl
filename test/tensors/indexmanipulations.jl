@@ -173,6 +173,37 @@ for V in spacelist
                 end
             end
         end
+        hasbraiding && @timedtestset "Twists: adjoint operands" begin
+            W = V1 ⊗ V2 ← V3 ⊗ V4
+            for T in (Float64, ComplexF64)
+                T <: Real && !(sectorscalartype(I) <: Real) && continue
+                t = rand(T, W)
+                tref = copy(t') # genuine TensorMap on W'
+                for inds in (1, (2, 3), [1, 4], (1, 2, 3, 4)), inv in (false, true)
+                    ref = twist(tref, inds; inv)
+                    # adjoint source
+                    @test twist(t', inds; inv) ≈ ref
+                    # adjoint source and destination, in place
+                    t2 = copy(t)
+                    @test twist!(t2', inds; inv) ≈ ref
+                    @test t2 ≈ ref'
+                    # adjoint destination
+                    @test twist!(similar(t)', tref, inds; inv) ≈ ref
+                    @test twist(twist(t', inds), inds; inv = true) ≈ tref
+                end
+                # accumulation into the destination
+                α = T <: Complex ? T(2.1 + 0.3im) : T(2.1)
+                β = T <: Complex ? T(-0.7im) : T(-0.7)
+                tdst = rand(T, space(tref))
+                ref = β * tdst + α * twist(tref, (2, 3))
+                @test @constinferred(twist!(copy(tdst), tref, (2, 3), α, β)) ≈ ref
+                @test twist!(copy(tdst), t', (2, 3), α, β) ≈ ref
+                D = copy(tdst')
+                twist!(D', t', (2, 3), α, β)
+                @test D' ≈ ref
+                @test twist!(copy(tdst), tref, (2, 3), α, β; inv = true) ≈ β * tdst + α * twist(tref, (2, 3); inv = true)
+            end
+        end
         symmetricbraiding && @timedtestset "Permutations: BraidingTensor source" begin
             τ = BraidingTensor(V1, V2)
             p = ((2, 1), (3, 4))

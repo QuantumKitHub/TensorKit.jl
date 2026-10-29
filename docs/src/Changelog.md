@@ -23,6 +23,8 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 ### Added
 
 - Re-export `NamedSector` and `@NamedSector` from TensorKitSectors
+- `twist(src, inds; inv = false)` for fusion tree pairs and blocks, returning `src` together with the scalar twist factor of the legs `inds`, which can be given as indices or as a `Bool` mask
+- `twist!(tdst, tsrc, inds, α = 1, β = 0, [backend], [allocator]; inv = false)` computing `tdst = β * tdst + α * twist(tsrc, inds; inv)`, in line with `permute!` and `braid!`, together with Mooncake and Enzyme rules; `twist` now also accepts `backend` and `allocator` keywords
 
 ### Changed
 
@@ -44,6 +46,7 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 - Recoupling matrices are stored such that they can leverage BLAS, also for mixed complex tensor with real recoupling coefficients.
 - Constructing a `FusionTreeBlock` only takes the fusion product of the shorter side, and `fusionblocks` groups the cached fusion trees of the space instead of constructing a block for every combination of sectors (internal)
 - Fusion tree block manipulations of (named) product sectors are computed as Kronecker products of the manipulations of their parts, splitting off the `UniqueFusion` sectors, such that they share the caches of the individual sectors ([#592](https://github.com/QuantumKitHub/TensorKit.jl/pull/592))
+- `twist!` and `twist` on a `TensorMap` or its adjoint use a cached tree transformer and the index manipulation kernel instead of a loop over all fusion trees, which removes the per-subblock bookkeeping and turns a twist of a GPU tensor into a single kernel launch ([#595](https://github.com/QuantumKitHub/TensorKit.jl/issues/595))
 
 ## [0.17.2](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.1...v0.17.2) - 2026-09-20
 

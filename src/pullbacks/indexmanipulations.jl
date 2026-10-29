@@ -15,6 +15,17 @@ for transform in (:permute, :transpose)
         return
     end
 end
+function twist_pb(ΔA, A, ΔC, C, inds, α, ba...; inv::Bool = false)
+    TC = promote_twist(VectorInterface.promote_scale(ΔC, α), sectortype(ΔC))
+    if scalartype(ΔA) <: Real && !(TC <: Real)
+        ΔAc = similar(ΔC, TC)
+        twist!(ΔAc, ΔC, inds, conj(α), Zero(), ba...; inv = !inv)
+        add!(ΔA, real(ΔAc))
+    else
+        twist!(ΔA, ΔC, inds, conj(α), One(), ba...; inv = !inv)
+    end
+    return
+end
 function braid_pb(ΔA, A, ΔC, C, p, levels, α, ba...)
     ip = invperm(linearize(p))
     pΔA = TO.repartition(ip, numout(A))

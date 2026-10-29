@@ -48,4 +48,5 @@ repartition(src::Union{FusionTreePair, FusionTreeBlock}, N::Int)
 Base.transpose(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple)
 braid(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple, levels::Index2Tuple)
 permute(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple)
+twist(src::Union{FusionTreePair, FusionTreeBlock}, inds)
 ```
