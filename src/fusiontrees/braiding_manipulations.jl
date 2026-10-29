@@ -14,14 +14,11 @@ applying `artin_braid(f′, i; inv = true)` to all the outputs `f′` of
 `artin_braid(f, i; inv = false)` and collecting the results should yield a single fusion
 tree with non-zero coefficient, namely `f` with coefficient `1`. This keyword has no effect
 if `BraidingStyle(sectortype(f)) isa SymmetricBraiding`.
+
+For sectors without `UniqueFusion`, the braid of `f` has to be a single fusion tree, which is the
+case if `f` is the only fusion tree with its uncoupled and coupled sectors; this throws otherwise.
 """
 function artin_braid(f::FusionTree{I, N}, i; inv::Bool = false) where {I, N}
-    @assert FusionStyle(I) === UniqueFusion()
-    return _artin_braid_single(f, i, inv)
-end
-# also for a tree that is the only one with its uncoupled sectors, whose braid is again a single
-# tree (`only` throws otherwise)
-function _artin_braid_single(f::FusionTree{I, N}, i, inv::Bool) where {I, N}
     1 <= i < N || throw(ArgumentError(lazy"Cannot swap outputs i=$i and i+1 out of only $N outputs"))
 
     uncoupled = f.uncoupled
@@ -84,15 +81,12 @@ function _artin_braid_single(f::FusionTree{I, N}, i, inv::Bool) where {I, N}
 end
 
 # the inner lines `c′` of `a ⊗ d → c′ → c′ ⊗ b → e`, i.e. `intersect(a ⊗ d, e ⊗ conj(b))`,
-# without constructing the second fusion product for sectors with a simple unit
-function _artin_channels(a::I, b::I, d::I, e::I) where {I <: Sector}
-    UnitStyle(I) isa SimpleUnit || return intersect(a ⊗ d, e ⊗ conj(b))
-    return Iterators.filter(c′ -> !iszero(Nsymbol(c′, b, e)), a ⊗ d)
-end
-# the only such line, for a fusion tree that braids into a single one
+# without constructing the second fusion product
+_artin_channels(a, b, d, e) = Iterators.filter(c′ -> !iszero(Nsymbol(c′, b, e)), a ⊗ d)
+# the only such line, for a fusion tree that braids into a single one (`only` throws otherwise)
 _artin_channel(a, b, d, e) = _artin_channel(FusionStyle(a), a, b, d, e)
 _artin_channel(::UniqueFusion, a, b, d, e) = only(a ⊗ d)
-_artin_channel(::FusionStyle, a, b, d, e) = first(_artin_channels(a, b, d, e))
+_artin_channel(::FusionStyle, a, b, d, e) = only(_artin_channels(a, b, d, e))
 
 function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where {I, N}
     n = length(src) # braiding a complete block keeps its size
@@ -347,7 +341,7 @@ end
             for s in permutation2swaps(p)
                 _check_levels(BraidingStyle(I), levels, s)
                 inv = levels[s] > levels[s + 1]
-                f, c = _artin_braid_single(f, s, inv)
+                f, c = artin_braid(f, s; inv)
                 coeff *= c
                 l = levels[s]
                 levels = TupleTools.setindex(levels, levels[s + 1], s)
