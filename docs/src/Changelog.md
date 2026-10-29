@@ -86,7 +86,7 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 - Fusion tree block manipulations of (named) product sectors are computed as Kronecker products of the manipulations of their parts, splitting off the `UniqueFusion` sectors, such that they share the caches of the individual sectors ([#592](https://github.com/QuantumKitHub/TensorKit.jl/pull/592))
 - The TensorOperations ChainRules rules no longer copy or retain `C` when `β = Zero()`, as is the case for every tensor allocated by `@tensor` ([#555](https://github.com/QuantumKitHub/TensorKit.jl/pull/555))
 - The Enzyme `norm` rule reuses the cached primal and the `tr` rule avoids an unnecessary copy ([#554](https://github.com/QuantumKitHub/TensorKit.jl/pull/554))
-- Braiding fusion tree blocks no longer constructs and indexes the canonical intermediate blocks of every step: these keep their trees in the order in which they are produced, their buffers are recycled, and blocks with a single tree are braided as a product of scalars (internal)
+- Fusion tree block manipulations no longer construct and index the canonical destination block, but keep the trees of the result in the order in which they are produced; the buffers of the intermediate blocks of a braid are recycled, and blocks with a single tree are braided as their tree pair (internal)
 
 ## [0.17.2](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.1...v0.17.2) - 2026-09-20
 

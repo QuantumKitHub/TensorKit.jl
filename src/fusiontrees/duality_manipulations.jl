@@ -65,24 +65,14 @@ function bendright((f₁, f₂)::FusionTreePair)
 
     return (f₁′, f₂′) => coeff
 end
-function bendright(src::FusionTreeBlock, canonical::Val = Val(true))
+function bendright(src::FusionTreeBlock)
     I = sectortype(src)
     N₁ = numout(src)
     N₂ = numin(src)
     @assert N₁ > 0
-    uncoupled_dst = (
-        TupleTools.front(src.uncoupled[1]),
-        (src.uncoupled[2]..., dual(src.uncoupled[1][N₁])),
-    )
-    isdual_dst = (
-        TupleTools.front(src.isdual[1]),
-        (src.isdual[2]..., !(src.isdual[1][N₁])),
-    )
 
-    rows = TreeRows(I, uncoupled_dst, isdual_dst, length(src), canonical)
-    # the canonical destination block has more trees than `src` if `src` holds only some of the
-    # trees with its uncoupled sectors (as in `planar_trace`)
-    U = zeros(fusionscalartype(I), max(length(rows.trees), length(src)), length(src))
+    rows = TreeRows(fusiontreetype(I, N₁ - 1, N₂ + 1), length(src))
+    U = zeros(fusionscalartype(I), length(src), length(src))
 
     for (col, (f₁, f₂)) in enumerate(fusiontrees(src))
         (a, b, c), (f₁′, f₂′) = _bendright_treepair((f₁, f₂))
@@ -144,24 +134,14 @@ end
 
 # !! note that this is more or less a copy of bendright through
 # (f1, f2) => conj(coeff) for ((f2, f1), coeff) in bendleft(src)
-function bendleft(src::FusionTreeBlock, canonical::Val = Val(true))
+function bendleft(src::FusionTreeBlock)
     I = sectortype(src)
     N₁ = numout(src)
     N₂ = numin(src)
     @assert N₂ > 0
-    uncoupled_dst = (
-        (src.uncoupled[1]..., dual(src.uncoupled[2][N₂])),
-        TupleTools.front(src.uncoupled[2]),
-    )
-    isdual_dst = (
-        (src.isdual[1]..., !(src.isdual[2][N₂])),
-        TupleTools.front(src.isdual[2]),
-    )
 
-    rows = TreeRows(I, uncoupled_dst, isdual_dst, length(src), canonical)
-    # the canonical destination block has more trees than `src` if `src` holds only some of the
-    # trees with its uncoupled sectors (as in `planar_trace`)
-    U = zeros(fusionscalartype(I), max(length(rows.trees), length(src)), length(src))
+    rows = TreeRows(fusiontreetype(I, N₁ + 1, N₂ - 1), length(src))
+    U = zeros(fusionscalartype(I), length(src), length(src))
 
     for (col, (f₁, f₂)) in enumerate(fusiontrees(src))
         (a, b, c), (f₂′, f₁′) = _bendright_treepair((f₂, f₁))
@@ -236,17 +216,11 @@ function foldright((f₁, f₂)::FusionTreePair)
 end
 
 function foldright(src::FusionTreeBlock)
-    uncoupled_dst = (
-        Base.tail(src.uncoupled[1]),
-        (dual(first(src.uncoupled[1])), src.uncoupled[2]...),
-    )
-    isdual_dst = (Base.tail(src.isdual[1]), (!first(src.isdual[1]), src.isdual[2]...))
     I = sectortype(src)
     N₁ = numout(src)
     @assert N₁ > 0
 
-    dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst; sizehint = length(src))
-    indexmap = treeindex_map(dst)
+    rows = TreeRows(fusiontreetype(I, N₁ - 1, numin(src) + 1), length(src))
 
     f₁, f₂ = first(fusiontrees(src))
     a::I = f₁.uncoupled[1]
@@ -260,7 +234,7 @@ function foldright(src::FusionTreeBlock)
     c::I = f₁.coupled
     cache₃ = Dict((b, c) => Asymbol(a, b, c))
 
-    U = zeros(eltype(coeff₁), length(dst), length(src))
+    U = zeros(eltype(coeff₁), length(src), length(src))
     for (col, (f₁, f₂)) in enumerate(fusiontrees(src))
         f₁′s, coeffs₁ = get!(cache₁, f₁) do
             multi_Fmove(f₁)
@@ -280,12 +254,12 @@ function foldright(src::FusionTreeBlock)
                 if isduala
                     coeff *= κₐ
                 end
-                row = indexmap[treeindex_data((f₁′, f₂′))]
+                row = row!(rows, (f₁′, f₂′))
                 @inbounds U[row, col] += coeff
             end
         end
     end
-    return dst => U
+    return FusionTreeBlock(rows.trees) => U
 end
 
 
@@ -319,21 +293,12 @@ function foldleft((f₁, f₂)::FusionTreePair)
 end
 
 function foldleft(src::FusionTreeBlock)
-    uncoupled_dst = (
-        (dual(first(src.uncoupled[2])), src.uncoupled[1]...),
-        Base.tail(src.uncoupled[2]),
-    )
-    isdual_dst = (
-        (!first(src.isdual[2]), src.isdual[1]...),
-        Base.tail(src.isdual[2]),
-    )
     I = sectortype(src)
     N₁ = numin(src)
     N₂ = numout(src)
     @assert N₁ > 0
 
-    dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst; sizehint = length(src))
-    indexmap = treeindex_map(dst)
+    rows = TreeRows(fusiontreetype(I, N₂ + 1, N₁ - 1), length(src))
 
     f₁, f₂ = first(fusiontrees(src))
     a::I = f₂.uncoupled[1]
@@ -347,7 +312,7 @@ function foldleft(src::FusionTreeBlock)
     c::I = f₂.coupled
     cache₃ = Dict((b, c) => Asymbol(a, b, c))
 
-    U = zeros(eltype(coeff₂), length(dst), length(src))
+    U = zeros(eltype(coeff₂), length(src), length(src))
     for (col, (f₁, f₂)) in enumerate(fusiontrees(src))
         f₂′s, coeffs₂ = get!(cache₂, f₂) do
             multi_Fmove(f₂)
@@ -367,12 +332,12 @@ function foldleft(src::FusionTreeBlock)
                 if isduala
                     coeff *= conj(κₐ)
                 end
-                row = indexmap[treeindex_data((f₁′, f₂′))]
+                row = row!(rows, (f₁′, f₂′))
                 @inbounds U[row, col] += coeff
             end
         end
     end
-    return dst => U
+    return FusionTreeBlock(rows.trees) => U
 end
 
 # clockwise cyclic permutation while preserving (N₁, N₂): foldright & bendleft
@@ -478,7 +443,7 @@ return dst, U
 # it, so that it is visible to the generator's world age. Otherwise a precompile workload that
 # first triggers `repartition` fails with `UndefVarError: _repartition_body` (at runtime the
 # first call happens at a later world age, which masks the ordering issue).
-function _repartition_body(N, canonical = true)
+function _repartition_body(N)
     if N == 0
         ex = quote
             T = fusionscalartype(sectortype(src))
@@ -491,14 +456,13 @@ function _repartition_body(N, canonical = true)
         end
     else
         f = N < 0 ? bendleft : bendright
-        args = canonical ? () : (Val(false),)
         ex_rep = Expr(:block)
         for _ in 1:(abs(N) - 1)
-            push!(ex_rep.args, :((dst, Utmp) = $f(dst, $(args...))))
+            push!(ex_rep.args, :((dst, Utmp) = $f(dst)))
             push!(ex_rep.args, :(U = Utmp * U))
         end
         ex = quote
-            dst, U = $f(src, $(args...))
+            dst, U = $f(src)
             $ex_rep
             return dst => U
         end
@@ -507,10 +471,6 @@ function _repartition_body(N, canonical = true)
 end
 @generated function repartition(src::Union{FusionTreePair, FusionTreeBlock}, ::Val{N}) where {N}
     return _repartition_body(numout(src) - N)
-end
-# the same for a block, with the trees of the result in the order in which they are produced
-@generated function repartition_noncanonical(src::FusionTreeBlock, ::Val{N}) where {N}
-    return _repartition_body(numout(src) - N, false)
 end
 
 """
