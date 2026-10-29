@@ -57,15 +57,13 @@ using TensorKitSectors
         # single bend
         dst, U = @constinferred TK.bendright(src)
         dst2, U2 = @constinferred TK.bendleft(dst)
-        @test src == dst2
-        @test _isone(U2 * U)
+        @test _isone(_inorder(U2 * U, dst2, src))
         # double bend
         dst1, U1 = @constinferred TK.bendleft(src)
         dst2, U2 = @constinferred TK.bendleft(dst1)
         dst3, U3 = @constinferred TK.bendright(dst2)
         dst4, U4 = @constinferred TK.bendright(dst3)
-        @test src == dst4
-        @test _isone(U4 * U3 * U2 * U1)
+        @test _isone(_inorder(U4 * U3 * U2 * U1, dst4, src))
 
         if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
             all_inds = (ntuple(identity, numout(src))..., reverse(ntuple(i -> i + numout(src), numin(src)))...)
@@ -88,15 +86,13 @@ using TensorKitSectors
         # single bend
         dst, U = @constinferred TK.foldleft(src)
         dst2, U2 = @constinferred TK.foldright(dst)
-        @test src == dst2
-        @test _isone(U2 * U)
+        @test _isone(_inorder(U2 * U, dst2, src))
         # double bend
         dst1, U1 = @constinferred TK.foldright(src)
         dst2, U2 = @constinferred TK.foldright(dst1)
         dst3, U3 = @constinferred TK.foldleft(dst2)
         dst4, U4 = @constinferred TK.foldleft(dst3)
-        @test src == dst4
-        @test _isone(U4 * U3 * U2 * U1)
+        @test _isone(_inorder(U4 * U3 * U2 * U1, dst4, src))
 
         if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
             all_inds = TupleTools.circshift((ntuple(identity, numout(src))..., reverse(ntuple(i -> i + numout(src), numin(src)))...), -2)
@@ -121,7 +117,7 @@ using TensorKitSectors
             # @test _isunitary(U)
 
             dst′, U′ = repartition(dst, N)
-            @test _isone(U * U′)
+            @test _isone(U * _inorder(U′, dst′, src))
 
             if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
                 all_inds = (ntuple(identity, numout(src))..., reverse(ntuple(i -> i + numout(src), numin(src)))...)
@@ -152,11 +148,11 @@ using TensorKitSectors
 
             dst, U = @constinferred transpose(src, (p1, p2))
             dst′, U′ = @constinferred transpose(dst, (ip1, ip2))
-            @test _isone(U * U′)
+            @test _isone(U * _inorder(U′, dst′, src))
 
             if BraidingStyle(I) isa Bosonic
                 dst″, U″ = permute(src, (p1, p2))
-                @test U″ ≈ U
+                @test _inorder(U″, dst″, dst) ≈ U
             end
 
             if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
@@ -217,7 +213,7 @@ using TensorKitSectors
             else
                 dst′, U′ = @constinferred TensorKit.braid(dst, (ip1, ip2), (il1, il2))
             end
-            @test _isone(U * U′)
+            @test _isone(U * _inorder(U′, dst′, src))
 
             # check fusiontensor compatibility
             if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
@@ -230,6 +226,31 @@ using TensorKitSectors
                         Aj = sum(A″ .* U[:, i])
                         @test Ai ≈ Aj
                     end
+                end
+            end
+        end
+    end
+
+    FusionStyle(I) isa UniqueFusion || !(BraidingStyle(I) isa HasBraiding) ||
+        @testset "Double fusion tree: braiding a block with a single tree" begin
+        a, b = random_fusion(I, Val(2))
+        cs = filter(c -> Nsymbol(a, b, c) == 1, collect(a ⊗ b))
+        if !isempty(cs)
+            src1 = FusionTreeBlock{I}(((a, b), (rand(cs),)), ((rand(Bool), rand(Bool)), (rand(Bool),)))
+            @test length(src1) == 1
+            for n in 0:3
+                p = (randperm(3)...,)
+                p1, p2 = p[1:n], p[(n + 1):3]
+                ip = invperm(p)
+                ilevels = TupleTools.getindices((1, 2, 3), p)
+                dst, U = @constinferred TensorKit.braid(src1, (p1, p2), ((1, 2), (3,)))
+                @test length(dst) == 1 && size(U) == (1, 1)
+                dst′, U′ = @constinferred TensorKit.braid(dst, (ip[1:2], ip[3:3]), (ilevels[1:n], ilevels[(n + 1):3]))
+                @test dst′ == src1
+                @test _isone(U * U′)
+                if (BraidingStyle(I) isa Bosonic) && hasfusiontensor(I)
+                    A1 = fusiontensor(only(fusiontrees(src1)))
+                    @test permutedims(A1, (p1..., p2...)) ≈ only(U) * fusiontensor(only(fusiontrees(dst)))
                 end
             end
         end

@@ -44,6 +44,7 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 - Recoupling matrices are stored such that they can leverage BLAS, also for mixed complex tensor with real recoupling coefficients.
 - Constructing a `FusionTreeBlock` only takes the fusion product of the shorter side, and `fusionblocks` groups the cached fusion trees of the space instead of constructing a block for every combination of sectors (internal)
+- Fusion tree block manipulations no longer construct and index the canonical destination block, but keep the trees of the result in the order in which they are produced; the buffers of the intermediate blocks of a braid are recycled, and blocks with a single tree are braided as their tree pair (internal)
 
 ## [0.17.2](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.1...v0.17.2) - 2026-09-20
 

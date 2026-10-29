@@ -117,6 +117,10 @@ const FusionTreePair{I, N₁, N₂} = Tuple{FusionTree{I, N₁}, FusionTree{I, N
 
 Collection of fusion-splitting tree pairs that share the same uncoupled sectors.
 Mostly internal structure to speed up non-`UniqueFusion` fusiontree manipulation computations.
+Manipulating a block requires it to be complete, i.e. to contain all the fusion-splitting tree
+pairs with its uncoupled sectors and duality flags, as `FusionTreeBlock{I}(uncoupled, isdual)`
+does. The resulting block holds its trees in the order in which they are produced, rather than in
+the canonical order of `FusionTreeBlock{I}(uncoupled, isdual)`.
 """
 struct FusionTreeBlock{I, N₁, N₂, F <: FusionTreePair{I, N₁, N₂}}
     trees::Vector{F}
@@ -271,9 +275,37 @@ function treeindex_data((f₁, f₂))
         return false
     end
 end
-function treeindex_map(fs::FusionTreeBlock)
-    I = sectortype(fs)
-    return fusiontreedict(I)(treeindex_data(f) => ind for (ind, f) in enumerate(fusiontrees(fs)))
+
+# The trees of the destination block of a block manipulation, in the order in which they are
+# produced, and the row of each of them in the transformation matrix. The source block has to be
+# complete, such that the destination block has as many trees (`n`); the tree vector of a block
+# that is no longer needed can be passed on as `buffer`.
+struct TreeRows{F, D}
+    trees::Vector{F}
+    index::Union{D, Nothing} # `nothing`: few trees, the rows are found by a linear search
+    n::Int
+    # no default outer constructor, of which `D` would be unbound if `index === nothing`
+    TreeRows{F, D}(trees::Vector{F}, index, n::Int) where {F, D} = new{F, D}(trees, index, n)
+end
+function TreeRows(::Type{F}, n::Int, buffer = nothing) where {F}
+    trees = buffer isa Vector{F} ? empty!(buffer) : sizehint!(Vector{F}(), n)
+    K = Base.promote_op(treeindex_data, F)
+    index = n > 32 ? Dict{K, Int}() : nothing
+    return TreeRows{F, Dict{K, Int}}(trees, index, n)
+end
+function row!(rows::TreeRows, f)
+    key = treeindex_data(f)
+    i = if isnothing(rows.index)
+        findfirst(f′ -> treeindex_data(f′) == key, rows.trees)
+    else
+        get(rows.index, key, nothing)
+    end
+    isnothing(i) || return i
+    length(rows.trees) < rows.n ||
+        throw(ArgumentError("manipulating a block requires it to be complete"))
+    push!(rows.trees, f)
+    isnothing(rows.index) || (rows.index[key] = length(rows.trees))
+    return length(rows.trees)
 end
 
 
