@@ -24,6 +24,8 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 ### Changed
 
+- `planartrace!` precomputes and caches a `TraceTransformer` with the subblock positions and recoupling coefficients, and executes it with a kernel shared by all sectortypes, analogous to the index manipulations; `planar_trace` is now also defined for `FusionTreeBlock`s (internal)
+
 ### Deprecated
 
 ### Removed
