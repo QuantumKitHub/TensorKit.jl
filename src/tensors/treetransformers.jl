@@ -202,4 +202,104 @@ end
     return TreeTransformer(A, fusiontreetransform, p, Vdst, Vsrc, conjsrc)
 end
 
+
+"""
+    TraceTransformer{T, N₁, N₂}
+
+Planar trace of a tensor with `N₂` indices into a tensor with `N₁` indices, stored as
+`(U, inds_dst, inds_src)` where `U[j, i]` is the coefficient with which the trace of source
+subblock `inds_src[i]` contributes to destination subblock `inds_dst[j]`. The data is grouped by
+destination, such that every destination subblock appears in exactly one entry, where those
+without contributions have no source subblocks. The subblock structures of the destination and source
+spaces are kept alongside, such that the [`StridedSubblocks`](@ref) of both tensors can be
+created without further lookups.
+"""
+struct TraceTransformer{T, N₁, N₂}
+    data::Vector{GenericTransformerData{T}}
+    structure_dst::Vector{StridedStructure{N₁}}
+    structure_src::Vector{StridedStructure{N₂}}
+end
+
+function TraceTransformer(::Type{A}, Vdst::HomSpace, Vsrc::HomSpace, p::Index2Tuple, q::Index2Tuple) where {A}
+    t₀ = Base.time()
+    src_trees, dst_trees = fusiontrees(Vsrc), fusiontrees(Vdst)
+    T = recoupling_scalartype(A, sectorscalartype(sectortype(Vdst)))
+
+    # destination positions => (columns of the recoupling matrix, source positions)
+    groups = Dict{Vector{Int}, Tuple{Vector{Vector{T}}, Vector{Int}}}()
+    function addcolumn!(inds_dst, u, isrc)
+        any(!iszero, u) || return nothing
+        us, inds_src = get!(() -> (Vector{T}[], Int[]), groups, inds_dst)
+        push!(us, u)
+        push!(inds_src, isrc)
+        return nothing
+    end
+    @timeit_debug GLOBAL_TIMER "symmetry: trace coefficients" if FusionStyle(sectortype(Vdst)) isa UniqueFusion
+        for (isrc, f) in enumerate(src_trees)
+            trace_sectors_match(f, q) || continue
+            f′, coeff = planar_trace(f, p, q)
+            _, (_, idst) = gettoken(dst_trees, f′)
+            addcolumn!([idst], [convert(T, coeff)], isrc)
+        end
+    else
+        for fs_src in fusionblocks(Vsrc)
+            trace_sectors_match(fs_src, q) || continue
+            fs_dst, U = planar_trace(fs_src, p, q)
+            inds_dst = map(fusiontrees(fs_dst)) do f
+                _, (_, idst) = gettoken(dst_trees, f)
+                return idst
+            end
+            for (i, f) in enumerate(fusiontrees(fs_src))
+                _, (_, isrc) = gettoken(src_trees, f)
+                addcolumn!(inds_dst, convert(Vector{T}, U[:, i]), isrc)
+            end
+        end
+    end
+    data = GenericTransformerData{T}[(reduce(hcat, us), inds_dst, inds_src) for (inds_dst, (us, inds_src)) in groups]
+    # destination subblocks without contributions are only scaled
+    covered = falses(length(dst_trees))
+    foreach(inds_dst -> covered[inds_dst] .= true, keys(groups))
+    for idst in findall(!, covered)
+        push!(data, (zeros(T, 1, 0), [idst], Int[]))
+    end
+
+    structure_dst = degeneracystructure(Vdst).subblockstructure
+    structure_src = degeneracystructure(Vsrc).subblockstructure
+    # sort by (approximate) weight to facilitate multi-threading strategies
+    weights = map(data) do (U, inds_dst, _)
+        return length(U) * prod(structure_dst[first(inds_dst)][1])
+    end
+    Base.permute!(data, sortperm(weights; rev = true))
+    transformer = TraceTransformer(data, structure_dst, structure_src)
+
+    Δt = Base.time() - t₀
+    @debug("TraceTransformer for $Vsrc to $Vdst via $p and $q", nblocks = length(data), Δt)
+
+    return transformer
+end
+
+"""
+    buffersize(transformer::TraceTransformer) -> Int
+
+Compute the workspace size required to trace, recouple and unpack the largest block with
+multiple destination subblocks, i.e. `prod(sz_dst) * (rows + cols)` where `(rows, cols) = size(U)`.
+"""
+function buffersize(transformer::TraceTransformer)
+    structure_dst = transformer.structure_dst
+    return maximum(transformer.data; init = 0) do (U, inds_dst, _)
+        return size(U, 1) == 1 ? 0 : prod(structure_dst[first(inds_dst)][1]) * sum(size(U))
+    end
+end
+
+function tracetransformertype(::Type{A}, Vdst, Vsrc) where {A}
+    T = recoupling_scalartype(A, sectorscalartype(sectortype(Vdst)))
+    return TraceTransformer{T, numind(Vdst), numind(Vsrc)}
+end
+
+@cached function treetracer(
+        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, q::Index2Tuple
+    )::tracetransformertype(A, Vdst, Vsrc) where {TA}
+    return TraceTransformer(A, Vdst, Vsrc, p, q)
+end
+
 # default cachestyle is GlobalLRUCache
