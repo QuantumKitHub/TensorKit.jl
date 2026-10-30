@@ -12,26 +12,102 @@ depending only on which sectors appear (not their degeneracy dimensions). Shared
 
 ## Fields
 - `blocksectors`: `Indices` of all coupled sectors `c::I`.
-- `fusiontrees`: `Indices` of all valid fusion tree pairs `(f₁, f₂)`, in canonical order.
+- `fusiontrees`: `FusionTreePairs` of all valid fusion tree pairs `(f₁, f₂)`, in canonical order.
 
 See also [`sectorstructure`](@ref), [`DegeneracyStructure`](@ref).
 """
-struct SectorStructure{I <: Sector, F <: FusionTreePair{I}}
+struct SectorStructure{I <: Sector, F <: FusionTreePair{I}, T <: AbstractIndices{F}}
     blocksectors::Indices{I}
-    fusiontrees::Indices{F}
+    fusiontrees::T
 end
+
+"""
+    FusionTreePairs{F₁, F₂} <: AbstractIndices{Tuple{F₁, F₂}}
+
+The fusion tree pairs `(f₁, f₂)` of a `HomSpace`, ordered by coupled sector, then `f₂`, then `f₁`,
+stored as the splitting trees `f₁` and the fusion trees `f₂` of every coupled sector. The token of
+a pair is its position.
+"""
+struct FusionTreePairs{F₁, F₂} <: AbstractIndices{Tuple{F₁, F₂}}
+    trees₁::Indices{F₁} # splitting trees, grouped by coupled sector
+    trees₂::Indices{F₂} # fusion trees, grouped by coupled sector
+    blocks₁::Vector{Int} # the coupled sector of every splitting tree
+    blocks₂::Vector{Int} # the coupled sector of every fusion tree
+    ranges₁::Vector{UnitRange{Int}} # the splitting trees of every coupled sector
+    ranges₂::Vector{UnitRange{Int}} # the fusion trees of every coupled sector
+    offsets::Vector{Int} # the number of pairs before every coupled sector, and in total
+end
+
+# from the trees of both sides of every coupled sector
+function FusionTreePairs{F₁, F₂}(sides₁, sides₂) where {F₁, F₂}
+    lengths(ss) = map(length, ss)
+    ranges(ss) = map((n, l) -> (n - l + 1):n, cumsum(lengths(ss)), lengths(ss))
+    blocks(ss) = Int[b for (b, ts) in enumerate(ss) for _ in ts]
+    offsets = cumsum(vcat(0, lengths(sides₁) .* lengths(sides₂)))
+    return FusionTreePairs{F₁, F₂}(
+        Indices(F₁[f for ts in sides₁ for f in ts]), Indices(F₂[f for ts in sides₂ for f in ts]),
+        blocks(sides₁), blocks(sides₂), ranges(sides₁), ranges(sides₂), offsets
+    )
+end
+
+Base.length(t::FusionTreePairs) = last(t.offsets)
+Dictionaries.istokenizable(::FusionTreePairs) = true
+Dictionaries.tokentype(::FusionTreePairs) = Int
+Dictionaries.iteratetoken(t::FusionTreePairs, i::Int = 0) = i < length(t) ? (i + 1, i + 1) : nothing
+Dictionaries.iteratetoken_reverse(t::FusionTreePairs, i::Int = length(t) + 1) = i > 1 ? (i - 1, i - 1) : nothing
+# tokens as returned by `gettoken` look like those of `Indices`, with the position second
+function Dictionaries.gettoken(t::FusionTreePairs, (f₁, f₂))
+    found₁, (_, i₁) = gettoken(t.trees₁, f₁)
+    found₂, (_, i₂) = gettoken(t.trees₂, f₂)
+    (found₁ && found₂ && t.blocks₁[i₁] == t.blocks₂[i₂]) || return false, (0, 0)
+    b = t.blocks₁[i₁]
+    r₁, r₂ = t.ranges₁[b], t.ranges₂[b]
+    return true, (0, t.offsets[b] + (i₂ - first(r₂)) * length(r₁) + (i₁ - first(r₁)) + 1)
+end
+Dictionaries.gettokenvalue(t::FusionTreePairs, (_, i)::Tuple{Int, Int}) = gettokenvalue(t, i)
+function Dictionaries.gettokenvalue(t::FusionTreePairs, i::Int)
+    b = searchsortedlast(t.offsets, i - 1)
+    r₁, r₂ = t.ranges₁[b], t.ranges₂[b]
+    j₂, j₁ = divrem(i - 1 - t.offsets[b], length(r₁))
+    return (gettokenvalue(t.trees₁, first(r₁) + j₁), gettokenvalue(t.trees₂, first(r₂) + j₂))
+end
+Base.iterate(t::FusionTreePairs) = iterate(t, (1, 0, 1))
+function Base.iterate(t::FusionTreePairs, (b, i₁, i₂))
+    while b <= length(t.ranges₁)
+        r₁, r₂ = t.ranges₁[b], t.ranges₂[b]
+        i₁ += 1
+        i₁ > length(r₁) && (i₁ = 1; i₂ += 1)
+        i₂ <= length(r₂) && !isempty(r₁) &&
+            return (gettokenvalue(t.trees₁, first(r₁) + i₁ - 1), gettokenvalue(t.trees₂, first(r₂) + i₂ - 1)), (b, i₁, i₂)
+        b, i₁, i₂ = b + 1, 0, 1
+    end
+    return nothing
+end
+
+# values for every fusion tree pair, sharing the tokens of `FusionTreePairs`
+struct FusionTreePairDict{K, V, T <: FusionTreePairs} <: AbstractDictionary{K, V}
+    keys::T
+    values::Vector{V}
+end
+FusionTreePairDict(keys::T, values::Vector{V}) where {T <: FusionTreePairs, V} =
+    FusionTreePairDict{eltype(T), V, T}(keys, values)
+Base.keys(d::FusionTreePairDict) = d.keys
+Dictionaries.istokenizable(::FusionTreePairDict) = true
+Dictionaries.istokenassigned(::FusionTreePairDict, _) = true
+Dictionaries.gettokenvalue(d::FusionTreePairDict, i::Int) = d.values[i]
+Dictionaries.gettokenvalue(d::FusionTreePairDict, (_, i)::Tuple{Int, Int}) = d.values[i]
 
 Base.@assume_effects :foldable function sectorstructuretype(key::Hashed{S}) where {S <: HomSpace}
     I = sectortype(S)
-    F = fusiontreetype(I, numout(S), numin(S))
-    return SectorStructure{I, F}
+    F₁, F₂ = fusiontreetype(I, numout(S)), fusiontreetype(I, numin(S))
+    return SectorStructure{I, Tuple{F₁, F₂}, FusionTreePairs{F₁, F₂}}
 end
 
 """
     sectorstructure(W::HomSpace) -> SectorStructure
 
-Return the [`SectorStructure`](@ref) for `W`, containing the coupled sectors and fusion tree
-pairs as `Indices`. The result is cached based on the sector structure of `W` (ignoring
+Return the [`SectorStructure`](@ref) for `W`, containing the coupled sectors as `Indices` and the
+fusion tree pairs as `FusionTreePairs`. The result is cached based on the sector structure of `W` (ignoring
 degeneracy dimensions).
 
 See also [`degeneracystructure`](@ref), [`fusiontrees`](@ref), [`blocksectors`](@ref).
@@ -40,35 +116,12 @@ sectorstructure(W::HomSpace) = sectorstructure(Hashed(W, sectorhash, sectorequal
 
 @cached function sectorstructure(key::Hashed{S})::sectorstructuretype(key) where {S <: HomSpace}
     W = parent(key)
-    codom, dom = codomain(W), domain(W)
-
-    I = sectortype(S)
-    F = fusiontreetype(I, numout(S), numin(S))
-    bs = Vector{I}()
-    trees = Vector{F}()
-
-    for c in _blocksectors(W)
-        push!(bs, c)
-        offset = length(trees)
-        n₁ = 0
-        for f₂ in fusiontrees(dom, c)
-            if n₁ == 0
-                # First f₂ for this sector: enumerate codomain trees and record how many there are.
-                for f₁ in fusiontrees(codom, c)
-                    push!(trees, (f₁, f₂))
-                end
-                n₁ = length(trees) - offset
-            else
-                # Subsequent f₂s: the codomain trees are already in the list at
-                # offset .+ (1:n₁), so read them back instead of recomputing.
-                for j in offset .+ (1:n₁)
-                    push!(trees, (trees[j][1], f₂))
-                end
-            end
-        end
-    end
-
-    return SectorStructure{I, F}(Indices(bs), Indices(trees))
+    # the trees of both sides of every coupled sector; the pairs are not stored
+    bs = vec(collect(_blocksectors(W))) # `vec`: the units of a product sector have a shape
+    F₁, F₂ = fusiontreetype(sectortype(S), numout(S)), fusiontreetype(sectortype(S), numin(S))
+    sides₁ = map(c -> collect(fusiontrees(codomain(W), c)), bs)
+    sides₂ = map(c -> collect(fusiontrees(domain(W), c)), bs)
+    return sectorstructuretype(key)(Indices(bs), FusionTreePairs{F₁, F₂}(sides₁, sides₂))
 end
 
 CacheStyle(::typeof(sectorstructure), ::Hashed{<:HomSpace}) = GlobalLRUCache()
@@ -117,72 +170,38 @@ See also [`sectorstructure`](@ref), [`blockstructure`](@ref), [`subblockstructur
     N = length(codom) + length(dom)
 
     ss = sectorstructure(W)
-    treelist = ss.fusiontrees
-    L = length(treelist)
-    structurevalues = sizehint!(Vector{StridedStructure{N}}(), L)
+    ts = ss.fusiontrees
+    structurevalues = Vector{StridedStructure{N}}(undef, length(ts))
     blockvalues = Vector{Tuple{Tuple{Int, Int}, UnitRange{Int}}}(undef, length(ss.blocksectors))
 
-    # temporary data structures
-    splittingstructure = Vector{NTuple{numout(W), Int}}()
-
+    # the subblocks of every coupled sector, from the degeneracies of the trees of both sides
     blockoffset = 0
-    tree_index = 1
-    block_index = 1
-    while tree_index <= L
-        f₁, f₂ = gettokenvalue(treelist, tree_index)
-        c = f₁.coupled
-
-        # compute subblock structure
-        # splitting tree data
-        empty!(splittingstructure)
-        offset₁ = 0
-        for i in tree_index:L
-            f₁′, f₂′ = gettokenvalue(treelist, i)
-            f₂′ == f₂ || break
-            s₁ = f₁′.uncoupled
-            d₁s = dims(codom, s₁)
-            d₁ = prod(d₁s)
-            offset₁ += d₁
-            push!(splittingstructure, d₁s)
-        end
-        blockdim₁ = offset₁
-        n₁ = length(splittingstructure)
+    tree_index = 0
+    for (block_index, (r₁, r₂)) in enumerate(zip(ts.ranges₁, ts.ranges₂))
+        d₁ss = map(i -> dims(codom, gettokenvalue(ts.trees₁, i).uncoupled), r₁)
+        d₂ss = map(i -> dims(dom, gettokenvalue(ts.trees₂, i).uncoupled), r₂)
+        blockdim₁ = sum(prod, d₁ss; init = 0)
+        blockdim₂ = sum(prod, d₂ss; init = 0)
         strides = (1, blockdim₁)
-
-        # fusion tree data and combine
         offset₂ = 0
-        n₂ = 0
-        for i in tree_index:n₁:L
-            f₁′, f₂′ = gettokenvalue(treelist, i)
-            f₂′.coupled == c || break
-            n₂ += 1
-            s₂ = f₂′.uncoupled
-            d₂s = dims(dom, s₂)
+        for d₂s in d₂ss
             d₂ = prod(d₂s)
             offset₁ = 0
-            for d₁s in splittingstructure
+            for d₁s in d₁ss
                 d₁ = prod(d₁s)
                 totaloffset = blockoffset + offset₂ * blockdim₁ + offset₁
                 subsz = (d₁s..., d₂s...)
                 @assert !any(==(0), subsz)
                 substr = _subblock_strides(subsz, (d₁, d₂), strides)
-                push!(structurevalues, (subsz, substr, totaloffset))
+                structurevalues[tree_index += 1] = (subsz, substr, totaloffset)
                 offset₁ += d₁
             end
             offset₂ += d₂
         end
-
-        # compute block structure
-        blockdim₂ = offset₂
         blockrange = (blockoffset + 1):(blockoffset + blockdim₁ * blockdim₂)
         blockvalues[block_index] = ((blockdim₁, blockdim₂), blockrange)
-
-        # reset
         blockoffset = last(blockrange)
-        tree_index += n₁ * n₂
-        block_index += 1
     end
-    @assert length(structurevalues) == L
 
     return DegeneracyStructure(blockoffset, blockvalues, structurevalues)
 end

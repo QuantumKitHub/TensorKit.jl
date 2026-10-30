@@ -118,7 +118,7 @@ const TO = TensorOperations
 
 using MatrixAlgebraKit
 
-using Dictionaries: Dictionaries, Dictionary, Indices, gettoken, gettokenvalue
+using Dictionaries: Dictionaries, AbstractDictionary, AbstractIndices, Dictionary, Indices, gettoken, gettokenvalue
 using LRUCache
 using OhMyThreads
 using ScopedValues
