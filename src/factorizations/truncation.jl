@@ -348,8 +348,8 @@ end
 
 function _findtruncated_multiplets(values::SectorVector, inds, strategy::TruncationMultiplets)
     keep = similar(values, Bool)
-    to_keep = parent(_ind_to_mask!(keep, inds))
-    kept_values = parent(values)
+    to_keep = collect(parent(_ind_to_mask!(keep, inds)))
+    kept_values = collect(parent(values))
     perm = sortperm(kept_values; by = abs, rev = true)
     MAK._keep_multiplets!(to_keep, kept_values, perm, strategy)
     copyto!(parent(keep), to_keep)
