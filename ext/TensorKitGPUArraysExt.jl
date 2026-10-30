@@ -9,6 +9,7 @@ using Strided: StridedViews
 using MatrixAlgebraKit, Adapt
 using TensorKit
 using TensorKit.TensorOperations: linearize, DefaultAllocator
+const TO = TensorKit.TensorOperations
 using TensorKit.Factorizations
 using TensorKit.Factorizations: AbstractAlgorithm
 using TensorKit: SectorDict, tensormaptype, scalar, similarstoragetype, AdjointTensorMap, scalartype, project_symmetric_and_check
@@ -272,11 +273,17 @@ function DeviceGenericTreeTransformer(
     )
 end
 
+# Planar traces run in two stages. The first computes partial traces of every source subblock:
+# each thread sums a chunk of at most `chunksize` traced entries for a single remaining entry,
+# such that large traces (e.g. full reductions) are still spread over many threads. The second
+# recouples these partials with one thread per destination element, as for the generic transformers,
+# such that the traced entries of a source are summed only once, rather than once per destination tree.
+
 """
     TraceTransformerBlock{N}
 
 Descriptor for a destination block of a `TraceTransformer`, indexing into the flat
-`coeffs`/`structs_dst`/`structs_src` vectors of a `DeviceTraceTransformer`.
+`coeffs`/`structs_dst`/`sources` vectors of a `DeviceTraceTransformer`.
 """
 struct TraceTransformerBlock{N}
     sz::NTuple{N, Int}
@@ -288,18 +295,42 @@ struct TraceTransformerBlock{N}
     src_offset::Int
 end
 
-# (permuted strides of the remaining legs, sizes, dense strides and summed strides of the traced
-# pairs, offset): the traced entries of a source subblock are found through a single stride per pair
-const TraceSourceStructure{N, M} = Tuple{NTuple{N, Int}, NTuple{M, Int}, NTuple{M, Int}, NTuple{M, Int}, Int}
+"""
+    TraceSourceBlock{N, M}
 
-struct DeviceTraceTransformer{VB <: AbstractVector{<:TraceTransformerBlock}, VO <: AbstractVector{Int}, VC <: AbstractVector{<:Number}, VD <: AbstractVector{<:Tuple{<:Tuple{Vararg{Int}}, Int}}, VS <: AbstractVector{<:TraceSourceStructure}}
+Descriptor for the partial traces of a source subblock of a `TraceTransformer`, with `N` remaining
+legs (permuted to the destination order) and `M` traced pairs, whose entries are found through a
+single stride per pair. The partials are stored chunk-major, as `nchunks` dense arrays of shape `sz`.
+"""
+struct TraceSourceBlock{N, M}
+    sz::NTuple{N, Int}
+    dense_strides::NTuple{N, Int}
+    permuted_strides::NTuple{N, Int}
+    offset::Int
+    sz_traced::NTuple{M, Int}
+    dense_strides_traced::NTuple{M, Int}
+    strides_traced::NTuple{M, Int} # strides[q₁] .+ strides[q₂]
+    nremaining::Int
+    ntraced::Int
+    chunksize::Int
+    nchunks::Int
+end
+
+struct DeviceTraceTransformer{VB <: AbstractVector{<:TraceTransformerBlock}, VO <: AbstractVector{Int}, VC <: AbstractVector{<:Number}, VD <: AbstractVector{<:Tuple{<:Tuple{Vararg{Int}}, Int}}, VS <: AbstractVector{<:TraceSourceBlock}}
     blocks::VB
     work_offsets::VO
     nwork::Int
     coeffs::VC # every `U`, concatenated in column-major order
     structs_dst::VD
-    structs_src::VS
+    sources::VS
+    partial_offsets::VO # also the work offsets of the first stage
+    npartials::Int
 end
+
+# traces with fewer entries are not split, larger ones are split into at most `√ntraced` chunks,
+# such that no thread in either stage sums more than `max(256, √ntraced)` entries
+const MIN_TRACE_CHUNKSIZE = 256
+_trace_chunksize(ntraced::Int) = max(MIN_TRACE_CHUNKSIZE, isqrt(ntraced))
 
 function DeviceTraceTransformer(transformer::TraceTransformer{T, N₁, N₂}, p, (q₁, q₂)) where {T, N₁, N₂}
     lp = linearize(p)
@@ -307,16 +338,17 @@ function DeviceTraceTransformer(transformer::TraceTransformer{T, N₁, N₂}, p,
     blocks = TraceTransformerBlock{N₁}[]
     coeffs = T[]
     structs_dst = TreeStructure{N₁}[]
-    structs_src = TraceSourceStructure{N₁, M}[]
+    sources = TraceSourceBlock{N₁, M}[]
 
     (; structure_dst, structure_src) = transformer
     for (U, inds_dst, inds_src) in transformer.data
         # all destination trees in a block share the same subblock size
         size_dst = first(structure_dst[first(inds_dst)])
+        dense_strides_dst = _dense_strides(size_dst)
         push!(
             blocks, TraceTransformerBlock{N₁}(
-                size_dst, _dense_strides(size_dst), size(U, 1), size(U, 2),
-                length(coeffs), length(structs_dst), length(structs_src)
+                size_dst, dense_strides_dst, size(U, 1), size(U, 2),
+                length(coeffs), length(structs_dst), length(sources)
             )
         )
         append!(coeffs, U)
@@ -328,17 +360,23 @@ function DeviceTraceTransformer(transformer::TraceTransformer{T, N₁, N₂}, p,
             size_src, strides_src, offset_src = structure_src[isrc]
             size_traced = TupleTools.getindices(size_src, q₁)
             strides_traced = TupleTools.getindices(strides_src, q₁) .+ TupleTools.getindices(strides_src, q₂)
+            ntraced = prod(size_traced)
+            chunksize = _trace_chunksize(ntraced)
             push!(
-                structs_src, (
-                    TupleTools.getindices(strides_src, lp), size_traced,
-                    _dense_strides(size_traced), strides_traced, offset_src,
+                sources, TraceSourceBlock{N₁, M}(
+                    size_dst, dense_strides_dst, TupleTools.getindices(strides_src, lp), offset_src,
+                    size_traced, _dense_strides(size_traced), strides_traced,
+                    prod(size_dst), ntraced, chunksize, cld(ntraced, chunksize)
                 )
             )
         end
     end
 
     work_offsets, nwork = _work_offsets(blk.rows * prod(blk.sz) for blk in blocks)
-    return DeviceTraceTransformer(blocks, work_offsets, nwork, coeffs, structs_dst, structs_src)
+    partial_offsets, npartials = _work_offsets(src.nchunks * src.nremaining for src in sources)
+    return DeviceTraceTransformer(
+        blocks, work_offsets, nwork, coeffs, structs_dst, sources, partial_offsets, npartials
+    )
 end
 
 # Cache the device transformer directly, constructing the cached host version only on a miss.
@@ -418,7 +456,8 @@ function device_transformer(A, transformer::TraceTransformer, p, q)
         upload(x) = copy!(similar(proto, eltype(x), size(x)), x)
         DeviceTraceTransformer(
             upload(packed.blocks), upload(packed.work_offsets), packed.nwork,
-            upload(packed.coeffs), upload(packed.structs_dst), upload(packed.structs_src)
+            upload(packed.coeffs), upload(packed.structs_dst), upload(packed.sources),
+            upload(packed.partial_offsets), packed.npartials
         )
     end
 end
@@ -523,12 +562,35 @@ end
 end
 
 # COV_EXCL_START
-# One thread per destination element, as for the generic transformers, where every source
-# additionally contributes the sum over its traced entries.
-@kernel function batched_trace_kernel!(
-        data_dst, data_src, blocks, work_offsets, coeffs, structs_dst, structs_src, α, β, nwork
-    )
+# First stage: one thread per (chunk, remaining entry) of every source subblock, writing its
+# partial trace to `partials[w + 1]`. Consecutive threads handle consecutive remaining entries.
+@kernel function partial_trace_kernel!(partials, data_src, sources, partial_offsets, npartials)
     # w = @index(Global, Linear) - 1 does not work due to JLArrays bug
+    w = @index(Global, Linear)
+    w -= 1
+    if w < npartials
+        j = _searchblock(partial_offsets, w)
+        src = @inbounds sources[j]
+        k, e = divrem(w - (@inbounds partial_offsets[j]), src.nremaining)
+        coords = _coordinates(e, src.sz, src.dense_strides)
+        i_src = _linear_index(coords, src.permuted_strides, src.offset)
+
+        acc = zero(eltype(partials))
+        start = k * src.chunksize
+        @inbounds for t in start:(min(start + src.chunksize, src.ntraced) - 1)
+            coords_traced = _coordinates(t, src.sz_traced, src.dense_strides_traced)
+            acc += data_src[i_src + _linear_index(coords_traced, src.strides_traced, -1)]
+        end
+        @inbounds partials[w + 1] = acc
+    end
+end
+
+# Second stage: one thread per destination element, as for the generic transformers, where
+# every source contributes the sum of its partial traces.
+@kernel function trace_recouple_kernel!(
+        data_dst, partials, blocks, work_offsets, coeffs, structs_dst, sources, partial_offsets,
+        α, β, nwork
+    )
     w = @index(Global, Linear)
     w -= 1
     if w < nwork
@@ -536,21 +598,21 @@ end
         blk = @inbounds blocks[b]
         local_w = w - (@inbounds work_offsets[b])
         blocksize = prod(blk.sz)
-        i = local_w ÷ blocksize  # 0-based destination tree
-        coords = _coordinates(local_w % blocksize, blk.sz, blk.dense_strides)
+        i, e = divrem(local_w, blocksize)  # 0-based destination tree and entry
+        coords = _coordinates(e, blk.sz, blk.dense_strides)
 
         st_dst, offs_dst = @inbounds structs_dst[blk.dst_offset + i + 1]
         i_dst = _linear_index(coords, st_dst, offs_dst)
 
-        acc = zero(promote_type(eltype(data_src), eltype(coeffs)))
+        acc = zero(promote_type(eltype(partials), eltype(coeffs)))
         @inbounds for j in 1:blk.cols
             coeff = coeffs[blk.u_offset + 1 + i + (j - 1) * blk.rows]
             iszero(coeff) && continue
-            pst_src, sz_tr, dense_tr, st_tr, offs_src = structs_src[blk.src_offset + j]
-            i_src = _linear_index(coords, pst_src, offs_src)
-            tr = zero(eltype(data_src))
-            for t in 0:(prod(sz_tr) - 1)
-                tr += data_src[i_src + _linear_index(_coordinates(t, sz_tr, dense_tr), st_tr, -1)]
+            js = blk.src_offset + j
+            offset = partial_offsets[js] + e + 1
+            tr = zero(eltype(partials))
+            for k in 0:(sources[js].nchunks - 1)
+                tr += partials[offset + k * blocksize]
             end
             acc += coeff * tr
         end
@@ -615,10 +677,21 @@ function TensorKit.trace_transform_kernel!(
         device::DeviceTraceTransformer, α, β, backend, allocator, ntasks::Int
     )
     device.nwork == 0 && return nothing
-    batched_trace_kernel!(get_backend(dst))(
-        dst, src, device.blocks, device.work_offsets, device.coeffs,
-        device.structs_dst, device.structs_src, α, β, device.nwork; ndrange = device.nwork
+    kernel_backend = get_backend(dst)
+    cp = TO.allocator_checkpoint!(allocator)
+    partials = TO.tensoralloc(similarstoragetype(src), device.npartials, Val(true), allocator)
+    if device.npartials > 0
+        partial_trace_kernel!(kernel_backend)(
+            partials, src, device.sources, device.partial_offsets, device.npartials;
+            ndrange = device.npartials
+        )
+    end
+    trace_recouple_kernel!(kernel_backend)(
+        dst, partials, device.blocks, device.work_offsets, device.coeffs, device.structs_dst,
+        device.sources, device.partial_offsets, α, β, device.nwork; ndrange = device.nwork
     )
+    TO.tensorfree!(partials, allocator)
+    TO.allocator_reset!(allocator, cp)
     return nothing
 end
 

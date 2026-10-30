@@ -92,6 +92,24 @@ for V in spacelist
     end
 end
 
+@timedtestset "planartrace + CUDA with large traces: $I" for (I, V, Vr) in (
+        (FermionParity, Vect[FermionParity](0 => 40, 1 => 40), Vect[FermionParity](0 => 2, 1 => 3)),
+        (FibonacciAnyon, Vect[FibonacciAnyon](:I => 30, :τ => 30), Vect[FibonacciAnyon](:I => 2, :τ => 1)),
+    )
+    # (space, p, q) for a full reduction and for a trace with few remaining entries, which are
+    # both split into several chunks of traced entries
+    cases = (
+        (V ⊗ V ← V ⊗ V, ((), ()), ((1, 2), (3, 4))),
+        (Vr ⊗ V ⊗ V ← V ⊗ V, ((1,), ()), ((2, 3), (4, 5))),
+    )
+    for (W, p, q) in cases, (α, β) in ((0.7, 0.3), (1.0, 0.0))
+        A = randn(ComplexF64, W)
+        C = randn(ComplexF64, TensorKit.select(W, p))
+        Cgpu = planartrace!(adapt(CuArray, C), adapt(CuArray, A), p, q, α, β)
+        @test adapt(Vector{ComplexF64}, Cgpu) ≈ planartrace!(C, A, p, q, α, β)
+    end
+end
+
 @testset "planar methods" verbose = true begin
     @testset "planaradd" begin
         A = CUDA.randn(ℂ^2 ⊗ ℂ^3 ← ℂ^6 ⊗ ℂ^5 ⊗ ℂ^4)
