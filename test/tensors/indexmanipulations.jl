@@ -235,3 +235,37 @@ for V in spacelist
     end
     TensorKit.empty_globalcaches!()
 end
+
+@timedtestset "Permutations with small and large subblocks" begin
+    # subblocks up to `SUBBLOCKGROUP_MAXLENGTH` entries are transformed in groups, larger ones one by one
+    V = Vect[SU2Irrep](0 => 6, 1 // 2 => 6, 1 => 1)
+    t = rand(ComplexF64, V ⊗ V ⊗ V ← V)
+    @test maximum(length ∘ last, subblocks(t)) > TensorKit.SUBBLOCKGROUP_MAXLENGTH
+    a = convert(Array, t)
+    for p in (((1, 4), (2, 3)), ((3, 1, 4), (2,)))
+        @test convert(Array, permute(t, p)) ≈ permutedims(a, (p[1]..., p[2]...))
+    end
+end
+
+@timedtestset "Permutations with several transformer tasks" begin
+    # the tasks split the subblock groups by destination offset; they also run on a single thread,
+    # so the number is set directly rather than through `set_num_transformer_threads`, which caps it
+    V1 = Vect[FermionParity ⊠ U1Irrep]((p, q) => 3 for p in 0:1 for q in -2:2)
+    V2 = Vect[SU2Irrep](0 => 8, 1 // 2 => 8, 1 => 1)
+    ntasks = TensorKit.TRANSFORMER_THREADS[]
+    for V in (V1, V2)
+        t = rand(ComplexF64, V ⊗ V ⊗ V ← V)
+        @test dim(t) > TensorKit.Strided.MINTHREADLENGTH # below, a single task is used
+        for p in (((1, 4), (2, 3)), ((3, 1, 4), (2,)))
+            tdst = rand(ComplexF64, permute(space(t), p))
+            refs = (permute(t, p), permute!(copy(tdst), t, p, 0.7, 0.3))
+            try
+                TensorKit.TRANSFORMER_THREADS[] = 3
+                @test permute(t, p) ≈ refs[1]
+                @test permute!(copy(tdst), t, p, 0.7, 0.3) ≈ refs[2]
+            finally
+                TensorKit.TRANSFORMER_THREADS[] = ntasks
+            end
+        end
+    end
+end
