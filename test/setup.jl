@@ -362,8 +362,8 @@ VIBMRepA4 = (
 for V in (Vtr, VRepℤ₂, VRepℤ₃, VRepU₁, VfRepℤ₂, VTwistedVecℤ₄, VTwistedVecℤ₃, VRepCU₁, VRepSU₂, VfRepCU₁, VfRepSU₂, VfHubbard, Vfib, VRepA4, VfRepA4, VRepA4Twistedℤ₄, VIBM, VIBMRepA4)
     V1, V2, V3, V4, V5 = V
     for Vi in (V1, V2, V3, V4, V5)
-        @test allequal(leftunit, sectors(Vi))
-        @test allequal(rightunit, sectors(Vi))
+        @test TensorKit._allequal(leftunit, sectors(Vi))
+        @test TensorKit._allequal(rightunit, sectors(Vi))
     end
     @test dim(V1 ⊗ V2 ⊗ V3 ← (V4 ⊗ V5)') > 0
     @test V1 ⊗ V2 ≾ (V3 ⊗ V4 ⊗ V5)' # wide blocks for QR
