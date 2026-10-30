@@ -68,6 +68,22 @@ struct GenericTreeTransformer{T, N} <: TreeTransformer
     structure_src::Vector{StridedStructure{N}}
 end
 
+# Both structure arrays are retained by the transformer, even when another cache also
+# holds them. Within an entry, identical source/destination arrays are counted only once.
+_cache_structure_size(t::TreeTransformer) = sizeof(t.structure_src) +
+    (t.structure_src === t.structure_dst ? 0 : sizeof(t.structure_dst))
+
+MemoizationKit.cachesize(t::UniqueTreeTransformer) = sizeof(t) + _cache_payload_size(t.data) + _cache_structure_size(t)
+
+function MemoizationKit.cachesize(t::GenericTreeTransformer)
+    bytes = sizeof(t) + sizeof(t.data) + _cache_structure_size(t)
+    for (U, inds_dst, inds_src) in t.data
+        bytes += _cache_payload_size(U) + sizeof(inds_src) +
+            (inds_src === inds_dst ? 0 : sizeof(inds_dst))
+    end
+    return bytes
+end
+
 function UniqueTreeTransformer(::Type{A}, transform, p, Vdst::HomSpace, Vsrc::HomSpace, conjsrc::Bool) where {A}
     t₀ = Base.time()
 
@@ -202,4 +218,23 @@ end
     return TreeTransformer(A, fusiontreetransform, p, Vdst, Vsrc, conjsrc)
 end
 
-# default cachestyle is GlobalLRUCache
+"""
+    device_treebraider(A, Vdst, Vsrc, p, conjsrc, levels)
+    device_treetransposer(A, Vdst, Vsrc, p, conjsrc)
+
+Tree transformers for device storage types `A`, to which `treebraider` and `treetransposer`
+forward. Their methods are added by package extensions. Being separate functions, the device
+transformers have their own cache, which can be configured independently of the host ones.
+"""
+function device_treebraider end
+function device_treetransposer end
+@doc (@doc device_treebraider) device_treetransposer
+
+# Keep TensorKit's profiling categories for the phases instrumented by MemoizationKit.
+const TensorKitCachedFunction = Union{
+    typeof(fusiontreebraid), typeof(fusiontreetranspose), typeof(treebraider), typeof(treetransposer),
+    typeof(device_treebraider), typeof(device_treetransposer),
+    typeof(sectorstructure), typeof(degeneracystructure),
+}
+MemoizationKit.instrument_label(f::TensorKitCachedFunction, ::Val{:lookup}) = "bookkeeping: cache $(nameof(f))"
+MemoizationKit.instrument_label(f::TensorKitCachedFunction, ::Val{:compute}) = "symmetry: compute $(nameof(f))"

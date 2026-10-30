@@ -576,3 +576,17 @@ end
         end
     end
 end
+
+@timedtestset "Device transformers are cached separately" begin
+    TensorKit.empty_globalcaches!()
+    V = SU2Space(0 => 2, 1 // 2 => 2)
+    t = CUDA.rand(Float64, V ⊗ V ← V ⊗ V)
+    p = ((2, 1), (4, 3))
+    @test permute(t, p) ≈ adapt(CuArray, permute(ad(t), p))
+    devicecache = only(TensorKit.MemoizationKit.cache_info(TensorKit.device_treebraider)).second
+    hostcache = only(TensorKit.MemoizationKit.cache_info(TensorKit.treebraider)).second
+    @test length(devicecache) == 1
+    @test all(key -> !(first(key) <: CuArray), keys(hostcache))
+    TensorKit.empty_globalcaches!()
+    @test isempty(devicecache)
+end
