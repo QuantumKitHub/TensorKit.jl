@@ -46,8 +46,6 @@ t′ ≈ t′ * P
 ```
 
 To compute only the `R` or `L` factor with QR/LQ-based `left_orth!` and `right_orth!`, pass a zero-dimensional tensor map as the basis output.
-Its blocks are empty matrices, so MatrixAlgebraKit skips constructing the orthogonal factor.
-The corestriction output must still have the usual intermediate space:
 
 ```julia
 V = infimum(fuse(codomain(t)), fuse(domain(t)))
