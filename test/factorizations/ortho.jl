@@ -52,6 +52,21 @@ for V in spacelist
                 @test Q * R ≈ t
                 @test isisometric(Q)
 
+                # Compute only R by passing an empty basis output.
+                V0 = zerospace(spacetype(t))
+                Q0 = t isa DiagonalTensorMap ? DiagonalTensorMap(T[], V0) : similar(t, V0 ← V0)
+                for positive in (false, true), alg in ((; positive), DefaultAlgorithm(; positive))
+                    Q, R = @constinferred left_orth(t; positive)
+                    R0 = similar(R)
+                    Q2, R2 = @constinferred left_orth!(copy(t), (Q0, R0); alg)
+                    @test Q2 === Q0
+                    @test R2 === R0
+                    @test dim(Q2) == 0
+                    @test space(R2) == space(R)
+                    @test R2 ≈ R
+                    @test Q * R2 ≈ t
+                end
+
                 N = @constinferred qr_null(t)
                 @test isisometric(N)
                 @test norm(N' * t) ≈ 0 atol = 100 * eps(norm(t))
@@ -145,6 +160,21 @@ for V in spacelist
                 L, Q = @constinferred right_orth(t, DefaultAlgorithm())
                 @test L * Q ≈ t
                 @test isisometric(Q; side = :right)
+
+                # Compute only L by passing an empty basis output.
+                V0 = zerospace(spacetype(t))
+                Q0 = t isa DiagonalTensorMap ? DiagonalTensorMap(T[], V0) : similar(t, V0 ← V0)
+                for positive in (false, true), alg in ((; positive), DefaultAlgorithm(; positive))
+                    L, Q = @constinferred right_orth(t; positive)
+                    L0 = similar(L)
+                    L2, Q2 = @constinferred right_orth!(copy(t), (L0, Q0); alg)
+                    @test Q2 === Q0
+                    @test L2 === L0
+                    @test dim(Q2) == 0
+                    @test space(L2) == space(L)
+                    @test L2 ≈ L
+                    @test L2 * Q ≈ t
+                end
 
                 Nᴴ = @constinferred lq_null(t)
                 @test isisometric(Nᴴ; side = :right)
