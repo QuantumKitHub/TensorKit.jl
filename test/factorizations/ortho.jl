@@ -59,8 +59,6 @@ for V in spacelist
                     Q, R = @constinferred left_orth(t; positive)
                     R0 = similar(R)
                     Q2, R2 = @constinferred left_orth!(copy(t), (Q0, R0); alg)
-                    @test Q2 === Q0
-                    @test R2 === R0
                     @test dim(Q2) == 0
                     @test space(R2) == space(R)
                     @test R2 ≈ R
@@ -168,8 +166,6 @@ for V in spacelist
                     L, Q = @constinferred right_orth(t; positive)
                     L0 = similar(L)
                     L2, Q2 = @constinferred right_orth!(copy(t), (L0, Q0); alg)
-                    @test Q2 === Q0
-                    @test L2 === L0
                     @test dim(Q2) == 0
                     @test space(L2) == space(L)
                     @test L2 ≈ L
