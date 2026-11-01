@@ -85,7 +85,7 @@ function MatrixAlgebraKit.findtruncated_svd(values::GPUSectorVector, strategy::S
     return Adapt.adapt(Vector, MatrixAlgebraKit.findtruncated(values, strategy))
 end
 
-for strat in (:(MatrixAlgebraKit.TruncationByOrder), :(MatrixAlgebraKit.TruncationByError), :(MatrixAlgebraKit.TruncationIntersection), :(TensorKit.Factorizations.TruncationSpace))
+for strat in (:(MatrixAlgebraKit.TruncationByOrder), :(MatrixAlgebraKit.TruncationByError), :(MatrixAlgebraKit.TruncationIntersection), :(MatrixAlgebraKit.TruncationMultiplets), :(TensorKit.Factorizations.TruncationSpace))
     @eval function MatrixAlgebraKit.findtruncated_svd(values::GPUSectorVector, strategy::$strat)
         # returning a GPUSectorVector wrecks things in truncate_{co}domain
         # because of scalar indexing

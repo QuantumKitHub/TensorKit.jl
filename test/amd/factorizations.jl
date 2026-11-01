@@ -434,6 +434,31 @@ for V in spacelist
                 @test norm(t - U5 * S5 * Vᴴ5) ≈ ϵ5 atol = eps(real(T))^(4 / 5)
                 @test minimum(diagview(S5)) >= λ
                 @test abs(dim(domain(S5)) - nvals) ≤ maximum(c -> blockdim(domain(t), c), blocksectors(t); init = 1)
+
+                U0, S0, Vᴴ0 = svd_compact(t, alg)
+                Sd = similar(S0)
+                copyto!(Sd.data, real(T)[3 - mod(i, 3) for i in 0:(length(Sd.data) - 1)])
+                td = U0 * Sd * Vᴴ0
+                rtol = sqrt(eps(real(T)))
+                _, Sr, _, _ = svd_trunc(td; trunc = truncrank(nvals), alg)
+                for mode in (:down, :up)
+                    trunc = truncmultiplets(truncrank(nvals); rtol, mode)
+                    U6, S6, Vᴴ6, ϵ6 = @constinferred svd_trunc(td; trunc, alg)
+                    @test td * Vᴴ6' ≈ U6 * S6
+                    @test isisometric(U6)
+                    @test isisometric(Vᴴ6; side = :right)
+                    @test norm(td - U6 * S6 * Vᴴ6) ≈ ϵ6 atol = eps(real(T))^(4 / 5)
+                    if mode == :down
+                        @test space(S6, 1) ≾ space(Sr, 1)
+                    else
+                        @test space(Sr, 1) ≾ space(S6, 1)
+                    end
+                    if dim(domain(S6)) > 0
+                        λ6 = minimum(diagview(S6))
+                        _, S7, _, _ = svd_trunc(td; trunc = trunctol(; atol = λ6 - 1 // 2), alg)
+                        @test space(S6, 1) == space(S7, 1)
+                    end
+                end
             end
         end
 

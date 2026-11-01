@@ -127,6 +127,13 @@ function FusionTreeBlock{I}(
         isdual::Tuple{NTuple{N₁, Bool}, NTuple{N₂, Bool}};
         sizehint::Int = 0
     ) where {I <: Sector, N₁, N₂}
+    return fusiontreeblock(I, uncoupled, isdual; sizehint)
+end
+# construct the block by enumerating its coupled sectors and fusion trees
+function fusiontreeblock(
+        ::Type{I}, uncoupled::Tuple{NTuple{N₁, I}, NTuple{N₂, I}},
+        isdual::Tuple{NTuple{N₁, Bool}, NTuple{N₂, Bool}}; sizehint::Int = 0
+    ) where {I <: Sector, N₁, N₂}
     F = fusiontreetype(I, N₁, N₂)
     trees = Vector{F}(undef, 0)
     sizehint > 0 && sizehint!(trees, sizehint)
@@ -378,6 +385,9 @@ end
 
 # Fusion tree iterators
 include("iterator.jl")
+
+# Fusion trees of product sectors
+include("producttrees.jl")
 
 # Manipulate fusion trees
 include("basic_manipulations.jl")

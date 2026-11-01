@@ -18,7 +18,10 @@ for transform in (:permute, :transpose)
         # and store that instead of repeating the permutation in the pullback each time.
         # effectively, we replace `add_permute` by `add ∘ permute`.
         Ap = if !isa(α, Const)
-            Ap = $transform(A.val, p.val)
+            # without copy=true, this may just alias A if
+            # the permutation is an identity or the space
+            # is Trivial and has_shared_permute is true
+            Ap = $transform(A.val, p.val; copy = true)
             add!(C.val, Ap, α.val, β.val)
             Ap
         else

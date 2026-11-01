@@ -99,7 +99,7 @@ export @tensor, @tensoropt, @ncon, ncon, @planar, @plansor
 export scalar, add!, contract!
 
 # truncation schemes
-export notrunc, truncrank, trunctol, truncfilter, truncspace, truncerror
+export notrunc, truncrank, trunctol, truncfilter, truncspace, truncerror, truncmultiplets
 
 # cache management
 export empty_globalcaches!
