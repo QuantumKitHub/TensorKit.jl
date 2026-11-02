@@ -9,6 +9,7 @@ using Strided: StridedViews
 using MatrixAlgebraKit, Adapt
 using TensorKit
 using TensorKit.TensorOperations: linearize, DefaultAllocator
+using TensorKit.VectorInterface: One
 using TensorKit.Factorizations
 using TensorKit.Factorizations: AbstractAlgorithm
 using TensorKit: SectorDict, tensormaptype, scalar, similarstoragetype, AdjointTensorMap, scalartype, project_symmetric_and_check
@@ -295,19 +296,25 @@ function __init__()
         TensorKit.GLOBAL_CACHES, (
             Symbol("TensorKitGPUArraysExt.GLOBAL_TREEBRAIDER_CACHE") => GLOBAL_TREEBRAIDER_CACHE,
             Symbol("TensorKitGPUArraysExt.GLOBAL_TREETRANSPOSER_CACHE") => GLOBAL_TREETRANSPOSER_CACHE,
+            Symbol("TensorKitGPUArraysExt.GLOBAL_DIAGONAL_TREEBRAIDER_CACHE") => GLOBAL_DIAGONAL_TREEBRAIDER_CACHE,
+            Symbol("TensorKitGPUArraysExt.GLOBAL_DIAGONAL_TREETRANSPOSER_CACHE") => GLOBAL_DIAGONAL_TREETRANSPOSER_CACHE,
         )
     )
 
     # device-caches should probably have smaller sizes:
     resize!(GLOBAL_TREEBRAIDER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
     resize!(GLOBAL_TREETRANSPOSER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
+    resize!(GLOBAL_DIAGONAL_TREEBRAIDER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
+    resize!(GLOBAL_DIAGONAL_TREETRANSPOSER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
 
     return nothing
 end
 
 # Allocations must outlive any GPUArrays allocation-cache scope around the operation.
-function device_transformer(A, transformer::UniqueTreeTransformer, p)
-    packed = DeviceUniqueTreeTransformer(transformer, p)
+device_transformer(A, transformer::UniqueTreeTransformer, p) =
+    device_transformer(A, DeviceUniqueTreeTransformer(transformer, p))
+
+function device_transformer(A, packed::DeviceUniqueTreeTransformer)
     return GPUArrays.@uncached begin
         proto = A(undef, 0)
         # Metadata and coefficients have different element types; preserve each on upload.
@@ -452,6 +459,91 @@ TensorKit._transform_subblocks(
     tdst::TensorMap, tsrc::TensorMap,
     transformer::Union{DeviceUniqueTreeTransformer, DeviceGenericTreeTransformer}
 ) = (tdst.data, tsrc.data)
+
+# Diagonal sources
+# ----------------
+# A `DiagonalTensorMap` only stores the diagonal of each of its subblocks, and an index
+# manipulation maps the entry `(i, i)` of a source subblock onto the entry `(i, i)` of a destination
+# subblock. Every block is therefore a one-dimensional strided copy, which the unique kernel
+# handles without needing a dense copy of the source or destination.
+
+const GPUDiagonalTensorMap = DiagonalTensorMap{<:Any, <:Any, <:AnyGPUVector}
+const GPUTensorMap = TensorMap{<:Any, <:Any, <:Any, <:Any, <:AnyGPUVector}
+
+# position of each subblock in the data of a `DiagonalTensorMap` in the same space
+_diagonal_offsets(structure) = first(_work_offsets(first(first(s)) for s in structure))
+
+_diagonal_entries(transformer::UniqueTreeTransformer) = transformer.data
+# `V ← V` and any rearrangement of its two indices have a single tree for every subblock
+_diagonal_entries(transformer::GenericTreeTransformer) =
+    ((only(U), only(inds_dst), only(inds_src)) for (U, inds_dst, inds_src) in transformer.data)
+
+function diagonal_device_transformer(A, transformer, dstdiagonal::Bool)
+    (; structure_dst, structure_src) = transformer
+    offsets_src = _diagonal_offsets(structure_src)
+    offsets_dst = dstdiagonal ? _diagonal_offsets(structure_dst) : nothing
+    blocks = map(_diagonal_entries(transformer)) do (coeff, idst, isrc)
+        (sz, strides_dst, offset_dst) = structure_dst[idst]
+        n = first(sz)
+        return UniqueTransformerBlock{typeof(coeff), 1}(
+            coeff, (n,), (1,), dstdiagonal ? (1,) : (sum(strides_dst),),
+            dstdiagonal ? offsets_dst[idst] : offset_dst, (1,), offsets_src[isrc]
+        )
+    end
+    work_offsets, nwork = _work_offsets(blk.sz[1] for blk in blocks)
+    return device_transformer(A, DeviceUniqueTreeTransformer(blocks, work_offsets, nwork))
+end
+
+@cached function diagonal_treebraider(
+        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
+        conjsrc::Bool, levels::IndexTuple, dstdiagonal::Bool
+    ) where {TA <: AnyGPUVector}
+    host = TensorKit.treebraider(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc, levels)
+    return diagonal_device_transformer(A, host, dstdiagonal)
+end
+
+@cached function diagonal_treetransposer(
+        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
+        conjsrc::Bool, dstdiagonal::Bool
+    ) where {TA <: AnyGPUVector}
+    host = TensorKit.treetransposer(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc)
+    return diagonal_device_transformer(A, host, dstdiagonal)
+end
+
+function _add_diagonal!(tdst::GPUDiagonalTensorMap, tsrc, conjsrc, transformer, α, β)
+    _launch_unique!(tdst.data, tsrc.data, conjsrc ? conj : identity, transformer, α, β, Val(1))
+    return tdst
+end
+# the kernel only touches the diagonal. be careful to apply `β` to the entire tensor. 
+function _add_diagonal!(tdst::GPUTensorMap, tsrc, conjsrc, transformer, α, β)
+    scale!(tdst, β)
+    _launch_unique!(tdst.data, tsrc.data, conjsrc ? conj : identity, transformer, α, One(), Val(1))
+    return tdst
+end
+
+Base.@propagate_inbounds function TensorKit._braid!(
+        tdst::Union{GPUTensorMap, GPUDiagonalTensorMap}, tsrc::GPUDiagonalTensorMap,
+        p::Index2Tuple, conjsrc::Bool, levels::IndexTuple, α, β, backend, allocator
+    )
+    Vdst, Vsrc = space(tdst), space(tsrc)
+    @boundscheck TensorKit.spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
+    transformer = diagonal_treebraider(
+        storagetype(tdst), Vdst, Vsrc, p, conjsrc, levels, tdst isa DiagonalTensorMap
+    )
+    return _add_diagonal!(tdst, tsrc, conjsrc, transformer, α, β)
+end
+
+Base.@propagate_inbounds function TensorKit._transpose!(
+        tdst::Union{GPUTensorMap, GPUDiagonalTensorMap}, tsrc::GPUDiagonalTensorMap,
+        p::Index2Tuple, conjsrc::Bool, α, β, backend, allocator
+    )
+    Vdst, Vsrc = space(tdst), space(tsrc)
+    @boundscheck TensorKit.spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
+    transformer = diagonal_treetransposer(
+        storagetype(tdst), Vdst, Vsrc, p, conjsrc, tdst isa DiagonalTensorMap
+    )
+    return _add_diagonal!(tdst, tsrc, conjsrc, transformer, α, β)
+end
 
 function TensorKit.add_transform_kernel!(
         dst::AnyGPUVector, src::AnyGPUVector, p, conjsrc::Bool,

@@ -2,6 +2,7 @@ using Adapt, AMDGPU
 using Test, TestExtras
 using Random
 using TensorKit, Combinatorics
+using TensorOperations: TensorOperations as TO
 ad = adapt(Array)
 const AMDGPUExt = Base.get_extension(TensorKit, :TensorKitAMDGPUExt)
 @assert !isnothing(AMDGPUExt)
@@ -524,5 +525,78 @@ end
             d4 = dim(domain(t2))
             @test ad(t1) ⊠ ad(t2) ≈ ad(t1 ⊠ t2)
         end
+    end
+end
+
+@timedtestset "DiagonalTensorMap index manipulations with domain $V: test via CPU" for V in (
+        (ℂ^4)',
+        Vect[Z2Irrep](0 => 2, 1 => 3),
+        Vect[U1Irrep](0 => 2, 1 => 2, -1 => 1),
+        Vect[FermionParity](0 => 2, 1 => 3),
+        Vect[SU2Irrep](0 => 2, 1 => 1)',
+    )
+    function test_tensoradd(dst, d, p, conjd, α, β)
+        cpu = TO.tensoradd!(adapt(Array, dst), adapt(Array, d), p, conjd, α, β, TO.DefaultBackend(), TO.DefaultAllocator())
+        gpu = TO.tensoradd!(copy(dst), d, p, conjd, α, β, TO.DefaultBackend(), TO.DefaultAllocator())
+        @test gpu isa typeof(dst)
+        @test adapt(Array, gpu) ≈ cpu
+        return nothing
+    end
+    diagonal(T, W) = DiagonalTensorMap(ROCVector{T}(rand(T, reduceddim(W))), W)
+
+    @testset "eltype $T" for T in (Float64, ComplexF64)
+        d = diagonal(T, V)
+        dcpu = adapt(Array, d)
+        scalars = ((TensorKit.One(), TensorKit.Zero()), (T(2), T(3)))
+
+        for p in (((), (1, 2)), ((1, 2), ()), ((2, 1), ()), ((), (2, 1)), ((1,), (2,)), ((2,), (1,))), conjd in (false, true)
+            W = TO.tensoradd_structure(dcpu, p, conjd)
+            dst = adapt(ROCVector{T}, randn(T, W))
+            for (α, β) in scalars
+                test_tensoradd(dst, d, p, conjd, α, β)
+            end
+        end
+        for p in (((1,), (2,)), ((2,), (1,))), conjd in (false, true)
+            W = domain(TO.tensoradd_structure(dcpu, p, conjd))[1]
+            for (α, β) in scalars
+                test_tensoradd(diagonal(T, W), d, p, conjd, α, β)
+            end
+        end
+        for p in (((), (1, 2)), ((1, 2), ()), ((2, 1), ()), ((2,), (1,)))
+            @test adapt(Array, permute(d, p)) ≈ permute(dcpu, p)
+            @test adapt(Array, permute(d', p)) ≈ permute(dcpu', p)
+        end
+        for k in (0, 2)
+            @test adapt(Array, repartition(d, k)) ≈ repartition(dcpu, k)
+            @test adapt(Array, repartition(d', k)) ≈ repartition(dcpu', k)
+        end
+        for levels in ((1, 2), (2, 1))
+            @test adapt(Array, braid(d, ((1, 2), ()), levels)) ≈ braid(dcpu, ((1, 2), ()), levels)
+        end
+    end
+
+    @testset "real source, complex destination" begin
+        d = diagonal(Float64, V)
+        p = ((1,), (2,))
+        W = domain(TO.tensoradd_structure(adapt(Array, d), p, true))[1]
+        test_tensoradd(diagonal(ComplexF64, W), d, p, true, TensorKit.One(), TensorKit.Zero())
+        test_tensoradd(diagonal(ComplexF64, W), d, p, true, ComplexF64(2), ComplexF64(3))
+    end
+
+    @testset "contractions" begin
+        d = diagonal(Float64, V)
+        t = adapt(ROCVector{ComplexF64}, randn(ComplexF64, V ⊗ V ← V))
+        s = adapt(ROCVector{Float64}, randn(Float64, V ← V))
+        dcpu, tcpu, scpu = adapt(Array, d), adapt(Array, t), adapt(Array, s)
+
+        @tensor gpu[-1 -2; -3] := t[-1 -2; 1] * d[1; -3]
+        @tensor cpu[-1 -2; -3] := tcpu[-1 -2; 1] * dcpu[1; -3]
+        @test adapt(Array, gpu) ≈ cpu
+
+        @tensor gpu[-1 -2; -3] := d[-1; 1] * t[1 -2; -3]
+        @tensor cpu[-1 -2; -3] := dcpu[-1; 1] * tcpu[1 -2; -3]
+        @test adapt(Array, gpu) ≈ cpu
+
+        @test (@tensor s[1; 2] * d[2; 1]) ≈ (@tensor scpu[1; 2] * dcpu[2; 1])
     end
 end
