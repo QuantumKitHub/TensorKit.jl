@@ -271,12 +271,6 @@ function DeviceGenericTreeTransformer(
     )
 end
 
-# Planar traces run in two stages. The first computes partial traces of every source subblock:
-# each thread sums a chunk of at most `chunksize` traced entries for a single remaining entry,
-# such that large traces (e.g. full reductions) are still spread over many threads. The second
-# recouples these partials with one thread per destination element, as for the generic transformers,
-# such that the traced entries of a source are summed only once, rather than once per destination tree.
-
 """
     TraceTransformerBlock{N}
 
@@ -556,8 +550,19 @@ end
     end
 end
 
-# First stage: one thread per (chunk, remaining entry) of every source subblock, writing its
-# partial trace to `partials[w + 1]`. Consecutive threads handle consecutive remaining entries.
+# Planar traces run in two kernels, such that the work per thread stays bounded even when a few
+# destination elements receive a huge number of traced entries (e.g. a full trace):
+# 1. `partial_trace_kernel!` splits the traced entries of every source subblock into `nchunks`
+#    chunks of `chunksize`, with one thread summing one chunk for one remaining entry.
+# 2. `trace_recouple_kernel!` has one thread per destination element, which only combines the
+#    `nchunks` partials of each of the `cols` sources of its block with the coefficients in `U`.
+# Since `chunksize` and `nchunks` are both about `√ntraced`, no thread in either kernel sums more
+# than `max(256, √ntraced)` entries per source, and each traced entry is read only once rather
+# than once per destination tree. A full trace of `n` entries uses `√n` threads in the first
+# kernel and a single thread per destination tree in the second.
+
+# `partials[w + 1]` is the sum of chunk `k` of the traced entries of source `j` at its remaining
+# entry `e`; consecutive threads share `k` and have consecutive `e`.
 @kernel function partial_trace_kernel!(partials, data_src, sources, partial_offsets, npartials)
     w = @index(Global, Linear) - 1
     if w < npartials
@@ -577,8 +582,8 @@ end
     end
 end
 
-# Second stage: one thread per destination element, as for the generic transformers, where
-# every source contributes the sum of its partial traces.
+# The traced entries were already summed by `partial_trace_kernel!`, so each thread only adds up
+# the partials of the sources of its destination tree.
 @kernel function trace_recouple_kernel!(
         data_dst, partials, blocks, work_offsets, coeffs, structs_dst, sources, partial_offsets,
         α, β, nwork
