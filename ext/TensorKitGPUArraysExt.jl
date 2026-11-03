@@ -670,7 +670,8 @@ function diagonal_device_transformer(A, transformer, dstdiagonal::Bool)
     return device_transformer(A, DeviceUniqueTreeTransformer(blocks, work_offsets, nwork))
 end
 
-@cached function diagonal_treebraider(
+# Transformers for diagonal sources share the cache of the other device transformers.
+@cached function TensorKit.device_treebraider(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
         conjsrc::Bool, levels::IndexTuple, dstdiagonal::Bool
     ) where {TA <: AnyGPUVector}
@@ -678,7 +679,7 @@ end
     return diagonal_device_transformer(A, host, dstdiagonal)
 end
 
-@cached function diagonal_treetransposer(
+@cached function TensorKit.device_treetransposer(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
         conjsrc::Bool, dstdiagonal::Bool
     ) where {TA <: AnyGPUVector}
@@ -711,7 +712,7 @@ Base.@propagate_inbounds function TensorKit._braid!(
     )
     Vdst, Vsrc = space(tdst), space(tsrc)
     @boundscheck TensorKit.spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
-    transformer = diagonal_treebraider(
+    transformer = TensorKit.device_treebraider(
         storagetype(tdst), Vdst, Vsrc, p, conjsrc, levels, tdst isa DiagonalTensorMap
     )
     return _add_diagonal!(tdst, tsrc, conjsrc, transformer, α, β)
@@ -723,7 +724,7 @@ Base.@propagate_inbounds function TensorKit._transpose!(
     )
     Vdst, Vsrc = space(tdst), space(tsrc)
     @boundscheck TensorKit.spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
-    transformer = diagonal_treetransposer(
+    transformer = TensorKit.device_treetransposer(
         storagetype(tdst), Vdst, Vsrc, p, conjsrc, tdst isa DiagonalTensorMap
     )
     return _add_diagonal!(tdst, tsrc, conjsrc, transformer, α, β)
