@@ -514,7 +514,7 @@ function _add_diagonal!(tdst::GPUDiagonalTensorMap, tsrc, conjsrc, transformer, 
     _launch_unique!(tdst.data, tsrc.data, conjsrc ? conj : identity, transformer, α, β, Val(1))
     return tdst
 end
-# the kernel only touches the diagonal. be careful to apply `β` to the entire tensor. 
+# the kernel only touches the diagonal. be careful to apply `β` to the entire tensor.
 function _add_diagonal!(tdst::GPUTensorMap, tsrc, conjsrc, transformer, α, β)
     scale!(tdst, β)
     _launch_unique!(tdst.data, tsrc.data, conjsrc ? conj : identity, transformer, α, One(), Val(1))
