@@ -19,14 +19,11 @@ using TensorKit: SubblockIterator
 import TensorKit: randisometry, rand, randn, fill_braidingsubblock!, add_transform_kernel!, trace_transform_kernel!
 
 function TensorKit.fill_braidingsubblock!(data::TD, val) where {T, TD <: Union{<:AnyGPUMatrix{T}, <:StridedViews.StridedView{T, 4, <:AnyGPUArray{T}}}}
-    # COV_EXCL_START
-    # kernels are not reachable by coverage
     @kernel function fill_subblock_kernel!(subblock, val)
         idx = @index(Global, Cartesian)
         idx_val = idx[1] == idx[4] && idx[2] == idx[3] ? val : zero(val)
         @inbounds subblock[idx] = idx_val
     end
-    # COV_EXCL_STOP
     kernel = fill_subblock_kernel!(get_backend(data))
     kernel(data, val; ndrange = size(data))
     return data
@@ -469,9 +466,6 @@ function device_transformer(A, transformer::TraceTransformer, p, q)
     end
 end
 
-# COV_EXCL_START
-# kernels are not reachable by coverage
-
 # largest `i` with `offsets[i] <= w`. This corresponds to the
 # block which  this kernel thread will work on. Since this is
 # used inside a GPU kernel, searchsortedlast/searchsortedfirst
@@ -510,9 +504,7 @@ end
 @kernel function unique_batched_permute_kernel!(
         data_dst, data_src, op, blocks, work_offsets, α, β, nwork, ::Val{N}
     ) where {N}
-    # w = @index(Global, Linear) - 1 does not work due to JLArrays bug
-    w = @index(Global, Linear)
-    w -= 1
+    w = @index(Global, Linear) - 1
     if w < nwork
         b = _searchblock(work_offsets, w)
         blk = @inbounds blocks[b]
@@ -522,8 +514,6 @@ end
         @inbounds data_dst[i_dst] = α * blk.coeff * op(data_src[i_src]) + β * data_dst[i_dst]
     end
 end
-
-# COV_EXCL_STOP
 
 # One thread per destination element in `data_dst`. This makes much better use of the
 # GPU "massive parallelism" as compared to the one-thread-per-subtransformer approach.
@@ -537,9 +527,7 @@ end
         data_dst, data_src, op, blocks, work_offsets, coeffs, structs_dst, structs_src,
         α, β, nwork, ::Val{N}
     ) where {N}
-    # w = @index(Global, Linear) - 1 does not work due to JLArrays bug
-    w = @index(Global, Linear)
-    w -= 1
+    w = @index(Global, Linear) - 1
     if w < nwork
         # bookkeeping to figure out where to read from and write to
         b = _searchblock(work_offsets, w)
@@ -568,13 +556,10 @@ end
     end
 end
 
-# COV_EXCL_START
 # First stage: one thread per (chunk, remaining entry) of every source subblock, writing its
 # partial trace to `partials[w + 1]`. Consecutive threads handle consecutive remaining entries.
 @kernel function partial_trace_kernel!(partials, data_src, sources, partial_offsets, npartials)
-    # w = @index(Global, Linear) - 1 does not work due to JLArrays bug
-    w = @index(Global, Linear)
-    w -= 1
+    w = @index(Global, Linear) - 1
     if w < npartials
         j = _searchblock(partial_offsets, w)
         src = @inbounds sources[j]
@@ -598,8 +583,7 @@ end
         data_dst, partials, blocks, work_offsets, coeffs, structs_dst, sources, partial_offsets,
         α, β, nwork
     )
-    w = @index(Global, Linear)
-    w -= 1
+    w = @index(Global, Linear) - 1
     if w < nwork
         b = _searchblock(work_offsets, w)
         blk = @inbounds blocks[b]
@@ -627,7 +611,6 @@ end
         @inbounds data_dst[i_dst] = iszero(β) ? α * acc : α * acc + β * data_dst[i_dst]
     end
 end
-# COV_EXCL_STOP
 
 function _launch_unique!(data_dst, data_src, op, transformer, α, β, ::Val{N}) where {N}
     nwork = transformer.nwork
