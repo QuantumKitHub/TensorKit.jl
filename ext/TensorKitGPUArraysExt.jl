@@ -412,6 +412,7 @@ function __init__()
             Symbol("TensorKitGPUArraysExt.GLOBAL_TREETRANSPOSER_CACHE") => GLOBAL_TREETRANSPOSER_CACHE,
             Symbol("TensorKitGPUArraysExt.GLOBAL_DIAGONAL_TREEBRAIDER_CACHE") => GLOBAL_DIAGONAL_TREEBRAIDER_CACHE,
             Symbol("TensorKitGPUArraysExt.GLOBAL_DIAGONAL_TREETRANSPOSER_CACHE") => GLOBAL_DIAGONAL_TREETRANSPOSER_CACHE,
+            Symbol("TensorKitGPUArraysExt.GLOBAL_DIAGONAL_TREETWISTER_CACHE") => GLOBAL_DIAGONAL_TREETWISTER_CACHE,
             Symbol("TensorKitGPUArraysExt.GLOBAL_TREETRACER_CACHE") => GLOBAL_TREETRACER_CACHE,
             Symbol("TensorKitGPUArraysExt.GLOBAL_TREETWISTER_CACHE") => GLOBAL_TREETWISTER_CACHE,
         )
@@ -422,6 +423,7 @@ function __init__()
     resize!(GLOBAL_TREETRANSPOSER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
     resize!(GLOBAL_DIAGONAL_TREEBRAIDER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
     resize!(GLOBAL_DIAGONAL_TREETRANSPOSER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
+    resize!(GLOBAL_DIAGONAL_TREETWISTER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
     resize!(GLOBAL_TREETRACER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
     resize!(GLOBAL_TREETWISTER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
 
@@ -704,6 +706,14 @@ end
     return diagonal_device_transformer(A, host, dstdiagonal)
 end
 
+@cached function diagonal_treetwister(
+        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
+        conjsrc::Bool, twistmask::NTuple{N, Bool}, inv::Bool, dstdiagonal::Bool
+    ) where {TA <: AnyGPUVector, N}
+    host = TensorKit.treetwister(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc, twistmask, inv)
+    return diagonal_device_transformer(A, host, dstdiagonal)
+end
+
 function _add_diagonal!(tdst::GPUDiagonalTensorMap, tsrc, conjsrc, transformer, α, β)
     _launch_unique!(tdst.data, tsrc.data, conjsrc ? conj : identity, transformer, α, β, Val(1))
     return tdst
@@ -735,6 +745,18 @@ Base.@propagate_inbounds function TensorKit._transpose!(
     @boundscheck TensorKit.spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
     transformer = diagonal_treetransposer(
         storagetype(tdst), Vdst, Vsrc, p, conjsrc, tdst isa DiagonalTensorMap
+    )
+    return _add_diagonal!(tdst, tsrc, conjsrc, transformer, α, β)
+end
+
+Base.@propagate_inbounds function TensorKit._twist!(
+        tdst::Union{GPUTensorMap, GPUDiagonalTensorMap}, tsrc::GPUDiagonalTensorMap,
+        p::Index2Tuple, conjsrc::Bool, twistmask::Tuple{Vararg{Bool}}, inv::Bool, α, β, backend, allocator
+    )
+    Vdst, Vsrc = space(tdst), space(tsrc)
+    @boundscheck TensorKit.spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
+    transformer = diagonal_treetwister(
+        storagetype(tdst), Vdst, Vsrc, p, conjsrc, twistmask, inv, tdst isa DiagonalTensorMap
     )
     return _add_diagonal!(tdst, tsrc, conjsrc, transformer, α, β)
 end

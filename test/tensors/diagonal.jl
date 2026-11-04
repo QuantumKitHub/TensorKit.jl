@@ -148,6 +148,26 @@ diagspacelist = (
             @test convert(TensorMap, t5) == permute(t_tm, (((), (2, 1))))
         end
     end
+    if BraidingStyle(I) != NoBraiding()
+        @timedtestset "Twists" begin
+            t = DiagonalTensorMap(randn(ComplexF64, reduceddim(V)), V)
+            t_tm = convert(TensorMap, t)
+            for inds in ((1,), (2,), (1, 2)), inv in (false, true)
+                t′ = twist(t, inds; inv)
+                @test t′ isa DiagonalTensorMap
+                @test convert(TensorMap, t′) ≈ twist(t_tm, inds; inv)
+                @test convert(TensorMap, twist(t', inds; inv)) ≈ twist(t_tm', inds; inv)
+                @test twist!(copy(t), inds; inv) ≈ t′
+
+                # diagonal source or destination with dense counterpart
+                tdst = randn(ComplexF64, space(t))
+                @test twist!(copy(tdst), t, inds, 2, 3; inv) ≈ 3 * tdst + 2 * t′
+                ddst = DiagonalTensorMap(randn(ComplexF64, reduceddim(V)), V)
+                @test twist!(copy(ddst), t, inds, 2, 3; inv) ≈ 3 * ddst + 2 * t′
+                @test twist!(copy(ddst), t_tm, inds, 2, 3; inv) ≈ 3 * ddst + 2 * t′
+            end
+        end
+    end
     @timedtestset "Trace, Multiplication and inverse" begin
         t1 = DiagonalTensorMap(rand(Float64, reduceddim(V)), V)
         t2 = DiagonalTensorMap(rand(ComplexF64, reduceddim(V)), V)

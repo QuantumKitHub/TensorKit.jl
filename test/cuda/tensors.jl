@@ -646,6 +646,17 @@ end
         for levels in ((1, 2), (2, 1))
             @test adapt(Array, braid(d, ((1, 2), ()), levels)) ≈ braid(dcpu, ((1, 2), ()), levels)
         end
+        for inds in ((1,), (2,), (1, 2)), inv in (false, true)
+            ref = twist(dcpu, inds; inv)
+            @test twist(d, inds; inv) isa typeof(d)
+            @test adapt(Array, twist(d, inds; inv)) ≈ ref
+            @test adapt(Array, twist(d', inds; inv)) ≈ twist(dcpu', inds; inv)
+            @test adapt(Array, twist!(copy(d), inds; inv)) ≈ ref
+            dst = adapt(CuVector{T}, randn(T, space(dcpu)))
+            @test adapt(Array, twist!(copy(dst), d, inds, T(2), T(3); inv)) ≈ 3 * adapt(Array, dst) + 2 * ref
+            ddst = diagonal(T, V)
+            @test adapt(Array, twist!(copy(ddst), d, inds, T(2), T(3); inv)) ≈ 3 * adapt(Array, ddst) + 2 * ref
+        end
     end
 
     @testset "real source, complex destination" begin
