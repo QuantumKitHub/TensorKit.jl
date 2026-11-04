@@ -80,13 +80,12 @@ TAs = is_ci ? (Duplicated,) : (Const, Duplicated)
                 end
                 return dim(TensorKit.select(W, p)) > 0 ? (W, p, q) : nothing
             end
-            for _ in 1:3
-                trace = nothing
-                for _ in 1:50
-                    trace = randplanartrace()
-                    isnothing(trace) || break
-                end
-                isnothing(trace) && continue
+            trace = nothing
+            for _ in 1:50
+                trace = randplanartrace()
+                isnothing(trace) || break
+            end
+            if !isnothing(trace)
                 W, p, q = trace
                 A = randn(T, W)
                 α = randn(T)
