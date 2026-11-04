@@ -220,6 +220,10 @@ struct TraceTransformer{T, N₁, N₂}
     structure_src::Vector{StridedStructure{N₂}}
 end
 
+VectorInterface.scalartype(
+    ::Type{<:Union{UniqueTreeTransformer{T}, GenericTreeTransformer{T}, TraceTransformer{T}}}
+) where {T} = T
+
 function TraceTransformer(::Type{A}, Vdst::HomSpace, Vsrc::HomSpace, p::Index2Tuple, q::Index2Tuple) where {A}
     t₀ = Base.time()
     src_trees, dst_trees = fusiontrees(Vsrc), fusiontrees(Vdst)

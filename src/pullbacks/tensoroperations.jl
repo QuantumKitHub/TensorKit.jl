@@ -75,7 +75,7 @@ function planartrace_pullback_ΔA!(
     BraidingStyle(sectortype(A)) == Bosonic() &&
         return trace_permute_pullback_ΔA!(ΔA, ΔC, A, p, q, α, backend)
     transformer = treetracer(storagetype(ΔC), space(ΔC), space(A), p, q)
-    T = promote_type(scalartype(ΔC), scalartype(α), _coefficienttype(transformer))
+    T = promote_type(scalartype(ΔC), scalartype(α), scalartype(transformer))
     if T <: Real || !(scalartype(ΔA) <: Real)
         _planartrace_pullback_ΔA!(ΔA, ΔC, transformer, p, q, α, backend, allocator)
     else
@@ -85,8 +85,6 @@ function planartrace_pullback_ΔA!(
     end
     return nothing
 end
-
-_coefficienttype(::TraceTransformer{T}) where {T} = T
 
 function _planartrace_pullback_ΔA!(
         ΔA, ΔC, transformer::TraceTransformer, (p₁, p₂), (q₁, q₂), α, backend, allocator
