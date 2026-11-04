@@ -7,6 +7,7 @@ ad = adapt(Array)
 const CUDAExt = Base.get_extension(TensorKit, :TensorKitCUDAExt)
 @assert !isnothing(CUDAExt)
 const CuTensorMap = getglobal(CUDAExt, :CuTensorMap)
+const GPUArraysExt = Base.get_extension(TensorKit, :TensorKitGPUArraysExt)
 
 Random.seed!(123456)
 
@@ -326,6 +327,28 @@ for V in spacelist
                 @test ht3 ≈ adapt(Array, dt3)
             end
         end
+        hasbraiding && @timedtestset "Twists: test via CPU" begin
+            t = cuRAND.rand(ComplexF64, V1 ⊗ V2 ⊗ V3 ← (V4 ⊗ V5)')
+            ht = adapt(Array, t)
+            for inds in (1, (2, 4), [1, 3, 5]), inv in (false, true)
+                ref = twist(ht, inds; inv)
+                @test adapt(Array, twist(t, inds; inv)) ≈ ref
+                @test adapt(Array, twist!(copy(t), inds; inv)) ≈ ref
+                # adjoint operands
+                @test adapt(Array, twist(t', inds; inv)) ≈ twist(copy(ht'), inds; inv)
+                t2 = copy(t)
+                twist!(t2', inds; inv)
+                @test adapt(Array, t2)' ≈ twist(copy(ht'), inds; inv)
+            end
+            @test twist(twist(t, 2), 2; inv = true) ≈ t
+            if !TensorKit.has_shared_twist(t, (1, 3, 5))
+                twistmask = (true, false, true, false, true)
+                p = (codomainind(t), domainind(t))
+                twister = TensorKit.treetwister(storagetype(t), space(t), space(t), p, false, twistmask, false)
+                @test twister isa getglobal(GPUArraysExt, :DeviceUniqueTreeTransformer)
+                @test twister === TensorKit.treetwister(storagetype(t), space(t), space(t), p, false, twistmask, false)
+            end
+        end
         symmetricbraiding && @timedtestset "Full trace: test self-consistency" begin
             t = cuRAND.rand(ComplexF64, V1 ⊗ V2' ⊗ V2 ⊗ V1')
             t2 = permute(t, ((1, 2), (4, 3)))
@@ -639,6 +662,17 @@ end
         end
         for levels in ((1, 2), (2, 1))
             @test adapt(Array, braid(d, ((1, 2), ()), levels)) ≈ braid(dcpu, ((1, 2), ()), levels)
+        end
+        for inds in ((1,), (2,), (1, 2)), inv in (false, true)
+            ref = twist(dcpu, inds; inv)
+            @test twist(d, inds; inv) isa typeof(d)
+            @test adapt(Array, twist(d, inds; inv)) ≈ ref
+            @test adapt(Array, twist(d', inds; inv)) ≈ twist(dcpu', inds; inv)
+            @test adapt(Array, twist!(copy(d), inds; inv)) ≈ ref
+            dst = adapt(CuVector{T}, randn(T, space(dcpu)))
+            @test adapt(Array, twist!(copy(dst), d, inds, T(2), T(3); inv)) ≈ 3 * adapt(Array, dst) + 2 * ref
+            ddst = diagonal(T, V)
+            @test adapt(Array, twist!(copy(ddst), d, inds, T(2), T(3); inv)) ≈ 3 * adapt(Array, ddst) + 2 * ref
         end
     end
 
