@@ -1,6 +1,7 @@
 using Test, TestExtras
 using TensorKit
 using TensorKit: SectorVector, diagonalblockstructure
+using Adapt: adapt
 
 spacelist = (
     (ℂ^4)',
@@ -27,6 +28,19 @@ spacelist = (
 
             v3 = @testinferred SectorVector{T, I, Vector{T}}(undef, V)
             @test length(v3) == reduceddim(V)
+        end
+
+        @timedtestset "Adapt ($T)" begin
+            v = SectorVector{T}(undef, V)
+            rand!(parent(v))
+            w = @testinferred adapt(Array, v)
+            @test w isa SectorVector{T, I, Vector{T}}
+            @test parent(w) == parent(v)
+            @test w.structure == v.structure
+            T′ = T <: Complex ? ComplexF64 : Float64
+            w′ = @testinferred adapt(Array{T′}, v)
+            @test w′ isa SectorVector{T′, I, Vector{T′}}
+            @test parent(w′) ≈ parent(v)
         end
 
         @timedtestset "AbstractVector interface ($T)" begin
