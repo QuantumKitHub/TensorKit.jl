@@ -41,6 +41,8 @@ Base.similar(v::SectorVector, ::Type{T}, V::ElementarySpace) where {T} = SectorV
 
 Base.copy(v::SectorVector) = SectorVector(copy(v.data), v.structure)
 
+Adapt.adapt_structure(to, v::SectorVector) = SectorVector(Adapt.adapt(to, parent(v)), v.structure)
+
 # AbstractDict interface
 # ----------------------
 Base.keytype(v::SectorVector) = keytype(typeof(v))
