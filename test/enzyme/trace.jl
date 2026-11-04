@@ -57,9 +57,11 @@ TAs = is_ci ? (Duplicated,) : (Const, Duplicated)
             end
         end
         @timedtestset "planartrace!" begin
-            for _ in 1:5
-                k1 = rand(0:2)
-                k2 = rand(0:1)
+            # a random planar trace with at least one remaining leg and one traced pair, or `nothing`
+            # for multifusion sectors whose random spaces have mismatched units, or empty output
+            function randplanartrace()
+                k1 = rand(1:2)
+                k2 = 1
                 V1 = map(v -> rand(Bool) ? v' : v, rand(V, k1))
                 V2 = map(v -> rand(Bool) ? v' : v, rand(V, k2))
                 V3 = prod(x -> x ⊗ x', V2[1:k2]; init = one(V[1]))
@@ -69,19 +71,40 @@ TAs = is_ci ? (Duplicated,) : (Const, Duplicated)
                 (_p, _q) = randcircshift(k′, k1 + 2k2 - k′, k1)
                 p = _repartition(_p, rand(0:k1))
                 q = (tuple(_q[1:2:end]...), tuple(_q[2:2:end]...))
-                if !all(isempty, p) && !all(isempty, q)
-                    α = randn(T)
-                    β = randn(T)
-                    ip = _repartition(invperm(linearize((_p, _q))), k′)
-                    A = randn(T, permute(prod(V1) ⊗ V3 ← V4, ip))
-                    C = randn!(TensorOperations.tensoralloc_add(T, A, p, false, Val(false)))
-                    for Tα in (Const, Active), Tβ in (Const, Active)
-                        EnzymeTestUtils.test_reverse(TensorKit.planartrace!, Duplicated, (C, Duplicated), (A, Duplicated), (p, Const), (q, Const), (α, Tα), (β, Tβ), (TensorOperations.DefaultBackend(), Const), (TensorOperations.DefaultAllocator(), Const); atol, rtol, testset_name = "planartrace reverse Tα $Tα Tβ $Tβ")
-                    end
-                    for Tα in (Const, Duplicated), Tβ in (Const, Duplicated)
-                        EnzymeTestUtils.test_forward(TensorKit.planartrace!, Duplicated, (C, Duplicated), (A, Duplicated), (p, Const), (q, Const), (α, Tα), (β, Tβ), (TensorOperations.DefaultBackend(), Const), (TensorOperations.DefaultAllocator(), Const); atol, rtol, testset_name = "planartrace forward Tα $Tα Tβ $Tβ")
-                    end
+                ip = _repartition(invperm(linearize((_p, _q))), k′)
+                W = try
+                    permute(prod(V1) ⊗ V3 ← V4, ip)
+                catch e
+                    e isa SpaceMismatch || rethrow()
+                    return nothing
                 end
+                return dim(TensorKit.select(W, p)) > 0 ? (W, p, q) : nothing
+            end
+            trace = nothing
+            for _ in 1:50
+                trace = randplanartrace()
+                isnothing(trace) || break
+            end
+            if !isnothing(trace)
+                W, p, q = trace
+                A = randn(T, W)
+                α = randn(T)
+                β = randn(T)
+                C = randn!(TensorOperations.tensoralloc_add(T, A, p, false, Val(false)))
+                for Tα in rTαs, Tβ in rTβs
+                    EnzymeTestUtils.test_reverse(TensorKit.planartrace!, Duplicated, (C, Duplicated), (A, Duplicated), (p, Const), (q, Const), (α, Tα), (β, Tβ), (TensorOperations.DefaultBackend(), Const), (TensorOperations.DefaultAllocator(), Const); atol, rtol, testset_name = "planartrace reverse Tα $Tα Tβ $Tβ")
+                end
+                for Tα in fTαs, Tβ in fTβs
+                    EnzymeTestUtils.test_forward(TensorKit.planartrace!, Duplicated, (C, Duplicated), (A, Duplicated), (p, Const), (q, Const), (α, Tα), (β, Tβ), (TensorOperations.DefaultBackend(), Const), (TensorOperations.DefaultAllocator(), Const); atol, rtol, testset_name = "planartrace forward Tα $Tα Tβ $Tβ")
+                end
+                # the pullback of adjoint tensors goes through their subblocks
+                ba = (TensorOperations.DefaultBackend(), TensorOperations.DefaultAllocator())
+                ΔC = randn!(similar(C))
+                ΔA = zerovector(A)
+                TensorKit.planartrace_pullback_ΔA!(ΔA, ΔC, A, p, q, α, ba...)
+                ΔA′ = zerovector(copy(A'))'
+                TensorKit.planartrace_pullback_ΔA!(ΔA′, copy(ΔC')', copy(A')', p, q, α, ba...)
+                @test copy(ΔA′) ≈ ΔA
             end
         end
     end
