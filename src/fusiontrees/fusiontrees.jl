@@ -285,8 +285,7 @@ end
 
 # The trees of the destination block of a block manipulation, in the order in which they are
 # produced, and the row of each of them in the transformation matrix. The source block has to be
-# complete, such that the destination block has as many trees (`n`); the tree vector of a block
-# that is no longer needed can be passed on as `buffer`.
+# complete, such that the destination block has as many trees (`n`).
 struct TreeRows{F, D}
     trees::Vector{F}
     index::Union{D, Nothing} # `nothing`: few trees, the rows are found by a linear search
@@ -294,8 +293,8 @@ struct TreeRows{F, D}
     # no default outer constructor, of which `D` would be unbound if `index === nothing`
     TreeRows{F, D}(trees::Vector{F}, index, n::Int) where {F, D} = new{F, D}(trees, index, n)
 end
-function TreeRows(::Type{F}, n::Int, buffer = nothing) where {F}
-    trees = buffer isa Vector{F} ? empty!(buffer) : sizehint!(Vector{F}(), n)
+function TreeRows(::Type{F}, n::Int) where {F}
+    trees = sizehint!(Vector{F}(), n)
     K = Base.promote_op(treeindex_data, F)
     index = n > 32 ? Dict{K, Int}() : nothing
     return TreeRows{F, Dict{K, Int}}(trees, index, n)

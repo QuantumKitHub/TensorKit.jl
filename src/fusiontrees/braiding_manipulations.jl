@@ -92,11 +92,8 @@ function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where 
     n = length(src) # braiding a complete block keeps its size
     return artin_braid!(Matrix{sectorscalartype(I)}(undef, n, n), src, i; inv) # zeroed by `artin_braid!`
 end
-# `U` is overwritten with the braid matrix of `src`, a complete block; the trees of the result are
-# stored in `trees` if given
-function artin_braid!(
-        U::AbstractMatrix, src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false, trees = nothing
-    ) where {I, N}
+# `U` is overwritten with the braid matrix of `src`, a complete block
+function artin_braid!(U::AbstractMatrix, src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where {I, N}
     1 <= i < N || throw(ArgumentError("Cannot swap outputs i=$i and i+1 out of only $N outputs"))
     size(U) == (length(src), length(src)) || throw(DimensionMismatch(lazy"braid matrix of size $(size(U)) for a block of $(length(src)) trees"))
     isempty(src) && return src => U
@@ -110,7 +107,7 @@ function artin_braid!(
     isdual = src.isdual[1]
     isdual′ = TupleTools.setindex(isdual, isdual[i], i + 1)
     isdual′ = TupleTools.setindex(isdual′, isdual[i + 1], i)
-    rows = TreeRows(fusiontreetype(I, N, 0), length(src), trees)
+    rows = TreeRows(fusiontreetype(I, N, 0), length(src))
 
     oneT = one(sectorscalartype(I))
     fill!(U, zero(oneT))
@@ -343,18 +340,14 @@ end
 
         dst, U = repartition(src, Val(numind(src)))
 
-        # the swaps keep the size of the block, so that the tree vector and the matrices of the
-        # previous step are recycled (except for the trees of `src`, which are part of the key)
-        trees = nothing
+        # the swaps keep the size of the block, so that the matrices of the previous step are recycled
         U_tmp = Matrix{sectorscalartype(I)}(undef, length(dst), length(dst))
         U_spare = nothing
         braid_style = BraidingStyle(I)
         for s in permutation2swaps(p)
             _check_levels(braid_style, levels, s)
             inv = levels[s] > levels[s + 1]
-            dst′, _ = artin_braid!(U_tmp, dst, s; inv, trees)
-            trees = dst.trees === src.trees ? nothing : dst.trees
-            dst = dst′
+            dst, _ = artin_braid!(U_tmp, dst, s; inv)
             U_spare, U = U, U_spare isa typeof(U_tmp) ? mul!(U_spare, U_tmp, U) : U_tmp * U
             l = levels[s]
             levels = TupleTools.setindex(levels, levels[s + 1], s)
