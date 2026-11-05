@@ -36,6 +36,8 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 ### Performance
 
+- `mul!` for CUDA tensors multiplies all small blocks in a single grouped gemm call (cuBLAS ≥ 12.5), using a real 1m embedding for complex element types; large blocks (`m * n * k` above `TensorKitCUDAExt.GROUPED_GEMM_THRESHOLD[]`, separately for real and complex element types) use individual gemm calls without per-call scalar uploads
+
 ## [0.17.3](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.2...v0.17.3) - 2026-10-30
 
 ### Added

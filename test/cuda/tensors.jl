@@ -426,6 +426,24 @@ for V in spacelist
                 @test tp ≈ tp * tp
             end
         end
+        @timedtestset "Multiplication: grouped and direct gemm via CPU" begin
+            W1, W2 = V1 ⊗ V2 ⊗ V3, (V4 ⊗ V5)'
+            threshold = CUDAExt.GROUPED_GEMM_THRESHOLD[]
+            try
+                for T in (Float32, ComplexF64), thr in (typemax(Int), 0)
+                    CUDAExt.GROUPED_GEMM_THRESHOLD[] = (real = thr, complex = thr)
+                    for adjA in (false, true), adjB in (false, true), β in (-1.2, T <: Complex ? -1.2 + 0.4im : 0.5)
+                        tA = adjA ? cuRAND.rand(T, W1, W1)' : cuRAND.rand(T, W1, W1)
+                        tB = adjB ? cuRAND.rand(T, W2, W1)' : cuRAND.rand(T, W1, W2)
+                        tC = cuRAND.rand(T, W1, W2)
+                        hA, hB, hC = adapt(Array, tA), adapt(Array, tB), adapt(Array, tC)
+                        @test adapt(Array, mul!(tC, tA, tB, 0.3, β)) ≈ mul!(hC, hA, hB, 0.3, β)
+                    end
+                end
+            finally
+                CUDAExt.GROUPED_GEMM_THRESHOLD[] = threshold
+            end
+        end
         @timedtestset "Multiplication and inverse: test via CPU" begin
             W1 = V1 ⊗ V2 ⊗ V3
             W2 = (V4 ⊗ V5)'
