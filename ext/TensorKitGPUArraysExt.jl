@@ -371,8 +371,23 @@ function DeviceTraceTransformer(transformer::TraceTransformer{T, N₁, N₂}, p,
     )
 end
 
+TensorKit.treebraider(
+    A::Type{<:AnyGPUVector}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
+    conjsrc::Bool, levels::IndexTuple
+) = TensorKit.device_treebraider(A, Vdst, Vsrc, p, conjsrc, levels)
+TensorKit.treetransposer(
+    A::Type{<:AnyGPUVector}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
+) = TensorKit.device_treetransposer(A, Vdst, Vsrc, p, conjsrc)
+TensorKit.treetracer(
+    A::Type{<:AnyGPUVector}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, q::Index2Tuple
+) = TensorKit.device_treetracer(A, Vdst, Vsrc, p, q)
+TensorKit.treetwister(
+    A::Type{<:AnyGPUVector}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
+    conjsrc::Bool, twistmask::NTuple{N, Bool}, inv::Bool
+) where {N} = TensorKit.device_treetwister(A, Vdst, Vsrc, p, conjsrc, twistmask, inv)
+
 # Cache the device transformer directly, constructing the cached host version only on a miss.
-@cached function TensorKit.treebraider(
+@cached function TensorKit.device_treebraider(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
         conjsrc::Bool, levels::IndexTuple
     ) where {TA <: AnyGPUVector}
@@ -380,54 +395,26 @@ end
     return device_transformer(A, host, linearize(p))
 end
 
-@cached function TensorKit.treetransposer(
+@cached function TensorKit.device_treetransposer(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
     ) where {TA <: AnyGPUVector}
     host = TensorKit.treetransposer(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc)
     return device_transformer(A, host, linearize(p))
 end
 
-@cached function TensorKit.treetracer(
+@cached function TensorKit.device_treetracer(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, q::Index2Tuple
     ) where {TA <: AnyGPUVector}
     host = TensorKit.treetracer(Vector{scalartype(A)}, Vdst, Vsrc, p, q)
     return device_transformer(A, host, p, q)
 end
 
-@cached function TensorKit.treetwister(
+@cached function TensorKit.device_treetwister(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
         conjsrc::Bool, twistmask::NTuple{N, Bool}, inv::Bool
     ) where {TA <: AnyGPUVector, N}
     host = TensorKit.treetwister(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc, twistmask, inv)
     return device_transformer(A, host, linearize(p))
-end
-
-const DEFAULT_DEVICECACHE_SIZE = 1000
-
-function __init__()
-    # extensions can't modify GLOBAL_CACHES during precompilation, so register explicitly
-    append!(
-        TensorKit.GLOBAL_CACHES, (
-            Symbol("TensorKitGPUArraysExt.GLOBAL_TREEBRAIDER_CACHE") => GLOBAL_TREEBRAIDER_CACHE,
-            Symbol("TensorKitGPUArraysExt.GLOBAL_TREETRANSPOSER_CACHE") => GLOBAL_TREETRANSPOSER_CACHE,
-            Symbol("TensorKitGPUArraysExt.GLOBAL_DIAGONAL_TREEBRAIDER_CACHE") => GLOBAL_DIAGONAL_TREEBRAIDER_CACHE,
-            Symbol("TensorKitGPUArraysExt.GLOBAL_DIAGONAL_TREETRANSPOSER_CACHE") => GLOBAL_DIAGONAL_TREETRANSPOSER_CACHE,
-            Symbol("TensorKitGPUArraysExt.GLOBAL_DIAGONAL_TREETWISTER_CACHE") => GLOBAL_DIAGONAL_TREETWISTER_CACHE,
-            Symbol("TensorKitGPUArraysExt.GLOBAL_TREETRACER_CACHE") => GLOBAL_TREETRACER_CACHE,
-            Symbol("TensorKitGPUArraysExt.GLOBAL_TREETWISTER_CACHE") => GLOBAL_TREETWISTER_CACHE,
-        )
-    )
-
-    # device-caches should probably have smaller sizes:
-    resize!(GLOBAL_TREEBRAIDER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
-    resize!(GLOBAL_TREETRANSPOSER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
-    resize!(GLOBAL_DIAGONAL_TREEBRAIDER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
-    resize!(GLOBAL_DIAGONAL_TREETRANSPOSER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
-    resize!(GLOBAL_DIAGONAL_TREETWISTER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
-    resize!(GLOBAL_TREETRACER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
-    resize!(GLOBAL_TREETWISTER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
-
-    return nothing
 end
 
 # Allocations must outlive any GPUArrays allocation-cache scope around the operation.
@@ -690,7 +677,8 @@ function diagonal_device_transformer(A, transformer, dstdiagonal::Bool)
     return device_transformer(A, DeviceUniqueTreeTransformer(blocks, work_offsets, nwork))
 end
 
-@cached function diagonal_treebraider(
+# Transformers for diagonal sources share the cache of the other device transformers.
+@cached function TensorKit.device_treebraider(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
         conjsrc::Bool, levels::IndexTuple, dstdiagonal::Bool
     ) where {TA <: AnyGPUVector}
@@ -698,7 +686,7 @@ end
     return diagonal_device_transformer(A, host, dstdiagonal)
 end
 
-@cached function diagonal_treetransposer(
+@cached function TensorKit.device_treetransposer(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
         conjsrc::Bool, dstdiagonal::Bool
     ) where {TA <: AnyGPUVector}
@@ -706,7 +694,7 @@ end
     return diagonal_device_transformer(A, host, dstdiagonal)
 end
 
-@cached function diagonal_treetwister(
+@cached function TensorKit.device_treetwister(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
         conjsrc::Bool, twistmask::NTuple{N, Bool}, inv::Bool, dstdiagonal::Bool
     ) where {TA <: AnyGPUVector, N}
@@ -731,7 +719,7 @@ Base.@propagate_inbounds function TensorKit._braid!(
     )
     Vdst, Vsrc = space(tdst), space(tsrc)
     @boundscheck TensorKit.spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
-    transformer = diagonal_treebraider(
+    transformer = TensorKit.device_treebraider(
         storagetype(tdst), Vdst, Vsrc, p, conjsrc, levels, tdst isa DiagonalTensorMap
     )
     return _add_diagonal!(tdst, tsrc, conjsrc, transformer, α, β)
@@ -743,7 +731,7 @@ Base.@propagate_inbounds function TensorKit._transpose!(
     )
     Vdst, Vsrc = space(tdst), space(tsrc)
     @boundscheck TensorKit.spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
-    transformer = diagonal_treetransposer(
+    transformer = TensorKit.device_treetransposer(
         storagetype(tdst), Vdst, Vsrc, p, conjsrc, tdst isa DiagonalTensorMap
     )
     return _add_diagonal!(tdst, tsrc, conjsrc, transformer, α, β)
@@ -755,7 +743,7 @@ Base.@propagate_inbounds function TensorKit._twist!(
     )
     Vdst, Vsrc = space(tdst), space(tsrc)
     @boundscheck TensorKit.spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
-    transformer = diagonal_treetwister(
+    transformer = TensorKit.device_treetwister(
         storagetype(tdst), Vdst, Vsrc, p, conjsrc, twistmask, inv, tdst isa DiagonalTensorMap
     )
     return _add_diagonal!(tdst, tsrc, conjsrc, transformer, α, β)

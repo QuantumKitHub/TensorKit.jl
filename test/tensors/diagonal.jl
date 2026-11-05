@@ -252,4 +252,5 @@ diagspacelist = (
             @test @constinferred acoth(one(t) + d) ≈ acoth(one(d) + t)
         end
     end
+    TensorKit.empty_globalcaches!()
 end
