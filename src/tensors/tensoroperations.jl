@@ -48,7 +48,7 @@ function TO.tensoradd!(
         backend, allocator
     )
     tdst, tsrc, p, _, conjA′, α′, β′ = unwrap_adjoints(C, A, _canonicalize(pA, C), nothing, conjA, α, β)
-    _braid!(tdst, tsrc, p, conjA′, allind(tsrc), α′, β′, backend, allocator)
+    _braid!(tdst, tsrc, p, conjA′, allind(tsrc), _notwist(tdst), α′, β′, backend, allocator)
     return C
 end
 
@@ -390,6 +390,23 @@ function TO.isblasdestination(A::AbstractTensorMap, ipAB::Index2Tuple)
     return scalartype(A) <: LinearAlgebra.BlasFloat && has_shared_permute(A, ipAB)
 end
 
+# `tdst = twist(permute(tsrc, p), twistmask)`, with the twist folded into the coefficients of the permutation
+function permute_twist!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, twistmask, backend, allocator)
+    tsrc′, p′, _, conjsrc = _unwrap_source(tsrc, p, nothing, false)
+    return _braid!(tdst, tsrc′, p′, conjsrc, allind(tsrc′), twistmask, One(), Zero(), backend, allocator)
+end
+
+# fermionic contractions need a twist of the contracted legs of either `A` or `B`:
+# twist the one that is copied anyway, or the smallest if neither or both are copied
+function contraction_twistmasks(A, pA, B, pB, copyA, copyB)
+    twists = map(isdual ∘ Base.Fix1(space, B), pB[1])
+    notwistA, notwistB = map(Returns(false), linearize(pA)), map(Returns(false), linearize(pB))
+    (BraidingStyle(sectortype(B)) isa Fermionic && any(twists)) || return notwistA, notwistB
+    twistA = copyA ⊻ copyB ? copyA : dim(A) < dim(B)
+    return twistA ? ((map(Returns(false), pA[1])..., twists...), notwistB) :
+        (notwistA, (twists..., map(Returns(false), pB[2])...))
+end
+
 function blas_contract!(
         C::AbstractTensorMap,
         A::AbstractTensorMap, pA::Index2Tuple,
@@ -406,27 +423,14 @@ function blas_contract!(
     copyA = !(TO.isblascontractable(A, pA) && scalartype(A) === TC)
     copyB = !(TO.isblascontractable(B, pB) && scalartype(B) === TC)
 
-    if bstyle isa Fermionic && any(isdual ∘ Base.Fix1(space, B), pB[1])
-        # twist smallest object if neither or both already have to be permuted
-        # otherwise twist the one that already is copied
-        if !(copyA ⊻ copyB)
-            twistA = dim(A) < dim(B)
-        else
-            twistA = copyA
-        end
-        twistB = !twistA
-        copyA |= twistA
-        copyB |= twistB
-    else
-        twistA = false
-        twistB = false
-    end
+    twistmaskA, twistmaskB = contraction_twistmasks(A, pA, B, pB, copyA, copyB)
+    copyA |= any(twistmaskA)
+    copyB |= any(twistmaskB)
 
     # Bring A in the correct form for BLAS contraction
     if copyA
         Anew = @timeit_debug GLOBAL_TIMER "alloc: buffers" TO.tensoralloc_add(TC, A, pA, false, Val(true), allocator)
-        Anew = TO.tensoradd!(Anew, A, pA, false, One(), Zero(), backend, allocator)
-        twistA && twist!(Anew, filter(!isdual ∘ Base.Fix1(space, Anew), domainind(Anew)))
+        permute_twist!(Anew, A, pA, twistmaskA, backend, allocator)
     else
         Anew = permute(A, pA)
     end
@@ -435,8 +439,7 @@ function blas_contract!(
     # Bring B in the correct form for BLAS contraction
     if copyB
         Bnew = @timeit_debug GLOBAL_TIMER "alloc: buffers" TO.tensoralloc_add(TC, B, pB, false, Val(true), allocator)
-        Bnew = TO.tensoradd!(Bnew, B, pB, false, One(), Zero(), backend, allocator)
-        twistB && twist!(Bnew, filter(isdual ∘ Base.Fix1(space, Bnew), codomainind(Bnew)))
+        permute_twist!(Bnew, B, pB, twistmaskB, backend, allocator)
     else
         Bnew = permute(B, pB)
     end
