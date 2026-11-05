@@ -66,7 +66,7 @@ function artin_braid(f::FusionTree{I, N}, i; inv::Bool = false) where {I, N}
     a = inner_extended[i - 1]
     c = inner_extended[i]
     e = inner_extended[i + 1]
-    c′ = _artin_channel(a, b, d, e)
+    c′ = only(_artin_channels(a, b, d, e))
     coeff = oftype(
         oneT,
         if inv
@@ -83,10 +83,6 @@ end
 # the inner lines `c′` of `a ⊗ d → c′ → c′ ⊗ b → e`, i.e. `intersect(a ⊗ d, e ⊗ conj(b))`,
 # without constructing the second fusion product
 _artin_channels(a, b, d, e) = Iterators.filter(c′ -> !iszero(Nsymbol(c′, b, e)), a ⊗ d)
-# the only such line, for a fusion tree that braids into a single one (`only` throws otherwise)
-_artin_channel(a, b, d, e) = _artin_channel(FusionStyle(a), a, b, d, e)
-_artin_channel(::UniqueFusion, a, b, d, e) = only(a ⊗ d)
-_artin_channel(::FusionStyle, a, b, d, e) = only(_artin_channels(a, b, d, e))
 
 function artin_braid(src::FusionTreeBlock{I, N, 0}, i; inv::Bool = false) where {I, N}
     n = length(src) # braiding a complete block keeps its size
