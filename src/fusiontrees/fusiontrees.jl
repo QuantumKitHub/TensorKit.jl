@@ -296,7 +296,7 @@ end
 function TreeRows(::Type{F}, n::Int) where {F}
     trees = sizehint!(Vector{F}(), n)
     K = Base.promote_op(treeindex_data, F)
-    index = n > 32 ? Dict{K, Int}() : nothing
+    index = n > 32 ? sizehint!(Dict{K, Int}(), n) : nothing
     return TreeRows{F, Dict{K, Int}}(trees, index, n)
 end
 function row!(rows::TreeRows, f)
