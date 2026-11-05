@@ -2,7 +2,7 @@
 # special (2,2) tensor that implements a standard braiding operation
 #====================================================================#
 """
-    struct BraidingTensor{T, S <: IndexSpace, A <: DenseVector{T}} <: AbstractTensorMap{T, S, 2, 2}
+    struct BraidingTensor{T <: Number, S <: IndexSpace, A <: DenseVector{T}} <: AbstractTensorMap{T, S, 2, 2}
     BraidingTensor(V1::S, V2::S, adjoint::Bool=false) where {S<:IndexSpace}
     BraidingTensor{T, S, A}(V1::S, V2::S, adjoint::Bool=false) where {T, S, A}
 
@@ -14,7 +14,7 @@ It holds that `domain(BraidingTensor(V1, V2)) == V1 ⊗ V2` and
 controls the array type of the braiding tensor used when indexing
 and multiplying with other tensors.
 """
-struct BraidingTensor{T, S, A <: DenseVector{T}} <: AbstractTensorMap{T, S, 2, 2}
+struct BraidingTensor{T <: Number, S <: IndexSpace, A <: DenseVector{T}} <: AbstractTensorMap{T, S, 2, 2}
     V1::S
     V2::S
     adjoint::Bool
