@@ -241,7 +241,7 @@ See also [`permute`](@ref) for creating a new tensor.
     @boundscheck spacecheck_transform(permute, space(tdst), space(tsrc), p)
     @timeit_debug GLOBAL_TIMER "permute!/braid!" begin
         tdst′, tsrc′, p′, _, conjsrc′, α′, β′ = unwrap_adjoints(tdst, tsrc, p, nothing, false, α, β)
-        @inbounds _braid!(tdst′, tsrc′, p′, conjsrc′, allind(tsrc′), α′, β′, backend, allocator)
+        @inbounds _braid!(tdst′, tsrc′, p′, conjsrc′, allind(tsrc′), _notwist(tdst′), α′, β′, backend, allocator)
     end
     return tdst
 end
@@ -331,7 +331,7 @@ See also [`braid`](@ref) for creating a new tensor.
     @boundscheck spacecheck_transform(braid, space(tdst), space(tsrc), p, levels)
     @timeit_debug GLOBAL_TIMER "permute!/braid!" begin
         tdst′, tsrc′, p′, levels′, conjsrc′, α′, β′ = unwrap_adjoints(tdst, tsrc, p, levels, false, α, β)
-        @inbounds _braid!(tdst′, tsrc′, p′, conjsrc′, levels′, α′, β′, backend, allocator)
+        @inbounds _braid!(tdst′, tsrc′, p′, conjsrc′, levels′, _notwist(tdst′), α′, β′, backend, allocator)
     end
     return tdst
 end
@@ -637,14 +637,17 @@ function _dense_transform!(tdst, tsrc, p::Index2Tuple, conjsrc::Bool, α, β, ba
     return tdst
 end
 
+_notwist(t) = ntuple(Returns(false), numind(t))
+
+# `twistmask` selects the destination legs that are twisted after braiding
 @propagate_inbounds function _braid!(
-        tdst, tsrc, p::Index2Tuple, conjsrc::Bool, levels::IndexTuple, α, β, backend, allocator
+        tdst, tsrc, p::Index2Tuple, conjsrc::Bool, levels::IndexTuple, twistmask::Tuple{Vararg{Bool}}, α, β, backend, allocator
     )
     Vdst, Vsrc = space(tdst), space(tsrc)
     @boundscheck spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
     all(has_array_view, (tdst, tsrc)) && return _dense_transform!(tdst, tsrc, p, conjsrc, α, β, backend, allocator)
-    _is_trivial_transform(tsrc, p, conjsrc) && return add!(tdst, tsrc, α, β)
-    transformer = treebraider(storagetype(tdst), Vdst, Vsrc, p, conjsrc, levels)
+    !any(twistmask) && _is_trivial_transform(tsrc, p, conjsrc) && return add!(tdst, tsrc, α, β)
+    transformer = treebraider(storagetype(tdst), Vdst, Vsrc, p, conjsrc, levels, twistmask)
     return add_transform!(tdst, tsrc, p, conjsrc, transformer, α, β, backend, allocator)
 end
 

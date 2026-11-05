@@ -379,10 +379,6 @@ TensorKit.treebraider(
 TensorKit.treetransposer(
     A::Type{<:AnyGPUVector}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
 ) = TensorKit.device_treetransposer(A, Vdst, Vsrc, p, conjsrc)
-TensorKit.treepermuter(
-    A::Type{<:AnyGPUVector}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
-    conjsrc::Bool, twistmask::NTuple{N, Bool}
-) where {N} = TensorKit.device_treepermuter(A, Vdst, Vsrc, p, conjsrc, twistmask)
 TensorKit.treetracer(
     A::Type{<:AnyGPUVector}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, q::Index2Tuple
 ) = TensorKit.device_treetracer(A, Vdst, Vsrc, p, q)
@@ -394,9 +390,9 @@ TensorKit.treetwister(
 # Cache the device transformer directly, constructing the cached host version only on a miss.
 @cached function TensorKit.device_treebraider(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
-        conjsrc::Bool, levels::IndexTuple
-    ) where {TA <: AnyGPUVector}
-    host = TensorKit.treebraider(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc, levels)
+        conjsrc::Bool, levels::IndexTuple, twistmask::NTuple{N, Bool}
+    ) where {TA <: AnyGPUVector, N}
+    host = TensorKit.treebraider(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc, levels, twistmask)
     return device_transformer(A, host, linearize(p))
 end
 
@@ -404,14 +400,6 @@ end
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
     ) where {TA <: AnyGPUVector}
     host = TensorKit.treetransposer(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc)
-    return device_transformer(A, host, linearize(p))
-end
-
-@cached function TensorKit.device_treepermuter(
-        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
-        conjsrc::Bool, twistmask::NTuple{N, Bool}
-    ) where {TA <: AnyGPUVector, N}
-    host = TensorKit.treepermuter(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc, twistmask)
     return device_transformer(A, host, linearize(p))
 end
 
@@ -733,9 +721,9 @@ end
 # Transformers for diagonal sources share the cache of the other device transformers.
 @cached function TensorKit.device_treebraider(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
-        conjsrc::Bool, levels::IndexTuple, dstdiagonal::Bool
-    ) where {TA <: AnyGPUVector}
-    host = TensorKit.treebraider(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc, levels)
+        conjsrc::Bool, levels::IndexTuple, twistmask::NTuple{N, Bool}, dstdiagonal::Bool
+    ) where {TA <: AnyGPUVector, N}
+    host = TensorKit.treebraider(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc, levels, twistmask)
     return diagonal_device_transformer(A, host, dstdiagonal)
 end
 
@@ -768,12 +756,12 @@ end
 
 Base.@propagate_inbounds function TensorKit._braid!(
         tdst::Union{GPUTensorMap, GPUDiagonalTensorMap}, tsrc::GPUDiagonalTensorMap,
-        p::Index2Tuple, conjsrc::Bool, levels::IndexTuple, α, β, backend, allocator
+        p::Index2Tuple, conjsrc::Bool, levels::IndexTuple, twistmask::Tuple{Vararg{Bool}}, α, β, backend, allocator
     )
     Vdst, Vsrc = space(tdst), space(tsrc)
     @boundscheck TensorKit.spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
     transformer = TensorKit.device_treebraider(
-        storagetype(tdst), Vdst, Vsrc, p, conjsrc, levels, tdst isa DiagonalTensorMap
+        storagetype(tdst), Vdst, Vsrc, p, conjsrc, levels, twistmask, tdst isa DiagonalTensorMap
     )
     return _add_diagonal!(tdst, tsrc, conjsrc, transformer, α, β)
 end
