@@ -374,9 +374,9 @@ end
 # Cache the device transformer directly, constructing the cached host version only on a miss.
 @cached function TensorKit.treebraider(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
-        conjsrc::Bool, levels::IndexTuple
-    ) where {TA <: AnyGPUVector}
-    host = TensorKit.treebraider(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc, levels)
+        conjsrc::Bool, levels::IndexTuple, twistmask::NTuple{N, Bool}
+    ) where {TA <: AnyGPUVector, N}
+    host = TensorKit.treebraider(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc, levels, twistmask)
     return device_transformer(A, host, linearize(p))
 end
 
@@ -384,14 +384,6 @@ end
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
     ) where {TA <: AnyGPUVector}
     host = TensorKit.treetransposer(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc)
-    return device_transformer(A, host, linearize(p))
-end
-
-@cached function TensorKit.treepermuter(
-        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
-        conjsrc::Bool, twistmask::NTuple{N, Bool}
-    ) where {TA <: AnyGPUVector, N}
-    host = TensorKit.treepermuter(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc, twistmask)
     return device_transformer(A, host, linearize(p))
 end
 
@@ -418,7 +410,6 @@ function __init__()
         TensorKit.GLOBAL_CACHES, (
             Symbol("TensorKitGPUArraysExt.GLOBAL_TREEBRAIDER_CACHE") => GLOBAL_TREEBRAIDER_CACHE,
             Symbol("TensorKitGPUArraysExt.GLOBAL_TREETRANSPOSER_CACHE") => GLOBAL_TREETRANSPOSER_CACHE,
-            Symbol("TensorKitGPUArraysExt.GLOBAL_TREEPERMUTER_CACHE") => GLOBAL_TREEPERMUTER_CACHE,
             Symbol("TensorKitGPUArraysExt.GLOBAL_DIAGONAL_TREEBRAIDER_CACHE") => GLOBAL_DIAGONAL_TREEBRAIDER_CACHE,
             Symbol("TensorKitGPUArraysExt.GLOBAL_DIAGONAL_TREETRANSPOSER_CACHE") => GLOBAL_DIAGONAL_TREETRANSPOSER_CACHE,
             Symbol("TensorKitGPUArraysExt.GLOBAL_DIAGONAL_TREETWISTER_CACHE") => GLOBAL_DIAGONAL_TREETWISTER_CACHE,
@@ -430,7 +421,6 @@ function __init__()
     # device-caches should probably have smaller sizes:
     resize!(GLOBAL_TREEBRAIDER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
     resize!(GLOBAL_TREETRANSPOSER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
-    resize!(GLOBAL_TREEPERMUTER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
     resize!(GLOBAL_DIAGONAL_TREEBRAIDER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
     resize!(GLOBAL_DIAGONAL_TREETRANSPOSER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
     resize!(GLOBAL_DIAGONAL_TREETWISTER_CACHE; maxsize = DEFAULT_DEVICECACHE_SIZE)
@@ -702,9 +692,9 @@ end
 
 @cached function diagonal_treebraider(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
-        conjsrc::Bool, levels::IndexTuple, dstdiagonal::Bool
-    ) where {TA <: AnyGPUVector}
-    host = TensorKit.treebraider(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc, levels)
+        conjsrc::Bool, levels::IndexTuple, twistmask::NTuple{N, Bool}, dstdiagonal::Bool
+    ) where {TA <: AnyGPUVector, N}
+    host = TensorKit.treebraider(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc, levels, twistmask)
     return diagonal_device_transformer(A, host, dstdiagonal)
 end
 
@@ -737,12 +727,12 @@ end
 
 Base.@propagate_inbounds function TensorKit._braid!(
         tdst::Union{GPUTensorMap, GPUDiagonalTensorMap}, tsrc::GPUDiagonalTensorMap,
-        p::Index2Tuple, conjsrc::Bool, levels::IndexTuple, α, β, backend, allocator
+        p::Index2Tuple, conjsrc::Bool, levels::IndexTuple, twistmask::Tuple{Vararg{Bool}}, α, β, backend, allocator
     )
     Vdst, Vsrc = space(tdst), space(tsrc)
     @boundscheck TensorKit.spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
     transformer = diagonal_treebraider(
-        storagetype(tdst), Vdst, Vsrc, p, conjsrc, levels, tdst isa DiagonalTensorMap
+        storagetype(tdst), Vdst, Vsrc, p, conjsrc, levels, twistmask, tdst isa DiagonalTensorMap
     )
     return _add_diagonal!(tdst, tsrc, conjsrc, transformer, α, β)
 end

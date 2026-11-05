@@ -182,15 +182,20 @@ function TreeTransformer(
         GenericTreeTransformer(A, transform, p, Vdst, Vsrc, conjsrc)
 end
 
-# braid is special because it has levels
+# braid is special because it has levels; the destination legs in `twistmask` are twisted afterwards,
+# which is diagonal in the fusion tree basis and therefore folded into the recoupling coefficients
 @cached function treebraider(
-        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool, levels::IndexTuple
-    )::treetransformertype(A, Vdst, Vsrc) where {TA}
+        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool, levels::IndexTuple,
+        twistmask::NTuple{N, Bool}
+    )::treetransformertype(A, Vdst, Vsrc) where {TA, N}
     Vsrc′, p′ = conjsrc ? (Vsrc', adjointtensorindices(Vsrc, p)) : (Vsrc, p)
     # levels are attached to the legs, so they follow the same relabeling as the permutation
     levels′ = conjsrc ? TupleTools.getindices(levels, adjointtensorindices(Vsrc′, allind(Vsrc′))) : levels
     levels″ = (TupleTools.getindices(levels′, codomainind(Vsrc′)), TupleTools.getindices(levels′, domainind(Vsrc′)))
-    fusiontreebraider(f) = braid(f, p′, levels″)
+    function fusiontreebraider(f)
+        f′, U = braid(f, p′, levels″)
+        return any(twistmask) ? (f′, U * last(twist(f′, twistmask))) : (f′, U)
+    end
     return TreeTransformer(A, fusiontreebraider, p, Vdst, Vsrc, conjsrc)
 end
 
@@ -200,20 +205,6 @@ end
     p′ = conjsrc ? adjointtensorindices(Vsrc, p) : p
     fusiontreetransform(f) = transpose(f, p′)
     return TreeTransformer(A, fusiontreetransform, p, Vdst, Vsrc, conjsrc)
-end
-
-# permutation for symmetric braidings followed by a twist of the destination legs in `twistmask`,
-# which is diagonal in the fusion tree basis and therefore folded into the recoupling coefficients
-@cached function treepermuter(
-        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool,
-        twistmask::NTuple{N, Bool}
-    )::treetransformertype(A, Vdst, Vsrc) where {TA, N}
-    p′ = conjsrc ? adjointtensorindices(Vsrc, p) : p
-    function fusiontreepermuter(f)
-        f′, U = permute(f, p′)
-        return f′, U * last(twist(f′, twistmask))
-    end
-    return TreeTransformer(A, fusiontreepermuter, p, Vdst, Vsrc, conjsrc)
 end
 
 
