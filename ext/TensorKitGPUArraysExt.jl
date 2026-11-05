@@ -378,6 +378,13 @@ TensorKit.treebraider(
 TensorKit.treetransposer(
     A::Type{<:AnyGPUVector}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
 ) = TensorKit.device_treetransposer(A, Vdst, Vsrc, p, conjsrc)
+TensorKit.treetracer(
+    A::Type{<:AnyGPUVector}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, q::Index2Tuple
+) = TensorKit.device_treetracer(A, Vdst, Vsrc, p, q)
+TensorKit.treetwister(
+    A::Type{<:AnyGPUVector}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
+    conjsrc::Bool, twistmask::NTuple{N, Bool}, inv::Bool
+) where {N} = TensorKit.device_treetwister(A, Vdst, Vsrc, p, conjsrc, twistmask, inv)
 
 # Cache the device transformer directly, constructing the cached host version only on a miss.
 @cached function TensorKit.device_treebraider(
@@ -395,14 +402,14 @@ end
     return device_transformer(A, host, linearize(p))
 end
 
-@cached function TensorKit.treetracer(
+@cached function TensorKit.device_treetracer(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, q::Index2Tuple
     ) where {TA <: AnyGPUVector}
     host = TensorKit.treetracer(Vector{scalartype(A)}, Vdst, Vsrc, p, q)
     return device_transformer(A, host, p, q)
 end
 
-@cached function TensorKit.treetwister(
+@cached function TensorKit.device_treetwister(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
         conjsrc::Bool, twistmask::NTuple{N, Bool}, inv::Bool
     ) where {TA <: AnyGPUVector, N}
@@ -687,7 +694,7 @@ end
     return diagonal_device_transformer(A, host, dstdiagonal)
 end
 
-@cached function diagonal_treetwister(
+@cached function TensorKit.device_treetwister(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
         conjsrc::Bool, twistmask::NTuple{N, Bool}, inv::Bool, dstdiagonal::Bool
     ) where {TA <: AnyGPUVector, N}
@@ -736,7 +743,7 @@ Base.@propagate_inbounds function TensorKit._twist!(
     )
     Vdst, Vsrc = space(tdst), space(tsrc)
     @boundscheck TensorKit.spacecheck_transform(permute, Vdst, Vsrc, p, conjsrc)
-    transformer = diagonal_treetwister(
+    transformer = TensorKit.device_treetwister(
         storagetype(tdst), Vdst, Vsrc, p, conjsrc, twistmask, inv, tdst isa DiagonalTensorMap
     )
     return _add_diagonal!(tdst, tsrc, conjsrc, transformer, α, β)

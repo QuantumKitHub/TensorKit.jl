@@ -70,12 +70,14 @@ end
 
 # Both structure arrays are retained by the transformer, even when another cache also
 # holds them. Within an entry, identical source/destination arrays are counted only once.
-_cache_structure_size(t::TreeTransformer) = sizeof(t.structure_src) +
+_cache_structure_size(t) = sizeof(t.structure_src) +
     (t.structure_src === t.structure_dst ? 0 : sizeof(t.structure_dst))
 
 MemoizationKit.cachesize(t::UniqueTreeTransformer) = sizeof(t) + _cache_payload_size(t.data) + _cache_structure_size(t)
 
-function MemoizationKit.cachesize(t::GenericTreeTransformer)
+MemoizationKit.cachesize(t::GenericTreeTransformer) = _cache_generic_size(t)
+
+function _cache_generic_size(t)
     bytes = sizeof(t) + sizeof(t.data) + _cache_structure_size(t)
     for (U, inds_dst, inds_src) in t.data
         bytes += _cache_payload_size(U) + sizeof(inds_src) +
@@ -236,6 +238,8 @@ struct TraceTransformer{T, N₁, N₂}
     structure_src::Vector{StridedStructure{N₂}}
 end
 
+MemoizationKit.cachesize(t::TraceTransformer) = _cache_generic_size(t)
+
 VectorInterface.scalartype(
     ::Type{<:Union{UniqueTreeTransformer{T}, GenericTreeTransformer{T}, TraceTransformer{T}}}
 ) where {T} = T
@@ -338,19 +342,27 @@ end
 """
     device_treebraider(A, Vdst, Vsrc, p, conjsrc, levels)
     device_treetransposer(A, Vdst, Vsrc, p, conjsrc)
+    device_treetracer(A, Vdst, Vsrc, p, q)
+    device_treetwister(A, Vdst, Vsrc, p, conjsrc, twistmask, inv)
 
-Tree transformers for device storage types `A`, to which `treebraider` and `treetransposer`
-forward. Their methods are added by package extensions. Being separate functions, the device
-transformers have their own cache, which can be configured independently of the host ones.
+Tree transformers for device storage types `A`, to which `treebraider`, `treetransposer`,
+`treetracer` and `treetwister` forward. Their methods are added by package extensions. Being
+separate functions, the device transformers have their own caches, which can be configured
+independently of the host ones.
 """
 function device_treebraider end
 function device_treetransposer end
+function device_treetracer end
+function device_treetwister end
 @doc (@doc device_treebraider) device_treetransposer
+@doc (@doc device_treebraider) device_treetracer
+@doc (@doc device_treebraider) device_treetwister
 
 # Keep TensorKit's profiling categories for the phases instrumented by MemoizationKit.
 const TensorKitCachedFunction = Union{
-    typeof(fusiontreebraid), typeof(fusiontreetranspose), typeof(treebraider), typeof(treetransposer),
-    typeof(device_treebraider), typeof(device_treetransposer),
+    typeof(fusiontreebraid), typeof(fusiontreetranspose),
+    typeof(treebraider), typeof(treetransposer), typeof(treetracer), typeof(treetwister),
+    typeof(device_treebraider), typeof(device_treetransposer), typeof(device_treetracer), typeof(device_treetwister),
     typeof(sectorstructure), typeof(degeneracystructure),
 }
 MemoizationKit.instrument_label(f::TensorKitCachedFunction, ::Val{:lookup}) = "bookkeeping: cache $(nameof(f))"
