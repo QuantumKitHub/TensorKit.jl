@@ -2,7 +2,7 @@
 # `CacheStyle` is imported (not just used) so that the `CacheStyle(::typeof(f), ...)`
 # specializations in TensorKit, and those of users, extend `MemoizationKit.CacheStyle`.
 import MemoizationKit: CacheStyle
-using MemoizationKit: MemoizationKit, @cached, NoCache, GlobalCache, Hashed, LRU
+using MemoizationKit: MemoizationKit, @cached, NoCache, GlobalCache, Hashed
 
 # Buffer payloads can be measured without visiting their elements when stored inline.
 # Reference-containing sector/scalar types need the recursive fallback to include their data.

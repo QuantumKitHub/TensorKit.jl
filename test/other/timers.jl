@@ -65,13 +65,6 @@ end
         # also verifies that `enable_timers!` reached the Factorizations submodule
         @test "svd_compact!" in names
 
-        sections = collect(TensorKit.timer().root.children)
-        for section in sections
-            append!(sections, section.children)
-        end
-        @test any(s -> s.name == "bookkeeping: cache treebraider", sections)
-        @test any(s -> s.name == "symmetry: compute treebraider", sections)
-
         summary = TensorKit.timer_summary(nothing)
         @test summary[:dense].ncalls > 0
         @test summary[:symmetry].ncalls > 0

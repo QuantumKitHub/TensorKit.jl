@@ -284,6 +284,26 @@ Buffers shared between cache entries count toward each entry, while identical so
 The budget excludes cache keys, container and allocation overhead, and spare array capacity; it is a cached-value estimate rather than a limit on total process memory.
 Further features, such as the live cache dashboard, disk caching and the full configuration options, are described in the [MemoizationKit.jl documentation](https://quantumkithub.github.io/MemoizationKit.jl/stable/).
 
+For example, `using Tachikoma; MemoizationKit.cache_dashboard()` shows the hit rates and sizes of TensorKit's caches live, here after a few index manipulations on tensors with different symmetries:
+
+```text
+[RAM] │  Disk
+ 5 caches · 184 entries · recent hit rate 77.5%
+ Name ▲                        Hit rate      Size                   Kind       Activity
+▌TensorKit.degeneracystructure █████97%████▋ ▏░░░░░░░12/10k░░░░░░░░ Clock      ▇███▇███
+ TensorKit.fusiontreebraid     ░░░░░0%░░░░░░ ▍░░░░░░147/10k░░░░░░░░ Clock
+ TensorKit.sectorstructure     █████96%████▌ ▏░░░░░░░12/10k░░░░░░░░ Clock      ████████
+ TensorKit.treebraider         █████81%██▌░░ ▏░░░░░░░9/10k░░░░░░░░░ Clock       ███ ███
+ TensorKit.treetwister         █████80%██▍░░ ▏░░░░░░░4/10k░░░░░░░░░ Clock      ████████
+
+╭─  TensorKit.degeneracystructure  ────────────────────────────────────────────────────────────────╮
+│Clock · 12 of 10000 entries · 278 hits · 12 misses                                                │
+│hit rate: recent 97.5% · lifetime 95.9% · 23.0 hits/s                                             │
+│███▅▇▇▇▅▇▇▇                                                                                       │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+ ⇥ tab  ↑↓ select  ⏎ resize  e empty  s sort  r reverse  / filter  g refresh  q quit
+```
+
 This caching implies that potential inefficiencies in the fusion tree manipulations (which we nonetheless try to avoid) will not seriously affect performance of tensor manipulations.
 
 ## Inspecting fusion trees as tensors
