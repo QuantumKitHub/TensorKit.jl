@@ -153,6 +153,17 @@ for V in spacelist
                 p = 3 * rand(Float64)
                 @test norm(t + t, p) ≈ 2 * norm(t, p)
                 @test norm(t) ≈ norm(t')
+                for p in (1, 2, 3 * rand(Float64), Inf)
+                    tn = @constinferred normalize(t, p)
+                    @test storagetype(tn) == storagetype(t)
+                    @test norm(tn, p) ≈ 1
+                    @test tn ≈ t / norm(t, p)
+                    @test normalize!(copy(t), p) ≈ tn
+                    @test normalize(t', p) ≈ tn'
+                    ta = copy(t)'
+                    @test normalize!(ta, p) === ta
+                    @test ta ≈ tn'
+                end
 
                 t2 = @constinferred rand!(similar(t))
                 β = rand(T)
@@ -565,6 +576,13 @@ end
         d = diagonal(T, V)
         dcpu = adapt(Array, d)
         scalars = ((TensorKit.One(), TensorKit.Zero()), (T(2), T(3)))
+
+        for p in (1, 2, 3 * rand(Float64), Inf)
+            dn = @constinferred normalize(d, p)
+            @test dn isa typeof(d)
+            @test adapt(Array, dn) ≈ normalize(dcpu, p)
+            @test adapt(Array, normalize!(copy(d), p)) ≈ normalize(dcpu, p)
+        end
 
         for p in (((), (1, 2)), ((1, 2), ()), ((2, 1), ()), ((), (2, 1)), ((1,), (2,)), ((2,), (1,))), conjd in (false, true)
             W = TO.tensoradd_structure(dcpu, p, conjd)
