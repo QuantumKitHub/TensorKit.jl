@@ -225,32 +225,37 @@ See also [`sectorstructure`](@ref), [`blockstructure`](@ref), [`subblockstructur
 
     ss = sectorstructure(W)
     ts = ss.fusiontrees
-    structurevalues = Vector{StridedStructure{N}}(undef, length(ts))
+    structurevalues = sizehint!(Vector{StridedStructure{N}}(), length(ts))
     blockvalues = Vector{Tuple{Tuple{Int, Int}, UnitRange{Int}}}(undef, length(ss.blocksectors))
 
-    # the subblocks of every coupled sector, from the degeneracies of the trees of both sides
+    # the subblocks of every coupled sector, from the degeneracies of the trees of both sides;
+    # filling a reused buffer is noticeably faster than `map` for the subblock loop below
+    splittingstructure = Vector{NTuple{numout(W), Int}}()
     blockoffset = 0
-    tree_index = 0
     for (block_index, (r₁, r₂)) in enumerate(zip(ts.ranges₁, ts.ranges₂))
-        d₁ss = map(i -> dims(codom, gettokenvalue(ts.trees₁, i).uncoupled), r₁)
-        d₂ss = map(i -> dims(dom, gettokenvalue(ts.trees₂, i).uncoupled), r₂)
-        blockdim₁ = sum(prod, d₁ss; init = 0)
-        blockdim₂ = sum(prod, d₂ss; init = 0)
+        empty!(splittingstructure)
+        blockdim₁ = 0
+        for i in r₁
+            d₁s = dims(codom, gettokenvalue(ts.trees₁, i).uncoupled)
+            blockdim₁ += prod(d₁s)
+            push!(splittingstructure, d₁s)
+        end
         strides = (1, blockdim₁)
-        offset₂ = 0
-        for d₂s in d₂ss
+        blockdim₂ = 0
+        for i in r₂
+            d₂s = dims(dom, gettokenvalue(ts.trees₂, i).uncoupled)
             d₂ = prod(d₂s)
             offset₁ = 0
-            for d₁s in d₁ss
+            for d₁s in splittingstructure
                 d₁ = prod(d₁s)
-                totaloffset = blockoffset + offset₂ * blockdim₁ + offset₁
+                totaloffset = blockoffset + blockdim₂ * blockdim₁ + offset₁
                 subsz = (d₁s..., d₂s...)
                 @assert !any(==(0), subsz)
                 substr = _subblock_strides(subsz, (d₁, d₂), strides)
-                structurevalues[tree_index += 1] = (subsz, substr, totaloffset)
+                push!(structurevalues, (subsz, substr, totaloffset))
                 offset₁ += d₁
             end
-            offset₂ += d₂
+            blockdim₂ += d₂
         end
         blockrange = (blockoffset + 1):(blockoffset + blockdim₁ * blockdim₂)
         blockvalues[block_index] = ((blockdim₁, blockdim₂), blockrange)
