@@ -41,7 +41,7 @@ function MAK.svd_vals_pushforward!(
     return MAK.svd_vals_pushforward!(Δt, t, (USVᴴ[1], MAK.diagonal(parent(USVᴴ[2])), USVᴴ[3]), ΔS, ind; kwargs...)
 end
 
-for pushforward! in (:svd_pushforward!, :eig_pushforward!, :eigh_pushforward!)
+for pushforward! in (:eig_pushforward!, :eigh_pushforward!)
     @eval function MAK.$pushforward!(
             Δt::AbstractTensorMap, t, F, ΔF;
             kwargs...
@@ -54,4 +54,18 @@ for pushforward! in (:svd_pushforward!, :eig_pushforward!, :eigh_pushforward!)
         end
         return Δt
     end
+end
+function MAK.svd_pushforward!(
+        Δt::AbstractTensorMap, t, F, ΔF, inds = Colon();
+        kwargs...
+    )
+    foreachblock(Δt, t) do c, (Δb, b)
+        ind = (inds isa Colon) ? inds : get(inds, c, nothing)
+        isnothing(ind) && return nothing
+        Fc = nothing_or_block.(F, Ref(c))
+        ΔFc = nothing_or_block.(ΔF, Ref(c))
+        MAK.svd_pushforward!(Δb, b, Fc, ΔFc, ind; kwargs...)
+        return nothing
+    end
+    return Δt
 end
