@@ -179,11 +179,11 @@ See also [`degeneracystructure`](@ref), [`subblockstructure`](@ref).
 blockstructure(W::HomSpace) = Dictionary(blocksectors(W), degeneracystructure(W).blockstructure)
 
 """
-    fusiontrees(W::HomSpace) -> FusionTreePairs{F₁,F₂}
+    fusiontrees(W::HomSpace) -> FusionTreePairs{I,F₁,F₂}
 
 Return the `FusionTreePairs` of all valid fusion tree pairs `(f₁, f₂)` for `W`, an
-`AbstractIndices` providing a bijection to sequential integer positions via
-`gettoken`/`gettokenvalue`. The result is
+`AbstractIndices` in canonical order. `gettokenvalue` with an integer returns the pair at that
+position, and `pairposition` returns the position of a pair. The result is
 cached based on the sector structure of `W` (ignoring degeneracy dimensions), so
 `HomSpace`s that share the same sectors, dualities, and index count will reuse the same
 object.
