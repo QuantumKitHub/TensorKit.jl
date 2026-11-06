@@ -1,6 +1,7 @@
 module TensorKitGPUArraysExt
 
 using GPUArrays
+using LinearAlgebra: LinearAlgebra
 using GPUArrays: @allowscalar
 using GPUArrays.KernelAbstractions: @kernel, @index, get_backend
 using Adapt
@@ -665,6 +666,46 @@ TensorKit._transform_subblocks(
 
 const GPUDiagonalTensorMap = DiagonalTensorMap{<:Any, <:Any, <:AnyGPUVector}
 const GPUTensorMap = TensorMap{<:Any, <:Any, <:Any, <:Any, <:AnyGPUVector}
+
+# `norm` returns a host scalar by default, which forces the GPU to wait and synchronize.
+# Here we add some methods for various `p` that avoid copying back to the host if we
+# don't need to, e.g. for normalization. For the 2-norm, the norm is instead kept in a
+# 1-element device array and broadcast into the data. This matches the vendor device-side
+# nrm2 versions.
+function TensorKit._nrm2!(out::AnyGPUVector, x::AnyGPUArray)
+    out .= sqrt.(vec(sum(abs2, x; dims = ntuple(identity, ndims(x)))))
+    return out
+end
+TensorKit._nrm2!(out::AnyGPUVector, x::LinearAlgebra.Diagonal) = TensorKit._nrm2!(out, x.diag)
+
+function _device_norm2(t::Union{GPUTensorMap, GPUDiagonalTensorMap})
+    InnerProductStyle(t) === EuclideanInnerProduct() || TensorKit.throw_invalid_innerproduct(:norm)
+    out = similar(t.data, float(real(scalartype(t))), 1)
+    FusionStyle(sectortype(t)) isa UniqueFusion && return TensorKit._nrm2!(out, t.data)
+    fill!(out, zero(eltype(out)))
+    nb = similar(out)
+    for (c, b) in blocks(t)
+        out .+= dim(c) .* abs2.(TensorKit._nrm2!(nb, b))
+    end
+    return out .= sqrt.(out)
+end
+
+function LinearAlgebra.normalize!(t::Union{GPUTensorMap, GPUDiagonalTensorMap}, p::Real = 2)
+    p == 2 || return scale!(t, inv(norm(t, p)))
+    t.data ./= _device_norm2(t)
+    return t
+end
+function LinearAlgebra.normalize(t::Union{GPUTensorMap, GPUDiagonalTensorMap}, p::Real = 2)
+    p == 2 || return scale(t, inv(norm(t, p)))
+    tdst = similar(t, float(scalartype(t)))
+    tdst.data .= t.data ./ _device_norm2(t)
+    return tdst
+end
+function LinearAlgebra.normalize!(t::AdjointTensorMap{<:Any, <:Any, <:Any, <:Any, <:GPUTensorMap}, p::Real = 2)
+    normalize!(parent(t), p)
+    return t
+end
+LinearAlgebra.normalize(t::AdjointTensorMap{<:Any, <:Any, <:Any, <:Any, <:GPUTensorMap}, p::Real = 2) = adjoint(normalize(parent(t), p))
 
 # position of each subblock in the data of a `DiagonalTensorMap` in the same space
 _diagonal_offsets(structure) = first(_work_offsets(first(first(s)) for s in structure))
