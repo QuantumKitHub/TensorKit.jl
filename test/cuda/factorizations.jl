@@ -3,7 +3,7 @@ using Test, TestExtras
 using TensorKit
 using LinearAlgebra: LinearAlgebra
 using Random
-using MatrixAlgebraKit: DefaultAlgorithm, Jacobi, diagview
+using MatrixAlgebraKit: DefaultAlgorithm, Jacobi, CUSOLVER_Randomized, diagview
 const CUDAExt = Base.get_extension(TensorKit, :TensorKitCUDAExt)
 @assert !isnothing(CUDAExt) "Failed to load TensorKit - CUDA extension"
 const CuTensorMap = getglobal(CUDAExt, :CuTensorMap)
@@ -478,6 +478,52 @@ for V in spacelist
                         @test space(S6, 1) == space(S7, 1)
                     end
                 end
+            end
+        end
+
+        @testset "randomized truncated SVD" begin
+            # a randomized SVD is only accurate if the discarded part of the spectrum is small,
+            # so test on a low-rank tensor plus a small amount of noise
+            function lowrank(t, nvals)
+                t isa TensorKit.AdjointTensorMap && return lowrank(t', nvals)'
+                U, S, Vᴴ, _ = svd_trunc(t; trunc = truncrank(nvals))
+                noise = normalize!(cuRAND.randn(scalartype(t), space(t)))
+                return U * S * Vᴴ + eps(real(scalartype(t)))^(3 / 4) * noise
+            end
+            for T in eltypes,
+                    t0 in (
+                        cuRAND.randn(T, W, W), cuRAND.randn(T, W, W)',
+                        cuRAND.randn(T, (V1 ⊗ V2 ⊗ V3), (V4 ⊗ V5)'), cuRAND.randn(T, (V1 ⊗ V2)', (V3 ⊗ V4 ⊗ V5))',
+                    )
+
+                normalize!(t0)
+                _, Sref, _, _ = svd_trunc(t0; trunc = notrunc())
+                nvals = round(Int, dim(domain(Sref)) / 2)
+                t = lowrank(t0, nvals)
+                alg = CUSOLVER_Randomized()
+
+                _, S1, _, _ = svd_trunc(t; trunc = truncrank(nvals))
+                λ = minimum(diagview(S1))
+                ϵtol = eps(real(T))^(1 / 3)
+                for trunc in (
+                        truncrank(nvals), truncspace(space(S1, 1)),
+                        truncrank(nvals) & trunctol(; atol = λ / 2),
+                    )
+                    U, S, Vᴴ, ϵ = @constinferred svd_trunc(t; trunc, alg)
+                    Ur, Sr, Vᴴr, ϵr = svd_trunc(t; trunc)
+                    @test space(S, 1) == space(Sr, 1)
+                    @test S ≈ Sr
+                    @test isisometric(U)
+                    @test isisometric(Vᴴ; side = :right)
+                    @test U * S * Vᴴ ≈ Ur * Sr * Vᴴr
+                    @test norm(t - U * S * Vᴴ) ≈ ϵ atol = ϵtol
+                    @test ϵ ≈ ϵr atol = ϵtol
+                end
+
+                _, S2, _, _ = svd_trunc(t; trunc = truncrank(nvals), alg = CUSOLVER_Randomized(; k = 1))
+                @test all(c -> length(diagview(block(S2, c))) ≤ 1, blocksectors(S2))
+
+                @test_throws ArgumentError svd_trunc(t; trunc = trunctol(; atol = λ / 2), alg)
             end
         end
 
