@@ -33,7 +33,9 @@ for transform in (:permute, :transpose)
         # and store that instead of repeating the permutation in the pullback each time.
         # effectively, we replace `permute!/transpose!` by `add ∘ permute/transpose`.
         Ap = if _needs_tangent(α)
-            Ap = $transform(A, p; copy = true, TK.backend_kwargs(ba...)...)
+            backend = get(ba, 1, TO.DefaultBackend())
+            allocator = get(ba, 2, TO.DefaultAllocator())
+            Ap = $transform(A, p; copy = true, backend, allocator)
             add!(C, Ap, α, β)
             Ap
         else
@@ -91,7 +93,9 @@ function Mooncake.rrule!!(
     # and store that instead of repeating the permutation in the pullback each time.
     # effectively, we replace `braid!` by `add ∘ braid`.
     Ap = if _needs_tangent(α)
-        Ap = braid(A, p, levels; copy = true, TK.backend_kwargs(ba...)...)
+        backend = get(ba, 1, TO.DefaultBackend())
+        allocator = get(ba, 2, TO.DefaultAllocator())
+        Ap = braid(A, p, levels; copy = true, backend, allocator)
         add!(C, Ap, α, β)
         Ap
     else
@@ -222,7 +226,9 @@ function twist!_rrule(C_ΔC, A_ΔA, inds_Δinds, inv, args_Δargs)
     # and store that instead of repeating the twist in the pullback each time.
     # effectively, we replace `twist!` by `add ∘ twist`.
     Ap = if _needs_tangent(α)
-        Ap = twist(A, inds; inv, copy = true, TK.backend_kwargs(ba...)...)
+        backend = get(ba, 1, TO.DefaultBackend())
+        allocator = get(ba, 2, TO.DefaultAllocator())
+        Ap = twist(A, inds; inv, copy = true, backend, allocator)
         add!(C, Ap, α, β)
         Ap
     else
