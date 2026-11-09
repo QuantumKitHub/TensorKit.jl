@@ -21,8 +21,9 @@ for transform in (:permute, :transpose)
             # without copy=true, this may just alias A if
             # the permutation is an identity or the space
             # is Trivial and has_shared_permute is true
-            bavs = map(a -> a.val, ba)
-            Ap = $transform(A.val, p.val; copy = true, TK.backend_kwargs(bavs...)...)
+            backend = get(ba, 1, Const(TO.DefaultBackend())).val
+            allocator = get(ba, 2, Const(TO.DefaultAllocator())).val
+            Ap = $transform(A.val, p.val; copy = true, backend, allocator)
             add!(C.val, Ap, α.val, β.val)
             Ap
         else
@@ -114,8 +115,9 @@ function EnzymeRules.augmented_primal(
     # and store that instead of repeating the permutation in the pullback each time.
     # effectively, we replace `add_permute` by `add ∘ permute`.
     Ap = if !isa(α, Const)
-        bavs = map(a -> a.val, ba)
-        Ap = braid(A.val, p.val, levels.val; copy = true, TK.backend_kwargs(bavs...)...)
+        backend = get(ba, 1, Const(TO.DefaultBackend())).val
+        allocator = get(ba, 2, Const(TO.DefaultAllocator())).val
+        Ap = braid(A.val, p.val, levels.val; copy = true, backend, allocator)
         add!(C.val, Ap, α.val, β.val)
         Ap
     else
@@ -206,8 +208,9 @@ function EnzymeRules.augmented_primal(
     # and store that instead of repeating the twist in the pullback each time.
     # effectively, we replace `twist!` by `add ∘ twist`.
     Ap = if !isa(α, Const)
-        bavs = map(a -> a.val, ba)
-        Ap = twist(A.val, inds.val; inv, copy = true, TK.backend_kwargs(bavs...)...)
+        backend = get(ba, 1, Const(TO.DefaultBackend())).val
+        allocator = get(ba, 2, Const(TO.DefaultAllocator())).val
+        Ap = twist(A.val, inds.val; inv, copy = true, backend, allocator)
         add!(C.val, Ap, α.val, β.val)
         Ap
     else

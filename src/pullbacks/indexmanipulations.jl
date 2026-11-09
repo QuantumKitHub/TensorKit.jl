@@ -1,8 +1,3 @@
-# the optional positional `backend` and `allocator` as keywords for the out-of-place methods
-backend_kwargs() = (;)
-backend_kwargs(backend) = (; backend)
-backend_kwargs(backend, allocator) = (; backend, allocator)
-
 for transform in (:permute, :transpose)
     transform! = Symbol(transform, :!)
     transform_pb = Symbol(transform, :_pullback_dA)
