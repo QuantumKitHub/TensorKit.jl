@@ -10,7 +10,7 @@ for transform in (:permute, :transpose)
             p::Const{<:Index2Tuple},
             α::Annotation{<:Number},
             β::Annotation{<:Number},
-            ba::Const...
+            backend::Const, allocator::Const
         ) where {RT}
         C_cache = !isa(β, Const) ? copy(C.val) : nothing
         A_cache = EnzymeRules.overwritten(config)[3] ? copy(A.val) : nothing
@@ -21,14 +21,11 @@ for transform in (:permute, :transpose)
             # without copy=true, this may just alias A if
             # the permutation is an identity or the space
             # is Trivial and has_shared_permute is true
-            backend = get(ba, 1, Const(TO.DefaultBackend())).val
-            allocator = get(ba, 2, Const(TO.DefaultAllocator())).val
-            Ap = $transform(A.val, p.val; copy = true, backend, allocator)
+            Ap = $transform(A.val, p.val; copy = true, backend = backend.val, allocator = allocator.val)
             add!(C.val, Ap, α.val, β.val)
             Ap
         else
-            bavs = map(a -> a.val, ba)
-            TK.$transform!(C.val, A.val, p.val, α.val, β.val, bavs...)
+            TK.$transform!(C.val, A.val, p.val, α.val, β.val, backend.val, allocator.val)
             nothing
         end
         cache = (C_cache, A_cache, Ap)
@@ -46,20 +43,19 @@ for transform in (:permute, :transpose)
             p::Const{<:Index2Tuple},
             α::Annotation{<:Number},
             β::Annotation{<:Number},
-            ba::Const...
+            backend::Const, allocator::Const
         ) where {RT}
         C_cache, A_cache, Ap = cache
         Cval = something(C_cache, C.val)
-        bavs = map(a -> a.val, ba)
         # ΔA
         if !isa(A, Const) && !isa(C, Const)
             Aval = something(A_cache, A.val)
-            TK.$transform_pb(A.dval, Aval, C.dval, C.val, p.val, α.val, bavs...)
+            TK.$transform_pb(A.dval, Aval, C.dval, C.val, p.val, α.val, backend.val, allocator.val)
         end
         Δα = pullback_dα(α, C, Ap)
         Δβ = pullback_dβ(β, C, Cval)
         !isa(C, Const) && pullback_dC!(C.dval, β.val)
-        return nothing, nothing, nothing, Δα, Δβ, map(Returns(nothing), ba)...
+        return nothing, nothing, nothing, Δα, Δβ, nothing, nothing
     end
     @eval function EnzymeRules.forward(
             config::EnzymeRules.FwdConfigWidth{1},
@@ -70,19 +66,18 @@ for transform in (:permute, :transpose)
             p::Annotation{<:Index2Tuple},
             α::Annotation{<:Number},
             β::Annotation{<:Number},
-            ba::Const...
+            backend::Const, allocator::Const
         ) where {RT}
-        bavs = map(a -> a.val, ba)
         if !isa(C, Const)
             if isa(β, Const)
                 scale!(C.dval, β.val)
             else
                 add!(C.dval, C.val, β.dval, β.val)
             end
-            !isa(α, Const) && TK.$transform!(C.dval, A.val, p.val, α.dval, One(), bavs...)
-            !isa(A, Const) && TK.$transform!(C.dval, A.dval, p.val, α.val, One(), bavs...)
+            !isa(α, Const) && TK.$transform!(C.dval, A.val, p.val, α.dval, One(), backend.val, allocator.val)
+            !isa(A, Const) && TK.$transform!(C.dval, A.dval, p.val, α.val, One(), backend.val, allocator.val)
         end
-        TK.$transform!(C.val, A.val, p.val, α.val, β.val, bavs...)
+        TK.$transform!(C.val, A.val, p.val, α.val, β.val, backend.val, allocator.val)
         if EnzymeRules.needs_primal(config) && EnzymeRules.needs_shadow(config)
             return C
         elseif EnzymeRules.needs_primal(config)
@@ -107,7 +102,7 @@ function EnzymeRules.augmented_primal(
         levels::Const{<:IndexTuple},
         α::Annotation{<:Number},
         β::Annotation{<:Number},
-        ba::Const...
+        backend::Const, allocator::Const
     ) where {RT}
     C_cache = !isa(β, Const) ? copy(C.val) : nothing
     A_cache = EnzymeRules.overwritten(config)[3] ? copy(A.val) : nothing
@@ -115,14 +110,11 @@ function EnzymeRules.augmented_primal(
     # and store that instead of repeating the permutation in the pullback each time.
     # effectively, we replace `add_permute` by `add ∘ permute`.
     Ap = if !isa(α, Const)
-        backend = get(ba, 1, Const(TO.DefaultBackend())).val
-        allocator = get(ba, 2, Const(TO.DefaultAllocator())).val
-        Ap = braid(A.val, p.val, levels.val; copy = true, backend, allocator)
+        Ap = braid(A.val, p.val, levels.val; copy = true, backend = backend.val, allocator = allocator.val)
         add!(C.val, Ap, α.val, β.val)
         Ap
     else
-        bavs = map(a -> a.val, ba)
-        TK.braid!(C.val, A.val, p.val, levels.val, α.val, β.val, bavs...)
+        TK.braid!(C.val, A.val, p.val, levels.val, α.val, β.val, backend.val, allocator.val)
         nothing
     end
     cache = (C_cache, A_cache, Ap)
@@ -141,20 +133,19 @@ function EnzymeRules.reverse(
         levels::Const{<:IndexTuple},
         α::Annotation{<:Number},
         β::Annotation{<:Number},
-        ba::Const...
+        backend::Const, allocator::Const
     ) where {RT}
     C_cache, A_cache, Ap = cache
     Cval = something(C_cache, C.val)
     Aval = something(A_cache, A.val)
-    bavs = map(a -> a.val, ba)
     # ΔA
     if !isa(A, Const) && !isa(C, Const)
-        TK.braid_pb(A.dval, Aval, C.dval, C.val, p.val, levels.val, α.val, bavs...)
+        TK.braid_pb(A.dval, Aval, C.dval, C.val, p.val, levels.val, α.val, backend.val, allocator.val)
     end
     Δαr = pullback_dα(α, C, Ap)
     Δβr = pullback_dβ(β, C, Cval)
     !isa(C, Const) && pullback_dC!(C.dval, β.val)
-    return nothing, nothing, nothing, nothing, Δαr, Δβr, map(Returns(nothing), ba)...
+    return nothing, nothing, nothing, nothing, Δαr, Δβr, nothing, nothing
 end
 function EnzymeRules.forward(
         config::EnzymeRules.FwdConfigWidth{1},
@@ -166,19 +157,18 @@ function EnzymeRules.forward(
         levels::Annotation{<:IndexTuple},
         α::Annotation{<:Number},
         β::Annotation{<:Number},
-        ba::Const...
+        backend::Const, allocator::Const
     ) where {RT}
-    bavs = map(a -> a.val, ba)
     if !isa(C, Const)
         if isa(β, Const)
             scale!(C.dval, β.val)
         else
             add!(C.dval, C.val, β.dval, β.val)
         end
-        !isa(α, Const) && TK.braid!(C.dval, A.val, p.val, levels.val, α.dval, One(), bavs...)
-        !isa(A, Const) && TK.braid!(C.dval, A.dval, p.val, levels.val, α.val, One(), bavs...)
+        !isa(α, Const) && TK.braid!(C.dval, A.val, p.val, levels.val, α.dval, One(), backend.val, allocator.val)
+        !isa(A, Const) && TK.braid!(C.dval, A.dval, p.val, levels.val, α.val, One(), backend.val, allocator.val)
     end
-    TK.braid!(C.val, A.val, p.val, levels.val, α.val, β.val, bavs...)
+    TK.braid!(C.val, A.val, p.val, levels.val, α.val, β.val, backend.val, allocator.val)
     if EnzymeRules.needs_primal(config) && EnzymeRules.needs_shadow(config)
         return C
     elseif EnzymeRules.needs_primal(config)
@@ -199,7 +189,7 @@ function EnzymeRules.augmented_primal(
         inds::Const,
         α::Annotation{<:Number},
         β::Annotation{<:Number},
-        ba::Const...;
+        backend::Const, allocator::Const;
         inv::Bool = false
     ) where {RT}
     C_cache = !isa(β, Const) ? copy(C.val) : nothing
@@ -208,14 +198,11 @@ function EnzymeRules.augmented_primal(
     # and store that instead of repeating the twist in the pullback each time.
     # effectively, we replace `twist!` by `add ∘ twist`.
     Ap = if !isa(α, Const)
-        backend = get(ba, 1, Const(TO.DefaultBackend())).val
-        allocator = get(ba, 2, Const(TO.DefaultAllocator())).val
-        Ap = twist(A.val, inds.val; inv, copy = true, backend, allocator)
+        Ap = twist(A.val, inds.val; inv, copy = true, backend = backend.val, allocator = allocator.val)
         add!(C.val, Ap, α.val, β.val)
         Ap
     else
-        bavs = map(a -> a.val, ba)
-        TK.twist!(C.val, A.val, inds.val, α.val, β.val, bavs...; inv)
+        TK.twist!(C.val, A.val, inds.val, α.val, β.val, backend.val, allocator.val; inv)
         nothing
     end
     cache = (C_cache, A_cache, Ap)
@@ -233,21 +220,20 @@ function EnzymeRules.reverse(
         inds::Const,
         α::Annotation{<:Number},
         β::Annotation{<:Number},
-        ba::Const...;
+        backend::Const, allocator::Const;
         inv::Bool = false
     ) where {RT}
     C_cache, A_cache, Ap = cache
     Cval = something(C_cache, C.val)
     Aval = something(A_cache, A.val)
-    bavs = map(a -> a.val, ba)
     # ΔA
     if !isa(A, Const) && !isa(C, Const)
-        TK.twist_pb(A.dval, Aval, C.dval, C.val, inds.val, α.val, bavs...; inv)
+        TK.twist_pb(A.dval, Aval, C.dval, C.val, inds.val, α.val, backend.val, allocator.val; inv)
     end
     Δαr = pullback_dα(α, C, Ap)
     Δβr = pullback_dβ(β, C, Cval)
     !isa(C, Const) && pullback_dC!(C.dval, β.val)
-    return nothing, nothing, nothing, Δαr, Δβr, map(Returns(nothing), ba)...
+    return nothing, nothing, nothing, Δαr, Δβr, nothing, nothing
 end
 function EnzymeRules.forward(
         config::EnzymeRules.FwdConfigWidth{1},
@@ -258,20 +244,19 @@ function EnzymeRules.forward(
         inds::Annotation,
         α::Annotation{<:Number},
         β::Annotation{<:Number},
-        ba::Const...;
+        backend::Const, allocator::Const;
         inv::Bool = false
     ) where {RT}
-    bavs = map(a -> a.val, ba)
     if !isa(C, Const)
         if isa(β, Const)
             scale!(C.dval, β.val)
         else
             add!(C.dval, C.val, β.dval, β.val)
         end
-        !isa(α, Const) && TK.twist!(C.dval, A.val, inds.val, α.dval, One(), bavs...; inv)
-        !isa(A, Const) && TK.twist!(C.dval, A.dval, inds.val, α.val, One(), bavs...; inv)
+        !isa(α, Const) && TK.twist!(C.dval, A.val, inds.val, α.dval, One(), backend.val, allocator.val; inv)
+        !isa(A, Const) && TK.twist!(C.dval, A.dval, inds.val, α.val, One(), backend.val, allocator.val; inv)
     end
-    TK.twist!(C.val, A.val, inds.val, α.val, β.val, bavs...; inv)
+    TK.twist!(C.val, A.val, inds.val, α.val, β.val, backend.val, allocator.val; inv)
     if EnzymeRules.needs_primal(config) && EnzymeRules.needs_shadow(config)
         return C
     elseif EnzymeRules.needs_primal(config)
