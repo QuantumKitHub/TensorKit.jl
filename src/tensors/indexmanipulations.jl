@@ -560,9 +560,7 @@ end
     Vsrc′, p′ = conjsrc ? (Vsrc', adjointtensorindices(Vsrc, p)) : (Vsrc, p)
     return spacecheck_transform(f, Vdst, Vsrc′, p′)
 end
-@noinline function spacecheck_transform(
-        ::typeof(twist), Vdst::TensorMapSpace, Vsrc::TensorMapSpace, mask::Tuple{Vararg{Bool}}
-    )
+@noinline function spacecheck_transform(::typeof(twist), Vdst::TensorMapSpace, Vsrc::TensorMapSpace, mask::Tuple{Vararg{Bool}})
     check_spacetype(Vdst, Vsrc)
     length(mask) == numind(Vsrc) ||
         throw(ArgumentError(lazy"twist mask $mask does not match the number of indices $(numind(Vsrc))"))
