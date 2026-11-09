@@ -107,7 +107,7 @@ for V in spacelist
                 v_cpu = @constinferred adapt(Array, v_gpu)
                 @test v_cpu isa TensorKit.SectorVector{T, I, Vector{T}}
                 @test parent(v_cpu) == parent(v)
-                t = AMDGPU.randn(T, V1 ⊗ V2 ← V3)
+                t = AMDGPU.randn(T, V1 ⊗ V2 ⊗ V3 ← (V4 ⊗ V5)')
                 s = svd_vals(t)
                 s_cpu = adapt(Array, s)
                 @test parent(s_cpu) == collect(parent(s))
