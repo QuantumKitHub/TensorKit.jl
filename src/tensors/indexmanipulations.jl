@@ -78,19 +78,23 @@ function twist!(t::AbstractTensorMap, inds; inv::Bool = false)
     @inbounds twist!(t, t, mask, One(), Zero(); inv)
     return t
 end
+# fill in the defaults through an explicit call, such that AD rules for the full signature also apply
 @propagate_inbounds function twist!(
         tdst::AbstractTensorMap, tsrc::AbstractTensorMap, inds,
-        α::Number = One(), β::Number = Zero(),
-        backend::AbstractBackend = TO.DefaultBackend(), allocator = TO.DefaultAllocator();
+        α::Number = One(), β::Number = Zero(), backend::AbstractBackend = TO.DefaultBackend();
         inv::Bool = false
+    )
+    return twist!(tdst, tsrc, inds, α, β, backend, TO.DefaultAllocator(); inv)
+end
+@propagate_inbounds function twist!(
+        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, inds,
+        α::Number, β::Number, backend::AbstractBackend, allocator; inv::Bool = false
     )
     return twist!(tdst, tsrc, _twistmask(tsrc, inds), α, β, backend, allocator; inv)
 end
 @propagate_inbounds function twist!(
         tdst::AbstractTensorMap, tsrc::AbstractTensorMap, mask::Tuple{Vararg{Bool}},
-        α::Number = One(), β::Number = Zero(),
-        backend::AbstractBackend = TO.DefaultBackend(), allocator = TO.DefaultAllocator();
-        inv::Bool = false
+        α::Number, β::Number, backend::AbstractBackend, allocator; inv::Bool = false
     )
     twistmask = _twistmask(tsrc, mask) # checks the length, and maps an empty `inds` onto a mask
     @boundscheck spacecheck_transform(twist, space(tdst), space(tsrc), twistmask)

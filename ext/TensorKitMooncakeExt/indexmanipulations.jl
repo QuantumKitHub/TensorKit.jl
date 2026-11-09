@@ -9,7 +9,7 @@ for transform in (:permute, :transpose)
             typeof(TK.$transform!),
             AbstractTensorMap,
             AbstractTensorMap, Index2Tuple,
-            Number, Number, Vararg{Any},
+            Number, Number, Any, Any,
         }
     )
 
@@ -18,14 +18,14 @@ for transform in (:permute, :transpose)
             C_ΔC::CoDual{<:AbstractTensorMap},
             A_ΔA::CoDual{<:AbstractTensorMap}, p_Δp::CoDual{<:Index2Tuple},
             α_Δα::CoDual{<:Number}, β_Δβ::CoDual{<:Number},
-            ba_Δba::CoDual...
+            backend_Δbackend::CoDual, allocator_Δallocator::CoDual
         )
         # prepare arguments
         C, ΔC = arrayify(C_ΔC)
         A, ΔA = arrayify(A_ΔA)
         p = primal(p_Δp)
         α, β = primal.((α_Δα, β_Δβ))
-        ba = primal.(ba_Δba)
+        backend, allocator = primal.((backend_Δbackend, allocator_Δallocator))
 
         C_cache = copy(C)
 
@@ -33,13 +33,11 @@ for transform in (:permute, :transpose)
         # and store that instead of repeating the permutation in the pullback each time.
         # effectively, we replace `permute!/transpose!` by `add ∘ permute/transpose`.
         Ap = if _needs_tangent(α)
-            backend = get(ba, 1, TO.DefaultBackend())
-            allocator = get(ba, 2, TO.DefaultAllocator())
             Ap = $transform(A, p; copy = true, backend, allocator)
             add!(C, Ap, α, β)
             Ap
         else
-            TK.$transform!(C, A, p, α, β, ba...)
+            TK.$transform!(C, A, p, α, β, backend, allocator)
             nothing
         end
 
@@ -47,14 +45,14 @@ for transform in (:permute, :transpose)
             copy!(C, C_cache)
 
             # ΔA
-            TK.$transform_pb(ΔA, A, ΔC, C, p, α, ba...)
+            TK.$transform_pb(ΔA, A, ΔC, C, p, α, backend, allocator)
             ΔAr = NoRData()
 
             Δαr = pullback_dα(α, ΔC, Ap)
             Δβr = pullback_dβ(β, ΔC, C)
             ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
 
-            return NoRData(), ΔCr, ΔAr, NoRData(), Δαr, Δβr, map(Returns(NoRData()), ba)...
+            return NoRData(), ΔCr, ΔAr, NoRData(), Δαr, Δβr, NoRData(), NoRData()
         end
 
         return C_ΔC, $transform_pullback
@@ -68,7 +66,7 @@ end
         typeof(TK.braid!),
         AbstractTensorMap,
         AbstractTensorMap, Index2Tuple, IndexTuple,
-        Number, Number, Vararg{Any},
+        Number, Number, Any, Any,
     }
 )
 
@@ -77,7 +75,7 @@ function Mooncake.rrule!!(
         C_ΔC::CoDual{<:AbstractTensorMap},
         A_ΔA::CoDual{<:AbstractTensorMap}, p_Δp::CoDual{<:Index2Tuple}, levels_Δlevels::CoDual{<:IndexTuple},
         α_Δα::CoDual{<:Number}, β_Δβ::CoDual{<:Number},
-        ba_Δba::CoDual...
+        backend_Δbackend::CoDual, allocator_Δallocator::CoDual
     )
     # prepare arguments
     C, ΔC = arrayify(C_ΔC)
@@ -85,7 +83,7 @@ function Mooncake.rrule!!(
     p = primal(p_Δp)
     levels = primal(levels_Δlevels)
     α, β = primal.((α_Δα, β_Δβ))
-    ba = primal.(ba_Δba)
+    backend, allocator = primal.((backend_Δbackend, allocator_Δallocator))
 
     C_cache = copy(C)
 
@@ -93,27 +91,25 @@ function Mooncake.rrule!!(
     # and store that instead of repeating the permutation in the pullback each time.
     # effectively, we replace `braid!` by `add ∘ braid`.
     Ap = if _needs_tangent(α)
-        backend = get(ba, 1, TO.DefaultBackend())
-        allocator = get(ba, 2, TO.DefaultAllocator())
         Ap = braid(A, p, levels; copy = true, backend, allocator)
         add!(C, Ap, α, β)
         Ap
     else
-        TK.braid!(C, A, p, levels, α, β, ba...)
+        TK.braid!(C, A, p, levels, α, β, backend, allocator)
         nothing
     end
 
     function braid!_pullback(::NoRData)
         copy!(C, C_cache)
 
-        TK.braid_pb(ΔA, A, ΔC, C, p, levels, α, ba...)
+        TK.braid_pb(ΔA, A, ΔC, C, p, levels, α, backend, allocator)
         ΔAr = NoRData()
 
         Δαr = pullback_dα(α, ΔC, Ap)
         Δβr = pullback_dβ(β, ΔC, C)
         ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
 
-        return NoRData(), ΔCr, ΔAr, NoRData(), NoRData(), Δαr, Δβr, map(Returns(NoRData()), ba)...
+        return NoRData(), ΔCr, ΔAr, NoRData(), NoRData(), Δαr, Δβr, NoRData(), NoRData()
     end
 
     return C_ΔC, braid!_pullback
@@ -172,7 +168,7 @@ end
         typeof(TK.twist!),
         AbstractTensorMap,
         AbstractTensorMap, Any,
-        Number, Number, Vararg{Any},
+        Number, Number, Any, Any,
     }
 )
 @is_primitive(
@@ -182,7 +178,7 @@ end
         typeof(Core.kwcall), @NamedTuple{inv::Bool}, typeof(TK.twist!),
         AbstractTensorMap,
         AbstractTensorMap, Any,
-        Vararg{Any},
+        Number, Number, Any, Any,
     }
 )
 
@@ -191,9 +187,9 @@ function Mooncake.rrule!!(
         C_ΔC::CoDual{<:AbstractTensorMap},
         A_ΔA::CoDual{<:AbstractTensorMap}, inds_Δinds::CoDual,
         α_Δα::CoDual{<:Number}, β_Δβ::CoDual{<:Number},
-        ba_Δba::CoDual...
+        backend_Δbackend::CoDual, allocator_Δallocator::CoDual
     )
-    C_ΔC, pullback = twist!_rrule(C_ΔC, A_ΔA, inds_Δinds, false, (α_Δα, β_Δβ, ba_Δba...))
+    C_ΔC, pullback = twist!_rrule(C_ΔC, A_ΔA, inds_Δinds, α_Δα, β_Δβ, backend_Δbackend, allocator_Δallocator, false)
     twist!_pullback(Δ::NoRData) = (NoRData(), pullback(Δ)...)
     return C_ΔC, twist!_pullback
 end
@@ -201,24 +197,22 @@ function Mooncake.rrule!!(
         ::CoDual{typeof(Core.kwcall)}, kwargs_Δkwargs::CoDual{@NamedTuple{inv::Bool}}, ::CoDual{typeof(TK.twist!)},
         C_ΔC::CoDual{<:AbstractTensorMap},
         A_ΔA::CoDual{<:AbstractTensorMap}, inds_Δinds::CoDual,
-        args_Δargs::CoDual...
+        α_Δα::CoDual{<:Number}, β_Δβ::CoDual{<:Number},
+        backend_Δbackend::CoDual, allocator_Δallocator::CoDual
     )
     inv = primal(kwargs_Δkwargs).inv
-    C_ΔC, pullback = twist!_rrule(C_ΔC, A_ΔA, inds_Δinds, inv, args_Δargs)
+    C_ΔC, pullback = twist!_rrule(C_ΔC, A_ΔA, inds_Δinds, α_Δα, β_Δβ, backend_Δbackend, allocator_Δallocator, inv)
     twist!_pullback(Δ::NoRData) = (NoRData(), NoRData(), NoRData(), pullback(Δ)...)
     return C_ΔC, twist!_pullback
 end
 
-# `args_Δargs` holds the optional `α`, `β`, backend and allocator, where a missing `α` or `β` is constant
-function twist!_rrule(C_ΔC, A_ΔA, inds_Δinds, inv, args_Δargs)
+function twist!_rrule(C_ΔC, A_ΔA, inds_Δinds, α_Δα, β_Δβ, backend_Δbackend, allocator_Δallocator, inv)
     # prepare arguments
     C, ΔC = arrayify(C_ΔC)
     A, ΔA = arrayify(A_ΔA)
     inds = primal(inds_Δinds)
-    args = primal.(args_Δargs)
-    α = length(args) >= 1 ? args[1] : One()
-    β = length(args) >= 2 ? args[2] : Zero()
-    ba = length(args) >= 3 ? args[3:end] : ()
+    α, β = primal.((α_Δα, β_Δβ))
+    backend, allocator = primal.((backend_Δbackend, allocator_Δallocator))
 
     C_cache = copy(C)
 
@@ -226,28 +220,25 @@ function twist!_rrule(C_ΔC, A_ΔA, inds_Δinds, inv, args_Δargs)
     # and store that instead of repeating the twist in the pullback each time.
     # effectively, we replace `twist!` by `add ∘ twist`.
     Ap = if _needs_tangent(α)
-        backend = get(ba, 1, TO.DefaultBackend())
-        allocator = get(ba, 2, TO.DefaultAllocator())
         Ap = twist(A, inds; inv, copy = true, backend, allocator)
         add!(C, Ap, α, β)
         Ap
     else
-        TK.twist!(C, A, inds, α, β, ba...; inv)
+        TK.twist!(C, A, inds, α, β, backend, allocator; inv)
         nothing
     end
 
     function pullback(::NoRData)
         copy!(C, C_cache)
 
-        TK.twist_pb(ΔA, A, ΔC, C, inds, α, ba...; inv)
+        TK.twist_pb(ΔA, A, ΔC, C, inds, α, backend, allocator; inv)
         ΔAr = NoRData()
 
-        Δαr = length(args) >= 1 ? pullback_dα(α, ΔC, Ap) : nothing
-        Δβr = length(args) >= 2 ? pullback_dβ(β, ΔC, C) : nothing
+        Δαr = pullback_dα(α, ΔC, Ap)
+        Δβr = pullback_dβ(β, ΔC, C)
         ΔCr = pullback_dC!(ΔC, β) # this typically returns NoRData()
 
-        Δargsr = (Δαr, Δβr, map(Returns(NoRData()), ba)...)[1:length(args)]
-        return ΔCr, ΔAr, NoRData(), Δargsr...
+        return ΔCr, ΔAr, NoRData(), Δαr, Δβr, NoRData(), NoRData()
     end
 
     return C_ΔC, pullback
