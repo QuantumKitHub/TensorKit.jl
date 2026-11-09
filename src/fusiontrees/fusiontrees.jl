@@ -299,14 +299,12 @@ struct TreeRows{F, D}
     trees::Vector{F}
     index::Union{D, Nothing} # `nothing`: few trees, the rows are found by a linear search
     n::Int
-    # no default outer constructor, of which `D` would be unbound if `index === nothing`
-    TreeRows{F, D}(trees::Vector{F}, index, n::Int) where {F, D} = new{F, D}(trees, index, n)
-end
-function TreeRows(::Type{F}, n::Int) where {F}
-    trees = sizehint!(Vector{F}(), n)
-    K = Base.promote_op(treeindex_data, F)
-    index = n > 32 ? sizehint!(Dict{K, Int}(), n) : nothing
-    return TreeRows{F, Dict{K, Int}}(trees, index, n)
+    function TreeRows{F}(n::Int) where {F}
+        trees = sizehint!(Vector{F}(), n)
+        K = Base.promote_op(treeindex_data, F)
+        index = n > 32 ? sizehint!(Dict{K, Int}(), n) : nothing
+        return new{F, Dict{K, Int}}(trees, index, n)
+    end
 end
 function row!(rows::TreeRows, f)
     key = treeindex_data(f)

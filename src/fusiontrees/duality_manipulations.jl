@@ -71,7 +71,7 @@ function bendright(src::FusionTreeBlock)
     N₂ = numin(src)
     @assert N₁ > 0
 
-    rows = TreeRows(fusiontreetype(I, N₁ - 1, N₂ + 1), length(src))
+    rows = TreeRows{fusiontreetype(I, N₁ - 1, N₂ + 1)}(length(src))
     U = zeros(fusionscalartype(I), length(src), length(src))
 
     for (col, (f₁, f₂)) in enumerate(fusiontrees(src))
@@ -140,7 +140,7 @@ function bendleft(src::FusionTreeBlock)
     N₂ = numin(src)
     @assert N₂ > 0
 
-    rows = TreeRows(fusiontreetype(I, N₁ + 1, N₂ - 1), length(src))
+    rows = TreeRows{fusiontreetype(I, N₁ + 1, N₂ - 1)}(length(src))
     U = zeros(fusionscalartype(I), length(src), length(src))
 
     for (col, (f₁, f₂)) in enumerate(fusiontrees(src))
@@ -220,7 +220,7 @@ function foldright(src::FusionTreeBlock)
     N₁ = numout(src)
     @assert N₁ > 0
 
-    rows = TreeRows(fusiontreetype(I, N₁ - 1, numin(src) + 1), length(src))
+    rows = TreeRows{fusiontreetype(I, N₁ - 1, numin(src) + 1)}(length(src))
 
     f₁, f₂ = first(fusiontrees(src))
     a::I = f₁.uncoupled[1]
@@ -298,7 +298,7 @@ function foldleft(src::FusionTreeBlock)
     N₂ = numout(src)
     @assert N₁ > 0
 
-    rows = TreeRows(fusiontreetype(I, N₂ + 1, N₁ - 1), length(src))
+    rows = TreeRows{fusiontreetype(I, N₂ + 1, N₁ - 1)}(length(src))
 
     f₁, f₂ = first(fusiontrees(src))
     a::I = f₂.uncoupled[1]

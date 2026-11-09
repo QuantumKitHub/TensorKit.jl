@@ -103,7 +103,7 @@ function artin_braid!(U::AbstractMatrix, src::FusionTreeBlock{I, N, 0}, i; inv::
     isdual = src.isdual[1]
     isdual′ = TupleTools.setindex(isdual, isdual[i], i + 1)
     isdual′ = TupleTools.setindex(isdual′, isdual[i + 1], i)
-    rows = TreeRows(fusiontreetype(I, N, 0), length(src))
+    rows = TreeRows{fusiontreetype(I, N, 0)}(length(src))
 
     oneT = one(sectorscalartype(I))
     fill!(U, zero(oneT))
