@@ -370,19 +370,31 @@ function permute(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple)
     return braid(src, p, (levels1, levels2))
 end
 
+# convert the indices to twist into a mask over all `N` indices, such that the code
+# after this conversion is compiled only once for every `N`
+function _twistmask(::Val{N}, mask::Tuple{Bool, Vararg{Bool}}) where {N}
+    length(mask) == N ||
+        throw(ArgumentError(lazy"twist mask $mask does not match the number of indices $N"))
+    return mask
+end
+function _twistmask(::Val{N}, inds) where {N}
+    all(i -> 1 <= i <= N, inds) ||
+        throw(ArgumentError(lazy"Can't twist indices $inds of an object with only $N indices."))
+    return ntuple(i -> i in inds, N)
+end
+
 """
     twist(src::Union{FusionTreePair, FusionTreeBlock}, inds; inv::Bool = false) -> (src, θ)
 
 Apply a twist to the uncoupled legs `inds` of the fusion-splitting tree pair or block `src`,
-where `inds` is either a collection of leg indices or an `NTuple{N, Bool}` mask over all legs.
+where `inds` is either a collection of leg indices or an `NTuple{N, Bool}` mask over all `N` legs.
 The twist is diagonal in the fusion tree basis, so this returns `src` itself together with the
 scalar factor `θ`, which is shared by all trees in a block. If `inv = true`, use the inverse twist.
 """
 function twist(src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, inds; inv::Bool = false) where {I}
     uncoupled₁, uncoupled₂ = src isa FusionTreeBlock ? src.uncoupled : (src[1].uncoupled, src[2].uncoupled)
     uncoupled = (uncoupled₁..., uncoupled₂...)
-    N = length(uncoupled)
-    mask = inds isa NTuple{N, Bool} ? inds : ntuple(i -> i in inds, N)
+    mask = _twistmask(Val(length(uncoupled)), inds)
     θ = prod(map((m, a) -> m ? twist(a) : one(twist(a)), mask, uncoupled); init = one(sectorscalartype(I)))
     return src, inv ? θ' : θ
 end
