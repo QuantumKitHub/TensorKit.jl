@@ -1,5 +1,6 @@
 using Test, TestExtras
 using TensorKit
+using TensorOperations: TensorOperations
 using Enzyme, EnzymeTestUtils
 using Random
 
@@ -34,6 +35,9 @@ is_ci = get(ENV, "CI", "false") == "true"
             C = randn!(similar(A, TensorKit.promote_twist(A)))
             EnzymeTestUtils.test_reverse(twist!, TA, (copy(C), TA), (A, TA), ((1, 3), Const), (α, Active), (β, Active); atol, rtol, fkwargs = (inv = true,))
             EnzymeTestUtils.test_forward(twist!, TA, (copy(C), TA), (A, TA), ((1, 3), Const), (α, Duplicated), (β, Duplicated); atol, rtol, fkwargs = (inv = false,))
+            bac = ((TensorOperations.DefaultBackend(), Const), (TensorOperations.DefaultAllocator(), Const))
+            EnzymeTestUtils.test_reverse(twist!, TA, (copy(C), TA), (A, TA), ((true, false, true, false, false), Const), (α, Active), (β, Active), bac...; atol, rtol, fkwargs = (inv = true,))
+            EnzymeTestUtils.test_forward(twist!, TA, (copy(C), TA), (A, TA), ((true, false, true, false, false), Const), (α, Duplicated), (β, Duplicated), bac...; atol, rtol)
             if !is_ci
                 EnzymeTestUtils.test_reverse(twist!, TA, (copy(C), TA), (A, TA), ([2, 4], Const), (α, Const), (β, Const); atol, rtol)
                 EnzymeTestUtils.test_forward(twist!, TA, (copy(C), TA), (A, TA), ([2, 4], Const), (α, Const), (β, Const); atol, rtol)
