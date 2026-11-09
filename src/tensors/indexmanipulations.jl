@@ -31,10 +31,13 @@ end
 # ---------
 # twist(!)
 # ---------
-function has_shared_twist(t, inds)
+_twistmask(t::AbstractTensorMap, inds) = _twistmask(Val(numind(t)), inds)
+
+function has_shared_twist(t, mask::Tuple{Vararg{Bool}})
     I = sectortype(t)
     if BraidingStyle(I) == NoBraiding()
-        for i in inds
+        for i in 1:length(mask)
+            mask[i] || continue
             cs = sectors(space(t, i))
             all(isunit, cs) || throw(SectorMismatch(lazy"Cannot twist sectors $cs"))
         end
@@ -42,7 +45,8 @@ function has_shared_twist(t, inds)
     elseif BraidingStyle(I) == Bosonic()
         return true
     else
-        for i in inds
+        for i in 1:length(mask)
+            mask[i] || continue
             cs = sectors(space(t, i))
             all(isone ∘ twist, cs) || return false
         end
@@ -55,6 +59,7 @@ end
     twist!(t::AbstractTensorMap, inds; inv::Bool = false) -> t
 
 Apply a twist to the `i`th index of `t`, or all indices in `inds`, storing the result in `t`.
+Here, `inds` is either a collection of indices or an `NTuple{numind(t), Bool}` mask over all indices.
 If `inv=true`, use the inverse twist.
 
     twist!(tdst, tsrc, inds, α = 1, β = 0, [backend], [allocator]; inv::Bool = false) -> tdst
@@ -65,12 +70,12 @@ Optionally specify a `backend` and `allocator` for the underlying array operatio
 See [`twist`](@ref) for creating a new tensor.
 """
 function twist!(t::AbstractTensorMap, inds; inv::Bool = false)
-    spacecheck_transform(twist, space(t), space(t), inds)
+    mask = _twistmask(t, inds)
     (scalartype(t) <: Real && !(sectorscalartype(sectortype(t)) <: Real)) &&
         throw(ArgumentError("Can't in-place twist a real tensor with complex sector type"))
-    has_shared_twist(t, inds) && return t
+    has_shared_twist(t, mask) && return t
     # returning `t` rather than the result of `twist!` avoids an Enzyme crash on Julia 1.10
-    @inbounds twist!(t, t, inds, One(), Zero(); inv)
+    @inbounds twist!(t, t, mask, One(), Zero(); inv)
     return t
 end
 @propagate_inbounds function twist!(
@@ -79,9 +84,17 @@ end
         backend::AbstractBackend = TO.DefaultBackend(), allocator = TO.DefaultAllocator();
         inv::Bool = false
     )
-    @boundscheck spacecheck_transform(twist, space(tdst), space(tsrc), inds)
+    return twist!(tdst, tsrc, _twistmask(tsrc, inds), α, β, backend, allocator; inv)
+end
+@propagate_inbounds function twist!(
+        tdst::AbstractTensorMap, tsrc::AbstractTensorMap, mask::Tuple{Vararg{Bool}},
+        α::Number = One(), β::Number = Zero(),
+        backend::AbstractBackend = TO.DefaultBackend(), allocator = TO.DefaultAllocator();
+        inv::Bool = false
+    )
+    twistmask = _twistmask(tsrc, mask) # checks the length, and maps an empty `inds` onto a mask
+    @boundscheck spacecheck_transform(twist, space(tdst), space(tsrc), twistmask)
     @timeit_debug GLOBAL_TIMER "twist!" begin
-        twistmask = ntuple(i -> i in inds, numind(tsrc))
         p = (codomainind(tsrc), domainind(tsrc))
         tdst′, tsrc′, p′, twistmask′, conjsrc′, α′, β′ = unwrap_adjoints(tdst, tsrc, p, twistmask, false, α, β)
         # like `α`, the twist is conjugated by an adjoint destination
@@ -98,6 +111,7 @@ end
     ) -> tdst
 
 Apply a twist to the `i`th index of `tsrc`, or all indices in `inds`, and return the result as a new tensor.
+Here, `inds` is either a collection of indices or an `NTuple{numind(tsrc), Bool}` mask over all indices.
 If `inv = true`, use the inverse twist.
 If `copy = false`, `tdst` might share data with `tsrc` whenever possible. Otherwise, a copy is always made.
 Optionally specify a `backend` and `allocator` for the underlying array operation.
@@ -108,11 +122,12 @@ function twist(
         t::AbstractTensorMap, inds; inv::Bool = false,
         copy::Bool = false, backend::AbstractBackend = TO.DefaultBackend(), allocator = TO.DefaultAllocator()
     )
-    has_shared_twist(t, inds) && return copy ? Base.copy(t) : t
+    mask = _twistmask(t, inds)
+    has_shared_twist(t, mask) && return copy ? Base.copy(t) : t
 
     # general case
     tdst = similar(t, promote_twist(t))
-    return @inbounds twist!(tdst, t, inds, One(), Zero(), backend, allocator; inv)
+    return @inbounds twist!(tdst, t, mask, One(), Zero(), backend, allocator; inv)
 end
 
 # =========================
@@ -545,15 +560,17 @@ end
     Vsrc′, p′ = conjsrc ? (Vsrc', adjointtensorindices(Vsrc, p)) : (Vsrc, p)
     return spacecheck_transform(f, Vdst, Vsrc′, p′)
 end
-@noinline function spacecheck_transform(::typeof(twist), Vdst::TensorMapSpace, Vsrc::TensorMapSpace, inds)
+@noinline function spacecheck_transform(
+        ::typeof(twist), Vdst::TensorMapSpace, Vsrc::TensorMapSpace, mask::Tuple{Vararg{Bool}}
+    )
     check_spacetype(Vdst, Vsrc)
-    all(in(allind(Vsrc)), inds) ||
-        throw(ArgumentError(lazy"Can't twist indices $inds of a tensor with only $(numind(Vsrc)) indices."))
+    length(mask) == numind(Vsrc) ||
+        throw(ArgumentError(lazy"twist mask $mask does not match the number of indices $(numind(Vsrc))"))
     Vdst == Vsrc ||
         throw(
         SpaceMismatch(
             lazy"""
-            incompatible spaces for `twist(Vsrc, $inds) -> Vdst`
+            incompatible spaces for `twist(Vsrc, $mask) -> Vdst`
             Vsrc = $Vsrc
             Vdst = $Vdst
             """
@@ -561,9 +578,6 @@ end
     )
     return nothing
 end
-# disambiguation with the generic method
-spacecheck_transform(f::typeof(twist), Vdst::TensorMapSpace, Vsrc::TensorMapSpace, inds::Index2Tuple) =
-    invoke(spacecheck_transform, Tuple{typeof(twist), TensorMapSpace, TensorMapSpace, Any}, f, Vdst, Vsrc, inds)
 @noinline function spacecheck_transform(::typeof(braid), Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, levels::IndexTuple)
     check_spacetype(Vdst, Vsrc)
     braid(Vsrc, p, levels) == Vdst ||
