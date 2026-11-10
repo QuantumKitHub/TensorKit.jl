@@ -30,11 +30,13 @@ for c in union(blocksectors.(ts)...)
 end
 ```
 """
-function foreachblock(f, t, ts...; scheduler = nothing)
+function foreachblock(f, t, ts::Vararg{Any, N}; scheduler = nothing) where {N}
+    # `Vararg{Any, N}` forces specialization on the types of `ts`; `map` instead of broadcasting
+    # keeps the heterogeneous tuple of tensors (and their blocks) inferable
     tensors = (t, ts...)
-    allsectors = union(blocksectors.(tensors)...)
+    allsectors = union(map(blocksectors, tensors)...)
     foreach(allsectors) do c
-        return f(c, block.(tensors, Ref(c)))
+        return f(c, map(x -> block(x, c), tensors))
     end
     return nothing
 end
