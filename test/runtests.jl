@@ -73,6 +73,8 @@ end
 const init_code = quote
     using ..TestSetup
     const fast_tests = $fast
+    # free the caches filled by earlier tests on this worker, which would otherwise accumulate
+    TestSetup.TensorKit.empty_globalcaches!()
 end
 
 ParallelTestRunner.runtests(TensorKit, args; testsuite, init_worker_code, init_code, max_worker_rss)
