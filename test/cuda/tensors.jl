@@ -341,8 +341,8 @@ for V in spacelist
                 @test adapt(Array, t2)' ≈ twist(copy(ht'), inds; inv)
             end
             @test twist(twist(t, 2), 2; inv = true) ≈ t
-            if !TensorKit.has_shared_twist(t, (1, 3, 5))
-                twistmask = (true, false, true, false, true)
+            twistmask = (true, false, true, false, true)
+            if !TensorKit.has_shared_twist(t, twistmask)
                 p = (codomainind(t), domainind(t))
                 twister = TensorKit.treetwister(storagetype(t), space(t), space(t), p, false, twistmask, false)
                 @test twister isa getglobal(GPUArraysExt, :DeviceUniqueTreeTransformer)
