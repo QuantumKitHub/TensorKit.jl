@@ -497,7 +497,7 @@ end
 # Getting and setting the data at the subblock level
 # --------------------------------------------------
 StridedSubblocks(t::TensorMap) = StridedSubblocks(t.data, degeneracystructure(space(t)).subblockstructure)
-StridedSubblocks(t::TensorMap, structure::Vector{<:StridedStructure}) = StridedSubblocks(t.data, structure)
+StridedSubblocks(t::TensorMap, structure::SubblockStructure) = StridedSubblocks(t.data, structure)
 
 # the subblocks of a `TensorMap` are strided views into its flat data, which the subblock
 # structure of its space describes directly
@@ -511,6 +511,10 @@ SubblockIterator(t::TensorMap) = SubblockIterator(t, subblockstructure(space(t))
 @propagate_inbounds function Base.getindex(iter::SubblockIterator{<:TensorMap}, i::Int)
     @boundscheck 0 < i <= length(iter.structure) || _throw_subblock_bounds(iter, i)
     @inbounds sz, str, offset = gettokenvalue(iter.structure, i)
+    return StridedView(iter.t.data, sz, str, offset)
+end
+@propagate_inbounds function Base.getindex(iter::SubblockIterator{<:TensorMap}, token::SubblockToken)
+    sz, str, offset = gettokenvalue(iter.structure, token)
     return StridedView(iter.t.data, sz, str, offset)
 end
 @propagate_inbounds function Base.getindex(iter::SubblockIterator{<:TensorMap}, f::FusionTreePair)

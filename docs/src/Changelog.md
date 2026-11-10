@@ -40,6 +40,8 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 ### Performance
 
 - `twist!` and `twist` on a `TensorMap`, a `DiagonalTensorMap` or their adjoints use a cached tree transformer and the index manipulation kernel instead of a loop over all fusion trees, which removes the per-subblock bookkeeping and turns a twist of a GPU tensor, diagonal or not, into a single kernel launch ([#595](https://github.com/QuantumKitHub/TensorKit.jl/issues/595))
+- `fusiontrees(W)` stores the splitting and fusion trees of every coupled sector instead of every pair, and `fusionblocks` combines the trees of both sides with the same uncoupled sectors (internal) ([#600](https://github.com/QuantumKitHub/TensorKit.jl/pull/600))
+- `degeneracystructure(W)` stores the sizes, strides and offsets of the splitting and fusion trees instead of those of every subblock, from which the structure of a subblock is computed on access, and the tree transformers address subblocks by the tokens of their fusion tree pairs. This makes the cached structures considerably smaller and cheaper to build (internal) ([#600](https://github.com/QuantumKitHub/TensorKit.jl/pull/600))
 
 ## [0.17.3](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.2...v0.17.3) - 2026-10-30
 

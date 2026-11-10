@@ -3,9 +3,9 @@
 
 Supertype for structures containing the data for a tree transformation.
 
-The transformers only store how subblocks map onto each other in terms of their positions in
-[`StridedSubblocks`](@ref) (the canonical order of [`fusiontrees`](@ref)), together with the recoupling
-coefficients, and are therefore independent of the sectortype once constructed. The
+The transformers only store how subblocks map onto each other in terms of the tokens `(i₁, i₂)` of
+their fusion tree pairs in [`fusiontrees`](@ref), which index the [`StridedSubblocks`](@ref), together
+with the recoupling coefficients, and are therefore independent of the sectortype once constructed. The
 transformation is that of `permutedims(conjsrc ? conj(tsrc) : tsrc, p)` where `p` indexes the legs
 of `tsrc` itself; when `conjsrc` is `true` the fusion trees that are transformed are those of
 `adjoint(space(tsrc))`, which read the subblocks of `tsrc` with the tree pair swapped.
@@ -33,8 +33,8 @@ function recoupling_scalartype(::Type{A}, ::Type{Tₛ}) where {A, Tₛ <: Number
     return Tₛ <: Real ? real(T) : complex(T)
 end
 
-# (coefficient, destination position, source position)
-const UniqueTransformerData{T} = Tuple{T, Int, Int}
+# (coefficient, destination token, source token)
+const UniqueTransformerData{T} = Tuple{T, SubblockToken, SubblockToken}
 
 """
     UniqueTreeTransformer{T, N} <: TreeTransformer
@@ -46,12 +46,12 @@ structures of the destination and source spaces are kept alongside, such that th
 """
 struct UniqueTreeTransformer{T, N} <: TreeTransformer
     data::Vector{UniqueTransformerData{T}}
-    structure_dst::Vector{StridedStructure{N}}
-    structure_src::Vector{StridedStructure{N}}
+    structure_dst::SubblockStructure{N}
+    structure_src::SubblockStructure{N}
 end
 
-# (recoupling matrix, destination positions, source positions)
-const GenericTransformerData{T} = Tuple{Matrix{T}, Vector{Int}, Vector{Int}}
+# (recoupling matrix, destination tokens, source tokens)
+const GenericTransformerData{T} = Tuple{Matrix{T}, Vector{SubblockToken}, Vector{SubblockToken}}
 
 """
     GenericTreeTransformer{T, N} <: TreeTransformer
@@ -64,14 +64,14 @@ The subblock structures of the destination and source spaces are kept alongside,
 """
 struct GenericTreeTransformer{T, N} <: TreeTransformer
     data::Vector{GenericTransformerData{T}}
-    structure_dst::Vector{StridedStructure{N}}
-    structure_src::Vector{StridedStructure{N}}
+    structure_dst::SubblockStructure{N}
+    structure_src::SubblockStructure{N}
 end
 
 # Both structure arrays are retained by the transformer, even when another cache also
 # holds them. Within an entry, identical source/destination arrays are counted only once.
-_cache_structure_size(t) = sizeof(t.structure_src) +
-    (t.structure_src === t.structure_dst ? 0 : sizeof(t.structure_dst))
+_cache_structure_size(t) = _cache_payload_size(t.structure_src) +
+    (t.structure_src === t.structure_dst ? 0 : _cache_payload_size(t.structure_dst))
 
 MemoizationKit.cachesize(t::UniqueTreeTransformer) = sizeof(t) + _cache_payload_size(t.data) + _cache_structure_size(t)
 
@@ -95,10 +95,10 @@ function UniqueTreeTransformer(::Type{A}, transform, p, Vdst::HomSpace, Vsrc::Ho
     T = recoupling_scalartype(A, sectorscalartype(sectortype(Vdst)))
     data = Vector{UniqueTransformerData{T}}(undef, length(src_trees))
 
-    @timeit_debug GLOBAL_TIMER "symmetry: tree transform" for (isrc, (f₁, f₂)) in enumerate(src_trees)
+    @timeit_debug GLOBAL_TIMER "symmetry: tree transform" for (k, isrc) in enumerate(Dictionaries.tokens(src_trees))
+        f₁, f₂ = gettokenvalue(src_trees, isrc)
         f_dst, coeff = transform(conjsrc ? (f₂, f₁) : (f₁, f₂))
-        _, (_, idst) = gettoken(dst_trees, f_dst)
-        data[isrc] = (convert(T, coeff), idst, isrc)
+        data[k] = (convert(T, coeff), pairtoken(dst_trees, f_dst), isrc)
     end
 
     structure_dst = degeneracystructure(Vdst).subblockstructure
@@ -132,15 +132,9 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst::HomSpace, Vsrc::H
             fs_src = fblocks[i]
             fs_dst, U = transform(fs_src)
             @timeit_debug GLOBAL_TIMER "bookkeeping: subblock positions" begin
-                # the token into the fusion tree `Indices` is the subblock position
-                inds_src = map(fusiontrees(fs_src)) do (f₁, f₂)
-                    _, (_, isrc) = gettoken(src_trees, conjsrc ? (f₂, f₁) : (f₁, f₂))
-                    return isrc
-                end
-                inds_dst = map(fusiontrees(fs_dst)) do f
-                    _, (_, idst) = gettoken(dst_trees, f)
-                    return idst
-                end
+                # the token of a fusion tree pair also addresses its subblock
+                inds_src = map(((f₁, f₂),) -> pairtoken(src_trees, conjsrc ? (f₂, f₁) : (f₁, f₂)), fusiontrees(fs_src))
+                inds_dst = map(f -> pairtoken(dst_trees, f), fusiontrees(fs_dst))
             end
             data[i] = (convert(Matrix{T}, U), inds_dst, inds_src)
             # cost model: L input blocks each going to L output blocks of a given length
@@ -234,8 +228,8 @@ created without further lookups.
 """
 struct TraceTransformer{T, N₁, N₂}
     data::Vector{GenericTransformerData{T}}
-    structure_dst::Vector{StridedStructure{N₁}}
-    structure_src::Vector{StridedStructure{N₂}}
+    structure_dst::SubblockStructure{N₁}
+    structure_src::SubblockStructure{N₂}
 end
 
 MemoizationKit.cachesize(t::TraceTransformer) = _cache_generic_size(t)
@@ -249,42 +243,40 @@ function TraceTransformer(::Type{A}, Vdst::HomSpace, Vsrc::HomSpace, p::Index2Tu
     src_trees, dst_trees = fusiontrees(Vsrc), fusiontrees(Vdst)
     T = recoupling_scalartype(A, sectorscalartype(sectortype(Vdst)))
 
-    # destination positions => (columns of the recoupling matrix, source positions)
-    groups = Dict{Vector{Int}, Tuple{Vector{Vector{T}}, Vector{Int}}}()
+    # destination tokens => (columns of the recoupling matrix, source tokens)
+    groups = Dict{Vector{SubblockToken}, Tuple{Vector{Vector{T}}, Vector{SubblockToken}}}()
     function addcolumn!(inds_dst, u, isrc)
         any(!iszero, u) || return nothing
-        us, inds_src = get!(() -> (Vector{T}[], Int[]), groups, inds_dst)
+        us, inds_src = get!(() -> (Vector{T}[], SubblockToken[]), groups, inds_dst)
         push!(us, u)
         push!(inds_src, isrc)
         return nothing
     end
     @timeit_debug GLOBAL_TIMER "symmetry: trace coefficients" if FusionStyle(sectortype(Vdst)) isa UniqueFusion
-        for (isrc, f) in enumerate(src_trees)
+        for isrc in Dictionaries.tokens(src_trees)
+            f = gettokenvalue(src_trees, isrc)
             trace_sectors_match(f, q) || continue
             f′, coeff = planar_trace(f, p, q)
-            _, (_, idst) = gettoken(dst_trees, f′)
-            addcolumn!([idst], [convert(T, coeff)], isrc)
+            addcolumn!([pairtoken(dst_trees, f′)], [convert(T, coeff)], isrc)
         end
     else
         for fs_src in fusionblocks(Vsrc)
             trace_sectors_match(fs_src, q) || continue
             fs_dst, U = planar_trace(fs_src, p, q)
-            inds_dst = map(fusiontrees(fs_dst)) do f
-                _, (_, idst) = gettoken(dst_trees, f)
-                return idst
-            end
+            inds_dst = map(f -> pairtoken(dst_trees, f), fusiontrees(fs_dst))
             for (i, f) in enumerate(fusiontrees(fs_src))
-                _, (_, isrc) = gettoken(src_trees, f)
-                addcolumn!(inds_dst, convert(Vector{T}, U[:, i]), isrc)
+                addcolumn!(inds_dst, convert(Vector{T}, U[:, i]), pairtoken(src_trees, f))
             end
         end
     end
     data = GenericTransformerData{T}[(reduce(hcat, us), inds_dst, inds_src) for (inds_dst, (us, inds_src)) in groups]
     # destination subblocks without contributions are only scaled
     covered = falses(length(dst_trees))
-    foreach(inds_dst -> covered[inds_dst] .= true, keys(groups))
-    for idst in findall(!, covered)
-        push!(data, (zeros(T, 1, 0), [idst], Int[]))
+    for inds_dst in keys(groups), idst in inds_dst
+        covered[pairposition(dst_trees, idst)] = true
+    end
+    for i in findall(!, covered)
+        push!(data, (zeros(T, 1, 0), [pairtoken(dst_trees, i)], SubblockToken[]))
     end
 
     structure_dst = degeneracystructure(Vdst).subblockstructure

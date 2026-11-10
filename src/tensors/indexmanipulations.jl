@@ -726,15 +726,17 @@ function add_transform_kernel!(
     return nothing
 end
 
-# `U` is either a scalar coefficient with integer positions (unique fusion), or a recoupling
-# matrix with vectors of positions (generic).
+# `U` is either a scalar coefficient with single tokens (unique fusion), or a recoupling matrix
+# with vectors of tokens (generic).
+_onlytoken(token::SubblockToken) = token
+_onlytoken(tokens::AbstractVector{SubblockToken}) = only(tokens)
 function _add_transform_block!(
         dst::TransformSubblocks, src::TransformSubblocks, p, conjsrc::Bool, U, inds_dst, inds_src, buffer,
         α, β, backend, allocator
     )
     if length(U) == 1 # single tree: no matmul needed
         @timeit_debug GLOBAL_TIMER "dense: tensoradd" @inbounds TO.tensoradd!(
-            dst[only(inds_dst)], src[only(inds_src)], p, conjsrc, α * only(U), β, backend, allocator
+            dst[_onlytoken(inds_dst)], src[_onlytoken(inds_src)], p, conjsrc, α * only(U), β, backend, allocator
         )
     else # Multi-tree block: pack → recoupling matmul → unpack.
         rows, cols = size(U)
