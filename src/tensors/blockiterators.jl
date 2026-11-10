@@ -108,8 +108,8 @@ end
 
 # Positional subblock collections
 # -------------------------------
-# These address subblocks by their position in the canonical order of `fusiontrees(space(t))`,
-# hoisting the space-level lookups out of the individual accesses.
+# These address subblocks by their position in the canonical order of `fusiontrees(space(t))`, or
+# by the token of their fusion tree pair, hoisting the space-level lookups out of the accesses.
 
 """
     struct SubblockIterator{T <: AbstractTensorMap, S}
@@ -144,6 +144,8 @@ Base.isdone(iter::SubblockIterator, i::Int = 1) = i > length(iter)
 @propagate_inbounds Base.getindex(iter::SubblockIterator, i::Int) =
     subblock(iter.t, gettokenvalue(keys(iter.structure), i))
 @propagate_inbounds Base.getindex(iter::SubblockIterator, f::FusionTreePair) = subblock(iter.t, f)
+@propagate_inbounds Base.getindex(iter::SubblockIterator, token::SubblockToken) =
+    subblock(iter.t, gettokenvalue(keys(iter.structure), token))
 
 function Base.iterate(iter::SubblockIterator, i::Int = 1)
     i > length(iter) && return nothing
@@ -202,9 +204,9 @@ As a result, the kernels do not have to be recompiled for each new symmetry type
 """
 struct StridedSubblocks{A <: DenseVector, N}
     data::A
-    structure::Vector{StridedStructure{N}}
+    structure::SubblockStructure{N}
     # store the data as `StridedView` parents it, so that `A` is also the parent type of the views
-    function StridedSubblocks(data::DenseVector, structure::Vector{StridedStructure{N}}) where {N}
+    function StridedSubblocks(data::DenseVector, structure::SubblockStructure{N}) where {N}
         data′ = parent(StridedView(data))
         return new{typeof(data′), N}(data′, structure)
     end
@@ -217,7 +219,8 @@ Base.firstindex(s::StridedSubblocks) = 1
 Base.lastindex(s::StridedSubblocks) = length(s)
 Base.eltype(::Type{StridedSubblocks{A, N}}) where {A, N} = StridedView{eltype(A), N, A, typeof(identity)}
 
-Base.@propagate_inbounds function Base.getindex(s::StridedSubblocks, i::Int)
+# by position, or by the token of the fusion tree pair
+Base.@propagate_inbounds function Base.getindex(s::StridedSubblocks, i::Union{Int, SubblockToken})
     sz, str, offset = s.structure[i]
     return StridedView(s.data, sz, str, offset)
 end

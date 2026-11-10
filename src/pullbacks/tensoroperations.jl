@@ -90,8 +90,9 @@ function _planartrace_pullback_ΔA!(
         ΔA, ΔC, transformer::TraceTransformer, (p₁, p₂), (q₁, q₂), α, backend, allocator
     )
     lp = (p₁..., p₂...)
-    dims_dst = [dim(f₁.coupled) for (f₁, _) in fusiontrees(ΔC)]
-    dims_src = [dim(f₁.coupled) for (f₁, _) in fusiontrees(ΔA)]
+    trees_dst, trees_src = fusiontrees(ΔC), fusiontrees(ΔA)
+    dims_dst = [dim(f₁.coupled) for (f₁, _) in trees_dst]
+    dims_src = [dim(f₁.coupled) for (f₁, _) in trees_src]
     dst, src = _transform_subblocks(ΔC, ΔA, transformer)
     for (U, inds_dst, inds_src) in transformer.data, (j, isrc) in enumerate(inds_src)
         # the traced diagonal of the source subblock, with the remaining legs permuted by `p`
@@ -112,7 +113,7 @@ function _planartrace_pullback_ΔA!(
                 parent(c), (size(c)..., sz_traced...), (strides(c)..., map(zero, sz_traced)...),
                 c.offset, c.op
             )
-            coeff = conj(α * U[i, j]) * (dims_dst[idst] / dims_src[isrc])
+            coeff = conj(α * U[i, j]) * (dims_dst[pairposition(trees_dst, idst)] / dims_src[pairposition(trees_src, isrc)])
             TO.tensoradd!(diag, ΔCi, pdiag, false, coeff, One(), backend, allocator)
         end
     end
