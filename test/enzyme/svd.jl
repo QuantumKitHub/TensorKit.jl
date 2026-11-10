@@ -23,7 +23,10 @@ eltypes = (Float64, ComplexF64)
         ΔUSVᴴ = EnzymeTestUtils.rand_tangent(USVᴴ)
         remove_svd_gauge_dependence!(ΔUSVᴴ[1], ΔUSVᴴ[3], USVᴴ...)
         EnzymeTestUtils.test_reverse(svd_full, Duplicated, (t, Duplicated); output_tangent = ΔUSVᴴ, atol, rtol)
-        EnzymeTestUtils.test_forward(svd_full, Duplicated, (t, Duplicated); atol, rtol)
+        # finite differences check for the gauge-dependent extra columns/rows is unreliable
+        if all(((c, b),) -> size(b, 1) == size(b, 2), blocks(t))
+            EnzymeTestUtils.test_forward(svd_full, Duplicated, (t, Duplicated); atol, rtol)
+        end
 
         USVᴴ = svd_compact(t)
         ΔUSVᴴ = EnzymeTestUtils.rand_tangent(USVᴴ)
