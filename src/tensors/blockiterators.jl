@@ -31,8 +31,6 @@ end
 ```
 """
 function foreachblock(f, t, ts::Vararg{Any, N}; scheduler = nothing) where {N}
-    # `Vararg{Any, N}` forces specialization on the types of `ts`; `map` instead of broadcasting
-    # keeps the heterogeneous tuple of tensors (and their blocks) inferable
     tensors = (t, ts...)
     allsectors = union(map(blocksectors, tensors)...)
     foreach(allsectors) do c
