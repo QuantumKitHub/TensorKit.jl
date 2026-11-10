@@ -2,12 +2,12 @@
 # general tensor implementation with arbitrary symmetries
 #==========================================================#
 """
-    struct TensorMap{T, S<:IndexSpace, N₁, N₂, A<:DenseVector{T}} <: AbstractTensorMap{T, S, N₁, N₂}
+    struct TensorMap{T <: Number, S <: IndexSpace, N₁, N₂, A <: DenseVector{T}} <: AbstractTensorMap{T, S, N₁, N₂}
 
 Specific subtype of [`AbstractTensorMap`](@ref) for representing tensor maps (morphisms in
 a tensor category), where the data is stored in a dense vector.
 """
-struct TensorMap{T, S <: IndexSpace, N₁, N₂, A <: DenseVector{T}} <: AbstractTensorMap{T, S, N₁, N₂}
+struct TensorMap{T <: Number, S <: IndexSpace, N₁, N₂, A <: DenseVector{T}} <: AbstractTensorMap{T, S, N₁, N₂}
     data::A
     space::TensorMapSpace{S, N₁, N₂}
 
@@ -20,7 +20,7 @@ struct TensorMap{T, S <: IndexSpace, N₁, N₂, A <: DenseVector{T}} <: Abstrac
 end
 
 """
-    Tensor{T, S, N, A<:DenseVector{T}} = TensorMap{T, S, N, 0, A}
+    Tensor{T <: Number, S <: IndexSpace, N, A <: DenseVector{T}} = TensorMap{T, S, N, 0, A}
 
 Specific subtype of [`AbstractTensor`](@ref) for representing tensors whose data is stored
 in a dense vector.
@@ -28,7 +28,7 @@ in a dense vector.
 A `Tensor{T, S, N, A}` is actually a special case `TensorMap{T, S, N, 0, A}`,
 i.e. a tensor map with only a non-trivial output space.
 """
-const Tensor{T, S, N, A} = TensorMap{T, S, N, 0, A}
+const Tensor{T <: Number, S <: IndexSpace, N, A <: DenseVector{T}} = TensorMap{T, S, N, 0, A}
 
 # Utility functions:
 # ------------------
