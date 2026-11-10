@@ -670,7 +670,8 @@ function diagonal_device_transformer(A, transformer, dstdiagonal::Bool)
         n = first(sz)
         return UniqueTransformerBlock{typeof(coeff), 1}(
             coeff, (n,), (1,), dstdiagonal ? (1,) : (sum(strides_dst),),
-            dstdiagonal ? offsets_dst[idst] : offset_dst, (1,), offsets_src[isrc]
+            dstdiagonal ? offsets_dst[TensorKit.pairposition(structure_dst, idst)] : offset_dst, (1,),
+            offsets_src[TensorKit.pairposition(structure_src, isrc)]
         )
     end
     work_offsets, nwork = _work_offsets(blk.sz[1] for blk in blocks)

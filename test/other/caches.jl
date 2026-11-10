@@ -60,10 +60,12 @@ end
 
     # An empty transformer still costs space, and arbitrary-precision coefficients
     # include their referenced storage instead of just the array's pointer slots.
-    strides = TensorKit.StridedStructure{2}[]
-    empty_transformer = TensorKit.UniqueTreeTransformer(Tuple{Float64, Int, Int}[], strides, strides)
+    V = SU2Space(0 => 1)
+    strides = degeneracystructure(V ← V).subblockstructure
+    token = only(TensorKit.Dictionaries.tokens(fusiontrees(V ← V)))
+    empty_transformer = TensorKit.UniqueTreeTransformer(Tuple{Float64, TensorKit.SubblockToken, TensorKit.SubblockToken}[], strides, strides)
     @test MemoizationKit.cachesize(empty_transformer) > 0
-    big_transformer = TensorKit.UniqueTreeTransformer([(BigFloat(1), 1, 1)], strides, strides)
+    big_transformer = TensorKit.UniqueTreeTransformer([(BigFloat(1), token, token)], strides, strides)
     @test MemoizationKit.cachesize(big_transformer) >= Base.summarysize(big_transformer.data)
 end
 

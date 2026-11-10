@@ -69,16 +69,25 @@ The position of a fusion tree pair in the canonical order of `t`, from its token
 itself, which must be present.
 """
 pairposition(t::FusionTreePairs, (i₁, i₂)::Tuple{Int, Int}) = @inbounds t.positions₂[i₂] + t.positions₁[i₁]
-function pairposition(t::FusionTreePairs, f::FusionTreePair)
+pairposition(t::FusionTreePairs, f::FusionTreePair) = pairposition(t, pairtoken(t, f))
+
+"""
+    pairtoken(t::FusionTreePairs, i::Int) -> Tuple{Int, Int}
+    pairtoken(t::FusionTreePairs, (f₁, f₂)) -> Tuple{Int, Int}
+
+The token of a fusion tree pair of `t`, from its position or from the pair itself, which must be
+present.
+"""
+pairtoken(t::FusionTreePairs, i::Int) = _pairtoken(t.ranges₁, t.ranges₂, t.offsets, i)
+function pairtoken(t::FusionTreePairs, f::FusionTreePair)
     found, token = gettoken(t, f)
     found || throw(KeyError(f))
-    return pairposition(t, token)
+    return token
 end
-# the token of the pair at position `i`
-function pairtoken(t::FusionTreePairs, i::Int)
-    b = searchsortedlast(t.offsets, i - 1)
-    r₁, r₂ = t.ranges₁[b], t.ranges₂[b]
-    j₂, j₁ = divrem(i - 1 - t.offsets[b], length(r₁))
+function _pairtoken(ranges₁, ranges₂, offsets, i::Int)
+    b = searchsortedlast(offsets, i - 1)
+    r₁, r₂ = ranges₁[b], ranges₂[b]
+    j₂, j₁ = divrem(i - 1 - offsets[b], length(r₁))
     return (first(r₁) + j₁, first(r₂) + j₂)
 end
 
@@ -136,17 +145,18 @@ function Base.iterate(t::FusionTreePairs, state...)
 end
 
 # values for every fusion tree pair, stored by position
-struct FusionTreePairDict{K, V, T <: FusionTreePairs} <: AbstractDictionary{K, V}
+struct FusionTreePairDict{K, V, T <: FusionTreePairs, A <: AbstractVector{V}} <: AbstractDictionary{K, V}
     keys::T
-    values::Vector{V}
+    values::A
 end
-FusionTreePairDict(keys::T, values::Vector{V}) where {T <: FusionTreePairs, V} =
-    FusionTreePairDict{eltype(T), V, T}(keys, values)
+FusionTreePairDict(keys::T, values::AbstractVector{V}) where {T <: FusionTreePairs, V} =
+    FusionTreePairDict{eltype(T), V, T, typeof(values)}(keys, values)
 Base.keys(d::FusionTreePairDict) = d.keys
 Dictionaries.istokenizable(::FusionTreePairDict) = true
 Dictionaries.istokenassigned(::FusionTreePairDict, _) = true
 Dictionaries.gettokenvalue(d::FusionTreePairDict, i::Int) = d.values[i]
-Dictionaries.gettokenvalue(d::FusionTreePairDict, token::Tuple{Int, Int}) = d.values[pairposition(d.keys, token)]
+Dictionaries.gettokenvalue(d::FusionTreePairDict, token::Tuple{Int, Int}) = _tokenvalue(d.values, d.keys, token)
+_tokenvalue(values::AbstractVector, keys, token) = values[pairposition(keys, token)]
 
 MemoizationKit.cachesize(s::SectorStructure) =
     sizeof(s) + _cache_payload_size(s.blocksectors) + _cache_payload_size(s.fusiontrees)
@@ -181,6 +191,48 @@ MemoizationKit.cachekey(::typeof(sectorstructure), W::HomSpace) = (Hashed(W, sec
 # DegeneracyStructure: degeneracy-dependent characterization of HomSpaces
 # -----------------------------------------------------------------------
 """
+    SubblockStructure{N} <: AbstractVector{StridedStructure{N}}
+
+The [`StridedStructure`](@ref) `(sizes, strides, offset)` of the subblock of every fusion tree pair
+of a `HomSpace`, in the canonical order of [`fusiontrees`](@ref). The subblock of `(f₁, f₂)` holds
+the rows of `f₁` and the columns of `f₂` within the block of their coupled sector, such that only
+the structures of the splitting and fusion trees are stored, and that of a pair is computed when it
+is accessed. Besides its position, a pair can also be indexed with its token `(i₁, i₂)`.
+"""
+struct SubblockStructure{N} <: AbstractVector{StridedStructure{N}}
+    # the codomain legs of every splitting tree, padded with zeros for the domain legs
+    trees₁::Vector{StridedStructure{N}}
+    # the domain legs of every fusion tree, padded with zeros for the codomain legs
+    trees₂::Vector{StridedStructure{N}}
+    # shared with the `FusionTreePairs`, to convert between positions and tokens
+    ranges₁::Vector{UnitRange{Int}}
+    ranges₂::Vector{UnitRange{Int}}
+    positions₁::Vector{Int}
+    positions₂::Vector{Int}
+    offsets::Vector{Int}
+end
+SubblockStructure(trees₁, trees₂, t::FusionTreePairs) =
+    SubblockStructure(trees₁, trees₂, t.ranges₁, t.ranges₂, t.positions₁, t.positions₂, t.offsets)
+
+# the token `(i₁, i₂)` of a fusion tree pair, which also addresses its subblock
+const SubblockToken = Tuple{Int, Int}
+
+Base.size(s::SubblockStructure) = (last(s.offsets),)
+Base.IndexStyle(::Type{<:SubblockStructure}) = IndexLinear()
+Base.@propagate_inbounds Base.getindex(s::SubblockStructure, i::Int) =
+    s[_pairtoken(s.ranges₁, s.ranges₂, s.offsets, i)]
+Base.@propagate_inbounds function Base.getindex(s::SubblockStructure, (i₁, i₂)::SubblockToken)
+    sz₁, str₁, offset₁ = s.trees₁[i₁]
+    sz₂, str₂, offset₂ = s.trees₂[i₂]
+    return (sz₁ .+ sz₂, str₁ .+ str₂, offset₁ + offset₂)
+end
+_tokenvalue(values::SubblockStructure, keys, token) = values[token]
+pairposition(s::SubblockStructure, (i₁, i₂)::SubblockToken) = @inbounds s.positions₂[i₂] + s.positions₁[i₁]
+
+# the arrays shared with the `FusionTreePairs` are accounted for in the `sectorstructure` cache
+_cache_payload_size(s::SubblockStructure) = sizeof(s) + sizeof(s.trees₁) + sizeof(s.trees₂)
+
+"""
     DegeneracyStructure{N}
 
 Degeneracy-dependent structure of a `HomSpace`: the block sizes, ranges, and sub-block
@@ -191,18 +243,19 @@ strides that depend on the degeneracy (multiplicity) dimensions. Specific to a g
 - `totaldim`: total number of elements in the flat data vector.
 - `blockstructure`: `Vector` of `((d₁, d₂), range)` values, one per coupled sector, in the
   same order as [`sectorstructure`](@ref)`.blocksectors`.
-- `subblockstructure`: `Vector` of [`StridedStructure`](@ref) `(sizes, strides, offset)`
-  values, one per fusion tree pair, in the same order as [`sectorstructure`](@ref)`.fusiontrees`.
+- `subblockstructure`: [`SubblockStructure`](@ref) of the `(sizes, strides, offset)` of every
+  fusion tree pair, in the same order as [`sectorstructure`](@ref)`.fusiontrees`.
 
 See also [`degeneracystructure`](@ref), [`SectorStructure`](@ref).
 """
 struct DegeneracyStructure{N}
     totaldim::Int
     blockstructure::Vector{Tuple{Tuple{Int, Int}, UnitRange{Int}}}
-    subblockstructure::Vector{StridedStructure{N}}
+    subblockstructure::SubblockStructure{N}
 end
 
-MemoizationKit.cachesize(s::DegeneracyStructure) = sizeof(s) + sizeof(s.blockstructure) + sizeof(s.subblockstructure)
+MemoizationKit.cachesize(s::DegeneracyStructure) =
+    sizeof(s) + sizeof(s.blockstructure) + _cache_payload_size(s.subblockstructure)
 
 function degeneracystructuretype(W::HomSpace)
     N = length(codomain(W)) + length(domain(W))
@@ -219,57 +272,42 @@ since degeneracy dimensions affect the block sizes and offsets).
 See also [`sectorstructure`](@ref), [`blockstructure`](@ref), [`subblockstructure`](@ref).
 """ degeneracystructure(::HomSpace)
 @cached function degeneracystructure(W::HomSpace)::degeneracystructuretype(W)
-    codom = codomain(W)
-    dom = domain(W)
-    N = length(codom) + length(dom)
+    codom, dom = codomain(W), domain(W)
+    N₁, N₂ = length(codom), length(dom)
+    zeros₁, zeros₂ = ntuple(Returns(0), N₁), ntuple(Returns(0), N₂)
 
     ss = sectorstructure(W)
     ts = ss.fusiontrees
-    structurevalues = sizehint!(Vector{StridedStructure{N}}(), length(ts))
+    trees₁ = Vector{StridedStructure{N₁ + N₂}}(undef, length(ts.trees₁))
+    trees₂ = Vector{StridedStructure{N₁ + N₂}}(undef, length(ts.trees₂))
     blockvalues = Vector{Tuple{Tuple{Int, Int}, UnitRange{Int}}}(undef, length(ss.blocksectors))
 
-    # the subblocks of every coupled sector, from the degeneracies of the trees of both sides;
-    # filling a reused buffer is noticeably faster than `map` for the subblock loop below
-    splittingstructure = Vector{NTuple{numout(W), Int}}()
+    # every block is column major, with the rows of its splitting trees and the columns of its
+    # fusion trees, both in order; the legs of a tree are column major within its rows or columns
     blockoffset = 0
     for (block_index, (r₁, r₂)) in enumerate(zip(ts.ranges₁, ts.ranges₂))
-        empty!(splittingstructure)
         blockdim₁ = 0
         for i in r₁
             d₁s = dims(codom, gettokenvalue(ts.trees₁, i).uncoupled)
+            @assert !any(==(0), d₁s)
+            trees₁[i] = ((d₁s..., zeros₂...), (_colmajorstrides(d₁s, 1)..., zeros₂...), blockdim₁)
             blockdim₁ += prod(d₁s)
-            push!(splittingstructure, d₁s)
         end
-        strides = (1, blockdim₁)
         blockdim₂ = 0
         for i in r₂
             d₂s = dims(dom, gettokenvalue(ts.trees₂, i).uncoupled)
-            d₂ = prod(d₂s)
-            offset₁ = 0
-            for d₁s in splittingstructure
-                d₁ = prod(d₁s)
-                totaloffset = blockoffset + blockdim₂ * blockdim₁ + offset₁
-                subsz = (d₁s..., d₂s...)
-                @assert !any(==(0), subsz)
-                substr = _subblock_strides(subsz, (d₁, d₂), strides)
-                push!(structurevalues, (subsz, substr, totaloffset))
-                offset₁ += d₁
-            end
-            blockdim₂ += d₂
+            @assert !any(==(0), d₂s)
+            trees₂[i] = ((zeros₁..., d₂s...), (zeros₁..., _colmajorstrides(d₂s, blockdim₁)...), blockoffset + blockdim₂ * blockdim₁)
+            blockdim₂ += prod(d₂s)
         end
         blockrange = (blockoffset + 1):(blockoffset + blockdim₁ * blockdim₂)
         blockvalues[block_index] = ((blockdim₁, blockdim₂), blockrange)
         blockoffset = last(blockrange)
     end
 
-    return DegeneracyStructure(blockoffset, blockvalues, structurevalues)
+    subblockvalues = SubblockStructure(trees₁, trees₂, ts)
+    return DegeneracyStructure(blockoffset, blockvalues, subblockvalues)
 end
 
-function _subblock_strides(subsz, sz, str)
-    sz_simplify = Strided.StridedViews._simplifydims(sz, str)
-    strides = Strided.StridedViews._computereshapestrides(subsz, sz_simplify...)
-    isnothing(strides) &&
-        throw(ArgumentError("unexpected error in computing subblock strides"))
-    return strides
-end
-
+# the strides of legs with sizes `ds` that are column major, starting from `stride`
+_colmajorstrides(ds::Tuple, stride::Int) = Base.front(cumprod((stride, ds...)))
