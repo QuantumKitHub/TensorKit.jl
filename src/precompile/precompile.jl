@@ -52,6 +52,10 @@ const PRECOMPILE_FACTORIZATIONS = @load_preference("precompile_factorizations", 
 
 # Workload
 # --------
+# `V^N` with `N` known in the type domain: unlike `V^n` for an `Int`, the resulting space type
+# (and therefore the type of tensors built from it) can be inferred
+_prodspace(V, ::Val{N}) where {N} = TensorKit.ProductSpace{typeof(V), N}(ntuple(Returns(V), Val(N)))
+
 include("indexmanipulations.jl")
 include("contract.jl")
 include("factorizations.jl")
