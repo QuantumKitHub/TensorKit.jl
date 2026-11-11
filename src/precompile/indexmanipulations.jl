@@ -20,9 +20,6 @@ function precompile_indexmanipulations(::Type{S}; eltypes = PRECOMPILE_ELTYPES, 
     symmetric_braiding = BraidingStyle(sectortype(S)) isa SymmetricBraiding
     has_braiding = !(BraidingStyle(sectortype(S)) isa NoBraiding)
     for T in eltypes, N in 1:ndims
-        # `T` and `N` are only known at runtime: the inference barrier ensures that the workload
-        # is only inferred for the concrete element type and arity, and not additionally for
-        # abstract argument types that no actual call would use
         Base.inferencebarrier(_precompile_indexmanipulations)(V, T, Val(N), symmetric_braiding, has_braiding)
     end
     return nothing

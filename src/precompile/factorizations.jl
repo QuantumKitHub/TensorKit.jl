@@ -19,9 +19,6 @@ See also [`precompile_contract`](@ref TensorKit.precompile_contract), [`precompi
 function precompile_factorizations(::Type{S}; eltypes = PRECOMPILE_ELTYPES) where {S <: IndexSpace}
     V = unitspace(S)
     for T in eltypes
-        # `T` is only known at runtime: the inference barrier ensures that the workload is only
-        # inferred for the concrete element type, and not additionally for abstract argument
-        # types that no actual call would use
         Base.inferencebarrier(_precompile_factorizations)(V, T)
     end
     return nothing
