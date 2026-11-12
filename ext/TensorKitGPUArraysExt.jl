@@ -7,9 +7,10 @@ using Adapt
 using TensorKit.TupleTools
 using Strided: StridedViews
 using MatrixAlgebraKit, Adapt
+using LinearAlgebra
 using TensorKit
 using TensorKit.TensorOperations: linearize, DefaultAllocator
-using TensorKit.VectorInterface: One
+using TensorKit.VectorInterface: One, inner
 const TO = TensorKit.TensorOperations
 using TensorKit.Factorizations
 using TensorKit.Factorizations: AbstractAlgorithm
@@ -807,5 +808,26 @@ function TensorKit.trace_transform_kernel!(
     tdst === dst.t || copy!(dst.t, tdst)
     return nothing
 end
+
+# allow storing the result on the device to avoid a synchronizing copy
+function TensorKit.VectorInterface.inner(tx::GPUTensorMap, ty::GPUTensorMap, result::AnyGPUVector)
+    space(tx) == space(ty) || throw(SpaceMismatch(lazy"$(space(tx)) ≠ $(space(ty))"))
+    InnerProductStyle(tx) === EuclideanInnerProduct() || throw_invalid_innerproduct(:inner)
+    if FusionStyle(sectortype(tx)) isa UniqueFusion # all quantum dimensions are one
+        return inner(tx.data, ty.data, result)
+    else
+        T = VectorInterface.promote_inner(tx, ty)
+        T == eltype(result) || throw(ArgumentError(lazy"result has element type $(eltype(result)), but needs $T"))
+        zero!(result)
+        block_result = similar(result)
+        for c in blocksectors(tx)
+            bx = parent(block(tx, c)) # matrix structure (reshape) does not matter
+            by = parent(block(ty, c)) # but does lead to slower path in inner
+            @. s += convert(T, dim(c)) * inner(bx, by, block_result)
+        end
+    end
+    return s
+end
+LinearAlgebra.dot(t1::GPUTensorMap, t2::GPUTensorMap, result) = inner(t1, t2, result)
 
 end
