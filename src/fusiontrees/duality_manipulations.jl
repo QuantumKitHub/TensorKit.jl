@@ -266,8 +266,8 @@ function foldright(src::FusionTreeBlock)
             multi_Fmove(f₁)
         end
         for (f₁′, coeff₁) in zip(f₁′s, coeffs₁)
-            b = f₁′.coupled
-            c = f₁.coupled
+            local b = f₁′.coupled
+            local c = f₁.coupled
             A = get!(cache₃, (b, c)) do
                 Asymbol(a, b, c)
             end
@@ -353,8 +353,8 @@ function foldleft(src::FusionTreeBlock)
             multi_Fmove(f₂)
         end
         for (f₂′, coeff₂) in zip(f₂′s, coeffs₂)
-            b = f₂′.coupled
-            c = f₂.coupled
+            local b = f₂′.coupled
+            local c = f₂.coupled
             A = get!(cache₃, (b, c)) do
                 Asymbol(a, b, c)
             end
