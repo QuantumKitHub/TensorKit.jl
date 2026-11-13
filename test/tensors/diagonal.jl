@@ -1,5 +1,6 @@
 using Test, TestExtras
 using TensorKit
+using TensorOperations
 
 diagspacelist = (
     (ℂ^4)',
@@ -253,4 +254,21 @@ diagspacelist = (
         end
     end
     TensorKit.empty_globalcaches!()
+end
+
+@testset "DiagonalTensor temporaries with $(nameof(typeof(allocator)))" for allocator in
+    (TensorOperations.DefaultAllocator(), TensorOperations.ManualAllocator(), TensorOperations.BufferAllocator())
+    for V in diagspacelist, T in (Float64, ComplexF64)
+        BraidingStyle(sectortype(V)) isa SymmetricBraiding || continue
+        d = tensoralloc(DiagonalTensorMap{T, spacetype(V), Vector{T}}, V ← V, Val(true), allocator)
+        @test d isa DiagonalTensorMap{T}
+        @test space(d) == (V ← V)
+        tensorfree!(d, allocator)
+
+        D1, D2, D3 = DiagonalTensorMap(rand(T, reduceddim(V)), V),
+            DiagonalTensorMap(rand(T, reduceddim(V)), V), DiagonalTensorMap(rand(T, reduceddim(V)), V)
+        @tensor C[a; b] := D1[a; c] * D2[c; d] * D3[d; b]
+        @tensor allocator = allocator C′[a; b] := D1[a; c] * D2[c; d] * D3[d; b]
+        @test C′ ≈ C
+    end
 end

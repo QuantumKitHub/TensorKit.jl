@@ -306,7 +306,12 @@ function TO.tensoralloc(
     V = only(domain(structure))
     dim = reduceddim(V)
     data = TO.tensoralloc(M, dim, istemp, allocator)
-    return DiagonalTensorMap{T, S, M}(data, V)
+    return DiagonalTensorMap{T, S, typeof(data)}(data, V)
+end
+
+function TO.tensorfree!(t::DiagonalTensorMap, allocator = TO.DefaultAllocator())
+    TO.tensorfree!(t.data, allocator)
+    return nothing
 end
 
 # Linear Algebra and factorizations
