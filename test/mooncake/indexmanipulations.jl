@@ -27,7 +27,8 @@ eltypes = (Float64, ComplexF64)
         for _ in 1:5
             p = randindextuple(numind(A))
             C = randn!(permute(A, p))
-            Mooncake.TestUtils.test_rule(rng, TensorKit.permute!, C, A, p, α, β; atol, rtol, mode)
+            Mooncake.TestUtils.test_rule(rng, TensorKit.permute!, C, A, p, α, β; atol, rtol, mode, is_primitive = false)
+            Mooncake.TestUtils.test_rule(rng, TensorKit.permute!, C, A, p, α, β, TensorOperations.DefaultBackend(), TensorOperations.DefaultAllocator(); atol, rtol, mode)
             A = C
         end
     end
@@ -41,12 +42,13 @@ eltypes = (Float64, ComplexF64)
         for _ in 1:2
             p = randcircshift(numout(A), numin(A))
             C = randn!(transpose(A, p))
-            Mooncake.TestUtils.test_rule(rng, TensorKit.transpose!, C, A, p, One(), Zero(); atol, rtol, mode)
-            Mooncake.TestUtils.test_rule(rng, TensorKit.transpose!, C, A, p, α, β; atol, rtol, mode)
+            Mooncake.TestUtils.test_rule(rng, TensorKit.transpose!, C, A, p, One(), Zero(); atol, rtol, mode, is_primitive = false)
+            Mooncake.TestUtils.test_rule(rng, TensorKit.transpose!, C, A, p, α, β; atol, rtol, mode, is_primitive = false)
+            Mooncake.TestUtils.test_rule(rng, TensorKit.transpose!, C, A, p, α, β, TensorOperations.DefaultBackend(), TensorOperations.DefaultAllocator(); atol, rtol, mode)
             if !(T <: Real)
-                Mooncake.TestUtils.test_rule(rng, TensorKit.transpose!, C, real(A), p, α, β; atol, rtol, mode)
-                Mooncake.TestUtils.test_rule(rng, TensorKit.transpose!, C, A, p, real(α), β; atol, rtol, mode)
-                Mooncake.TestUtils.test_rule(rng, TensorKit.transpose!, C, real(A), p, real(α), β; atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, TensorKit.transpose!, C, real(A), p, α, β; atol, rtol, mode, is_primitive = false)
+                Mooncake.TestUtils.test_rule(rng, TensorKit.transpose!, C, A, p, real(α), β; atol, rtol, mode, is_primitive = false)
+                Mooncake.TestUtils.test_rule(rng, TensorKit.transpose!, C, real(A), p, real(α), β; atol, rtol, mode, is_primitive = false)
             end
             A = C
         end
@@ -62,11 +64,12 @@ eltypes = (Float64, ComplexF64)
             p = randcircshift(numout(A), numin(A))
             levels = Tuple(randperm(numind(A)))
             C = randn!(transpose(A, p))
-            Mooncake.TestUtils.test_rule(rng, TensorKit.braid!, C, A, p, levels, α, β; atol, rtol, mode)
+            Mooncake.TestUtils.test_rule(rng, TensorKit.braid!, C, A, p, levels, α, β; atol, rtol, mode, is_primitive = false)
+            Mooncake.TestUtils.test_rule(rng, TensorKit.braid!, C, A, p, levels, α, β, TensorOperations.DefaultBackend(), TensorOperations.DefaultAllocator(); atol, rtol, mode)
             if !(T <: Real)
-                Mooncake.TestUtils.test_rule(rng, TensorKit.braid!, C, real(A), p, levels, α, β; atol, rtol, mode)
-                Mooncake.TestUtils.test_rule(rng, TensorKit.braid!, C, A, p, levels, real(α), β; atol, rtol, mode)
-                Mooncake.TestUtils.test_rule(rng, TensorKit.braid!, C, A, p, levels, real(α), real(β); atol, rtol, mode)
+                Mooncake.TestUtils.test_rule(rng, TensorKit.braid!, C, real(A), p, levels, α, β; atol, rtol, mode, is_primitive = false)
+                Mooncake.TestUtils.test_rule(rng, TensorKit.braid!, C, A, p, levels, real(α), β; atol, rtol, mode, is_primitive = false)
+                Mooncake.TestUtils.test_rule(rng, TensorKit.braid!, C, A, p, levels, real(α), real(β); atol, rtol, mode, is_primitive = false)
             end
             A = C
         end
@@ -85,12 +88,14 @@ eltypes = (Float64, ComplexF64)
         α = randn(T)
         β = randn(T)
         C = randn!(similar(A, TensorKit.promote_twist(A)))
-        Mooncake.TestUtils.test_rule(rng, TensorKit.twist!, C, A, (1, 3), α, β; atol, rtol, mode)
-        Mooncake.TestUtils.test_rule(rng, Core.kwcall, (; inv = true), TensorKit.twist!, C, A, [2, 4], α, β; atol, rtol, mode)
-        Mooncake.TestUtils.test_rule(rng, Core.kwcall, (; inv = false), TensorKit.twist!, C, A, 1; atol, rtol, mode)
+        Mooncake.TestUtils.test_rule(rng, TensorKit.twist!, C, A, (1, 3), α, β; atol, rtol, mode, is_primitive = false)
+        Mooncake.TestUtils.test_rule(rng, Core.kwcall, (; inv = true), TensorKit.twist!, C, A, [2, 4], α, β; atol, rtol, mode, is_primitive = false)
+        Mooncake.TestUtils.test_rule(rng, Core.kwcall, (; inv = true), TensorKit.twist!, C, A, [2, 4], α, β, TensorOperations.DefaultBackend(), TensorOperations.DefaultAllocator(); atol, rtol, mode)
+        Mooncake.TestUtils.test_rule(rng, TensorKit.twist!, C, A, (true, false, true, false, false), α, β, TensorOperations.DefaultBackend(), TensorOperations.DefaultAllocator(); atol, rtol, mode)
+        Mooncake.TestUtils.test_rule(rng, Core.kwcall, (; inv = false), TensorKit.twist!, C, A, 1; atol, rtol, mode, is_primitive = false)
         if !(T <: Real)
-            Mooncake.TestUtils.test_rule(rng, TensorKit.twist!, C, real(A), (1, 3), α, β; atol, rtol, mode)
-            Mooncake.TestUtils.test_rule(rng, TensorKit.twist!, C, A, (1, 3), real(α), real(β); atol, rtol, mode)
+            Mooncake.TestUtils.test_rule(rng, TensorKit.twist!, C, real(A), (1, 3), α, β; atol, rtol, mode, is_primitive = false)
+            Mooncake.TestUtils.test_rule(rng, TensorKit.twist!, C, A, (1, 3), real(α), real(β); atol, rtol, mode, is_primitive = false)
         end
         Mooncake.TestUtils.test_rule(rng, Core.kwcall, (; inv = true), twist, A, (1, 3); atol, rtol, mode, is_primitive = false)
 
