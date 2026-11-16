@@ -228,7 +228,8 @@ braid(f::FusionTree{I, N}, p::IndexTuple{N}, levels::IndexTuple{N}) where {I, N}
 function braid(f::FusionTree{I, N}, (p, _)::Index2Tuple{N, 0}, (levels, _)::Index2Tuple{N, 0}) where {I, N}
     TupleTools.isperm(p) || throw(ArgumentError(lazy"not a valid permutation: $p"))
     braid_style = BraidingStyle(I)
-    if FusionStyle(I) isa UniqueFusion && braid_style isa SymmetricBraiding # Fsymbols are 1
+    # TODO: assumes trivial Fsymbols, which this condition only guarantees up to gauge
+    if FusionStyle(I) isa UniqueFusion && braid_style isa SymmetricBraiding
         coeff = one(sectorscalartype(I))
         for i in 1:N
             for j in 1:(i - 1)
@@ -335,25 +336,28 @@ end
         p′ = linearizepermutation(p₁, p₂, numout(src), numin(src))
         levels = (l₁..., reverse(l₂)...)
 
+        T = sectorscalartype(I)
         dst, U = repartition(src, Val(numind(src)))
+        # the bends have `fusionscalartype(I)`, which can be narrower than `T`
+        U = convert(Matrix{T}, U)
 
         # the swaps keep the size of the block, so that the matrices of the previous step are recycled
-        U_tmp = Matrix{sectorscalartype(I)}(undef, length(dst), length(dst))
-        U_spare = nothing
+        U_tmp = similar(U)
+        U_spare = similar(U)
         braid_style = BraidingStyle(I)
         for s in permutation2swaps(p′)
             _check_levels(braid_style, levels, s)
             inv = levels[s] > levels[s + 1]
             dst, _ = artin_braid!(U_tmp, dst, s; inv)
-            U_spare, U = U, U_spare isa typeof(U_tmp) ? mul!(U_spare, U_tmp, U) : U_tmp * U
+            U, U_spare = mul!(U_spare, U_tmp, U), U
             l = levels[s]
             levels = TupleTools.setindex(levels, levels[s + 1], s)
             levels = TupleTools.setindex(levels, l, s + 1)
         end
 
         N₂ == 0 && return dst => U
-        dst, U_tmp = repartition(dst::FusionTreeBlock{I}, Val(N₁))
-        return dst => U_tmp * U
+        dst, U_bend = repartition(dst::FusionTreeBlock{I}, Val(N₁))
+        return dst => U_bend * U
     end
 end
 
