@@ -16,7 +16,7 @@ tree with non-zero coefficient, namely `f` with coefficient `1`. This keyword ha
 if `BraidingStyle(sectortype(f)) isa SymmetricBraiding`.
 
 For sectors without `UniqueFusion`, the braid of `f` has to be a single fusion tree, which is the
-case if `f` is the only fusion tree with its uncoupled and coupled sectors; this throws otherwise.
+case if `f` is the only fusion tree compatible with the given uncoupled and coupled sectors; this throws otherwise.
 """
 function artin_braid(f::FusionTree{I, N}, i; inv::Bool = false) where {I, N}
     1 <= i < N || throw(ArgumentError(lazy"Cannot swap outputs i=$i and i+1 out of only $N outputs"))
