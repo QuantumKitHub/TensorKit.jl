@@ -155,7 +155,7 @@ _inorder(U::Number, dst, ref) = (@test dst == ref; U)
 function _inorder(U::AbstractMatrix, dst::FusionTreeBlock, ref::FusionTreeBlock)
     rows = indexin(fusiontrees(ref), fusiontrees(dst))
     @test length(dst) == length(ref) && !any(isnothing, rows)
-    return U[something.(rows, 1), :]
+    return U[something.(rows), :]
 end
 
 

@@ -117,10 +117,10 @@ const FusionTreePair{I, N₁, N₂} = Tuple{FusionTree{I, N₁}, FusionTree{I, N
 
 Collection of fusion-splitting tree pairs that share the same uncoupled sectors.
 Mostly internal structure to speed up non-`UniqueFusion` fusiontree manipulation computations.
-Manipulating a block requires it to be complete, i.e. to contain all the fusion-splitting tree
-pairs with its uncoupled sectors and duality flags, as `FusionTreeBlock{I}(uncoupled, isdual)`
-does. The resulting block holds its trees in the order in which they are produced, rather than in
-the canonical order of `FusionTreeBlock{I}(uncoupled, isdual)`.
+The list of fusion tree pairs in the block is required to be complete, i.e. to contain all the
+fusion-splitting tree pairs with its uncoupled sectors and duality flags, but not necessarily in the
+canonical order in which they are produced by the default `FusionTreeBlock{I}(uncoupled, isdual)`
+constructor.
 """
 struct FusionTreeBlock{I, N₁, N₂, F <: FusionTreePair{I, N₁, N₂}}
     trees::Vector{F}
