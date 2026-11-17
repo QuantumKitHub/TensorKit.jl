@@ -663,7 +663,7 @@ function TensorKit._nrm2!(out::AnyGPUVector, x::AnyGPUArray)
     out .= sqrt.(vec(sum(abs2, x; dims = ntuple(identity, ndims(x)))))
     return out
 end
-TensorKit._nrm2!(out::AnyGPUVector, x::LinearAlgebra.Diagonal) = TensorKit._nrm2!(out, x.diag)
+TensorKit._nrm2!(out::AnyGPUVector, x::LinearAlgebra.Diagonal{<:Any, <:AnyGPUVector}) = TensorKit._nrm2!(out, x.diag)
 
 function _device_norm2(t::Union{GPUTensorMap, GPUDiagonalTensorMap})
     InnerProductStyle(t) === EuclideanInnerProduct() || TensorKit.throw_invalid_innerproduct(:norm)
