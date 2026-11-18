@@ -345,7 +345,7 @@ for V in spacelist
                 twistmask = (true, false, true, false, true)
                 p = (codomainind(t), domainind(t))
                 twister = TensorKit.treetwister(storagetype(t), space(t), space(t), p, false, twistmask, false)
-                @test twister isa getglobal(GPUArraysExt, :DeviceUniqueTreeTransformer)
+                @test twister isa getglobal(GPUArraysExt, :DeviceTreeTransformer)
                 @test twister === TensorKit.treetwister(storagetype(t), space(t), space(t), p, false, twistmask, false)
             end
         end

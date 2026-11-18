@@ -2,14 +2,13 @@ module TensorKitGPUArraysExt
 
 using GPUArrays
 using GPUArrays: @allowscalar
-using GPUArrays.KernelAbstractions: @kernel, @index, get_backend
+using GPUArrays.KernelAbstractions: @kernel, @index, @localmem, @synchronize, @Const, get_backend
 using Adapt
 using TensorKit.TupleTools
 using Strided: StridedViews
 using MatrixAlgebraKit, Adapt
 using TensorKit
 using TensorKit.TensorOperations: linearize, DefaultAllocator
-using TensorKit.VectorInterface: One
 const TO = TensorKit.TensorOperations
 using TensorKit.Factorizations
 using TensorKit.Factorizations: AbstractAlgorithm
@@ -126,87 +125,13 @@ end
 
 # Device-side tree transformers
 # -----------------------------
-# A `TreeTransformer` stores the mapping between subblock positions (plus recoupling
-# coefficients) and the `StridedStructure`s of the source and destination spaces.
-# We resolve the positions into sizes/strides/offsets and pack all the information on the
-# CPU side into dense vectors of numbers, plus some accounting information so we know how
-# to unpack in the kernel. Also, we can permute the source strides "in advance" on the CPU side.
-# We also precompute the strides of the subblock each kernel index will work on,
-# so that the GPU thread can recover the Cartesian coordinates it will need for input/ouput,
-# and a running `work_offsets` count of destination elements, so that a kernel can run one
-# thread per output element and recover which input that element belongs with.
-# Some possible TODO here:
-# - Try cuTILE as this is a classic tile programming problem
-# - Use shared memory to coalesce the reads
-# - Use a 2D grid for the Generic case
+# The positions and recoupling coefficients of a `TreeTransformer` are resolved into
+# sizes/strides/offsets and packed into flat device vectors.
 
 const TreeStructure{N} = Tuple{NTuple{N, Int}, Int}
 
-"""
-    UniqueTransformerBlock{T, N}
-
-`isbits` descriptor for a subblock that is a *single* scaled permutation:
-an entry of a `UniqueTreeTransformer` or a unique (one-tree) block of a
-`GenericTreeTransformer`.
-"""
-struct UniqueTransformerBlock{T, N}
-    coeff::T
-    sz::NTuple{N, Int}
-    dense_strides::NTuple{N, Int}
-    strides_dst::NTuple{N, Int}
-    offsets_dst::Int
-    permuted_strides_src::NTuple{N, Int}  # source strides, permuted by `p`
-    offsets_src::Int
-end
-
-# device-side simple struct that GPU kernels can use
-struct DeviceUniqueTreeTransformer{VB <: AbstractVector{<:UniqueTransformerBlock}, VO <: AbstractVector{Int}}
-    blocks::VB
-    work_offsets::VO
-    nwork::Int
-end
-
-"""
-    GenericTransformerBlock{N}
-
-Descriptor for a recoupling block of a `GenericTreeTransformer`, indexing into the
-flat `coeffs`/`structs_dst`/`structs_src` vectors of a `DeviceGenericTreeTransformer`.
-"""
-struct GenericTransformerBlock{N}
-    sz::NTuple{N, Int}
-    densestrides::NTuple{N, Int}
-    rows::Int
-    cols::Int
-    u_offset::Int # location in the flattened U vector to find this block's U
-    dst_offset::Int
-    src_offset::Int
-end
-
-# force all the type signatures here to make sure doing something wrong fails
-# before the kernel launch. Kernel error dumps are awful and hard to interpret.
-struct DeviceGenericTreeTransformer{VO <: AbstractVector{Int}, DA <: DeviceUniqueTreeTransformer{<:Any, VO}, VB <: AbstractVector{<:GenericTransformerBlock}, VC <: AbstractVector{<:Number}, VS <: AbstractVector{<:Tuple{<:Tuple{Vararg{Int}}, Int}}}
-    unique_blocks::DA  # length(U) = 1 blocks, can be handled by unique kernel
-    blocks::VB
-    work_offsets::VO
-    nwork::Int
-    coeffs::VC  # every `U`, concatenated in column-major order
-    structs_dst::VS
-    structs_src::VS
-end
-
 # strides of a dense array of shape `sz`
 _dense_strides(size::Dims) = Base.front((1, cumprod(size)...))
-
-# `permute(Vsrc, p) == Vdst` is enforced when the transformer is built, so the permuted
-# source shape always matches `sz_dst` and the two views share Cartesian inds.
-function _unique_block(
-        coeff::T, (size_dst, strides_dst, offsets_dst), (_, strides_src, offsets_src), p
-    ) where {T}
-    return UniqueTransformerBlock{T, length(size_dst)}(
-        coeff, size_dst, _dense_strides(size_dst), strides_dst, offsets_dst,
-        TupleTools.getindices(strides_src, p), offsets_src
-    )
-end
 
 function _work_offsets(work)
     offsets = cumsum(work)
@@ -215,59 +140,186 @@ function _work_offsets(work)
     return offsets, total
 end
 
-function DeviceUniqueTreeTransformer(transformer::UniqueTreeTransformer{T, N}, p) where {T, N}
-    (; structure_dst, structure_src) = transformer
-    blocks = UniqueTransformerBlock{T, N}[
-        _unique_block(coeff, structure_dst[idst], structure_src[isrc], p)
-            for (coeff, idst, isrc) in transformer.data
-    ]
-    work_offsets, nwork = _work_offsets(prod(blk.sz) for blk in blocks)
-    return DeviceUniqueTreeTransformer(blocks, work_offsets, nwork)
+"""
+    TileShape{N}
+
+A tile of `2^tshift` entries of each of `tmask + 1` consecutive destination trees, with power-of-two
+extents in the index order of the destination. Tile entries are numbered both in destination
+order and in source order, with the tree as the slowest index, and the coordinates of an entry `e`
+are `(e >> shift[n]) & mask[n]` with the corresponding `shift`.
+"""
+struct TileShape{N}
+    dshift::NTuple{N, Int32}
+    sshift::NTuple{N, Int32}
+    mask::NTuple{N, Int32}
+    tshift::Int32
+    tmask::Int32
+    padshift::Int32 # shared memory has one padding entry per `2^padshift` entries
 end
 
-function DeviceGenericTreeTransformer(
-        transformer::GenericTreeTransformer{T, N}, p
-    ) where {T, N}
-    unique_blocks = UniqueTransformerBlock{T, N}[]
-    blocks = GenericTransformerBlock{N}[]
+function TileShape(sz::NTuple{N, Int}, ntrees::Int, p::NTuple{N, Int}) where {N}
+    lg = map(trailing_zeros, sz)
+    dshift = ntuple(n -> sum(lg[1:(n - 1)]; init = 0), Val(N))
+    # destination index `n` is source index `p[n]`
+    q = invperm(p)
+    spos = ntuple(k -> sum(lg[q[i]] for i in 1:(k - 1); init = 0), Val(N))
+    sshift = ntuple(n -> spos[p[n]], Val(N))
+    # at least one padding entry per two entries bounds the shared memory size
+    padshift = N == 0 ? 1 : max(lg[1], 1)
+    return TileShape{N}(
+        Int32.(dshift), Int32.(sshift), Int32.(sz .- 1), Int32(sum(lg; init = 0)),
+        Int32(ntrees - 1), Int32(padshift)
+    )
+end
+
+"""
+    TransformerBlock{N}
+
+Descriptor for a block of a `DeviceTreeTransformer`, indexing into its flat
+`coeffs`/`structs_dst`/`structs_src` vectors. A unique (one-tree) block has `rows = cols = 1`.
+"""
+struct TransformerBlock{N}
+    sz::NTuple{N, Int32} # destination subblock size
+    rows::Int32
+    cols::Int32
+    u_offset::Int32 # location of this block's `U` in the flattened `coeffs` vector
+    dst_offset::Int32
+    src_offset::Int32
+    tile::TileShape{N}
+end
+
+"""
+    TransformerTile{N}
+
+Work item of a single workgroup: a tile of the destination trees `tree:(tree + tile.tmask)`
+(0-based) of `block`.
+"""
+struct TransformerTile{N}
+    block::Int32
+    tree::Int32
+    origin::NTuple{N, Int32} # 0-based coordinates of the first tile entry
+end
+
+struct DeviceTreeTransformer{N, VB <: AbstractVector{TransformerBlock{N}}, VT <: AbstractVector{TransformerTile{N}}, VC <: AbstractVector{<:Number}, VS <: AbstractVector{TreeStructure{N}}}
+    blocks::VB
+    tiles::VT
+    coeffs::VC # every `U`, concatenated in column-major order
+    structs_dst::VS
+    structs_src::VS # with source strides permuted to the destination order
+    len::Int # number of entries of every tile
+end
+
+# the type of the `DeviceTreeTransformer`s for the space `V` on storage `A`, for type-stable caches
+devicetransformertype(A, ::TensorMapSpace{S, N₁, N₂}) where {S, N₁, N₂} =
+    devicetransformertype(A, sectortype(S), Val(N₁ + N₂))
+function devicetransformertype(::Type{A}, ::Type{I}, ::Val{N}) where {A, I, N}
+    T = TensorKit.recoupling_scalartype(A, sectorscalartype(I))
+    vec(::Type{X}) where {X} = Base.promote_op(similar, A, Type{X}, Dims{1})
+    return DeviceTreeTransformer{N, vec(TransformerBlock{N}), vec(TransformerTile{N}), vec(T), vec(TreeStructure{N})}
+end
+
+Adapt.adapt_structure(to, t::DeviceTreeTransformer) = DeviceTreeTransformer(
+    adapt(to, t.blocks), adapt(to, t.tiles), adapt(to, t.coeffs), adapt(to, t.structs_dst),
+    adapt(to, t.structs_src), t.len
+)
+
+# Every block gets its own tile shape, whose extents (including the number of trees) are doubled
+# greedily while the estimated cost decreases: 32-byte sectors read (contiguous along `q₁`, shared
+# by all trees of the tile) and written (along index 1), one extra per contiguous run, the
+# coefficients, and a fixed overhead per tile that includes its threads. The tile length is the
+# one that minimizes the total cost.
+const TILE_LENGTHS = (32, 64, 128, 256)
+const MAX_GROUPSIZE = 128
+
+function _tile_cost(tile, ntrees, q₁, (sz, rows, cols), len, elsize)
+    sectors(n) = cld(n * elsize, 32) + 1
+    ext = min.(tile, sz)
+    n = prod(ext)
+    reads = length(sz) == 0 ? sectors(1) : sectors(ext[q₁]) * (n ÷ ext[q₁])
+    writes = length(sz) == 0 ? sectors(1) : sectors(ext[1]) * (n ÷ ext[1])
+    t = min(ntrees, rows)
+    ntiles = prod(cld.(sz, tile)) * cld(rows, ntrees)
+    return ntiles * (64 + len / 32 + t * writes + cols * (reads + sectors(t)))
+end
+
+function _choose_tile(q₁, block, len, elsize, ::Val{N}) where {N}
+    sz, rows, _ = block
+    tile, ntrees = ntuple(_ -> 1, Val(N)), 1
+    cost = _tile_cost(tile, ntrees, q₁, block, len, elsize)
+    while prod(tile) * ntrees < len
+        best = (cost, tile, ntrees)
+        for d in 1:N
+            tile[d] < sz[d] || continue
+            tile′ = Base.setindex(tile, 2 * tile[d], d)
+            c = _tile_cost(tile′, ntrees, q₁, block, len, elsize)
+            c < first(best) && (best = (c, tile′, ntrees))
+        end
+        if ntrees < rows
+            c = _tile_cost(tile, 2 * ntrees, q₁, block, len, elsize)
+            c < first(best) && (best = (c, tile, 2 * ntrees))
+        end
+        first(best) < cost || break
+        cost, tile, ntrees = best
+    end
+    return cost, tile, ntrees
+end
+
+# `entries` iterates `(U, structures_dst, structures_src)`, with `structures_src` in source order
+function DeviceTreeTransformer(::Type{T}, entries, p::NTuple{N, Int}, elsize::Int) where {T, N}
+    layouts = Tuple{NTuple{N, Int}, Int, Int, Int, Int, Int}[]
     coeffs = T[]
     structs_dst = TreeStructure{N}[]
     structs_src = TreeStructure{N}[]
-
-    (; structure_dst, structure_src) = transformer
-    for (U, inds_dst, inds_src) in transformer.data
-        if length(U) == 1 # same as the unique (Abelian) case
-            push!(
-                unique_blocks, _unique_block(
-                    only(U), structure_dst[only(inds_dst)], structure_src[only(inds_src)], p
-                )
-            )
-        else
-            # all trees in a block share the same subblock size
-            size_dst = first(structure_dst[first(inds_dst)])
-            push!(
-                blocks, GenericTransformerBlock{N}(
-                    size_dst, _dense_strides(size_dst), size(U, 1), size(U, 2),
-                    length(coeffs), length(structs_dst), length(structs_src)
-                )
-            )
-            append!(coeffs, U)
-            for idst in inds_dst
-                _, strides_dst, offset_dst = structure_dst[idst]
-                push!(structs_dst, (strides_dst, offset_dst))
-            end
-            for isrc in inds_src
-                _, strides_src, offset_src = structure_src[isrc]
-                push!(structs_src, (TupleTools.getindices(strides_src, p), offset_src))
-            end
+    for (U, structures_dst, structures_src) in entries
+        # all trees in a block share the same subblock size
+        sz = first(first(structures_dst))
+        push!(layouts, (sz, size(U)..., length(coeffs), length(structs_dst), length(structs_src)))
+        append!(coeffs, U)
+        for (_, strides, offset) in structures_dst
+            push!(structs_dst, (strides, offset))
+        end
+        for (_, strides, offset) in structures_src
+            push!(structs_src, (TupleTools.getindices(strides, p), offset))
         end
     end
 
-    unique_offsets, unique_nwork = _work_offsets(prod(blk.sz) for blk in unique_blocks)
-    work_offsets, nwork = _work_offsets(blk.rows * prod(blk.sz) for blk in blocks)
-    return DeviceGenericTreeTransformer(
-        DeviceUniqueTreeTransformer(unique_blocks, unique_offsets, unique_nwork),
-        blocks, work_offsets, nwork, coeffs, structs_dst, structs_src
+    # tile shapes only depend on the size and the shape of `U` of a block
+    counts = Dict{Tuple{NTuple{N, Int}, Int, Int}, Int}()
+    for layout in layouts
+        key = layout[1:3]
+        counts[key] = get(counts, key, 0) + 1
+    end
+    q₁ = N == 0 ? 0 : findfirst(==(1), p)
+    totalcost(len) = sum(((key, n),) -> n * first(_choose_tile(q₁, key, len, elsize, Val(N))), counts; init = 0.0)
+    len = argmin(totalcost, TILE_LENGTHS)
+    shapes = Dict(key => Base.tail(_choose_tile(q₁, key, len, elsize, Val(N))) for key in keys(counts))
+
+    blocks = TransformerBlock{N}[]
+    tiles = TransformerTile{N}[]
+    for (b, (sz, rows, cols, u_offset, dst_offset, src_offset)) in enumerate(layouts)
+        tile, ntrees = shapes[(sz, rows, cols)]
+        push!(blocks, TransformerBlock{N}(sz, rows, cols, u_offset, dst_offset, src_offset, TileShape(tile, ntrees, p)))
+        for i in 0:ntrees:(rows - 1), I in CartesianIndices(cld.(sz, tile))
+            push!(tiles, TransformerTile{N}(b, i, (Tuple(I) .- 1) .* tile))
+        end
+    end
+    # the work of a tile scales with the number of source trees, so schedule the heaviest first
+    sort!(tiles; by = t -> blocks[t.block].cols, rev = true)
+    return DeviceTreeTransformer(blocks, tiles, coeffs, structs_dst, structs_src, len)
+end
+
+function _tree_entries(transformer::UniqueTreeTransformer)
+    (; structure_dst, structure_src) = transformer
+    return (
+        (fill(coeff, 1, 1), (structure_dst[idst],), (structure_src[isrc],))
+            for (coeff, idst, isrc) in transformer.data
+    )
+end
+function _tree_entries(transformer::GenericTreeTransformer)
+    (; structure_dst, structure_src) = transformer
+    return (
+        (U, view(structure_dst, inds_dst), view(structure_src, inds_src))
+            for (U, inds_dst, inds_src) in transformer.data
     )
 end
 
@@ -390,14 +442,14 @@ TensorKit.treetwister(
 @cached function TensorKit.device_treebraider(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
         conjsrc::Bool, levels::IndexTuple
-    ) where {TA <: AnyGPUVector}
+    )::devicetransformertype(A, Vdst) where {TA <: AnyGPUVector}
     host = TensorKit.treebraider(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc, levels)
     return device_transformer(A, host, linearize(p))
 end
 
 @cached function TensorKit.device_treetransposer(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
-    ) where {TA <: AnyGPUVector}
+    )::devicetransformertype(A, Vdst) where {TA <: AnyGPUVector}
     host = TensorKit.treetransposer(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc)
     return device_transformer(A, host, linearize(p))
 end
@@ -412,36 +464,26 @@ end
 @cached function TensorKit.device_treetwister(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
         conjsrc::Bool, twistmask::NTuple{N, Bool}, inv::Bool
-    ) where {TA <: AnyGPUVector, N}
+    )::devicetransformertype(A, Vdst) where {TA <: AnyGPUVector, N}
     host = TensorKit.treetwister(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc, twistmask, inv)
     return device_transformer(A, host, linearize(p))
 end
 
 # Allocations must outlive any GPUArrays allocation-cache scope around the operation.
-device_transformer(A, transformer::UniqueTreeTransformer, p) =
-    device_transformer(A, DeviceUniqueTreeTransformer(transformer, p))
+function device_transformer(A, transformer::Union{UniqueTreeTransformer, GenericTreeTransformer}, p)
+    entries = _tree_entries(transformer)
+    packed = DeviceTreeTransformer(scalartype(transformer), entries, Tuple(p), sizeof(scalartype(A)))
+    return device_transformer(A, packed)
+end
 
-function device_transformer(A, packed::DeviceUniqueTreeTransformer)
+function device_transformer(A, packed::DeviceTreeTransformer)
     return GPUArrays.@uncached begin
         proto = A(undef, 0)
         # Metadata and coefficients have different element types; preserve each on upload.
         upload(x) = copy!(similar(proto, eltype(x), size(x)), x)
-        DeviceUniqueTreeTransformer(upload(packed.blocks), upload(packed.work_offsets), packed.nwork)
-    end
-end
-
-function device_transformer(A, transformer::GenericTreeTransformer, p)
-    packed = DeviceGenericTreeTransformer(transformer, p)
-    return GPUArrays.@uncached begin
-        proto = A(undef, 0)
-        upload(x) = copy!(similar(proto, eltype(x), size(x)), x)
-        unique = packed.unique_blocks
-        device_unique = DeviceUniqueTreeTransformer(
-            upload(unique.blocks), upload(unique.work_offsets), unique.nwork
-        )
-        DeviceGenericTreeTransformer(
-            device_unique, upload(packed.blocks), upload(packed.work_offsets), packed.nwork,
-            upload(packed.coeffs), upload(packed.structs_dst), upload(packed.structs_src)
+        DeviceTreeTransformer(
+            upload(packed.blocks), upload(packed.tiles), upload(packed.coeffs),
+            upload(packed.structs_dst), upload(packed.structs_src), packed.len
         )
     end
 end
@@ -483,7 +525,7 @@ end
 
 # finds the overall linear index in the output and input arrays corresponding to the **sublock**
 # coordinates currently being worked on
-@inline function _linear_index(coords::NTuple{N, Int}, strides::NTuple{N, Int}, offset) where {N}
+@inline function _linear_index(coords::NTuple{N, Integer}, strides::NTuple{N, Int}, offset) where {N}
     # an explicit loop, since `sum` of an empty tuple (e.g. a full trace) does not compile for GPUs
     i = offset + 1
     for n in 1:N
@@ -492,60 +534,87 @@ end
     return i
 end
 
-# One thread per destination element in `data_dst`. `op` is `identity` or `conj`, and is
-# applied to the source data only (not to the coefficients).
-@kernel function unique_batched_permute_kernel!(
-        data_dst, data_src, op, blocks, work_offsets, α, β, nwork, ::Val{N}
-    ) where {N}
-    w = @index(Global, Linear) - 1
-    if w < nwork
-        b = _searchblock(work_offsets, w)
-        blk = @inbounds blocks[b]
-        coords = _coordinates(w - (@inbounds work_offsets[b]), blk.sz, blk.dense_strides)
-        i_dst = _linear_index(coords, blk.strides_dst, blk.offsets_dst)
-        i_src = _linear_index(coords, blk.permuted_strides_src, blk.offsets_src)
-        @inbounds data_dst[i_dst] = α * blk.coeff * op(data_src[i_src]) + β * data_dst[i_dst]
+# Tiled index manipulations
+# -------------------------
+# One workgroup of `G` threads per tile of `L` entries: the tile is gathered (recoupled) in source
+# order into shared memory, then written out in destination order. The `L ÷ G` entries of a
+# thread are unrolled through tuples, such that all its loads are in flight at once.
+@inline _tilecoords(e, shift, mask, origin) = map((s, m, o) -> ((e >> s) & m) + o, shift, mask, origin)
+@inline _isinside(coords, sz) = all(map(<, coords, sz))
+@inline function _tileindex(coords, origin, shift)
+    e = Int32(0)
+    for n in 1:length(coords)
+        e += (coords[n] - origin[n]) << shift[n]
     end
+    return e
+end
+@inline _shmindex(e, padshift) = e + (e >> padshift) + Int32(1)
+
+@inline _gather(src, op, coords, inside, (strides, offset)) =
+    inside ? op(@inbounds src[_linear_index(coords, strides, offset)]) : zero(eltype(src))
+
+# threads beyond the entries of a tile (smaller than the tile length) have `_treeindex > tmask`
+@inline _treeindex(e, tile) = e >> tile.tshift
+
+# destination indices of the entries of this thread, and `β` times their current values
+@inline function _dstplan(dst, structs_dst, blk, job, es, β, ::Val{B}) where {B}
+    tile = blk.tile
+    coords = map(e -> _tilecoords(e, tile.dshift, tile.mask, job.origin), es)
+    trees = map(e -> job.tree + _treeindex(e, tile), es)
+    inside = map((e, c, i) -> _treeindex(e, tile) <= tile.tmask && i < blk.rows && _isinside(c, blk.sz), es, coords, trees)
+    inds = map((c, i, b) -> _dstindex(structs_dst, blk, c, i, b), coords, trees, inside)
+    olds = map(inside, inds) do b, i
+        return B && b ? β * @inbounds(dst[i]) : zero(eltype(dst))
+    end
+    return inside, inds, olds
 end
 
-# One thread per destination element in `data_dst`. This makes much better use of the
-# GPU "massive parallelism" as compared to the one-thread-per-subtransformer approach.
-# It also more evenly divides the work among threads so the work profile is less
-# jagged. Unlike the CPU implementation, there is no extract → recouple → insert process:
-# BLAS is not generally reachable from inside a kernel, and fusing the recoupling into
-# the strided gather lets us remove the buffer entirely.
-# TODO: what about symmetries like SU(3), where the column by column approach is not
-# optimal?
-@kernel function generic_batched_permute_kernel!(
-        data_dst, data_src, op, blocks, work_offsets, coeffs, structs_dst, structs_src,
-        α, β, nwork, ::Val{N}
-    ) where {N}
-    w = @index(Global, Linear) - 1
-    if w < nwork
-        # bookkeeping to figure out where to read from and write to
-        b = _searchblock(work_offsets, w)
-        blk = @inbounds blocks[b]
-        local_w = w - (@inbounds work_offsets[b])
-        blocksize = prod(blk.sz)
-        i = local_w ÷ blocksize  # 0-based destination tree
-        coords = _coordinates(local_w % blocksize, blk.sz, blk.densestrides)
+@inline function _dstindex(structs_dst, blk, coords, i, inside)
+    inside || return 0
+    strides, offset = @inbounds structs_dst[blk.dst_offset + i + Int32(1)]
+    return _linear_index(coords, strides, offset)
+end
 
-        st_dst, offs_dst = @inbounds structs_dst[blk.dst_offset + i + 1]
-        i_dst = _linear_index(coords, st_dst, offs_dst)
+@inline _coeff(coeffs, blk, i, j, inside) =
+    inside ? @inbounds(coeffs[blk.u_offset + i + (j - Int32(1)) * blk.rows + Int32(1)]) : zero(eltype(coeffs))
+@inline _accumulate(acc, src, op, coords, inside, struct_src, coeffs, blk, i, j) =
+    acc + _coeff(coeffs, blk, i, j, inside) * _gather(src, op, coords, inside, struct_src)
 
-        # dst_i = β * dst_i + α * Σ_j U[i, j] * permute(op(src_j), p): each output tree is a
-        # linear combination of the input trees weighted by the recoupling coefficients.
-        # The permutation of src_j was already done by permuting its strides before the
-        # kernel launched.
-        acc = zero(promote_type(eltype(data_src), eltype(coeffs)))
-        @inbounds for j in 1:blk.cols
-            # TODO is there a more efficient way to do this read?
-            coeff = coeffs[blk.u_offset + 1 + i + (j - 1) * blk.rows]
-            iszero(coeff) && continue
-            pst_src, offs_src = structs_src[blk.src_offset + j]
-            acc += coeff * op(data_src[_linear_index(coords, pst_src, offs_src)])
-        end
-        @inbounds data_dst[i_dst] = α * acc + β * data_dst[i_dst]
+@kernel unsafe_indices = true function tiled_transform_kernel!(
+        dst, @Const(src), op, transformer, α, β, ::Val{L}, ::Val{G}, hasβ::Val{B}
+    ) where {L, G, B}
+    (; blocks, tiles, coeffs, structs_dst, structs_src) = transformer
+    shm = @localmem eltype(dst) (L + L ÷ 2,)
+    t = Int32(@index(Local, Linear) - 1)
+    job = @inbounds tiles[@index(Group, Linear)]
+    blk = @inbounds blocks[job.block]
+    tile = blk.tile
+    es = ntuple(r -> t + Int32((r - 1) * G), Val(L ÷ G))
+    # with `β != 0`, the destination is read early so that this overlaps with the gather
+    B && (plan = _dstplan(dst, structs_dst, blk, job, es, β, hasβ))
+
+    # dst_i = β * dst_i + α * Σ_j U[i, j] * permute(op(src_j), p), gathered in source order;
+    # all trees of the tile read the same source entries
+    coords = map(e -> _tilecoords(e, tile.sshift, tile.mask, job.origin), es)
+    local_trees = map(e -> _treeindex(e, tile), es)
+    inside = map((c, r) -> r <= tile.tmask && job.tree + r < blk.rows && _isinside(c, blk.sz), coords, local_trees)
+    acc = map(_ -> zero(eltype(dst)), es)
+    for j in Int32(1):blk.cols
+        struct_src = @inbounds structs_src[blk.src_offset + j]
+        acc = map(@inline((a, c, r, b) -> _accumulate(a, src, op, c, b, struct_src, coeffs, blk, job.tree + r, j)), acc, coords, local_trees, inside)
+    end
+    map(acc, coords, local_trees, inside) do a, c, r, b
+        e = _tileindex(c, job.origin, tile.dshift) + (r << tile.tshift)
+        b && @inbounds shm[_shmindex(e, tile.padshift)] = a
+        nothing
+    end
+    @synchronize
+
+    # write out in destination order
+    B || (plan = _dstplan(dst, structs_dst, blk, job, es, β, hasβ))
+    map(es, plan...) do e, b, id, old
+        b && @inbounds(dst[id] = α * shm[_shmindex(e, tile.padshift)] + old)
+        nothing
     end
 end
 
@@ -616,38 +685,39 @@ end
     end
 end
 
-function _launch_unique!(data_dst, data_src, op, transformer, α, β, ::Val{N}) where {N}
-    nwork = transformer.nwork
-    nwork == 0 && return nothing
-    unique_batched_permute_kernel!(get_backend(data_dst))(
-        data_dst, data_src, op, transformer.blocks, transformer.work_offsets, α, β, nwork,
-        Val(N); ndrange = nwork
-    )
-    return nothing
+# the tile lengths are branched on statically, as constructing a `Val` at runtime costs a dynamic dispatch
+function _launch_tiled!(dst, src, conjsrc::Bool, transformer::DeviceTreeTransformer, α, β)
+    isempty(transformer.tiles) && return nothing
+    op = conjsrc ? conj : identity
+    return iszero(β) ? _launch_tiled!(dst, src, op, transformer, α, β, Val(false)) :
+        _launch_tiled!(dst, src, op, transformer, α, β, Val(true))
 end
-
-function _launch_generic!(data_dst, data_src, op, transformer, α, β, ::Val{N}) where {N}
-    nwork = transformer.nwork
-    nwork == 0 && return nothing
-    generic_batched_permute_kernel!(get_backend(data_dst))(
-        data_dst, data_src, op, transformer.blocks, transformer.work_offsets,
-        transformer.coeffs, transformer.structs_dst, transformer.structs_src, α, β, nwork,
-        Val(N); ndrange = nwork
-    )
+function _launch_tiled!(dst, src, op, transformer, α, β, hasβ::Val)
+    L = transformer.len
+    L == 32 && return _launch_tiled!(dst, src, op, transformer, α, β, Val(32), hasβ)
+    L == 64 && return _launch_tiled!(dst, src, op, transformer, α, β, Val(64), hasβ)
+    L == 128 && return _launch_tiled!(dst, src, op, transformer, α, β, Val(128), hasβ)
+    L == 256 && return _launch_tiled!(dst, src, op, transformer, α, β, Val(256), hasβ)
+    error("unexpected tile length $L")
+end
+function _launch_tiled!(dst, src, op, transformer, α, β, ::Val{L}, hasβ::Val) where {L}
+    G = min(L, MAX_GROUPSIZE)
+    kernel = tiled_transform_kernel!(get_backend(dst), G)
+    kernel(dst, src, op, transformer, α, β, Val(L), Val(G), hasβ; ndrange = length(transformer.tiles) * G)
     return nothing
 end
 
 # we don't want/need the `StridedSubblocks` here because that information is already in the transformer
 TensorKit._transform_subblocks(
     tdst::TensorMap, tsrc::TensorMap,
-    transformer::Union{DeviceUniqueTreeTransformer, DeviceGenericTreeTransformer, DeviceTraceTransformer}
+    transformer::Union{DeviceTreeTransformer, DeviceTraceTransformer}
 ) = (tdst.data, tsrc.data)
 
 # Diagonal sources
 # ----------------
 # A `DiagonalTensorMap` only stores the diagonal of each of its subblocks, and an index
 # manipulation maps the entry `(i, i)` of a source subblock onto the entry `(i, i)` of a destination
-# subblock. Every block is therefore a one-dimensional strided copy, which the unique kernel
+# subblock. Every block is therefore a one-dimensional strided copy, which the tiled kernel
 # handles without needing a dense copy of the source or destination.
 
 const GPUDiagonalTensorMap = DiagonalTensorMap{<:Any, <:Any, <:AnyGPUVector}
@@ -665,23 +735,20 @@ function diagonal_device_transformer(A, transformer, dstdiagonal::Bool)
     (; structure_dst, structure_src) = transformer
     offsets_src = _diagonal_offsets(structure_src)
     offsets_dst = dstdiagonal ? _diagonal_offsets(structure_dst) : nothing
-    blocks = map(_diagonal_entries(transformer)) do (coeff, idst, isrc)
+    entries = map(_diagonal_entries(transformer)) do (coeff, idst, isrc)
         (sz, strides_dst, offset_dst) = structure_dst[idst]
         n = first(sz)
-        return UniqueTransformerBlock{typeof(coeff), 1}(
-            coeff, (n,), (1,), dstdiagonal ? (1,) : (sum(strides_dst),),
-            dstdiagonal ? offsets_dst[idst] : offset_dst, (1,), offsets_src[isrc]
-        )
+        s_dst = dstdiagonal ? ((n,), (1,), offsets_dst[idst]) : ((n,), (sum(strides_dst),), offset_dst)
+        return (fill(coeff, 1, 1), (s_dst,), (((n,), (1,), offsets_src[isrc]),))
     end
-    work_offsets, nwork = _work_offsets(blk.sz[1] for blk in blocks)
-    return device_transformer(A, DeviceUniqueTreeTransformer(blocks, work_offsets, nwork))
+    return device_transformer(A, DeviceTreeTransformer(scalartype(transformer), entries, (1,), sizeof(scalartype(A))))
 end
 
 # Transformers for diagonal sources share the cache of the other device transformers.
 @cached function TensorKit.device_treebraider(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
         conjsrc::Bool, levels::IndexTuple, dstdiagonal::Bool
-    ) where {TA <: AnyGPUVector}
+    )::devicetransformertype(A, sectortype(Vdst), Val(1)) where {TA <: AnyGPUVector}
     host = TensorKit.treebraider(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc, levels)
     return diagonal_device_transformer(A, host, dstdiagonal)
 end
@@ -689,7 +756,7 @@ end
 @cached function TensorKit.device_treetransposer(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
         conjsrc::Bool, dstdiagonal::Bool
-    ) where {TA <: AnyGPUVector}
+    )::devicetransformertype(A, sectortype(Vdst), Val(1)) where {TA <: AnyGPUVector}
     host = TensorKit.treetransposer(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc)
     return diagonal_device_transformer(A, host, dstdiagonal)
 end
@@ -697,19 +764,19 @@ end
 @cached function TensorKit.device_treetwister(
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
         conjsrc::Bool, twistmask::NTuple{N, Bool}, inv::Bool, dstdiagonal::Bool
-    ) where {TA <: AnyGPUVector, N}
+    )::devicetransformertype(A, sectortype(Vdst), Val(1)) where {TA <: AnyGPUVector, N}
     host = TensorKit.treetwister(Vector{scalartype(A)}, Vdst, Vsrc, p, conjsrc, twistmask, inv)
     return diagonal_device_transformer(A, host, dstdiagonal)
 end
 
 function _add_diagonal!(tdst::GPUDiagonalTensorMap, tsrc, conjsrc, transformer, α, β)
-    _launch_unique!(tdst.data, tsrc.data, conjsrc ? conj : identity, transformer, α, β, Val(1))
+    _launch_tiled!(tdst.data, tsrc.data, conjsrc, transformer, α, β)
     return tdst
 end
 # the kernel only touches the diagonal. be careful to apply `β` to the entire tensor.
 function _add_diagonal!(tdst::GPUTensorMap, tsrc, conjsrc, transformer, α, β)
     scale!(tdst, β)
-    _launch_unique!(tdst.data, tsrc.data, conjsrc ? conj : identity, transformer, α, One(), Val(1))
+    _launch_tiled!(tdst.data, tsrc.data, conjsrc, transformer, α, one(scalartype(tdst)))
     return tdst
 end
 
@@ -751,24 +818,9 @@ end
 
 function TensorKit.add_transform_kernel!(
         dst::AnyGPUVector, src::AnyGPUVector, p, conjsrc::Bool,
-        device::DeviceUniqueTreeTransformer, α, β, backend, allocator, ntasks::Int
+        device::DeviceTreeTransformer, α, β, backend, allocator, ntasks::Int
     )
-    N = length(linearize(p))
-    op = conjsrc ? conj : identity
-    _launch_unique!(dst, src, op, device, α, β, Val(N))
-    return nothing
-end
-
-function TensorKit.add_transform_kernel!(
-        dst::AnyGPUVector, src::AnyGPUVector, p, conjsrc::Bool,
-        device::DeviceGenericTreeTransformer, α, β, backend, allocator, ntasks::Int
-    )
-    N = length(linearize(p))
-    op = conjsrc ? conj : identity
-    # one-tree blocks are a scaled permutation, which the unique kernel already handles; the
-    # two kernels touch disjoint subblocks so the launch order does not matter
-    _launch_unique!(dst, src, op, device.unique_blocks, α, β, Val(N))
-    _launch_generic!(dst, src, op, device, α, β, Val(N))
+    _launch_tiled!(dst, src, conjsrc, device, α, β)
     return nothing
 end
 
