@@ -266,3 +266,18 @@ for V in spacelist
     end
     TensorKit.empty_globalcaches!()
 end
+
+@timedtestset "Permutations with small and large blocks" begin
+    # blocks up to `SMALL_BLOCK_LENGTH` entries are transformed by plain loops, larger ones through `tensoradd!`
+    V = Vect[SU2Irrep](0 => 6, 1 // 2 => 6, 1 => 1)
+    t = rand(ComplexF64, V ⊗ V ⊗ V ← V)
+    @test minimum(length ∘ last, subblocks(t)) < TensorKit.SMALL_BLOCK_LENGTH < maximum(length ∘ last, subblocks(t))
+    a = convert(Array, t)
+    for p in (((1, 4), (2, 3)), ((3, 1, 4), (2,)))
+        a′ = permutedims(a, (p[1]..., p[2]...))
+        @test convert(Array, permute(t, p)) ≈ a′
+        tdst = rand(ComplexF64, permute(space(t), p))
+        @test convert(Array, permute!(copy(tdst), t, p, 0.7im, 0.3)) ≈ 0.7im * a′ + 0.3 * convert(Array, tdst)
+    end
+    @test convert(Array, permute(t', ((3, 1), (4, 2)))) ≈ permutedims(convert(Array, t'), (3, 1, 4, 2))
+end

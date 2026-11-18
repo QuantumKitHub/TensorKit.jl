@@ -769,6 +769,58 @@ function _add_transform_block!(
     return nothing
 end
 
+# blocks with at most this many entries to compute are transformed by plain loops
+const SMALL_BLOCK_LENGTH = 1024
+
+# On the CPU, the call overhead of `tensoradd!` and `mul!` dominates for small blocks of a `TensorMap`,
+# which are therefore transformed by a plain loop over the flat data for every term of `U`.
+function _add_transform_block!(
+        dst::StridedSubblocks{<:CPUStorage}, src::StridedSubblocks{<:CPUStorage}, p, conjsrc::Bool,
+        U, inds_dst, inds_src, buffer, α, β, backend, allocator
+    )
+    if length(U) * prod(first(@inbounds src.structure[first(inds_src)])) > SMALL_BLOCK_LENGTH
+        return @invoke _add_transform_block!(
+            dst::TransformSubblocks, src::TransformSubblocks, p, conjsrc, U, inds_dst, inds_src, buffer,
+            α, β, backend, allocator
+        )
+    end
+    op = conjsrc ? conj : identity
+    @inbounds for (i, idst) in enumerate(inds_dst), (j, isrc) in enumerate(inds_src)
+        j == 1 || !iszero(U[i, j]) || continue # the first term also applies `β`
+        _add_strided!(
+            dst.data, src.data, dst.structure[idst], src.structure[isrc], linearize(p),
+            op, α * U[i, j], j == 1 ? β : One()
+        )
+    end
+    return nothing
+end
+
+# computes `A = β * A + α * permutedims(op.(B), p)` for the strided arrays `A` and `B` within `a` and `b`
+function _add_strided!(a, b, (sz, strides_dst, offset_dst), (_, strides_src, offset_src), p, op::F, α, β) where {F}
+    strides_src′ = TupleTools.getindices(strides_src, p)
+    if iszero(β)
+        _stridedloop(sz, strides_dst, strides_src′, offset_dst + 1, offset_src + 1) do i, j
+            @inbounds a[i] = α * op(b[j])
+        end
+    else
+        _stridedloop(sz, strides_dst, strides_src′, offset_dst + 1, offset_src + 1) do i, j
+            @inbounds a[i] = α * op(b[j]) + β * a[i]
+        end
+    end
+    return nothing
+end
+
+# calls `f(i, j)` for the positions of all corresponding entries of two strided arrays of size `sz`
+@inline _stridedloop(f, ::Tuple{}, ::Tuple{}, ::Tuple{}, i::Int, j::Int) = f(i, j)
+@inline function _stridedloop(f, sz::Tuple, strides₁::Tuple, strides₂::Tuple, i::Int, j::Int)
+    for _ in 1:last(sz)
+        _stridedloop(f, Base.front(sz), Base.front(strides₁), Base.front(strides₂), i, j)
+        i += last(strides₁)
+        j += last(strides₂)
+    end
+    return nothing
+end
+
 # computes `buffer_dst = buffer_src * transpose(U)`, where both are column-major views into `buffer`
 _recouple!(buffer, buffer_dst, buffer_src, U) =
     (mul!(buffer_dst, buffer_src, transpose(StridedView(U))); nothing)
