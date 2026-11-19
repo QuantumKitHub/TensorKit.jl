@@ -233,6 +233,7 @@ function planarcontract!(
     # using a single `braid!` is wrong: it would resolve cyclic moves as crossings and
     # pick up spurious R-symbol factors.
     B_in_layout = (cindB == codB && oindB == domB)
+    cp = TO.allocator_checkpoint!(allocator)
     if B_in_layout
         B′ = B
     else
@@ -255,6 +256,7 @@ function planarcontract!(
     )
 
     B_in_layout || TO.tensorfree!(B′, allocator)
+    TO.allocator_reset!(allocator, cp)
     return C
 end
 function planarcontract!(
@@ -292,6 +294,7 @@ function planarcontract!(
     # pick up spurious R-symbol factors.
 
     A_in_layout = (oindA == codA && cindA == domA)
+    cp = TO.allocator_checkpoint!(allocator)
     if A_in_layout
         A′ = A
     else
@@ -315,6 +318,7 @@ function planarcontract!(
     )
 
     A_in_layout || TO.tensorfree!(A′, allocator)
+    TO.allocator_reset!(allocator, cp)
     return C
 end
 

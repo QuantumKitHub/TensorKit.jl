@@ -1,6 +1,7 @@
 using Test, TestExtras
 using TensorKit
 using TensorKit: type_repr
+using TensorOperations
 
 
 spacelist = default_spacelist(fast_tests)
@@ -176,6 +177,29 @@ for V in spacelist
         end
     end
     TensorKit.empty_globalcaches!()
+end
+
+@timedtestset "Contraction outside `@tensor` rewinds the allocator" begin
+    # `tensorfree!` is a no-op for a `BufferAllocator`, so the permuted copies of a
+    # contraction are only given back by resetting it; outside `@tensor` there is no
+    # surrounding checkpoint to do so.
+    using .TestSetup: VRepU₁, VRepSU₂, VfRepSU₂
+    @testset for V in (VRepU₁, VRepSU₂, VfRepSU₂)
+        V1, V2, V3, V4 = V
+        A = randn(V1 ⊗ V2 ⊗ V3)
+        B = randn(V3' ⊗ V2' ⊗ V4)
+        @tensor Cref[d; a] := A[a b c] * B[c b d]
+        buffer = TensorOperations.BufferAllocator()
+        for _ in 1:2
+            C = TensorOperations.tensorcontract(
+                A, ((1,), (2, 3)), false, B, ((2, 1), (3,)), false, ((2,), (1,)), true,
+                TensorOperations.DefaultBackend(), buffer
+            )
+            @test isempty(buffer)
+            @test C ≈ Cref
+        end
+        @test buffer.max_offset > 0
+    end
 end
 
 @timedtestset "Deligne tensor product: test via conversion" begin

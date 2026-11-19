@@ -422,6 +422,7 @@ function blas_contract!(
         twistB = false
     end
 
+    cp = TO.allocator_checkpoint!(allocator)
     # Bring A in the correct form for BLAS contraction
     if copyA
         Anew = @timeit_debug GLOBAL_TIMER "alloc: buffers" TO.tensoralloc_add(TC, A, pA, false, Val(true), allocator)
@@ -458,6 +459,7 @@ function blas_contract!(
 
     copyA && TO.tensorfree!(Anew, allocator)
     copyB && TO.tensorfree!(Bnew, allocator)
+    TO.allocator_reset!(allocator, cp)
 
     return C
 end
