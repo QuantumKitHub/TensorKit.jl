@@ -1,6 +1,7 @@
 using Test, TestExtras
 using TensorKit
 using TensorKit: type_repr
+using TensorOperations: ManualAllocator
 using Combinatorics: permutations
 
 
@@ -210,6 +211,11 @@ for V in spacelist
             levels = (1, 2, 3, 4)
             tdst = rand(ComplexF64, braid(space(τ), p, levels))
             @test braid!(copy(tdst), τ, p, levels) ≈ braid!(copy(tdst), TensorMap(τ), p, levels)
+        end
+        symmetricbraiding && @timedtestset "Permutations: ManualAllocator" begin
+            t = rand(ComplexF64, V1 ⊗ V2 ⊗ V3 ← V4 ⊗ V5)
+            p = ((3, 1, 5), (2, 4))
+            @test permute(t, p; allocator = ManualAllocator()) ≈ permute(t, p)
         end
         @timedtestset "Adjoint operands: isometry" begin
             # independent of the adjoint convention: a wrongly conjugated recoupling matrix U
