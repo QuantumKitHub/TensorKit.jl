@@ -628,3 +628,21 @@ end
         @test (@tensor s[1; 2] * d[2; 1]) ≈ (@tensor scpu[1; 2] * dcpu[2; 1])
     end
 end
+
+@timedtestset "Contraction outside `@tensor` rewinds an AMD buffer" begin
+    using .TestSetup: VRepU₁, VfRepSU₂
+    for V in (VRepU₁, VfRepSU₂)
+        V1, V2, V3, V4 = V
+        A = AMDGPU.randn(Float64, V1 ⊗ V2 ⊗ V3)
+        B = AMDGPU.randn(Float64, V3' ⊗ V2' ⊗ V4)
+        @tensor Cref[d; a] := A[a b c] * B[c b d]
+        buffer = TO.AMDBufferAllocator()
+        C = TO.tensorcontract(
+            A, ((1,), (2, 3)), false, B, ((2, 1), (3,)), false, ((2,), (1,)), true,
+            TO.DefaultBackend(), buffer
+        )
+        @test isempty(buffer)
+        @test C ≈ Cref
+        @test buffer.max_offset > 0
+    end
+end
