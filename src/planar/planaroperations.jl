@@ -221,6 +221,7 @@ function planarcontract!(
         A_in_layout = (oindA, cindA) == (codomainind(A), domainind(A))
         B_in_layout = (cindB, oindB) == (codomainind(B), domainind(B))
 
+        cp = TO.allocator_checkpoint!(allocator)
         if A_in_layout
             A′ = A
         else
@@ -254,6 +255,7 @@ function planarcontract!(
 
         A_in_layout || TO.tensorfree!(A′, allocator)
         B_in_layout || TO.tensorfree!(B′, allocator)
+        TO.allocator_reset!(allocator, cp)
     end
     return C
 end

@@ -119,8 +119,8 @@ const TO = TensorOperations
 using MatrixAlgebraKit
 
 using Dictionaries: Dictionaries, Dictionary, Indices, gettoken, gettokenvalue
-using LRUCache
 using OhMyThreads
+using PtrArrays: PtrArray
 using ScopedValues
 using TimerOutputs: TimerOutputs, TimerOutput, @timeit_debug
 

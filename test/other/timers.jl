@@ -77,4 +77,8 @@ end
         TensorKit.disable_timers!()
     end
     @test TensorKit.timeit_debug_enabled() === false
+    TensorKit.reset_timers!()
+    V = SU2Space(0 => 2, 1 // 2 => 2)
+    permute(rand(V ⊗ V ← V ⊗ V), ((2, 1), (4, 3)))
+    @test isempty(TensorKit.timer().root.children)
 end

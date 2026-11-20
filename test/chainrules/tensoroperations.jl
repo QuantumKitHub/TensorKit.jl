@@ -126,6 +126,25 @@ for V in spacelist
     end
 end
 
+@testset "tensorcontract! pullback rewinds the allocator" begin
+    using .TestSetup: VRepU₁, VRepSU₂, VfRepSU₂
+    for V in (VRepU₁, VRepSU₂, VfRepSU₂)
+        V1, V2, V3, V4 = V
+        A = randn(V1 ⊗ V2 ⊗ V3)
+        B = randn(V3' ⊗ V2' ⊗ V4)
+        C = randn(V4 ← V1')
+        buffer = TensorOperations.BufferAllocator()
+        _, pullback = rrule(
+            tensorcontract!, C, A, ((1,), (2, 3)), false, B, ((2, 1), (3,)), false,
+            ((2,), (1,)), 2.0, 1.0, TensorOperations.DefaultBackend(), buffer
+        )
+        @test isempty(buffer)
+        foreach(unthunk, pullback(randn(space(C))))
+        @test isempty(buffer)
+        @test buffer.max_offset > 0
+    end
+end
+
 # https://github.com/quantumkithub/TensorKit.jl/issues/209
 @testset "Issue #209" begin
     function f(T, D)

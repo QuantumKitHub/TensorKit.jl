@@ -102,6 +102,7 @@ Apply `f(item)` (respectively `f(item, resource)`) to all elements of `items`, d
 The calling thread acts as the first of the workers, so at most `ntasks - 1` tasks are spawned, and none at all for a single worker.
 """
 function taskforeach(f, items, ntasks::Integer)
+    ntasks == 1 && return foreach(f, items)
     items′ = items isa AbstractArray ? items : collect(items)
     n = length(items′)
     nworkers = min(ntasks, n)
@@ -116,6 +117,7 @@ function taskforeach(f, items, ntasks::Integer)
     return nothing
 end
 function taskforeach(f, items, resources)
+    length(resources) == 1 && return foreach(Base.Fix2(f, only(resources)), items)
     items′ = items isa AbstractArray ? items : collect(items)
     n = length(items′)
     nworkers = min(length(resources), n)

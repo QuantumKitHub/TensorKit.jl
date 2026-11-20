@@ -3,7 +3,7 @@
 # Abstract Tensor type
 #----------------------
 """
-    abstract type AbstractTensorMap{T<:Number, S<:IndexSpace, N₁, N₂} end
+    abstract type AbstractTensorMap{T <: Number, S <: IndexSpace, N₁, N₂} end
 
 Abstract supertype of all tensor maps, i.e. linear maps between tensor products of vector
 spaces of type `S<:IndexSpace`, with element type `T`. An `AbstractTensorMap` maps from an
@@ -12,7 +12,7 @@ input space of type `ProductSpace{S, N₂}` to an output space of type `ProductS
 abstract type AbstractTensorMap{T <: Number, S <: IndexSpace, N₁, N₂} end
 
 """
-    AbstractTensor{T,S,N} = AbstractTensorMap{T,S,N,0}
+    AbstractTensor{T, S, N} = AbstractTensorMap{T, S, N, 0}
 
 Abstract supertype of all tensors, i.e. elements in the tensor product space of type
 `ProductSpace{S, N}`, with element type `T`.

@@ -2,7 +2,7 @@
 # special (2,2) tensor that implements a standard braiding operation
 #====================================================================#
 """
-    struct BraidingTensor{T, S <: IndexSpace, A <: DenseVector{T}} <: AbstractTensorMap{T, S, 2, 2}
+    struct BraidingTensor{T <: Number, S <: IndexSpace, A <: DenseVector{T}} <: AbstractTensorMap{T, S, 2, 2}
     BraidingTensor(V1::S, V2::S, adjoint::Bool=false) where {S<:IndexSpace}
     BraidingTensor{T, S, A}(V1::S, V2::S, adjoint::Bool=false) where {T, S, A}
 
@@ -14,7 +14,7 @@ It holds that `domain(BraidingTensor(V1, V2)) == V1 ⊗ V2` and
 controls the array type of the braiding tensor used when indexing
 and multiplying with other tensors.
 """
-struct BraidingTensor{T, S, A <: DenseVector{T}} <: AbstractTensorMap{T, S, 2, 2}
+struct BraidingTensor{T <: Number, S <: IndexSpace, A <: DenseVector{T}} <: AbstractTensorMap{T, S, 2, 2}
     V1::S
     V2::S
     adjoint::Bool
@@ -233,6 +233,7 @@ function planarcontract!(
     # using a single `braid!` is wrong: it would resolve cyclic moves as crossings and
     # pick up spurious R-symbol factors.
     B_in_layout = (cindB == codB && oindB == domB)
+    cp = TO.allocator_checkpoint!(allocator)
     if B_in_layout
         B′ = B
     else
@@ -255,6 +256,7 @@ function planarcontract!(
     )
 
     B_in_layout || TO.tensorfree!(B′, allocator)
+    TO.allocator_reset!(allocator, cp)
     return C
 end
 function planarcontract!(
@@ -292,6 +294,7 @@ function planarcontract!(
     # pick up spurious R-symbol factors.
 
     A_in_layout = (oindA == codA && cindA == domA)
+    cp = TO.allocator_checkpoint!(allocator)
     if A_in_layout
         A′ = A
     else
@@ -315,6 +318,7 @@ function planarcontract!(
     )
 
     A_in_layout || TO.tensorfree!(A′, allocator)
+    TO.allocator_reset!(allocator, cp)
     return C
 end
 

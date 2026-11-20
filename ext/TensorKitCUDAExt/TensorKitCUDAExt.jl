@@ -19,4 +19,11 @@ using Random
 
 include("cutensormap.jl")
 
+function TensorKit._nrm2!(
+        out::CuVector{R}, x::cuBLAS.StridedCuVecOrDenseMat{T}
+    ) where {R <: Union{Float32, Float64}, T <: Union{R, Complex{R}}}
+    cuBLAS.nrm2(x, out)
+    return out
+end
+
 end

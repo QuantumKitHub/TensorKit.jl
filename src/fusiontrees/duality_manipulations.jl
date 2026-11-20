@@ -53,16 +53,15 @@ function _bendright_treepair((f₁, f₂)::FusionTreePair)
     return (a, b, c), (f₁′, f₂′)
 end
 
+# also for a final splitting vertex without multiplicity (`only` throws otherwise)
 function bendright((f₁, f₂)::FusionTreePair)
-    I = sectortype((f₁, f₂))
     N₁ = numout((f₁, f₂))
-    @assert FusionStyle(I) === UniqueFusion()
     (a, b, c), (f₁′, f₂′) = _bendright_treepair((f₁, f₂))
 
     # compute the coefficient
     coeff₀ = sqrtdim(c) * invsqrtdim(a)
     f₁.isdual[N₁] && (coeff₀ *= conj(frobenius_schur_phase(dual(b))))
-    coeff = coeff₀ * Bsymbol(a, b, c)
+    coeff = coeff₀ * only(Bsymbol(a, b, c))
 
     return (f₁′, f₂′) => coeff
 end
@@ -71,18 +70,9 @@ function bendright(src::FusionTreeBlock)
     N₁ = numout(src)
     N₂ = numin(src)
     @assert N₁ > 0
-    uncoupled_dst = (
-        TupleTools.front(src.uncoupled[1]),
-        (src.uncoupled[2]..., dual(src.uncoupled[1][N₁])),
-    )
-    isdual_dst = (
-        TupleTools.front(src.isdual[1]),
-        (src.isdual[2]..., !(src.isdual[1][N₁])),
-    )
 
-    dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst; sizehint = length(src))
-    indexmap = treeindex_map(dst)
-    U = zeros(fusionscalartype(I), length(dst), length(src))
+    rows = TreeRows{fusiontreetype(I, N₁ - 1, N₂ + 1)}(length(src))
+    U = zeros(fusionscalartype(I), length(src), length(src))
 
     for (col, (f₁, f₂)) in enumerate(fusiontrees(src))
         (a, b, c), (f₁′, f₂′) = _bendright_treepair((f₁, f₂))
@@ -92,7 +82,7 @@ function bendright(src::FusionTreeBlock)
         end
         if FusionStyle(I) isa MultiplicityFreeFusion
             coeff = coeff₀ * Bsymbol(a, b, c)
-            row = indexmap[treeindex_data((f₁′, f₂′))]
+            row = row!(rows, (f₁′, f₂′))
             @inbounds U[row, col] = coeff
         else
             Bmat = Bsymbol(a, b, c)
@@ -106,12 +96,12 @@ function bendright(src::FusionTreeBlock)
                 iszero(coeff) && continue
                 vertices₂ = N₂ > 0 ? (f₂.vertices..., ν) : ()
                 f₂′ = FusionTree(uncoupled₂, coupled₂, isdual₂, inner₂, vertices₂)
-                row = indexmap[treeindex_data((f₁′, f₂′))]
+                row = row!(rows, (f₁′, f₂′))
                 @inbounds U[row, col] = coeff
             end
         end
     end
-    return dst => U
+    return FusionTreeBlock(rows.trees) => U
 end
 
 @doc """
@@ -138,7 +128,6 @@ See also [`bendright`](@ref).
 """ bendleft
 
 function bendleft((f₁, f₂)::FusionTreePair)
-    @assert FusionStyle((f₁, f₂)) === UniqueFusion()
     (f₂′, f₁′), coeff = bendright((f₂, f₁))
     return (f₁′, f₂′) => conj(coeff)
 end
@@ -150,18 +139,9 @@ function bendleft(src::FusionTreeBlock)
     N₁ = numout(src)
     N₂ = numin(src)
     @assert N₂ > 0
-    uncoupled_dst = (
-        (src.uncoupled[1]..., dual(src.uncoupled[2][N₂])),
-        TupleTools.front(src.uncoupled[2]),
-    )
-    isdual_dst = (
-        (src.isdual[1]..., !(src.isdual[2][N₂])),
-        TupleTools.front(src.isdual[2]),
-    )
 
-    dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst; sizehint = length(src))
-    indexmap = treeindex_map(dst)
-    U = zeros(fusionscalartype(I), length(dst), length(src))
+    rows = TreeRows{fusiontreetype(I, N₁ + 1, N₂ - 1)}(length(src))
+    U = zeros(fusionscalartype(I), length(src), length(src))
 
     for (col, (f₁, f₂)) in enumerate(fusiontrees(src))
         (a, b, c), (f₂′, f₁′) = _bendright_treepair((f₂, f₁))
@@ -171,7 +151,7 @@ function bendleft(src::FusionTreeBlock)
         end
         if FusionStyle(I) isa MultiplicityFreeFusion
             coeff = coeff₀ * Bsymbol(a, b, c)
-            row = indexmap[treeindex_data((f₁′, f₂′))]
+            row = row!(rows, (f₁′, f₂′))
             @inbounds U[row, col] = conj(coeff)
         else
             Bmat = Bsymbol(a, b, c)
@@ -185,12 +165,12 @@ function bendleft(src::FusionTreeBlock)
                 iszero(coeff) && continue
                 vertices₁ = N₁ > 0 ? (f₁.vertices..., ν) : ()
                 f₁′ = FusionTree(uncoupled₁, coupled₁, isdual₁, inner₁, vertices₁)
-                row = indexmap[treeindex_data((f₁′, f₂′))]
+                row = row!(rows, (f₁′, f₂′))
                 @inbounds U[row, col] = conj(coeff)
             end
         end
     end
-    return dst => U
+    return FusionTreeBlock(rows.trees) => U
 end
 
 @doc """
@@ -236,17 +216,11 @@ function foldright((f₁, f₂)::FusionTreePair)
 end
 
 function foldright(src::FusionTreeBlock)
-    uncoupled_dst = (
-        Base.tail(src.uncoupled[1]),
-        (dual(first(src.uncoupled[1])), src.uncoupled[2]...),
-    )
-    isdual_dst = (Base.tail(src.isdual[1]), (!first(src.isdual[1]), src.isdual[2]...))
     I = sectortype(src)
     N₁ = numout(src)
     @assert N₁ > 0
 
-    dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst; sizehint = length(src))
-    indexmap = treeindex_map(dst)
+    rows = TreeRows{fusiontreetype(I, N₁ - 1, numin(src) + 1)}(length(src))
 
     f₁, f₂ = first(fusiontrees(src))
     a::I = f₁.uncoupled[1]
@@ -260,14 +234,14 @@ function foldright(src::FusionTreeBlock)
     c::I = f₁.coupled
     cache₃ = Dict((b, c) => Asymbol(a, b, c))
 
-    U = zeros(eltype(coeff₁), length(dst), length(src))
+    U = zeros(eltype(coeff₁), length(src), length(src))
     for (col, (f₁, f₂)) in enumerate(fusiontrees(src))
         f₁′s, coeffs₁ = get!(cache₁, f₁) do
             multi_Fmove(f₁)
         end
         for (f₁′, coeff₁) in zip(f₁′s, coeffs₁)
-            b = f₁′.coupled
-            c = f₁.coupled
+            local b = f₁′.coupled
+            local c = f₁.coupled
             A = get!(cache₃, (b, c)) do
                 Asymbol(a, b, c)
             end
@@ -280,12 +254,12 @@ function foldright(src::FusionTreeBlock)
                 if isduala
                     coeff *= κₐ
                 end
-                row = indexmap[treeindex_data((f₁′, f₂′))]
+                row = row!(rows, (f₁′, f₂′))
                 @inbounds U[row, col] += coeff
             end
         end
     end
-    return dst => U
+    return FusionTreeBlock(rows.trees) => U
 end
 
 
@@ -319,21 +293,12 @@ function foldleft((f₁, f₂)::FusionTreePair)
 end
 
 function foldleft(src::FusionTreeBlock)
-    uncoupled_dst = (
-        (dual(first(src.uncoupled[2])), src.uncoupled[1]...),
-        Base.tail(src.uncoupled[2]),
-    )
-    isdual_dst = (
-        (!first(src.isdual[2]), src.isdual[1]...),
-        Base.tail(src.isdual[2]),
-    )
     I = sectortype(src)
     N₁ = numin(src)
     N₂ = numout(src)
     @assert N₁ > 0
 
-    dst = FusionTreeBlock{I}(uncoupled_dst, isdual_dst; sizehint = length(src))
-    indexmap = treeindex_map(dst)
+    rows = TreeRows{fusiontreetype(I, N₂ + 1, N₁ - 1)}(length(src))
 
     f₁, f₂ = first(fusiontrees(src))
     a::I = f₂.uncoupled[1]
@@ -347,14 +312,14 @@ function foldleft(src::FusionTreeBlock)
     c::I = f₂.coupled
     cache₃ = Dict((b, c) => Asymbol(a, b, c))
 
-    U = zeros(eltype(coeff₂), length(dst), length(src))
+    U = zeros(eltype(coeff₂), length(src), length(src))
     for (col, (f₁, f₂)) in enumerate(fusiontrees(src))
         f₂′s, coeffs₂ = get!(cache₂, f₂) do
             multi_Fmove(f₂)
         end
         for (f₂′, coeff₂) in zip(f₂′s, coeffs₂)
-            b = f₂′.coupled
-            c = f₂.coupled
+            local b = f₂′.coupled
+            local c = f₂.coupled
             A = get!(cache₃, (b, c)) do
                 Asymbol(a, b, c)
             end
@@ -367,12 +332,12 @@ function foldleft(src::FusionTreeBlock)
                 if isduala
                     coeff *= conj(κₐ)
                 end
-                row = indexmap[treeindex_data((f₁′, f₂′))]
+                row = row!(rows, (f₁′, f₂′))
                 @inbounds U[row, col] += coeff
             end
         end
     end
-    return dst => U
+    return FusionTreeBlock(rows.trees) => U
 end
 
 # clockwise cyclic permutation while preserving (N₁, N₂): foldright & bendleft
@@ -482,7 +447,7 @@ function _repartition_body(N)
     if N == 0
         ex = quote
             T = fusionscalartype(sectortype(src))
-            if FusionStyle(src) === UniqueFusion()
+            if src isa FusionTreePair
                 return src => one(T)
             else
                 U = copyto!(zeros(T, length(src), length(src)), LinearAlgebra.I)
@@ -524,35 +489,35 @@ function Base.transpose(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tu
     N == length(p[1]) + length(p[2]) || throw(ArgumentError("invalid permutation p = $p of length N = $N"))
     p′ = linearizepermutation(p..., numout(src), numin(src))
     iscyclicpermutation(p′) || throw(ArgumentError("invalid cyclic or planar permutation p = $p"))
-    return fstranspose((src, p))
+    return fusiontreetranspose(src, p)
 end
 function Base.transpose(src::ProductSectorBlock, p::Index2Tuple)
-    isempty(src) && return fstranspose((src, p))
+    isempty(src) && return fusiontreetranspose(src, p)
     # the return type is asserted since inference gives up on the recursion on older Julia versions
     return product_transform(fusionscalartype(sectortype(src)), src) do x
         return transpose(x, p)
-    end::_fsdicttype(typeof((src, p)))
+    end::fusiontreetransposetype(src, p)
 end
 
-const FSPTransposeKey{I, N₁, N₂} = Tuple{FusionTreePair{I}, Index2Tuple{N₁, N₂}}
-const FSBTransposeKey{I, N₁, N₂} = Tuple{FusionTreeBlock{I}, Index2Tuple{N₁, N₂}}
-
-Base.@assume_effects :foldable function _fsdicttype(::Type{T}) where {I, N₁, N₂, T <: FSPTransposeKey{I, N₁, N₂}}
-    E = fusionscalartype(I)
-    return Pair{fusiontreetype(I, N₁, N₂), E}
-end
-Base.@assume_effects :foldable function _fsdicttype(::Type{T}) where {I, N₁, N₂, T <: FSBTransposeKey{I, N₁, N₂}}
-    F₁ = fusiontreetype(I, N₁)
-    F₂ = fusiontreetype(I, N₂)
-    E = fusionscalartype(I)
-    return Pair{FusionTreeBlock{I, N₁, N₂, Tuple{F₁, F₂}}, Matrix{E}}
+Base.@assume_effects :foldable function fusiontreetransposetype(
+        src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, ::Index2Tuple{N₁, N₂}
+    ) where {I, N₁, N₂}
+    T = fusionscalartype(I)
+    if src isa FusionTreePair
+        return Pair{fusiontreetype(I, N₁, N₂), T}
+    else
+        F = Tuple{fusiontreetype(I, N₁), fusiontreetype(I, N₂)}
+        return Pair{FusionTreeBlock{I, N₁, N₂, F}, Matrix{T}}
+    end
 end
 
-@cached function fstranspose(key::K)::_fsdicttype(K) where {I, N₁, N₂, K <: Union{FSPTransposeKey{I, N₁, N₂}, FSBTransposeKey{I, N₁, N₂}}}
-    src, (p1, p2) = key
+@cached function fusiontreetranspose(
+        src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, p::Index2Tuple{N₁, N₂}
+    )::fusiontreetransposetype(src, p) where {I, N₁, N₂}
+    p₁, p₂ = p
 
     N = N₁ + N₂
-    p = linearizepermutation(p1, p2, numout(src), numin(src))
+    p = linearizepermutation(p₁, p₂, numout(src), numin(src))
 
     dst, U = repartition(src, N₁)
     length(p) == 0 && return dst => U
@@ -574,10 +539,8 @@ end
     return dst => U
 end
 
-CacheStyle(::typeof(fstranspose), k::FSPTransposeKey{I}) where {I} =
-    FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalLRUCache()
-CacheStyle(::typeof(fstranspose), k::FSBTransposeKey{I}) where {I} =
-    FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalLRUCache()
+CacheStyle(::typeof(fusiontreetranspose), src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, args...) where {I} =
+    FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalCache()
 
 # COMPOSITE DUALITY MANIPULATIONS PART 2: Planar traces
 #-------------------------------------------------------------------
