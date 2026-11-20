@@ -50,8 +50,43 @@ struct UniqueTreeTransformer{T, N} <: TreeTransformer
     structure_src::SubblockStructure{N}
 end
 
+"""
+    SubblockIndices <: AbstractVector{SubblockToken}
+
+The subblock tokens of one block of a transformer, as a range of the `Int32` pairs that hold those
+of all its blocks, such that a transformer keeps one vector of tokens instead of two per block.
+"""
+struct SubblockIndices <: AbstractVector{SubblockToken}
+    parent::Vector{NTuple{2, Int32}}
+    offset::Int32
+    length::Int32
+end
+Base.size(s::SubblockIndices) = (Int(s.length),)
+Base.@propagate_inbounds function Base.getindex(s::SubblockIndices, i::Int)
+    @boundscheck checkbounds(s, i)
+    i₁, i₂ = @inbounds s.parent[s.offset + i]
+    return (Int(i₁), Int(i₂))
+end
+
 # (recoupling matrix, destination tokens, source tokens)
-const GenericTransformerData{T} = Tuple{Matrix{T}, Vector{SubblockToken}, Vector{SubblockToken}}
+const GenericTransformerData{T} = Tuple{Matrix{T}, SubblockIndices, SubblockIndices}
+
+# the blocks `(U, inds_dst, inds_src)` with their tokens moved into one shared vector
+function _pack_tokens(::Type{T}, blocks) where {T}
+    tokens = Vector{NTuple{2, Int32}}(undef, sum(((_, d, s),) -> length(d) + length(s), blocks; init = 0))
+    data = Vector{GenericTransformerData{T}}(undef, length(blocks))
+    k = 0
+    for (n, (U, inds_dst, inds_src)) in enumerate(blocks)
+        tokens[(k + 1):(k + length(inds_dst))] .= inds_dst
+        dst = SubblockIndices(tokens, k, length(inds_dst))
+        k += length(inds_dst)
+        tokens[(k + 1):(k + length(inds_src))] .= inds_src
+        src = SubblockIndices(tokens, k, length(inds_src))
+        k += length(inds_src)
+        data[n] = (U, dst, src)
+    end
+    return data
+end
 
 """
     GenericTreeTransformer{T, N} <: TreeTransformer
@@ -78,10 +113,11 @@ MemoizationKit.cachesize(t::UniqueTreeTransformer) = sizeof(t) + _cache_payload_
 MemoizationKit.cachesize(t::GenericTreeTransformer) = _cache_generic_size(t)
 
 function _cache_generic_size(t)
-    bytes = sizeof(t) + sizeof(t.data) + _cache_structure_size(t)
-    for (U, inds_dst, inds_src) in t.data
-        bytes += _cache_payload_size(U) + sizeof(inds_src) +
-            (inds_src === inds_dst ? 0 : sizeof(inds_dst))
+    # the tokens of all blocks share one vector
+    bytes = sizeof(t) + sizeof(t.data) + _cache_structure_size(t) +
+        (isempty(t.data) ? 0 : sizeof(t.data[1][2].parent))
+    for (U, _, _) in t.data
+        bytes += _cache_payload_size(U)
     end
     return bytes
 end
@@ -123,7 +159,7 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst::HomSpace, Vsrc::H
 
     fblocks = @timeit_debug GLOBAL_TIMER "bookkeeping: fusionblocks" fusionblocks(Vsrc′)
     nblocks = length(fblocks)
-    data = Vector{GenericTransformerData{T}}(undef, nblocks)
+    blocks = Vector{Tuple{Matrix{T}, Vector{SubblockToken}, Vector{SubblockToken}}}(undef, nblocks)
     weights = Vector{Int}(undef, nblocks)
 
     nthreads = get_num_manipulation_threads()
@@ -136,7 +172,7 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst::HomSpace, Vsrc::H
                 inds_src = map(((f₁, f₂),) -> pairtoken(src_trees, conjsrc ? (f₂, f₁) : (f₁, f₂)), fusiontrees(fs_src))
                 inds_dst = map(f -> pairtoken(dst_trees, f), fusiontrees(fs_dst))
             end
-            data[i] = (convert(Matrix{T}, U), inds_dst, inds_src)
+            blocks[i] = (convert(Matrix{T}, U), inds_dst, inds_src)
             # cost model: L input blocks each going to L output blocks of a given length
             weights[i] = length(U) * prod(structure_dst[first(inds_dst)][1])
 
@@ -148,7 +184,8 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst::HomSpace, Vsrc::H
     end
 
     # sort by (approximate) weight to facilitate multi-threading strategies
-    @timeit_debug GLOBAL_TIMER "bookkeeping: sort" Base.permute!(data, sortperm(weights; rev = true))
+    @timeit_debug GLOBAL_TIMER "bookkeeping: sort" Base.permute!(blocks, sortperm(weights; rev = true))
+    data = _pack_tokens(T, blocks)
     transformer = GenericTreeTransformer{T, numind(Vdst)}(data, structure_dst, structure_src)
 
     Δt = Base.time() - t₀
@@ -269,23 +306,24 @@ function TraceTransformer(::Type{A}, Vdst::HomSpace, Vsrc::HomSpace, p::Index2Tu
             end
         end
     end
-    data = GenericTransformerData{T}[(reduce(hcat, us), inds_dst, inds_src) for (inds_dst, (us, inds_src)) in groups]
+    blocks = Tuple{Matrix{T}, Vector{SubblockToken}, Vector{SubblockToken}}[(reduce(hcat, us), inds_dst, inds_src) for (inds_dst, (us, inds_src)) in groups]
     # destination subblocks without contributions are only scaled
     covered = falses(length(dst_trees))
     for inds_dst in keys(groups), idst in inds_dst
         covered[pairposition(dst_trees, idst)] = true
     end
     for i in findall(!, covered)
-        push!(data, (zeros(T, 1, 0), [pairtoken(dst_trees, i)], SubblockToken[]))
+        push!(blocks, (zeros(T, 1, 0), [pairtoken(dst_trees, i)], SubblockToken[]))
     end
 
     structure_dst = degeneracystructure(Vdst).subblockstructure
     structure_src = degeneracystructure(Vsrc).subblockstructure
     # sort by (approximate) weight to facilitate multi-threading strategies
-    weights = map(data) do (U, inds_dst, _)
+    weights = map(blocks) do (U, inds_dst, _)
         return length(U) * prod(structure_dst[first(inds_dst)][1])
     end
-    Base.permute!(data, sortperm(weights; rev = true))
+    Base.permute!(blocks, sortperm(weights; rev = true))
+    data = _pack_tokens(T, blocks)
     transformer = TraceTransformer(data, structure_dst, structure_src)
 
     Δt = Base.time() - t₀
