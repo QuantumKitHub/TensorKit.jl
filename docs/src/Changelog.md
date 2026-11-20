@@ -42,6 +42,9 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 - `twist!` and `twist` on a `TensorMap`, a `DiagonalTensorMap` or their adjoints use a cached tree transformer and the index manipulation kernel instead of a loop over all fusion trees, which removes the per-subblock bookkeeping and turns a twist of a GPU tensor, diagonal or not, into a single kernel launch ([#595](https://github.com/QuantumKitHub/TensorKit.jl/issues/595))
 - `foreachblock` with several tensors is type stable, which removes the dynamic dispatch on every call to it and to the factorizations that go through it
 - `taskforeach` with a single worker is a plain loop without an atomic counter, which lowers the cost per subblock of single-threaded index manipulations and planar traces
+- `fusiontrees(W)` stores the splitting and fusion trees of every coupled sector instead of every pair, and `fusionblocks` combines the trees of both sides with the same uncoupled sectors (internal) ([#600](https://github.com/QuantumKitHub/TensorKit.jl/pull/600))
+- `degeneracystructure(W)` stores the sizes, strides and offsets of the splitting and fusion trees instead of those of every subblock, from which the structure of a subblock is computed on access, and the tree transformers address subblocks by the tokens of their fusion tree pairs. This makes the cached structures considerably smaller and cheaper to build (internal) ([#600](https://github.com/QuantumKitHub/TensorKit.jl/pull/600))
+- Tree and trace transformers for sectors with multiple fusion channels keep the subblock tokens of all their blocks in one vector of `Int32` pairs, instead of two `Vector{Tuple{Int, Int}}` per block
 
 ## [0.17.3](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.2...v0.17.3) - 2026-10-30
 
