@@ -374,8 +374,8 @@ end
 
 TensorKit.treebraider(
     A::Type{<:AnyGPUVector}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple,
-    conjsrc::Bool, levels::IndexTuple
-) = TensorKit.device_treebraider(A, Vdst, Vsrc, p, conjsrc, levels)
+    conjsrc::Bool, levels::IndexTuple, twistmask::NTuple{N, Bool}
+) where {N} = TensorKit.device_treebraider(A, Vdst, Vsrc, p, conjsrc, levels, twistmask)
 TensorKit.treetransposer(
     A::Type{<:AnyGPUVector}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
 ) = TensorKit.device_treetransposer(A, Vdst, Vsrc, p, conjsrc)
