@@ -106,9 +106,20 @@ end
 _cache_structure_size(t) = sizeof(t.structure_src) +
     (t.structure_src === t.structure_dst ? 0 : sizeof(t.structure_dst))
 
-MemoizationKit.cachesize(t::UniqueTreeTransformer) = sizeof(t) + _cache_payload_size(t.data) + _cache_structure_size(t)
+# The subblock groups hold their own position, offset and coefficient vectors.
+function _cache_groups_size(t)
+    bytes = sizeof(t.groups) + sizeof(t.large)
+    for g in t.groups
+        bytes += sizeof(g.rel_dst) + sizeof(g.rel_src) + sizeof(g.offset_dst) +
+            sizeof(g.offset_src) + _cache_payload_size(g.coeff)
+    end
+    return bytes
+end
 
-MemoizationKit.cachesize(t::GenericTreeTransformer) = _cache_generic_size(t)
+MemoizationKit.cachesize(t::UniqueTreeTransformer) =
+    sizeof(t) + _cache_payload_size(t.data) + _cache_structure_size(t) + _cache_groups_size(t)
+
+MemoizationKit.cachesize(t::GenericTreeTransformer) = _cache_generic_size(t) + _cache_groups_size(t)
 
 function _cache_generic_size(t)
     bytes = sizeof(t) + sizeof(t.data) + _cache_structure_size(t)
