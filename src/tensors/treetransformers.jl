@@ -258,8 +258,10 @@ function subblockgroups(::Type{T}, data, structure_dst::Vector{StridedStructure{
         push!(group.coeff, coeff)
     end
     # `copy` drops the spare capacity that `push!` leaves
-    groups′ = [SubblockGroup(g.rel_dst, g.rel_src, copy(g.offset_dst), copy(g.offset_src), copy(g.coeff), g.accumulate)
-        for g in values(groups)]
+    groups′ = [
+        SubblockGroup(g.rel_dst, g.rel_src, copy(g.offset_dst), copy(g.offset_src), copy(g.coeff), g.accumulate)
+            for g in values(groups)
+    ]
     return sort!(groups′; by = group -> group.accumulate), copy(large)
 end
 
