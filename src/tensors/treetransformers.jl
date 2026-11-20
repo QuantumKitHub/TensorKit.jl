@@ -44,13 +44,14 @@ strides are permuted such that both refer to the same entry. Term `n` then compu
 `dst[offset_dst[n] .+ rel_dst] = α * coeff[n] * src[offset_src[n] .+ rel_src] + b * dst[offset_dst[n] .+ rel_dst]`,
 with `b = β` for the first term into every destination subblock and `b = 1` for the groups of
 further recoupling terms, which have `accumulate` set and are applied after all others.
-The terms are sorted by `offset_dst`.
+The terms are sorted by `offset_dst`. Offsets and relative positions are `Int32`; tensors with more
+than `typemax(Int32)` entries are not grouped.
 """
 struct SubblockGroup{T}
-    rel_dst::Vector{Int}
-    rel_src::Vector{Int}
-    offset_dst::Vector{Int}
-    offset_src::Vector{Int}
+    rel_dst::Vector{Int32}
+    rel_src::Vector{Int32}
+    offset_dst::Vector{Int32}
+    offset_src::Vector{Int32}
     coeff::Vector{T}
     accumulate::Bool
 end
@@ -229,6 +230,9 @@ accumulating groups last, and return them together with the positions in `data` 
 function subblockgroups(::Type{T}, data, structure_dst::Vector{StridedStructure{N}}, structure_src, p) where {T, N}
     terms = Tuple{T, Int, Int, Bool}[]
     large = Int[]
+    # positions are stored as `Int32`
+    (_lastindex(structure_dst) > typemax(Int32) || _lastindex(structure_src) > typemax(Int32)) &&
+        return SubblockGroup{T}[], collect(eachindex(data))
     for (n, (U, inds_dst, inds_src)) in enumerate(data)
         if prod(first(structure_dst[first(inds_dst)])) > SUBBLOCKGROUP_MAXLENGTH
             push!(large, n)
@@ -246,12 +250,12 @@ function subblockgroups(::Type{T}, data, structure_dst::Vector{StridedStructure{
         strides_dst = map((n, s) -> n == 1 ? 0 : s, sz, strides_dst)
         strides_src′ = map((n, s) -> n == 1 ? 0 : s, sz, TupleTools.getindices(strides_src, p))
         group = get!(groups, (accumulate, (sz, strides_dst, strides_src′))) do
-            rel_dst, rel_src = Int[], Int[]
+            rel_dst, rel_src = Int32[], Int32[]
             for I in CartesianIndices(sz)
                 push!(rel_dst, 1 + sum((Tuple(I) .- 1) .* strides_dst; init = 0))
                 push!(rel_src, 1 + sum((Tuple(I) .- 1) .* strides_src′; init = 0))
             end
-            return SubblockGroup(rel_dst, rel_src, Int[], Int[], T[], accumulate)
+            return SubblockGroup(rel_dst, rel_src, Int32[], Int32[], T[], accumulate)
         end
         push!(group.offset_dst, offset_dst)
         push!(group.offset_src, offset_src)
@@ -259,6 +263,9 @@ function subblockgroups(::Type{T}, data, structure_dst::Vector{StridedStructure{
     end
     return sort!(collect(values(groups)); by = group -> group.accumulate), large
 end
+
+# the largest position addressed by the subblocks of `structure`
+_lastindex(structure) = maximum(((sz, str, offset),) -> offset + sum((sz .- 1) .* str; init = 0) + 1, structure; init = 0)
 
 _push_terms!(terms, coeff::Number, idst::Int, isrc::Int) = push!(terms, (coeff, idst, isrc, false))
 function _push_terms!(terms, U::AbstractMatrix, inds_dst, inds_src)

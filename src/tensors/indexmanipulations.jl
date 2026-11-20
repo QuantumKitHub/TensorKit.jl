@@ -810,7 +810,7 @@ end
 function _add_subblockgroup!(A, B, op, group::SubblockGroup, terms, α, β)
     (; rel_dst, rel_src, offset_dst, offset_src, coeff) = group
     @inbounds for n in terms
-        o₁, o₂, a = offset_dst[n], offset_src[n], α * coeff[n]
+        o₁, o₂, a = Int(offset_dst[n]), Int(offset_src[n]), α * coeff[n]
         if group.accumulate
             @simd for k in eachindex(rel_dst)
                 A[o₁ + rel_dst[k]] += a * op(B[o₂ + rel_src[k]])
