@@ -25,7 +25,8 @@ end
         V = GradedSpace{I}(labels[1] => 2, labels[2] => 2)
         W = V ⊗ V ← V ⊗ V
         p, levels = ((2, 1), (4, 3)), (1, 2, 3, 4)
-        transformer = TensorKit.treebraider(Vector{Float64}, W, W, p, false, levels)
+        twistmask = (false, false, false, false)
+        transformer = TensorKit.treebraider(Vector{Float64}, W, W, p, false, levels, twistmask)
         for value in (sectorstructure(W), degeneracystructure(W), transformer)
             bytes = @constinferred MemoizationKit.cachesize(value)
             @test 0 < bytes <= Base.summarysize(value)
@@ -39,8 +40,8 @@ end
         # retain its own size budget even if the degeneracy cache has been cleared.
         MemoizationKit.set_cache_size!(TensorKit.treebraider, MemoizationKit.cachesize(transformer); by = MemoizationKit.cachesize)
         try
-            TensorKit.treebraider(Vector{Float64}, W, W, p, false, levels)
-            TensorKit.treebraider(Vector{Float64}, W, W, ((1, 2), (3, 4)), false, levels)
+            TensorKit.treebraider(Vector{Float64}, W, W, p, false, levels, twistmask)
+            TensorKit.treebraider(Vector{Float64}, W, W, ((1, 2), (3, 4)), false, levels, twistmask)
             MemoizationKit.empty_caches!(degeneracystructure)
             cache = only(MemoizationKit.cache_info(TensorKit.treebraider)).second
             stats = MemoizationKit.cache_stats(cache)
@@ -51,7 +52,7 @@ end
 
             MemoizationKit.set_cache_size!(TensorKit.treebraider, 0; by = MemoizationKit.cachesize)
             @test isempty(cache)
-            @test TensorKit.treebraider(Vector{Float64}, W, W, p, false, levels).data == transformer.data
+            @test TensorKit.treebraider(Vector{Float64}, W, W, p, false, levels, twistmask).data == transformer.data
             @test isempty(cache)
         finally
             MemoizationKit.set_cache_size!(TensorKit.treebraider, 10_000)
