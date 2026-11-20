@@ -76,12 +76,13 @@ _cache_structure_size(t) = sizeof(t.structure_src) +
 
 MemoizationKit.cachesize(t::UniqueTreeTransformer) = sizeof(t) + _cache_payload_size(t.data) + _cache_structure_size(t)
 
-MemoizationKit.cachesize(t::GenericTreeTransformer) = _cache_generic_size(t)
+# The recoupling matrices are shared with other transformers and counted by the cache of `recouplingmatrix`.
+MemoizationKit.cachesize(t::GenericTreeTransformer) = _cache_generic_size(t; matrices = false)
 
-function _cache_generic_size(t)
+function _cache_generic_size(t; matrices::Bool = true)
     bytes = sizeof(t) + sizeof(t.data) + _cache_structure_size(t)
     for (U, inds_dst, inds_src) in t.data
-        bytes += _cache_payload_size(U) + sizeof(inds_src) +
+        bytes += (matrices ? _cache_payload_size(U) : 0) + sizeof(inds_src) +
             (inds_src === inds_dst ? 0 : sizeof(inds_dst))
     end
     return bytes
@@ -143,7 +144,7 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst::HomSpace, Vsrc::H
                     return idst
                 end
             end
-            data[i] = (convert(Matrix{T}, U), inds_dst, inds_src)
+            data[i] = (recouplingmatrix(convert(Matrix{T}, U)), inds_dst, inds_src)
             # cost model: L input blocks each going to L output blocks of a given length
             weights[i] = length(U) * prod(structure_dst[first(inds_dst)][1])
 
@@ -169,6 +170,10 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst::HomSpace, Vsrc::H
 
     return transformer
 end
+
+# `U`, or an equal matrix returned before: a recoupling matrix only depends on the sectors, so transformers share them
+@cached recouplingmatrix(U::Matrix) = U
+MemoizationKit.default_cache_settings(::typeof(recouplingmatrix)) = (; measure = "bytes", maxsize = 2^28)
 
 """
     buffersize(transformer::TreeTransformer) -> Int
