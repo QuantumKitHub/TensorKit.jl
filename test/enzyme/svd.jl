@@ -33,7 +33,7 @@ eltypes = (Float64, ComplexF64)
         ΔUSVᴴ = EnzymeTestUtils.rand_tangent(USVᴴ)
         remove_svd_gauge_dependence!(ΔUSVᴴ[1], ΔUSVᴴ[3], USVᴴ...)
         EnzymeTestUtils.test_reverse(svd_compact, Duplicated, (t, Duplicated); output_tangent = ΔUSVᴴ, atol, rtol)
-        EnzymeTestUtils.test_forward(svd_compact, Duplicated, (t, Duplicated); output_tangent = ΔUSVᴴ, atol, rtol)
+        EnzymeTestUtils.test_forward(svd_compact, Duplicated, (t, Duplicated); atol, rtol)
     end
 
     V_trunc = spacetype(t)(c => min(size(b)...) ÷ 2 for (c, b) in blocks(t))
@@ -43,5 +43,5 @@ eltypes = (Float64, ComplexF64)
     ΔUSVᴴtrunc = EnzymeTestUtils.rand_tangent(USVᴴtrunc)
     remove_svd_gauge_dependence!(ΔUSVᴴtrunc[1], ΔUSVᴴtrunc[3], USVᴴtrunc...)
     EnzymeTestUtils.test_reverse(svd_trunc_no_error, Duplicated, (t, Duplicated), (alg, Const); output_tangent = ΔUSVᴴtrunc, atol, rtol)
-    EnzymeTestUtils.test_forward(svd_trunc_no_error, Duplicated, (t, Duplicated), (alg, Const); output_tangent = ΔUSVᴴtrunc, atol, rtol)
+    EnzymeTestUtils.test_forward(svd_trunc_no_error, Duplicated, (t, Duplicated), (alg, Const); atol, rtol)
 end
