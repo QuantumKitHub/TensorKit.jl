@@ -358,7 +358,7 @@ end
 end
 
 """
-    device_treebraider(A, Vdst, Vsrc, p, conjsrc, levels)
+    device_treebraider(A, Vdst, Vsrc, p, conjsrc, levels, twistmask)
     device_treetransposer(A, Vdst, Vsrc, p, conjsrc)
     device_treetracer(A, Vdst, Vsrc, p, q)
     device_treetwister(A, Vdst, Vsrc, p, conjsrc, twistmask, inv)
