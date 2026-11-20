@@ -18,6 +18,14 @@ Base.:\(α::Number, t::AbstractTensorMap) = *(t, one(scalartype(t)) / α)
 LinearAlgebra.normalize!(t::AbstractTensorMap, p::Real = 2) = scale!(t, inv(norm(t, p)))
 LinearAlgebra.normalize(t::AbstractTensorMap, p::Real = 2) = scale(t, inv(norm(t, p)))
 
+"""
+    _nrm2!(out, x)
+
+Write the 2-norm of the array `x` into the 1-element array `out`, without copying it to the host.
+Used to normalize GPU-backed tensors without synchronizing; the GPU extensions provide methods.
+"""
+function _nrm2! end
+
 # destination allocation for matrix multiplication
 # note that we don't fall back to `tensoralloc_contract` since that needs to account for
 # permutations, which might require complex scalartypes even if the inputs are real.
