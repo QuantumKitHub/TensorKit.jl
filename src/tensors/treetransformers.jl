@@ -107,12 +107,12 @@ end
 _cache_structure_size(t) = sizeof(t.structure_src) +
     (t.structure_src === t.structure_dst ? 0 : sizeof(t.structure_dst))
 
-# The subblock groups hold their own position, offset and coefficient vectors.
+# The subblock groups hold their own offset and coefficient vectors; their relative positions are shared with
+# other transformers and counted by the cache of `subblockpositions`.
 function _cache_groups_size(t)
     bytes = sizeof(t.groups) + sizeof(t.large)
     for g in t.groups
-        bytes += sizeof(g.rel_dst) + sizeof(g.rel_src) + sizeof(g.offset_dst) +
-            sizeof(g.offset_src) + _cache_payload_size(g.coeff)
+        bytes += sizeof(g.offset_dst) + sizeof(g.offset_src) + _cache_payload_size(g.coeff)
     end
     return bytes
 end
@@ -250,19 +250,24 @@ function subblockgroups(::Type{T}, data, structure_dst::Vector{StridedStructure{
         strides_dst = map((n, s) -> n == 1 ? 0 : s, sz, strides_dst)
         strides_src′ = map((n, s) -> n == 1 ? 0 : s, sz, TupleTools.getindices(strides_src, p))
         group = get!(groups, (accumulate, (sz, strides_dst, strides_src′))) do
-            rel_dst, rel_src = Int32[], Int32[]
-            for I in CartesianIndices(sz)
-                push!(rel_dst, 1 + sum((Tuple(I) .- 1) .* strides_dst; init = 0))
-                push!(rel_src, 1 + sum((Tuple(I) .- 1) .* strides_src′; init = 0))
-            end
+            rel_dst, rel_src = subblockpositions(sz, strides_dst), subblockpositions(sz, strides_src′)
             return SubblockGroup(rel_dst, rel_src, Int32[], Int32[], T[], accumulate)
         end
         push!(group.offset_dst, offset_dst)
         push!(group.offset_src, offset_src)
         push!(group.coeff, coeff)
     end
-    return sort!(collect(values(groups)); by = group -> group.accumulate), large
+    # `copy` drops the spare capacity that `push!` leaves
+    groups′ = [SubblockGroup(g.rel_dst, g.rel_src, copy(g.offset_dst), copy(g.offset_src), copy(g.coeff), g.accumulate)
+        for g in values(groups)]
+    return sort!(groups′; by = group -> group.accumulate), copy(large)
 end
+
+# the positions of the entries of a subblock relative to its offset, shared by all groups with the same shape and strides
+@cached function subblockpositions(sz::NTuple{N, Int}, strides::NTuple{N, Int})::Vector{Int32} where {N}
+    return vec(Int32[1 + sum((Tuple(I) .- 1) .* strides; init = 0) for I in CartesianIndices(sz)])
+end
+MemoizationKit.default_cache_settings(::typeof(subblockpositions)) = (; measure = "bytes", maxsize = 2^28)
 
 # the largest position addressed by the subblocks of `structure`
 _lastindex(structure) = maximum(((sz, str, offset),) -> offset + sum((sz .- 1) .* str; init = 0) + 1, structure; init = 0)
