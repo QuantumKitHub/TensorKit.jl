@@ -120,6 +120,7 @@ using MatrixAlgebraKit
 
 using Dictionaries: Dictionaries, AbstractDictionary, AbstractIndices, Dictionary, Indices, gettoken, gettokenvalue
 using OhMyThreads
+using PtrArrays: PtrArray
 using ScopedValues
 using TimerOutputs: TimerOutputs, TimerOutput, @timeit_debug
 

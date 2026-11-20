@@ -12,11 +12,12 @@ of `tsrc` itself; when `conjsrc` is `true` the fusion trees that are transformed
 """
 abstract type TreeTransformer end
 
-# `StridedSubblocks` report their storage as the `StridedView` parent type, which is `Memory` there
+# `StridedSubblocks` report their storage as the `StridedView` parent type, which is `Memory` there;
+# `PtrArray` is the storage of `TensorOperations.ManualAllocator` temporaries
 @static if isdefined(Core, :Memory)
-    const CPUStorage{T} = Union{Array{T}, Memory{T}}
+    const CPUStorage{T} = Union{Array{T}, Memory{T}, PtrArray{T}}
 else
-    const CPUStorage{T} = Array{T}
+    const CPUStorage{T} = Union{Array{T}, PtrArray{T}}
 end
 
 """

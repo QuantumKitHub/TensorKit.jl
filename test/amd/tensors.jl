@@ -153,6 +153,17 @@ for V in spacelist
                 p = 3 * rand(Float64)
                 @test norm(t + t, p) ≈ 2 * norm(t, p)
                 @test norm(t) ≈ norm(t')
+                for p in (1, 2, 3 * rand(Float64), Inf)
+                    tn = @constinferred normalize(t, p)
+                    @test storagetype(tn) == storagetype(t)
+                    @test norm(tn, p) ≈ 1
+                    @test tn ≈ t / norm(t, p)
+                    @test normalize!(copy(t), p) ≈ tn
+                    @test normalize(t', p) ≈ tn'
+                    ta = copy(t)'
+                    @test normalize!(ta, p) === ta
+                    @test ta ≈ tn'
+                end
 
                 t2 = @constinferred rand!(similar(t))
                 β = rand(T)
@@ -566,6 +577,13 @@ end
         dcpu = adapt(Array, d)
         scalars = ((TensorKit.One(), TensorKit.Zero()), (T(2), T(3)))
 
+        for p in (1, 2, 3 * rand(Float64), Inf)
+            dn = @constinferred normalize(d, p)
+            @test dn isa typeof(d)
+            @test adapt(Array, dn) ≈ normalize(dcpu, p)
+            @test adapt(Array, normalize!(copy(d), p)) ≈ normalize(dcpu, p)
+        end
+
         for p in (((), (1, 2)), ((1, 2), ()), ((2, 1), ()), ((), (2, 1)), ((1,), (2,)), ((2,), (1,))), conjd in (false, true)
             W = TO.tensoradd_structure(dcpu, p, conjd)
             dst = adapt(ROCVector{T}, randn(T, W))
@@ -626,5 +644,23 @@ end
         @test adapt(Array, gpu) ≈ cpu
 
         @test (@tensor s[1; 2] * d[2; 1]) ≈ (@tensor scpu[1; 2] * dcpu[2; 1])
+    end
+end
+
+@timedtestset "Contraction outside `@tensor` rewinds an AMD buffer" begin
+    using .TestSetup: VRepU₁, VfRepSU₂
+    for V in (VRepU₁, VfRepSU₂)
+        V1, V2, V3, V4 = V
+        A = AMDGPU.randn(Float64, V1 ⊗ V2 ⊗ V3)
+        B = AMDGPU.randn(Float64, V3' ⊗ V2' ⊗ V4)
+        @tensor Cref[d; a] := A[a b c] * B[c b d]
+        buffer = TO.AMDBufferAllocator()
+        C = TO.tensorcontract(
+            A, ((1,), (2, 3)), false, B, ((2, 1), (3,)), false, ((2,), (1,)), true,
+            TO.DefaultBackend(), buffer
+        )
+        @test isempty(buffer)
+        @test C ≈ Cref
+        @test buffer.max_offset > 0
     end
 end

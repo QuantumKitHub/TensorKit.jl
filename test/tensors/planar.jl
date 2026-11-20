@@ -249,6 +249,17 @@ end
             @test isempty(buffer)
             @test C ≈ Cref
             @test C2 ≈ Cref
+
+            # a direct call has no surrounding checkpoint, so it has to rewind by itself
+            t = rand(T, W ⊗ W ⊗ W ← W ⊗ W)
+            u = rand(T, W ⊗ W ← W ⊗ W ⊗ W)
+            @planar ρref[a; b] := t[a c d; e f] * u[e f; b c d]
+            ρ = planarcontract!(
+                zeros(T, W ← W), t, ((1,), (4, 5, 3, 2)), u, ((1, 2, 5, 4), (3,)),
+                ((1,), (2,)), true, false, TensorOperations.DefaultBackend(), buffer
+            )
+            @test isempty(buffer)
+            @test ρ ≈ ρref
         end
     end
 
