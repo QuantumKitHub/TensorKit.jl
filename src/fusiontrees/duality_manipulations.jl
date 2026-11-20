@@ -484,27 +484,30 @@ outgoing (`t1`) and incoming sectors (`t2`) respectively (with identical coupled
 repartitioning and permuting the tree such that sectors `p1` become outgoing and sectors
 `p2` become incoming.
 """
-function Base.transpose(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple)
+Base.transpose(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple) =
+    _transpose(fusionscalartype(sectortype(src)), src, p)
+
+# the transpose with the recoupling matrix of a block in scalar type `T`, which is cached as such
+function _transpose(::Type{T}, src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple) where {T}
     N = numind(src)
     N == length(p[1]) + length(p[2]) || throw(ArgumentError("invalid permutation p = $p of length N = $N"))
     p′ = linearizepermutation(p..., numout(src), numin(src))
     iscyclicpermutation(p′) || throw(ArgumentError("invalid cyclic or planar permutation p = $p"))
-    return fusiontreetranspose(src, p)
+    return fusiontreetranspose(src, p, T)
 end
-function Base.transpose(src::ProductSectorBlock, p::Index2Tuple)
-    isempty(src) && return fusiontreetranspose(src, p)
+function _transpose(::Type{T}, src::ProductSectorBlock, p::Index2Tuple) where {T}
+    isempty(src) && return fusiontreetranspose(src, p, T)
     # the return type is asserted since inference gives up on the recursion on older Julia versions
-    return product_transform(fusionscalartype(sectortype(src)), src) do x
+    return product_transform(T, src) do x
         return transpose(x, p)
-    end::fusiontreetransposetype(src, p)
+    end::fusiontreetransposetype(src, p, T)
 end
 
 Base.@assume_effects :foldable function fusiontreetransposetype(
-        src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, ::Index2Tuple{N₁, N₂}
-    ) where {I, N₁, N₂}
-    T = fusionscalartype(I)
+        src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, ::Index2Tuple{N₁, N₂}, ::Type{T}
+    ) where {I, N₁, N₂, T}
     if src isa FusionTreePair
-        return Pair{fusiontreetype(I, N₁, N₂), T}
+        return Pair{fusiontreetype(I, N₁, N₂), fusionscalartype(I)}
     else
         F = Tuple{fusiontreetype(I, N₁), fusiontreetype(I, N₂)}
         return Pair{FusionTreeBlock{I, N₁, N₂, F}, Matrix{T}}
@@ -512,17 +515,17 @@ Base.@assume_effects :foldable function fusiontreetransposetype(
 end
 
 @cached function fusiontreetranspose(
-        src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, p::Index2Tuple{N₁, N₂}
-    )::fusiontreetransposetype(src, p) where {I, N₁, N₂}
+        src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, p::Index2Tuple{N₁, N₂}, ::Type{T}
+    )::fusiontreetransposetype(src, p, T) where {I, N₁, N₂, T}
     p₁, p₂ = p
 
     N = N₁ + N₂
     p = linearizepermutation(p₁, p₂, numout(src), numin(src))
 
     dst, U = repartition(src, N₁)
-    length(p) == 0 && return dst => U
+    length(p) == 0 && return dst => _withscalartype(T, U)
     i1 = findfirst(==(1), p)::Int
-    i1 == 1 && return dst => U
+    i1 == 1 && return dst => _withscalartype(T, U)
 
     Nhalf = N >> 1
     while 1 < i1 ≤ Nhalf
@@ -536,8 +539,12 @@ end
         i1 = mod1(i1 + 1, N)
     end
 
-    return dst => U
+    return dst => _withscalartype(T, U)
 end
+
+# the recoupling matrix of a block in scalar type `T`, the coefficient of a tree pair as is
+_withscalartype(::Type{T}, U::AbstractMatrix) where {T} = convert(Matrix{T}, U)
+_withscalartype(::Type, coeff::Number) = coeff
 
 CacheStyle(::typeof(fusiontreetranspose), src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, args...) where {I} =
     FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalCache()

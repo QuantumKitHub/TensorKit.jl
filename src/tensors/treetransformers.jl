@@ -214,7 +214,8 @@ end
     # levels are attached to the legs, so they follow the same relabeling as the permutation
     levels′ = conjsrc ? TupleTools.getindices(levels, adjointtensorindices(Vsrc′, allind(Vsrc′))) : levels
     levels″ = (TupleTools.getindices(levels′, codomainind(Vsrc′)), TupleTools.getindices(levels′, domainind(Vsrc′)))
-    fusiontreebraider(f) = braid(f, p′, levels″)
+    T = recoupling_scalartype(A, sectorscalartype(sectortype(Vdst)))
+    fusiontreebraider(f) = _braid(T, f, p′, levels″)
     return TreeTransformer(A, fusiontreebraider, p, Vdst, Vsrc, conjsrc)
 end
 
@@ -222,7 +223,8 @@ end
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
     )::treetransformertype(A, Vdst, Vsrc) where {TA}
     p′ = conjsrc ? adjointtensorindices(Vsrc, p) : p
-    fusiontreetransform(f) = transpose(f, p′)
+    T = recoupling_scalartype(A, sectorscalartype(sectortype(Vdst)))
+    fusiontreetransform(f) = _transpose(T, f, p′)
     return TreeTransformer(A, fusiontreetransform, p, Vdst, Vsrc, conjsrc)
 end
 
