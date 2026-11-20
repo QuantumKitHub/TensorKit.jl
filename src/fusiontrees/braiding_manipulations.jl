@@ -304,9 +304,10 @@ end
 function _braid(::Type{T}, src::ProductSectorBlock, p::Index2Tuple, levels::Index2Tuple) where {T}
     isempty(src) && return fusiontreebraid(src, p, levels, T)
     # the return type is asserted since inference gives up on the recursion on older Julia versions
-    return product_transform(T, src) do x
+    dst, U = product_transform(T, src) do x
         return braid(x, p, levels)
     end::fusiontreebraidtype(src, p, T)
+    return dst => recouplingmatrix(U)
 end
 
 # Braiding can promote real fusion coefficients to complex values. Keep the result
@@ -331,7 +332,7 @@ end
     else
         if length(src) == 1 # then so is every intermediate block: the braid is a product of scalars
             f′, coeff = _braid_single(only(fusiontrees(src)), p, levels)
-            return FusionTreeBlock([f′]) => fill(convert(T, coeff), 1, 1)
+            return FusionTreeBlock([f′]) => recouplingmatrix(fill(convert(T, coeff), 1, 1))
         end
 
         p₁, p₂ = p
@@ -358,9 +359,9 @@ end
             levels = TupleTools.setindex(levels, l, s + 1)
         end
 
-        N₂ == 0 && return dst => convert(Matrix{T}, U)
+        N₂ == 0 && return dst => recouplingmatrix(convert(Matrix{T}, U))
         dst, U_bend = repartition(dst::FusionTreeBlock{I}, Val(N₁))
-        return dst => convert(Matrix{T}, U_bend * U)
+        return dst => recouplingmatrix(convert(Matrix{T}, U_bend * U))
     end
 end
 

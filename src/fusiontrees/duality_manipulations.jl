@@ -498,9 +498,10 @@ end
 function _transpose(::Type{T}, src::ProductSectorBlock, p::Index2Tuple) where {T}
     isempty(src) && return fusiontreetranspose(src, p, T)
     # the return type is asserted since inference gives up on the recursion on older Julia versions
-    return product_transform(T, src) do x
+    dst, U = product_transform(T, src) do x
         return transpose(x, p)
     end::fusiontreetransposetype(src, p, T)
+    return dst => recouplingmatrix(U)
 end
 
 Base.@assume_effects :foldable function fusiontreetransposetype(
@@ -542,8 +543,8 @@ end
     return dst => _withscalartype(T, U)
 end
 
-# the recoupling matrix of a block in scalar type `T`, the coefficient of a tree pair as is
-_withscalartype(::Type{T}, U::AbstractMatrix) where {T} = convert(Matrix{T}, U)
+# the recoupling matrix of a block in scalar type `T`, shared by value, the coefficient of a tree pair as is
+_withscalartype(::Type{T}, U::AbstractMatrix) where {T} = recouplingmatrix(convert(Matrix{T}, U))
 _withscalartype(::Type, coeff::Number) = coeff
 
 CacheStyle(::typeof(fusiontreetranspose), src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, args...) where {I} =

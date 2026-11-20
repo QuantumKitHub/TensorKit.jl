@@ -424,6 +424,10 @@ function Base.show(io::IO, t::FusionTree{I}) where {I <: Sector}
     end
 end
 
+# `U`, or an equal matrix returned before: a recoupling matrix only depends on the sectors, so transforms share them
+@cached recouplingmatrix(U::Matrix) = U
+MemoizationKit.default_cache_settings(::typeof(recouplingmatrix)) = (; measure = "bytes", maxsize = 2^28)
+
 # Fusion tree iterators
 include("iterator.jl")
 

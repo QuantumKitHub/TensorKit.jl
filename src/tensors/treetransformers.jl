@@ -144,7 +144,7 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst::HomSpace, Vsrc::H
                     return idst
                 end
             end
-            data[i] = (recouplingmatrix(convert(Matrix{T}, U)), inds_dst, inds_src)
+            data[i] = (convert(Matrix{T}, U), inds_dst, inds_src)
             # cost model: L input blocks each going to L output blocks of a given length
             weights[i] = length(U) * prod(structure_dst[first(inds_dst)][1])
 
@@ -170,10 +170,6 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst::HomSpace, Vsrc::H
 
     return transformer
 end
-
-# `U`, or an equal matrix returned before: a recoupling matrix only depends on the sectors, so transformers share them
-@cached recouplingmatrix(U::Matrix) = U
-MemoizationKit.default_cache_settings(::typeof(recouplingmatrix)) = (; measure = "bytes", maxsize = 2^28)
 
 """
     buffersize(transformer::TreeTransformer) -> Int
