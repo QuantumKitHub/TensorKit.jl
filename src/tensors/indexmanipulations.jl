@@ -726,20 +726,57 @@ function add_transform_kernel!(
     return nothing
 end
 
-# `U` is either a scalar coefficient with integer positions (unique fusion), or a recoupling
-# matrix with vectors of positions (generic).
+# Decide whether the recoupling matrix `U` acting on subblocks of length `blocksize` is applied
+# through the buffered pack → matmul → unpack path, rather than through one direct permuting
+# `tensoradd!` per nonzero coefficient. This compares a rough cost model of both paths, in units
+# of the cost of moving one element: `c₀` is the overhead of a `tensoradd!` call, `g` that of the
+# matmul, an add reads/writes ~3 elements per entry (4 when unpacking, which also reads the
+# buffer), and the matmul costs ~1/4 per entry of `U` and element.
+# TODO: these constants were only roughly tuned (SU₂ and Fibonacci, CPU, single-threaded)
+function use_buffered_transform(U::AbstractMatrix, blocksize::Int)
+    rows, cols = size(U)
+    rows * cols == 1 && return false
+    c₀, g = 30, 200
+    cost_direct = count(!iszero, U) * (c₀ + 3 * blocksize)
+    cost_buffered = (rows + cols) * c₀ + g + (3 * cols + 4 * rows) * blocksize +
+        (rows * cols * blocksize) ÷ 4
+    return cost_buffered < cost_direct
+end
+
+# unique fusion: a single source subblock maps onto a single destination subblock
 function _add_transform_block!(
-        dst::TransformSubblocks, src::TransformSubblocks, p, conjsrc::Bool, U, inds_dst, inds_src, buffer,
+        dst::TransformSubblocks, src::TransformSubblocks, p, conjsrc::Bool, U::Number, idst::Int, isrc::Int, buffer,
         α, β, backend, allocator
     )
-    if length(U) == 1 # single tree: no matmul needed
-        @timeit_debug GLOBAL_TIMER "dense: tensoradd" @inbounds TO.tensoradd!(
-            dst[only(inds_dst)], src[only(inds_src)], p, conjsrc, α * only(U), β, backend, allocator
-        )
-    else # Multi-tree block: pack → recoupling matmul → unpack.
-        rows, cols = size(U)
-        sz_src = size(@inbounds(src[first(inds_src)]))
-        blocksize = prod(sz_src)
+    @timeit_debug GLOBAL_TIMER "dense: tensoradd" @inbounds TO.tensoradd!(
+        dst[idst], src[isrc], p, conjsrc, α * U, β, backend, allocator
+    )
+    return nothing
+end
+# generic fusion: the subblocks of a fusion block are recoupled by the matrix `U`
+function _add_transform_block!(
+        dst::TransformSubblocks, src::TransformSubblocks, p, conjsrc::Bool, U::AbstractMatrix, inds_dst, inds_src, buffer,
+        α, β, backend, allocator
+    )
+    rows, cols = size(U)
+    sz_src = size(@inbounds(src[first(inds_src)]))
+    blocksize = prod(sz_src)
+    # `buffer === nothing` is known at compile time, `buffersize` uses the same criterion
+    if isnothing(buffer) || !use_buffered_transform(U, blocksize)
+        # Direct path: dst_i = β * dst_i + Σ_j α * U[i, j] * permute(src_j)
+        @timeit_debug GLOBAL_TIMER "dense: tensoradd" @inbounds for i in 1:rows
+            dst_i = dst[inds_dst[i]]
+            # the first nonzero term absorbs `β`, the others accumulate (keeps the type of `β` static)
+            # `U` is unitary, hence every row has a nonzero entry
+            j₁ = findfirst(j -> !iszero(U[i, j]), 1:cols)::Int
+            TO.tensoradd!(dst_i, src[inds_src[j₁]], p, conjsrc, α * U[i, j₁], β, backend, allocator)
+            for j in (j₁ + 1):cols
+                coeff = U[i, j]
+                iszero(coeff) && continue
+                TO.tensoradd!(dst_i, src[inds_src[j]], p, conjsrc, α * coeff, One(), backend, allocator)
+            end
+        end
+    else # Buffered path: pack → recoupling matmul → unpack.
         ptriv = (ntuple(identity, length(sz_src)), ())
         buffer_dst = StridedView(buffer, (blocksize, rows), (1, blocksize), 0)
         buffer_src = StridedView(buffer, (blocksize, cols), (1, blocksize), blocksize * rows)
