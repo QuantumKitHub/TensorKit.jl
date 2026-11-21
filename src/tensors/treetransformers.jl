@@ -173,15 +173,16 @@ end
 """
     buffersize(transformer::TreeTransformer) -> Int
 
-Compute the workspace size required to pack, recouple and unpack the largest multi-tree
-block, i.e. `prod(sz_src) * (rows + cols)` where `(rows, cols) = size(U)` is the size of
-the recoupling matrix.
+Compute the workspace size required to pack, recouple and unpack the largest block that
+uses the buffered path (see `use_buffered_transform`), i.e. `prod(sz_src) * (rows + cols)`
+where `(rows, cols) = size(U)` is the size of the recoupling matrix.
 """
 buffersize(::UniqueTreeTransformer) = 0
 function buffersize(transformer::GenericTreeTransformer)
     structure_src = transformer.structure_src
     return maximum(transformer.data; init = 0) do (U, _, inds_src)
-        return length(U) == 1 ? 0 : prod(structure_src[first(inds_src)][1]) * sum(size(U))
+        blocksize = prod(structure_src[first(inds_src)][1])
+        return use_buffered_transform(U, blocksize) ? blocksize * sum(size(U)) : 0
     end
 end
 
