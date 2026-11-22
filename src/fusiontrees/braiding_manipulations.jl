@@ -291,28 +291,32 @@ respectively, which determines how indices braid. In particular, if `i` and `j` 
 levels[j]`. This does not allow to encode the most general braid, but a general braid can
 be obtained by combining such operations.
 """
-function braid(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple, levels::Index2Tuple)
+braid(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple, levels::Index2Tuple) =
+    _braid(sectorscalartype(sectortype(src)), src, p, levels)
+
+# the braid with the recoupling matrix of a block in scalar type `T`, which is cached as such
+function _braid(::Type{T}, src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple, levels::Index2Tuple) where {T}
     @assert numind(src) == length(p[1]) + length(p[2])
     @assert numout(src) == length(levels[1]) && numin(src) == length(levels[2])
     @assert TupleTools.isperm((p[1]..., p[2]...))
-    return fusiontreebraid(src, p, levels)
+    return fusiontreebraid(T, src, p, levels)
 end
-function braid(src::ProductSectorBlock, p::Index2Tuple, levels::Index2Tuple)
-    isempty(src) && return fusiontreebraid(src, p, levels)
+function _braid(::Type{T}, src::ProductSectorBlock, p::Index2Tuple, levels::Index2Tuple) where {T}
+    isempty(src) && return fusiontreebraid(T, src, p, levels)
     # the return type is asserted since inference gives up on the recursion on older Julia versions
-    return product_transform(sectorscalartype(sectortype(src)), src) do x
+    dst, U = product_transform(T, src) do x
         return braid(x, p, levels)
-    end::fusiontreebraidtype(src, p)
+    end::fusiontreebraidtype(T, src, p)
+    return dst => recouplingmatrix(U)
 end
 
 # Braiding can promote real fusion coefficients to complex values. Keep the result
 # type explicit so all braid paths remain inferred, including anyonic sectors.
 Base.@assume_effects :foldable function fusiontreebraidtype(
-        src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, ::Index2Tuple{N₁, N₂}
-    ) where {I, N₁, N₂}
-    T = sectorscalartype(I)
+        ::Type{T}, src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, ::Index2Tuple{N₁, N₂}
+    ) where {T, I, N₁, N₂}
     if src isa FusionTreePair
-        return Pair{fusiontreetype(I, N₁, N₂), T}
+        return Pair{fusiontreetype(I, N₁, N₂), sectorscalartype(I)}
     else
         F = Tuple{fusiontreetype(I, N₁), fusiontreetype(I, N₂)}
         return Pair{FusionTreeBlock{I, N₁, N₂, F}, Matrix{T}}
@@ -320,15 +324,15 @@ Base.@assume_effects :foldable function fusiontreebraidtype(
 end
 
 @cached function fusiontreebraid(
-        src::Union{FusionTreePair{I}, FusionTreeBlock{I}},
+        ::Type{T}, src::Union{FusionTreePair{I}, FusionTreeBlock{I}},
         p::Index2Tuple{N₁, N₂}, levels::Index2Tuple
-    )::fusiontreebraidtype(src, p) where {I, N₁, N₂}
+    )::fusiontreebraidtype(T, src, p) where {T, I, N₁, N₂}
     if src isa FusionTreePair
         return _braid_single(src, p, levels)
     else
         if length(src) == 1 # then so is every intermediate block: the braid is a product of scalars
             f′, coeff = _braid_single(only(fusiontrees(src)), p, levels)
-            return FusionTreeBlock([f′]) => fill(coeff, 1, 1)
+            return FusionTreeBlock([f′]) => recouplingmatrix(fill(convert(T, coeff), 1, 1))
         end
 
         p₁, p₂ = p
@@ -336,10 +340,10 @@ end
         p′ = linearizepermutation(p₁, p₂, numout(src), numin(src))
         levels = (l₁..., reverse(l₂)...)
 
-        T = sectorscalartype(I)
+        Tₛ = sectorscalartype(I)
         dst, U = repartition(src, Val(numind(src)))
-        # the bends have `fusionscalartype(I)`, which can be narrower than `T`
-        U = convert(Matrix{T}, U)
+        # the bends have `fusionscalartype(I)`, which can be narrower than `Tₛ`
+        U = convert(Matrix{Tₛ}, U)
 
         # the swaps keep the size of the block, so that the matrices of the previous step are recycled
         U_tmp = similar(U)
@@ -355,9 +359,9 @@ end
             levels = TupleTools.setindex(levels, l, s + 1)
         end
 
-        N₂ == 0 && return dst => U
+        N₂ == 0 && return dst => recouplingmatrix(convert(Matrix{T}, U))
         dst, U_bend = repartition(dst::FusionTreeBlock{I}, Val(N₁))
-        return dst => U_bend * U
+        return dst => recouplingmatrix(convert(Matrix{T}, U_bend * U))
     end
 end
 
@@ -371,7 +375,7 @@ function _braid_single((f₁, f₂)::FusionTreePair, (p₁, p₂)::Index2Tuple{N
     return (f₁′, f₂′) => coeff₁ * coeff₂ * coeff₃
 end
 
-CacheStyle(::typeof(fusiontreebraid), src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, args...) where {I} =
+CacheStyle(::typeof(fusiontreebraid), ::Type, src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, args...) where {I} =
     FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalCache()
 
 """

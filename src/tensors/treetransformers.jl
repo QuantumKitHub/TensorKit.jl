@@ -76,12 +76,13 @@ _cache_structure_size(t) = sizeof(t.structure_src) +
 
 MemoizationKit.cachesize(t::UniqueTreeTransformer) = sizeof(t) + _cache_payload_size(t.data) + _cache_structure_size(t)
 
-MemoizationKit.cachesize(t::GenericTreeTransformer) = _cache_generic_size(t)
+# The recoupling matrices are shared with other transformers and counted by the cache of `recouplingmatrix`.
+MemoizationKit.cachesize(t::GenericTreeTransformer) = _cache_generic_size(t; matrices = false)
 
-function _cache_generic_size(t)
+function _cache_generic_size(t; matrices::Bool = true)
     bytes = sizeof(t) + sizeof(t.data) + _cache_structure_size(t)
     for (U, inds_dst, inds_src) in t.data
-        bytes += _cache_payload_size(U) + sizeof(inds_src) +
+        bytes += (matrices ? _cache_payload_size(U) : 0) + sizeof(inds_src) +
             (inds_src === inds_dst ? 0 : sizeof(inds_dst))
     end
     return bytes
@@ -209,7 +210,8 @@ end
     # levels are attached to the legs, so they follow the same relabeling as the permutation
     levels′ = conjsrc ? TupleTools.getindices(levels, adjointtensorindices(Vsrc′, allind(Vsrc′))) : levels
     levels″ = (TupleTools.getindices(levels′, codomainind(Vsrc′)), TupleTools.getindices(levels′, domainind(Vsrc′)))
-    fusiontreebraider(f) = braid(f, p′, levels″)
+    T = recoupling_scalartype(A, sectorscalartype(sectortype(Vdst)))
+    fusiontreebraider(f) = _braid(T, f, p′, levels″)
     return TreeTransformer(A, fusiontreebraider, p, Vdst, Vsrc, conjsrc)
 end
 
@@ -217,7 +219,8 @@ end
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
     )::treetransformertype(A, Vdst, Vsrc) where {TA}
     p′ = conjsrc ? adjointtensorindices(Vsrc, p) : p
-    fusiontreetransform(f) = transpose(f, p′)
+    T = recoupling_scalartype(A, sectorscalartype(sectortype(Vdst)))
+    fusiontreetransform(f) = _transpose(T, f, p′)
     return TreeTransformer(A, fusiontreetransform, p, Vdst, Vsrc, conjsrc)
 end
 
