@@ -49,6 +49,7 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 - `taskforeach` with a single worker is a plain loop without an atomic counter, which lowers the cost per subblock of single-threaded index manipulations and planar traces
 - Tree transformers for sectors with multiple fusion channels share equal recoupling matrices, which only depend on the sectors, instead of storing one copy per transformer
 - The cached braids and transposes of fusion tree blocks keep their recoupling matrices in the scalar type of the tree transformers that use them, instead of a copy in that type for every transformer
+- The fusion tree pairs of a `UniqueTreeTransformer` are transformed on up to `get_num_manipulation_threads()` tasks, as the fusion tree blocks of a `GenericTreeTransformer` already were, which speeds up the construction of the index manipulations of abelian tensors with many fusion tree pairs
 
 ## [0.17.3](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.2...v0.17.3) - 2026-10-30
 
