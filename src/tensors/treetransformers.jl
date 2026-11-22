@@ -202,16 +202,30 @@ function TreeTransformer(
         GenericTreeTransformer(A, transform, p, Vdst, Vsrc, conjsrc)
 end
 
-# braid is special because it has levels
+# the recoupling coefficients `U` followed by the twist factor `θ`; a twisted recoupling matrix
+# only depends on the sectors as well, so it is shared through `recouplingmatrix` like `U` itself
+_twistrecoupling(U::Number, θ::Number) = U * θ
+function _twistrecoupling(U::Matrix{T}, θ::Number) where {T}
+    isone(θ) && return U
+    return recouplingmatrix(scale(U, convert(T, θ)))
+end
+
+# braid is special because it has levels; the destination legs in `twistmask` are twisted afterwards,
+# which is diagonal in the fusion tree basis and therefore folded into the recoupling coefficients
 @cached function treebraider(
-        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool, levels::IndexTuple
-    )::treetransformertype(A, Vdst, Vsrc) where {TA}
+        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool, levels::IndexTuple,
+        twistmask::NTuple{N, Bool}
+    )::treetransformertype(A, Vdst, Vsrc) where {TA, N}
     Vsrc′, p′ = conjsrc ? (Vsrc', adjointtensorindices(Vsrc, p)) : (Vsrc, p)
     # levels are attached to the legs, so they follow the same relabeling as the permutation
     levels′ = conjsrc ? TupleTools.getindices(levels, adjointtensorindices(Vsrc′, allind(Vsrc′))) : levels
     levels″ = (TupleTools.getindices(levels′, codomainind(Vsrc′)), TupleTools.getindices(levels′, domainind(Vsrc′)))
     T = recoupling_scalartype(A, sectorscalartype(sectortype(Vdst)))
-    fusiontreebraider(f) = _braid(T, f, p′, levels″)
+    function fusiontreebraider(f)
+        f′, U = _braid(T, f, p′, levels″)
+        any(twistmask) || return f′, U
+        return f′, _twistrecoupling(U, last(twist(f′, twistmask)))
+    end
     return TreeTransformer(A, fusiontreebraider, p, Vdst, Vsrc, conjsrc)
 end
 
@@ -344,7 +358,7 @@ end
 end
 
 """
-    device_treebraider(A, Vdst, Vsrc, p, conjsrc, levels)
+    device_treebraider(A, Vdst, Vsrc, p, conjsrc, levels, twistmask)
     device_treetransposer(A, Vdst, Vsrc, p, conjsrc)
     device_treetracer(A, Vdst, Vsrc, p, q)
     device_treetwister(A, Vdst, Vsrc, p, conjsrc, twistmask, inv)
