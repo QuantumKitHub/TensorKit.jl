@@ -31,7 +31,7 @@ end
             @test 0 < bytes <= Base.summarysize(value)
         end
         for src in TensorKit.fusionblocks(W)
-            result = TensorKit.fusiontreebraid(src, p, ((1, 2), (3, 4)), sectorscalartype(I))
+            result = TensorKit.fusiontreebraid(sectorscalartype(I), src, p, ((1, 2), (3, 4)))
             @test 0 < (@constinferred MemoizationKit.cachesize(result)) <= Base.summarysize(result)
         end
 

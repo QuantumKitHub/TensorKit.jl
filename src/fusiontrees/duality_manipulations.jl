@@ -493,20 +493,20 @@ function _transpose(::Type{T}, src::Union{FusionTreePair, FusionTreeBlock}, p::I
     N == length(p[1]) + length(p[2]) || throw(ArgumentError("invalid permutation p = $p of length N = $N"))
     p′ = linearizepermutation(p..., numout(src), numin(src))
     iscyclicpermutation(p′) || throw(ArgumentError("invalid cyclic or planar permutation p = $p"))
-    return fusiontreetranspose(src, p, T)
+    return fusiontreetranspose(T, src, p)
 end
 function _transpose(::Type{T}, src::ProductSectorBlock, p::Index2Tuple) where {T}
-    isempty(src) && return fusiontreetranspose(src, p, T)
+    isempty(src) && return fusiontreetranspose(T, src, p)
     # the return type is asserted since inference gives up on the recursion on older Julia versions
     dst, U = product_transform(T, src) do x
         return transpose(x, p)
-    end::fusiontreetransposetype(src, p, T)
+    end::fusiontreetransposetype(T, src, p)
     return dst => recouplingmatrix(U)
 end
 
 Base.@assume_effects :foldable function fusiontreetransposetype(
-        src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, ::Index2Tuple{N₁, N₂}, ::Type{T}
-    ) where {I, N₁, N₂, T}
+        ::Type{T}, src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, ::Index2Tuple{N₁, N₂}
+    ) where {T, I, N₁, N₂}
     if src isa FusionTreePair
         return Pair{fusiontreetype(I, N₁, N₂), fusionscalartype(I)}
     else
@@ -516,8 +516,8 @@ Base.@assume_effects :foldable function fusiontreetransposetype(
 end
 
 @cached function fusiontreetranspose(
-        src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, p::Index2Tuple{N₁, N₂}, ::Type{T}
-    )::fusiontreetransposetype(src, p, T) where {I, N₁, N₂, T}
+        ::Type{T}, src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, p::Index2Tuple{N₁, N₂}
+    )::fusiontreetransposetype(T, src, p) where {T, I, N₁, N₂}
     p₁, p₂ = p
 
     N = N₁ + N₂
@@ -547,7 +547,7 @@ end
 _withscalartype(::Type{T}, U::AbstractMatrix) where {T} = recouplingmatrix(convert(Matrix{T}, U))
 _withscalartype(::Type, coeff::Number) = coeff
 
-CacheStyle(::typeof(fusiontreetranspose), src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, args...) where {I} =
+CacheStyle(::typeof(fusiontreetranspose), ::Type, src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, args...) where {I} =
     FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalCache()
 
 # COMPOSITE DUALITY MANIPULATIONS PART 2: Planar traces

@@ -299,22 +299,22 @@ function _braid(::Type{T}, src::Union{FusionTreePair, FusionTreeBlock}, p::Index
     @assert numind(src) == length(p[1]) + length(p[2])
     @assert numout(src) == length(levels[1]) && numin(src) == length(levels[2])
     @assert TupleTools.isperm((p[1]..., p[2]...))
-    return fusiontreebraid(src, p, levels, T)
+    return fusiontreebraid(T, src, p, levels)
 end
 function _braid(::Type{T}, src::ProductSectorBlock, p::Index2Tuple, levels::Index2Tuple) where {T}
-    isempty(src) && return fusiontreebraid(src, p, levels, T)
+    isempty(src) && return fusiontreebraid(T, src, p, levels)
     # the return type is asserted since inference gives up on the recursion on older Julia versions
     dst, U = product_transform(T, src) do x
         return braid(x, p, levels)
-    end::fusiontreebraidtype(src, p, T)
+    end::fusiontreebraidtype(T, src, p)
     return dst => recouplingmatrix(U)
 end
 
 # Braiding can promote real fusion coefficients to complex values. Keep the result
 # type explicit so all braid paths remain inferred, including anyonic sectors.
 Base.@assume_effects :foldable function fusiontreebraidtype(
-        src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, ::Index2Tuple{N₁, N₂}, ::Type{T}
-    ) where {I, N₁, N₂, T}
+        ::Type{T}, src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, ::Index2Tuple{N₁, N₂}
+    ) where {T, I, N₁, N₂}
     if src isa FusionTreePair
         return Pair{fusiontreetype(I, N₁, N₂), sectorscalartype(I)}
     else
@@ -324,9 +324,9 @@ Base.@assume_effects :foldable function fusiontreebraidtype(
 end
 
 @cached function fusiontreebraid(
-        src::Union{FusionTreePair{I}, FusionTreeBlock{I}},
-        p::Index2Tuple{N₁, N₂}, levels::Index2Tuple, ::Type{T}
-    )::fusiontreebraidtype(src, p, T) where {I, N₁, N₂, T}
+        ::Type{T}, src::Union{FusionTreePair{I}, FusionTreeBlock{I}},
+        p::Index2Tuple{N₁, N₂}, levels::Index2Tuple
+    )::fusiontreebraidtype(T, src, p) where {T, I, N₁, N₂}
     if src isa FusionTreePair
         return _braid_single(src, p, levels)
     else
@@ -375,7 +375,7 @@ function _braid_single((f₁, f₂)::FusionTreePair, (p₁, p₂)::Index2Tuple{N
     return (f₁′, f₂′) => coeff₁ * coeff₂ * coeff₃
 end
 
-CacheStyle(::typeof(fusiontreebraid), src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, args...) where {I} =
+CacheStyle(::typeof(fusiontreebraid), ::Type, src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, args...) where {I} =
     FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalCache()
 
 """
