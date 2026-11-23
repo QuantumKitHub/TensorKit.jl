@@ -130,21 +130,40 @@ function _unique_transform(transform::F, ::Type{T}, src::FusionTreeBlock) where 
     return FusionTreeBlock(map(first, dst)) => LinearAlgebra.diagm(convert.(T, last.(dst)))
 end
 
+# whether the recoupling matrices of the block `src` factor into a scalar of its `UniqueFusion` part
+# and the matrix of its other part, which is then shared by all blocks that only differ in the former
+_isfactorable(::FusionTreeBlock) = false
+function _isfactorable(src::ProductSectorBlock)
+    I = sectortype(src)
+    FusionStyle(I) isa UniqueFusion && return false
+    return FusionStyle(last(deconstructsectortype(I))) isa UniqueFusion && numind(src) > 0 && !isempty(src)
+end
+
+# the recoupling matrix of every single-tree block, which is then fully described by its scalar factor
+@cached function _unitmatrix(::Type{T})::Matrix{T} where {T}
+    return fill(one(T), 1, 1)
+end
+
+# the type of `dst => (coeff, U)` for a transform with result type `Pair{D, Matrix{T}}`
+_factoredtype(::Type{Pair{D, Matrix{T}}}) where {D, T} = Pair{D, Tuple{T, Matrix{T}}}
+
+# apply `transform` to a factorable block `src` (see `_isfactorable`) through its parts, where
+# `transform` maps a tree pair to `dst => coeff` and a block to `dst => (coeff, U)`; the result is
+# `dst => (coeff, U)` with recoupling matrix `coeff * U`, where `U` is that of the block of the first part
+# and `coeff` the product of its factor and the coefficient of the single tree pair of the second part
+function factored_transform(transform::F, ::Type{T}, src::FusionTreeBlock{I}) where {F, T, I}
+    (g₁, g₂), coeff₂ = transform(last(_deconstructtrees(first(fusiontrees(src)))))
+    dst₁, (coeff₁, U) = transform(FusionTreeBlock(map(first ∘ _deconstructtrees, fusiontrees(src))))
+    dst = FusionTreeBlock(
+        map(((f₁, f₂),) -> (reconstructtree(I, f₁, g₁), reconstructtree(I, f₂, g₂)), fusiontrees(dst₁))
+    )
+    return dst => (convert(T, coeff₁ * coeff₂), U)
+end
+
 # apply `transform` to the block `src` through its parts, with the recoupling matrix with scalar type `T`
+# as the Kronecker product of those of its parts
 function product_transform(transform::F, ::Type{T}, src::FusionTreeBlock{I}) where {F, T, I}
-    if FusionStyle(I) isa UniqueFusion
-        return _unique_transform(transform, T, src)
-    elseif FusionStyle(last(deconstructsectortype(I))) isa UniqueFusion && numind(src) > 0
-        # the second part holds the `UniqueFusion` sectors of a mixed product, with a single tree pair
-        (g₁, g₂), coeff = transform(last(_deconstructtrees(first(fusiontrees(src)))))
-        dst₁, U₁ = transform(FusionTreeBlock(map(first ∘ _deconstructtrees, fusiontrees(src))))
-        dst = FusionTreeBlock(
-            map(((f₁, f₂),) -> (reconstructtree(I, f₁, g₁), reconstructtree(I, f₂, g₂)), fusiontrees(dst₁))
-        )
-        U = Matrix{T}(undef, size(U₁))
-        U .= coeff .* U₁
-        return dst => U
-    end
+    FusionStyle(I) isa UniqueFusion && return _unique_transform(transform, T, src)
     src₁, cols₁ = _distincttrees(map(first ∘ _deconstructtrees, fusiontrees(src)))
     src₂, cols₂ = _distincttrees(map(last ∘ _deconstructtrees, fusiontrees(src)))
     dst₁, U₁ = _unique_transform(transform, T, FusionTreeBlock(src₁))

@@ -51,15 +51,18 @@ struct UniqueTreeTransformer{T, N} <: TreeTransformer
     structure_src::Vector{StridedStructure{N}}
 end
 
-# (recoupling matrix, destination positions, source positions)
-const GenericTransformerData{T} = Tuple{Matrix{T}, Vector{Int}, Vector{Int}}
+# (scalar factor, recoupling matrix, destination positions, source positions)
+const GenericTransformerData{T} = Tuple{T, Matrix{T}, Vector{Int}, Vector{Int}}
 
 """
     GenericTreeTransformer{T, N} <: TreeTransformer
 
 Tree transformation for sectors with multiple fusion channels, where the subblocks of a
 [`FusionTreeBlock`](@ref) map onto the subblocks of the transformed block through a recoupling
-matrix, stored as `(U, inds_dst, inds_src)`, where `U[j, i]` maps source `i` onto destination `j`.
+matrix, stored as `(coeff, U, inds_dst, inds_src)`, where `coeff * U[j, i]` maps source `i` onto
+destination `j`. The matrices `U` are those cached for the fusion tree blocks, and are shared
+between transformers and between blocks that only differ by a scalar factor, such as the blocks
+of a product sector that only differ in their `UniqueFusion` sectors.
 The subblock structures of the destination and source spaces are kept alongside, such that the
 [`StridedSubblocks`](@ref) of both tensors can be created without further lookups.
 """
@@ -76,14 +79,12 @@ _cache_structure_size(t) = sizeof(t.structure_src) +
 
 MemoizationKit.cachesize(t::UniqueTreeTransformer) = sizeof(t) + _cache_payload_size(t.data) + _cache_structure_size(t)
 
-# The recoupling matrices are shared with other transformers and counted by the cache of `recouplingmatrix`.
-MemoizationKit.cachesize(t::GenericTreeTransformer) = _cache_generic_size(t; matrices = false)
-
-function _cache_generic_size(t; matrices::Bool = true)
+# The recoupling matrices are shared with other transformers and counted by the caches of
+# `fusiontreebraid`, `fusiontreetranspose`, `productbraid` and `producttranspose`.
+function MemoizationKit.cachesize(t::GenericTreeTransformer)
     bytes = sizeof(t) + sizeof(t.data) + _cache_structure_size(t)
-    for (U, inds_dst, inds_src) in t.data
-        bytes += (matrices ? _cache_payload_size(U) : 0) + sizeof(inds_src) +
-            (inds_src === inds_dst ? 0 : sizeof(inds_dst))
+    for (_, _, inds_dst, inds_src) in t.data
+        bytes += sizeof(inds_src) + (inds_src === inds_dst ? 0 : sizeof(inds_dst))
     end
     return bytes
 end
@@ -132,7 +133,7 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst::HomSpace, Vsrc::H
     @timeit_debug GLOBAL_TIMER "symmetry: recoupling matrices" begin
         taskforeach(1:nblocks, nthreads) do i
             fs_src = fblocks[i]
-            fs_dst, U = transform(fs_src)
+            fs_dst, (coeff, U) = transform(fs_src)
             @timeit_debug GLOBAL_TIMER "bookkeeping: subblock positions" begin
                 # the token into the fusion tree `Indices` is the subblock position
                 inds_src = map(fusiontrees(fs_src)) do (f₁, f₂)
@@ -144,7 +145,7 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst::HomSpace, Vsrc::H
                     return idst
                 end
             end
-            data[i] = (convert(Matrix{T}, U), inds_dst, inds_src)
+            data[i] = (convert(T, coeff), convert(Matrix{T}, U), inds_dst, inds_src)
             # cost model: L input blocks each going to L output blocks of a given length
             weights[i] = length(U) * prod(structure_dst[first(inds_dst)][1])
 
@@ -163,8 +164,8 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst::HomSpace, Vsrc::H
     @debug(
         lazy"TreeTransformer for $Vsrc to $Vdst via $p", conjsrc,
         nblocks = nblocks,
-        sz_median = nblocks > 0 ? size(data[cld(end, 2)][1], 1) : 0,
-        sz_max = nblocks > 0 ? size(data[1][1], 1) : 0,
+        sz_median = nblocks > 0 ? size(data[cld(end, 2)][2], 1) : 0,
+        sz_max = nblocks > 0 ? size(data[1][2], 1) : 0,
         Δt
     )
 
@@ -181,7 +182,7 @@ the recoupling matrix.
 buffersize(::UniqueTreeTransformer) = 0
 function buffersize(transformer::GenericTreeTransformer)
     structure_src = transformer.structure_src
-    return maximum(transformer.data; init = 0) do (U, _, inds_src)
+    return maximum(transformer.data; init = 0) do (_, U, _, inds_src)
         return length(U) == 1 ? 0 : prod(structure_src[first(inds_src)][1]) * sum(size(U))
     end
 end
@@ -202,13 +203,10 @@ function TreeTransformer(
         GenericTreeTransformer(A, transform, p, Vdst, Vsrc, conjsrc)
 end
 
-# the recoupling coefficients `U` followed by the twist factor `θ`; a twisted recoupling matrix
-# only depends on the sectors as well, so it is shared through `recouplingmatrix` like `U` itself
-_twistrecoupling(U::Number, θ::Number) = U * θ
-function _twistrecoupling(U::Matrix{T}, θ::Number) where {T}
-    isone(θ) && return U
-    return recouplingmatrix(scale(U, convert(T, θ)))
-end
+# the recoupling coefficients followed by the twist factor `θ`, which is shared by all trees of a block
+# and therefore only changes the scalar factor of a recoupling matrix, which is kept shared
+_twistrecoupling(coeff::Number, θ::Number) = coeff * θ
+_twistrecoupling((coeff, U)::Tuple{T, Matrix{T}}, θ::Number) where {T} = (coeff * convert(T, θ), U)
 
 # braid is special because it has levels; the destination legs in `twistmask` are twisted afterwards,
 # which is diagonal in the fusion tree basis and therefore folded into the recoupling coefficients
@@ -222,7 +220,7 @@ end
     levels″ = (TupleTools.getindices(levels′, codomainind(Vsrc′)), TupleTools.getindices(levels′, domainind(Vsrc′)))
     T = recoupling_scalartype(A, sectorscalartype(sectortype(Vdst)))
     function fusiontreebraider(f)
-        f′, U = _braid(T, f, p′, levels″)
+        f′, U = _braid_factored(T, f, p′, levels″)
         any(twistmask) || return f′, U
         return f′, _twistrecoupling(U, last(twist(f′, twistmask)))
     end
@@ -234,10 +232,12 @@ end
     )::treetransformertype(A, Vdst, Vsrc) where {TA}
     p′ = conjsrc ? adjointtensorindices(Vsrc, p) : p
     T = recoupling_scalartype(A, sectorscalartype(sectortype(Vdst)))
-    fusiontreetransform(f) = _transpose(T, f, p′)
+    fusiontreetransform(f) = _transpose_factored(T, f, p′)
     return TreeTransformer(A, fusiontreetransform, p, Vdst, Vsrc, conjsrc)
 end
 
+# (recoupling matrix, destination positions, source positions)
+const TraceTransformerData{T} = Tuple{Matrix{T}, Vector{Int}, Vector{Int}}
 
 """
     TraceTransformer{T, N₁, N₂}
@@ -251,12 +251,18 @@ spaces are kept alongside, such that the [`StridedSubblocks`](@ref) of both tens
 created without further lookups.
 """
 struct TraceTransformer{T, N₁, N₂}
-    data::Vector{GenericTransformerData{T}}
+    data::Vector{TraceTransformerData{T}}
     structure_dst::Vector{StridedStructure{N₁}}
     structure_src::Vector{StridedStructure{N₂}}
 end
 
-MemoizationKit.cachesize(t::TraceTransformer) = _cache_generic_size(t)
+function MemoizationKit.cachesize(t::TraceTransformer)
+    bytes = sizeof(t) + sizeof(t.data) + _cache_structure_size(t)
+    for (U, inds_dst, inds_src) in t.data
+        bytes += _cache_payload_size(U) + sizeof(inds_src) + (inds_src === inds_dst ? 0 : sizeof(inds_dst))
+    end
+    return bytes
+end
 
 VectorInterface.scalartype(
     ::Type{<:Union{UniqueTreeTransformer{T}, GenericTreeTransformer{T}, TraceTransformer{T}}}
@@ -297,7 +303,7 @@ function TraceTransformer(::Type{A}, Vdst::HomSpace, Vsrc::HomSpace, p::Index2Tu
             end
         end
     end
-    data = GenericTransformerData{T}[(reduce(hcat, us), inds_dst, inds_src) for (inds_dst, (us, inds_src)) in groups]
+    data = TraceTransformerData{T}[(reduce(hcat, us), inds_dst, inds_src) for (inds_dst, (us, inds_src)) in groups]
     # destination subblocks without contributions are only scaled
     covered = falses(length(dst_trees))
     foreach(inds_dst -> covered[inds_dst] .= true, keys(groups))
@@ -378,7 +384,7 @@ function device_treetwister end
 
 # Keep TensorKit's profiling categories for the phases instrumented by MemoizationKit.
 const TensorKitCachedFunction = Union{
-    typeof(fusiontreebraid), typeof(fusiontreetranspose),
+    typeof(fusiontreebraid), typeof(fusiontreetranspose), typeof(productbraid), typeof(producttranspose),
     typeof(treebraider), typeof(treetransposer), typeof(treetracer), typeof(treetwister),
     typeof(device_treebraider), typeof(device_treetransposer), typeof(device_treetracer), typeof(device_treetwister),
     typeof(sectorstructure), typeof(degeneracystructure),

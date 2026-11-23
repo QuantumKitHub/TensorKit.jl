@@ -487,21 +487,48 @@ repartitioning and permuting the tree such that sectors `p1` become outgoing and
 Base.transpose(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple) =
     _transpose(fusionscalartype(sectortype(src)), src, p)
 
-# the transpose with the recoupling matrix of a block in scalar type `T`, which is cached as such
+# the transpose of a tree pair, or of a block with its recoupling matrix in scalar type `T`
 function _transpose(::Type{T}, src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple) where {T}
     N = numind(src)
     N == length(p[1]) + length(p[2]) || throw(ArgumentError("invalid permutation p = $p of length N = $N"))
     p′ = linearizepermutation(p..., numout(src), numin(src))
     iscyclicpermutation(p′) || throw(ArgumentError("invalid cyclic or planar permutation p = $p"))
-    return fusiontreetranspose(T, src, p)
+    (src isa FusionTreeBlock && _isfactorable(src)) || return _cachedtranspose(T, src, p)
+    dst, (coeff, U) = _transpose_factored(T, src, p)
+    # a new matrix, since `U` is shared by many blocks
+    return dst => scale(U, coeff)
 end
-function _transpose(::Type{T}, src::ProductSectorBlock, p::Index2Tuple) where {T}
-    isempty(src) && return fusiontreetranspose(T, src, p)
+
+# The transpose of the tree pair `src` as `dst => coeff`, or of the block `src` as `dst => (coeff, U)`
+# with recoupling matrix `coeff * U` in scalar type `T`, where `U` is cached by `fusiontreetranspose`;
+# see `_braid_factored`. The coefficient of a tree pair does not depend on `T`, so it is computed and
+# cached as that of `transpose`.
+_transpose_factored(::Type, src::FusionTreePair, p::Index2Tuple) =
+    fusiontreetranspose(fusionscalartype(sectortype(src)), src, p)
+function _transpose_factored(::Type{T}, src::FusionTreeBlock, p::Index2Tuple) where {T}
+    if !_isfactorable(src)
+        dst, U = _cachedtranspose(T, src, p)
+        # a single-tree block is described by its scalar, such that it shares the unit matrix
+        return length(U) == 1 ? dst => (only(U), _unitmatrix(T)) : dst => (one(T), U)
+    end
     # the return type is asserted since inference gives up on the recursion on older Julia versions
-    dst, U = product_transform(T, src) do x
-        return transpose(x, p)
-    end::fusiontreetransposetype(T, src, p)
-    return dst => recouplingmatrix(U)
+    return factored_transform(T, src) do x
+        return _transpose_factored(T, x, p)
+    end::_factoredtype(fusiontreetransposetype(T, src, p))
+end
+
+# The cached transpose of a tree pair or block, with that of a product block cached separately;
+# see `_cachedbraid`.
+_cachedtranspose(::Type{T}, src, p::Index2Tuple) where {T} = fusiontreetranspose(T, src, p)
+_cachedtranspose(::Type{T}, src::ProductSectorBlock, p::Index2Tuple) where {T} =
+    isempty(src) ? fusiontreetranspose(T, src, p) : producttranspose(T, src, p)
+
+@cached function producttranspose(
+        ::Type{T}, src::ProductSectorBlock, p::Index2Tuple{N₁, N₂}
+    )::fusiontreetransposetype(T, src, p) where {T, N₁, N₂}
+    return product_transform(T, src) do x
+        return _cachedtranspose(T, x, p)
+    end
 end
 
 Base.@assume_effects :foldable function fusiontreetransposetype(
@@ -543,12 +570,17 @@ end
     return dst => _withscalartype(T, U)
 end
 
-# the recoupling matrix of a block in scalar type `T`, shared by value, the coefficient of a tree pair as is
-_withscalartype(::Type{T}, U::AbstractMatrix) where {T} = recouplingmatrix(convert(Matrix{T}, U))
+# the recoupling matrix of a block in scalar type `T`, the coefficient of a tree pair as is
+_withscalartype(::Type{T}, U::AbstractMatrix) where {T} = convert(Matrix{T}, U)
 _withscalartype(::Type, coeff::Number) = coeff
 
 CacheStyle(::typeof(fusiontreetranspose), ::Type, src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, args...) where {I} =
     FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalCache()
+CacheStyle(::typeof(producttranspose), ::Type, src::FusionTreeBlock{I}, args...) where {I} =
+    FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalCache()
+# the recoupling matrices of tree transformers are those of these caches, so their size is that of the matrices
+MemoizationKit.default_cache_settings(::typeof(fusiontreetranspose)) = (; measure = "bytes", maxsize = 2^28)
+MemoizationKit.default_cache_settings(::typeof(producttranspose)) = (; measure = "bytes", maxsize = 2^28)
 
 # COMPOSITE DUALITY MANIPULATIONS PART 2: Planar traces
 #-------------------------------------------------------------------

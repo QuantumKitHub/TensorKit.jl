@@ -294,20 +294,50 @@ be obtained by combining such operations.
 braid(src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple, levels::Index2Tuple) =
     _braid(sectorscalartype(sectortype(src)), src, p, levels)
 
-# the braid with the recoupling matrix of a block in scalar type `T`, which is cached as such
+# the braid of a tree pair, or of a block with its recoupling matrix in scalar type `T`
 function _braid(::Type{T}, src::Union{FusionTreePair, FusionTreeBlock}, p::Index2Tuple, levels::Index2Tuple) where {T}
     @assert numind(src) == length(p[1]) + length(p[2])
     @assert numout(src) == length(levels[1]) && numin(src) == length(levels[2])
     @assert TupleTools.isperm((p[1]..., p[2]...))
-    return fusiontreebraid(T, src, p, levels)
+    (src isa FusionTreeBlock && _isfactorable(src)) || return _cachedbraid(T, src, p, levels)
+    dst, (coeff, U) = _braid_factored(T, src, p, levels)
+    # a new matrix, since `U` is shared by many blocks
+    return dst => scale(U, coeff)
 end
-function _braid(::Type{T}, src::ProductSectorBlock, p::Index2Tuple, levels::Index2Tuple) where {T}
-    isempty(src) && return fusiontreebraid(T, src, p, levels)
+
+# The braid of the tree pair `src` as `dst => coeff`, or of the block `src` as `dst => (coeff, U)`
+# with recoupling matrix `coeff * U` in scalar type `T`, where `U` is cached by `fusiontreebraid`.
+# For product sectors with a `UniqueFusion` part, `U` is the cached matrix of the other part,
+# such that all blocks that only differ in their `UniqueFusion` sectors share it. The coefficient
+# of a tree pair does not depend on `T`, so it is computed and cached as that of `braid`.
+_braid_factored(::Type, src::FusionTreePair, p::Index2Tuple, levels::Index2Tuple) =
+    fusiontreebraid(sectorscalartype(sectortype(src)), src, p, levels)
+function _braid_factored(::Type{T}, src::FusionTreeBlock, p::Index2Tuple, levels::Index2Tuple) where {T}
+    if !_isfactorable(src)
+        dst, U = _cachedbraid(T, src, p, levels)
+        # a single-tree block is described by its scalar, such that it shares the unit matrix
+        return length(U) == 1 ? dst => (only(U), _unitmatrix(T)) : dst => (one(T), U)
+    end
     # the return type is asserted since inference gives up on the recursion on older Julia versions
-    dst, U = product_transform(T, src) do x
-        return braid(x, p, levels)
-    end::fusiontreebraidtype(T, src, p)
-    return dst => recouplingmatrix(U)
+    return factored_transform(T, src) do x
+        return _braid_factored(T, x, p, levels)
+    end::_factoredtype(fusiontreebraidtype(T, src, p))
+end
+
+# The cached braid of a tree pair or block, where that of a product block is computed as the
+# Kronecker product of those of its parts, which is cached separately such that inference does
+# not need to recurse through `fusiontreebraid`. The parts of a block that is not factorable (see
+# `_isfactorable`) are not factorable either.
+_cachedbraid(::Type{T}, src, p::Index2Tuple, levels::Index2Tuple) where {T} = fusiontreebraid(T, src, p, levels)
+_cachedbraid(::Type{T}, src::ProductSectorBlock, p::Index2Tuple, levels::Index2Tuple) where {T} =
+    isempty(src) ? fusiontreebraid(T, src, p, levels) : productbraid(T, src, p, levels)
+
+@cached function productbraid(
+        ::Type{T}, src::ProductSectorBlock, p::Index2Tuple{N₁, N₂}, levels::Index2Tuple
+    )::fusiontreebraidtype(T, src, p) where {T, N₁, N₂}
+    return product_transform(T, src) do x
+        return _cachedbraid(T, x, p, levels)
+    end
 end
 
 # Braiding can promote real fusion coefficients to complex values. Keep the result
@@ -332,7 +362,7 @@ end
     else
         if length(src) == 1 # then so is every intermediate block: the braid is a product of scalars
             f′, coeff = _braid_single(only(fusiontrees(src)), p, levels)
-            return FusionTreeBlock([f′]) => recouplingmatrix(fill(convert(T, coeff), 1, 1))
+            return FusionTreeBlock([f′]) => fill(convert(T, coeff), 1, 1)
         end
 
         p₁, p₂ = p
@@ -359,9 +389,9 @@ end
             levels = TupleTools.setindex(levels, l, s + 1)
         end
 
-        N₂ == 0 && return dst => recouplingmatrix(convert(Matrix{T}, U))
+        N₂ == 0 && return dst => convert(Matrix{T}, U)
         dst, U_bend = repartition(dst::FusionTreeBlock{I}, Val(N₁))
-        return dst => recouplingmatrix(convert(Matrix{T}, U_bend * U))
+        return dst => convert(Matrix{T}, U_bend * U)
     end
 end
 
@@ -377,6 +407,11 @@ end
 
 CacheStyle(::typeof(fusiontreebraid), ::Type, src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, args...) where {I} =
     FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalCache()
+CacheStyle(::typeof(productbraid), ::Type, src::FusionTreeBlock{I}, args...) where {I} =
+    FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalCache()
+# the recoupling matrices of tree transformers are those of these caches, so their size is that of the matrices
+MemoizationKit.default_cache_settings(::typeof(fusiontreebraid)) = (; measure = "bytes", maxsize = 2^28)
+MemoizationKit.default_cache_settings(::typeof(productbraid)) = (; measure = "bytes", maxsize = 2^28)
 
 """
     permute((f₁, f₂)::FusionTreePair, (p1, p2)::Index2Tuple)

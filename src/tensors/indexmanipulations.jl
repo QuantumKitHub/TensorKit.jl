@@ -724,8 +724,8 @@ function add_transform_kernel!(
     )
     bufsize = buffersize(transformer)
     if bufsize == 0 # no recoupling needed: every block consists of a single tree
-        taskforeach(transformer.data, ntasks) do (U, inds_dst, inds_src)
-            _add_transform_block!(dst, src, p, conjsrc, U, inds_dst, inds_src, nothing, α, β, backend, allocator)
+        taskforeach(transformer.data, ntasks) do data
+            _add_transform_block!(dst, src, p, conjsrc, _blockdata(data)..., nothing, α, β, backend, allocator)
         end
     else
         # One max-sized workspace per task (a single one that is reused by all blocks when
@@ -736,8 +736,8 @@ function add_transform_kernel!(
             TO.tensoralloc(storagetype(dst), bufsize, Val(true), allocator)
                 for _ in 1:min(length(transformer.data), ntasks)
         ]
-        taskforeach(transformer.data, buffers) do (U, inds_dst, inds_src), buffer
-            _add_transform_block!(dst, src, p, conjsrc, U, inds_dst, inds_src, buffer, α, β, backend, allocator)
+        taskforeach(transformer.data, buffers) do data, buffer
+            _add_transform_block!(dst, src, p, conjsrc, _blockdata(data)..., buffer, α, β, backend, allocator)
         end
         foreach(Base.Fix2(TO.tensorfree!, allocator), buffers)
         TO.allocator_reset!(allocator, cp)
@@ -745,15 +745,19 @@ function add_transform_kernel!(
     return nothing
 end
 
-# `U` is either a scalar coefficient with integer positions (unique fusion), or a recoupling
-# matrix with vectors of positions (generic).
+# `(coeff, U, inds_dst, inds_src)` of a transformer entry, where `U` is either a scalar coefficient
+# with integer positions (unique fusion), or a recoupling matrix with vectors of positions (generic)
+_blockdata((U, idst, isrc)::UniqueTransformerData) = (One(), U, idst, isrc)
+_blockdata(data::GenericTransformerData) = data
+
+# the recoupling coefficients are `coeff * U`, where the scalar `coeff` is applied with `α`
 function _add_transform_block!(
-        dst::TransformSubblocks, src::TransformSubblocks, p, conjsrc::Bool, U, inds_dst, inds_src, buffer,
+        dst::TransformSubblocks, src::TransformSubblocks, p, conjsrc::Bool, coeff, U, inds_dst, inds_src, buffer,
         α, β, backend, allocator
     )
     if length(U) == 1 # single tree: no matmul needed
         @timeit_debug GLOBAL_TIMER "dense: tensoradd" @inbounds TO.tensoradd!(
-            dst[only(inds_dst)], src[only(inds_src)], p, conjsrc, α * only(U), β, backend, allocator
+            dst[only(inds_dst)], src[only(inds_src)], p, conjsrc, α * (coeff * only(U)), β, backend, allocator
         )
     else # Multi-tree block: pack → recoupling matmul → unpack.
         rows, cols = size(U)
@@ -777,11 +781,12 @@ function _add_transform_block!(
         @timeit_debug GLOBAL_TIMER "dense: recouple mul!" _recouple!(buffer, buffer_dst, buffer_src, U)
 
         # 3. Insert: scatter column j of buffer_dst into the destination, applying the
-        #    actual index permutation p and the scaling α in the same tensoradd! call.
+        #    actual index permutation p and the scaling α * coeff in the same tensoradd! call.
+        α′ = α * coeff
         @timeit_debug GLOBAL_TIMER "dense: unpack" @inbounds for (j, idst) in enumerate(inds_dst)
             TO.tensoradd!(
                 dst[idst], sreshape(view(buffer_dst, :, j), sz_src),
-                p, false, α, β, backend, allocator
+                p, false, α′, β, backend, allocator
             )
         end
     end
