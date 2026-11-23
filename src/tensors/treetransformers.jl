@@ -37,6 +37,9 @@ end
 # (coefficient, destination position, source position)
 const UniqueTransformerData{T} = Tuple{T, Int, Int}
 
+# the minimal number of fusion tree pairs per task of `UniqueTreeTransformer`
+const UNIQUE_TRANSFORM_MINPAIRS = 1024
+
 """
     UniqueTreeTransformer{T, N} <: TreeTransformer
 
@@ -97,10 +100,18 @@ function UniqueTreeTransformer(::Type{A}, transform, p, Vdst::HomSpace, Vsrc::Ho
     T = recoupling_scalartype(A, sectorscalartype(sectortype(Vdst)))
     data = Vector{UniqueTransformerData{T}}(undef, length(src_trees))
 
-    @timeit_debug GLOBAL_TIMER "symmetry: tree transform" for (isrc, (f₁, f₂)) in enumerate(src_trees)
-        f_dst, coeff = transform(conjsrc ? (f₂, f₁) : (f₁, f₂))
-        _, (_, idst) = gettoken(dst_trees, f_dst)
-        data[isrc] = (convert(T, coeff), idst, isrc)
+    # the pairs are split into one equal range per task, with enough pairs in every range
+    ntasks = clamp(length(data) ÷ UNIQUE_TRANSFORM_MINPAIRS, 1, get_num_manipulation_threads())
+    chunks = Iterators.partition(eachindex(data), max(cld(length(data), ntasks), 1))
+    @timeit_debug GLOBAL_TIMER "symmetry: tree transform" begin
+        taskforeach(chunks, ntasks) do isrcs
+            for isrc in isrcs
+                f₁, f₂ = gettokenvalue(src_trees, isrc)
+                f_dst, coeff = transform(conjsrc ? (f₂, f₁) : (f₁, f₂))
+                _, (_, idst) = gettoken(dst_trees, f_dst)
+                data[isrc] = (convert(T, coeff), idst, isrc)
+            end
+        end
     end
 
     structure_dst = degeneracystructure(Vdst).subblockstructure
