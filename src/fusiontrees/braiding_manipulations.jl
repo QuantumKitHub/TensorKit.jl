@@ -407,6 +407,9 @@ end
 
 CacheStyle(::typeof(fusiontreebraid), ::Type, src::Union{FusionTreePair{I}, FusionTreeBlock{I}}, args...) where {I} =
     FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalCache()
+# TensorKit itself never calls this with `UniqueFusion` sectors, whose fusion tree manipulations
+# work with tree pairs instead of blocks; the `NoCache()` branch only guards a manually constructed
+# block of such sectors, and could be dropped in favour of the default `GlobalCache()`.
 CacheStyle(::typeof(productbraid), ::Type, src::FusionTreeBlock{I}, args...) where {I} =
     FusionStyle(I) isa UniqueFusion ? NoCache() : GlobalCache()
 # the recoupling matrices of tree transformers are those of these caches, so their size is that of the matrices
