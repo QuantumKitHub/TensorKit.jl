@@ -19,6 +19,31 @@ using TensorKit: MemoizationKit, sectorstructure, degeneracystructure
     @test length(only(MemoizationKit.cache_info(degeneracystructure)).second) == 2
 end
 
+@testset "Shared recoupling matrices of product sectors" begin
+    s(p, n, j) = FermionParity(p) ⊠ U1Irrep(n) ⊠ SU2Irrep(j)
+    I = typeof(s(0, 0, 0))
+    V = Vect[I](s(0, 0, 0) => 1, s(1, 1, 1 // 2) => 1, s(1, -1, 1 // 2) => 1, s(0, 2, 0) => 1, s(0, 0, 1) => 1)
+    W = V ⊗ V ← V ⊗ V
+    p, levels = ((3, 1), (4, 2)), (1, 2, 3, 4)
+    empty_globalcaches!()
+    for twistmask in ((false, false, false, false), (false, true, true, false))
+        transformer = TensorKit.treebraider(Vector{Float64}, permute(W, p), W, p, false, levels, twistmask)
+        # blocks that only differ in their `UniqueFusion` sectors share the matrix of their `SU2Irrep` part
+        matrices = [U for (_, U, _, _) in transformer.data]
+        sizes = unique(size.(matrices))
+        @test length(unique(objectid, matrices)) < length(matrices)
+        @test (1, 1) ∉ sizes || count(U -> size(U) == (1, 1), unique(objectid, matrices)) == 1
+        # the stored factorization reproduces the recoupling matrix of every block
+        for fs_src in TensorKit.fusionblocks(W)
+            fs_dst, U = braid(fs_src, p, ((1, 2), (3, 4)))
+            any(twistmask) && (U = U * last(twist(fs_dst, twistmask)))
+            inds_src = map(f -> TensorKit.gettoken(TensorKit.fusiontrees(W), f)[2][2], TensorKit.fusiontrees(fs_src))
+            coeff, U′, _, _ = only(filter(d -> d[4] == inds_src, transformer.data))
+            @test coeff * U′ ≈ U
+        end
+    end
+end
+
 @testset "TensorKit cached-value sizes" begin
     for I in (Z2Irrep, SU2Irrep, A4Irrep, FibonacciAnyon)
         labels = collect(Iterators.take(values(I), 2))

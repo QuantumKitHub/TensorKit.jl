@@ -47,8 +47,8 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 - Contractions of fermionic tensors fold the twist of one of the operands into the permutation that copies it, instead of twisting the copy in a separate pass ([#595](https://github.com/QuantumKitHub/TensorKit.jl/issues/595))
 - `foreachblock` with several tensors is type stable, which removes the dynamic dispatch on every call to it and to the factorizations that go through it
 - `taskforeach` with a single worker is a plain loop without an atomic counter, which lowers the cost per subblock of single-threaded index manipulations and planar traces
-- Tree transformers for sectors with multiple fusion channels share equal recoupling matrices, which only depend on the sectors, instead of storing one copy per transformer
-- The cached braids and transposes of fusion tree blocks keep their recoupling matrices in the scalar type of the tree transformers that use them, instead of a copy in that type for every transformer
+- Tree transformers for sectors with multiple fusion channels store every recoupling matrix as a scalar factor times a matrix of the cached braids and transposes of fusion tree blocks, which they share instead of storing one copy per transformer. For product sectors with `UniqueFusion` factors, such as `FermionParity ⊠ U1Irrep ⊠ SU2Irrep`, the matrix is that of the block of the other factors, such that blocks that only differ in their `UniqueFusion` sectors share it without assembling it; twists and single-tree blocks only change the scalar factor
+- The cached braids and transposes of fusion tree blocks keep their recoupling matrices in the scalar type of the tree transformers that use them, instead of a copy in that type for every transformer, and their caches are bounded by memory size instead of by number of entries
 
 ## [0.17.3](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.2...v0.17.3) - 2026-10-30
 

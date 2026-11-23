@@ -146,6 +146,9 @@ end
 @inline EnzymeRules.inactive(::typeof(TensorKit.artin_braid), ::Any, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.fusiontreetranspose), ::Any, ::Any, ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.product_transform), ::Any...) = nothing
+@inline EnzymeRules.inactive(::typeof(TensorKit.factored_transform), ::Any...) = nothing
+@inline EnzymeRules.inactive(::typeof(TensorKit.productbraid), ::Any...) = nothing
+@inline EnzymeRules.inactive(::typeof(TensorKit.producttranspose), ::Any...) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.treetransposer), ::Any...) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.treebraider), ::Any...) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.treetracer), ::Any...) = nothing

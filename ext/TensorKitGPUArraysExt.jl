@@ -236,11 +236,11 @@ function DeviceGenericTreeTransformer(
     structs_src = TreeStructure{N}[]
 
     (; structure_dst, structure_src) = transformer
-    for (U, inds_dst, inds_src) in transformer.data
+    for (coeff, U, inds_dst, inds_src) in transformer.data
         if length(U) == 1 # same as the unique (Abelian) case
             push!(
                 unique_blocks, _unique_block(
-                    only(U), structure_dst[only(inds_dst)], structure_src[only(inds_src)], p
+                    coeff * only(U), structure_dst[only(inds_dst)], structure_src[only(inds_src)], p
                 )
             )
         else
@@ -252,7 +252,8 @@ function DeviceGenericTreeTransformer(
                     length(coeffs), length(structs_dst), length(structs_src)
                 )
             )
-            append!(coeffs, U)
+            # the scalar factor is applied while flattening, which copies `U` anyway
+            append!(coeffs, Iterators.map(u -> coeff * u, U))
             for idst in inds_dst
                 _, strides_dst, offset_dst = structure_dst[idst]
                 push!(structs_dst, (strides_dst, offset_dst))
@@ -700,7 +701,7 @@ _diagonal_offsets(structure) = first(_work_offsets(first(first(s)) for s in stru
 _diagonal_entries(transformer::UniqueTreeTransformer) = transformer.data
 # `V ← V` and any rearrangement of its two indices have a single tree for every subblock
 _diagonal_entries(transformer::GenericTreeTransformer) =
-    ((only(U), only(inds_dst), only(inds_src)) for (U, inds_dst, inds_src) in transformer.data)
+    ((coeff * only(U), only(inds_dst), only(inds_src)) for (coeff, U, inds_dst, inds_src) in transformer.data)
 
 function diagonal_device_transformer(A, transformer, dstdiagonal::Bool)
     (; structure_dst, structure_src) = transformer
