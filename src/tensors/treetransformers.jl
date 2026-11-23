@@ -120,12 +120,13 @@ end
 MemoizationKit.cachesize(t::UniqueTreeTransformer) =
     sizeof(t) + _cache_payload_size(t.data) + _cache_structure_size(t) + _cache_groups_size(t)
 
-MemoizationKit.cachesize(t::GenericTreeTransformer) = _cache_generic_size(t) + _cache_groups_size(t)
+# The recoupling matrices are shared with other transformers and counted by the cache of `recouplingmatrix`.
+MemoizationKit.cachesize(t::GenericTreeTransformer) = _cache_generic_size(t; matrices = false) + _cache_groups_size(t)
 
-function _cache_generic_size(t)
+function _cache_generic_size(t; matrices::Bool = true)
     bytes = sizeof(t) + sizeof(t.data) + _cache_structure_size(t)
     for (U, inds_dst, inds_src) in t.data
-        bytes += _cache_payload_size(U) + sizeof(inds_src) +
+        bytes += (matrices ? _cache_payload_size(U) : 0) + sizeof(inds_src) +
             (inds_src === inds_dst ? 0 : sizeof(inds_dst))
     end
     return bytes
@@ -317,15 +318,30 @@ function TreeTransformer(
         GenericTreeTransformer(A, transform, p, Vdst, Vsrc, conjsrc)
 end
 
-# braid is special because it has levels
+# the recoupling coefficients `U` followed by the twist factor `θ`; a twisted recoupling matrix
+# only depends on the sectors as well, so it is shared through `recouplingmatrix` like `U` itself
+_twistrecoupling(U::Number, θ::Number) = U * θ
+function _twistrecoupling(U::Matrix{T}, θ::Number) where {T}
+    isone(θ) && return U
+    return recouplingmatrix(scale(U, convert(T, θ)))
+end
+
+# braid is special because it has levels; the destination legs in `twistmask` are twisted afterwards,
+# which is diagonal in the fusion tree basis and therefore folded into the recoupling coefficients
 @cached function treebraider(
-        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool, levels::IndexTuple
-    )::treetransformertype(A, Vdst, Vsrc) where {TA}
+        A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool, levels::IndexTuple,
+        twistmask::NTuple{N, Bool}
+    )::treetransformertype(A, Vdst, Vsrc) where {TA, N}
     Vsrc′, p′ = conjsrc ? (Vsrc', adjointtensorindices(Vsrc, p)) : (Vsrc, p)
     # levels are attached to the legs, so they follow the same relabeling as the permutation
     levels′ = conjsrc ? TupleTools.getindices(levels, adjointtensorindices(Vsrc′, allind(Vsrc′))) : levels
     levels″ = (TupleTools.getindices(levels′, codomainind(Vsrc′)), TupleTools.getindices(levels′, domainind(Vsrc′)))
-    fusiontreebraider(f) = braid(f, p′, levels″)
+    T = recoupling_scalartype(A, sectorscalartype(sectortype(Vdst)))
+    function fusiontreebraider(f)
+        f′, U = _braid(T, f, p′, levels″)
+        any(twistmask) || return f′, U
+        return f′, _twistrecoupling(U, last(twist(f′, twistmask)))
+    end
     return TreeTransformer(A, fusiontreebraider, p, Vdst, Vsrc, conjsrc)
 end
 
@@ -333,7 +349,8 @@ end
         A::Type{TA}, Vdst::TensorMapSpace, Vsrc::TensorMapSpace, p::Index2Tuple, conjsrc::Bool
     )::treetransformertype(A, Vdst, Vsrc) where {TA}
     p′ = conjsrc ? adjointtensorindices(Vsrc, p) : p
-    fusiontreetransform(f) = transpose(f, p′)
+    T = recoupling_scalartype(A, sectorscalartype(sectortype(Vdst)))
+    fusiontreetransform(f) = _transpose(T, f, p′)
     return TreeTransformer(A, fusiontreetransform, p, Vdst, Vsrc, conjsrc)
 end
 
@@ -457,7 +474,7 @@ end
 end
 
 """
-    device_treebraider(A, Vdst, Vsrc, p, conjsrc, levels)
+    device_treebraider(A, Vdst, Vsrc, p, conjsrc, levels, twistmask)
     device_treetransposer(A, Vdst, Vsrc, p, conjsrc)
     device_treetracer(A, Vdst, Vsrc, p, q)
     device_treetwister(A, Vdst, Vsrc, p, conjsrc, twistmask, inv)
