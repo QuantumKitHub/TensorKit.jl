@@ -18,19 +18,11 @@ When making changes to this project, please update the "Unreleased" section with
 
 When releasing a new version, move the "Unreleased" changes to a new version section with the release date.
 
-## [Unreleased](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.3...HEAD)
+## [Unreleased](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.4...HEAD)
 
 ### Added
 
-- Enzyme rules for `planartrace!`, with a pullback that also supports adjoint tensors
-- `twist(src, inds; inv = false)` for fusion tree pairs and blocks, returning `src` together with the scalar twist factor of the legs `inds`, which can be given as indices or as a `Bool` mask
-- `twist!(tdst, tsrc, inds, α = 1, β = 0, [backend], [allocator]; inv = false)` computing `tdst = β * tdst + α * twist(tsrc, inds; inv)`, in line with `permute!` and `braid!`, together with Mooncake and Enzyme rules; `twist` now also accepts `backend` and `allocator` keywords
-
 ### Changed
-
-- `twist` and `twist!` on tensors also accept a `Bool` mask over all indices, like the fusion tree `twist`; any collection of indices is converted to such a mask first, so the rest of the implementation is compiled once per number of indices
-- `planartrace!` precomputes and caches a `TraceTransformer` with the subblock positions and recoupling coefficients, and executes it with a kernel shared by all sectortypes, analogous to the index manipulations; `planar_trace` is now also defined for `FusionTreeBlock`s, and GPU tensors use a dedicated kernel (internal)
-- Caching is provided by [MemoizationKit.jl](https://github.com/QuantumKitHub/MemoizationKit.jl), which can inspect, resize and configure TensorKit's caches, also by memory size; this replaces the internal `@cached` machinery and the LRUCache.jl dependency
 
 ### Deprecated
 
@@ -38,17 +30,54 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 
 ### Fixed
 
-- The Enzyme and Mooncake rules of `permute!`, `transpose!`, `braid!` and `twist!` forward the `backend` and `allocator` to the intermediate out-of-place call, which now also always copies
-- `twist` of a fusion tree pair or block throws for a `Bool` mask of the wrong length, instead of interpreting it as indices
+### Performance
+
+## [0.17.4](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.3...v0.17.4) - 2026-11-23
+
+### Added
+
+- Enzyme rules for `planartrace!`, with a pullback that also supports adjoint tensors ([#605](https://github.com/QuantumKitHub/TensorKit.jl/pull/605))
+- `twist(src, inds; inv = false)` for fusion tree pairs and blocks, returning `src` together with the scalar twist factor of the legs `inds`, which can be given as indices or as a `Bool` mask ([#599](https://github.com/QuantumKitHub/TensorKit.jl/pull/599))
+- `twist!(tdst, tsrc, inds, α = 1, β = 0, [backend], [allocator]; inv = false)` computing `tdst = β * tdst + α * twist(tsrc, inds; inv)`, in line with `permute!` and `braid!`, together with Mooncake and Enzyme rules; `twist` now also accepts `backend` and `allocator` keywords ([#599](https://github.com/QuantumKitHub/TensorKit.jl/pull/599))
+- `left_orth!` and `right_orth!` compute only the `R` or `L` factor of a QR or LQ decomposition when given a zero-dimensional tensor map, or an empty `DiagonalTensorMap`, as the basis output ([#606](https://github.com/QuantumKitHub/TensorKit.jl/pull/606))
+- `Adapt.adapt_structure` for `SectorVector`, such that it can be moved to and from GPU storage ([#610](https://github.com/QuantumKitHub/TensorKit.jl/pull/610))
+
+### Changed
+
+- Require MatrixAlgebraKit v0.6.14 ([#606](https://github.com/QuantumKitHub/TensorKit.jl/pull/606))
+- Extend GPUArrays compat to include v12 ([#625](https://github.com/QuantumKitHub/TensorKit.jl/pull/625))
+- The test and documentation environments allow JET v0.13 and SUNRepresentations v0.5 ([#607](https://github.com/QuantumKitHub/TensorKit.jl/pull/607))
+- New dependencies on MemoizationKit.jl and PtrArrays.jl; LRUCache.jl is no longer a dependency ([#568](https://github.com/QuantumKitHub/TensorKit.jl/pull/568), [#629](https://github.com/QuantumKitHub/TensorKit.jl/pull/629))
+- `twist` and `twist!` on tensors also accept a `Bool` mask over all indices, like the fusion tree `twist`; any collection of indices is converted to such a mask first, so the rest of the implementation is compiled once per number of indices ([#619](https://github.com/QuantumKitHub/TensorKit.jl/pull/619))
+- `planartrace!` precomputes and caches a `TraceTransformer` with the subblock positions and recoupling coefficients, and executes it with a kernel shared by all sectortypes, analogous to the index manipulations; `planar_trace` is now also defined for `FusionTreeBlock`s, and GPU tensors use a dedicated kernel (internal) ([#605](https://github.com/QuantumKitHub/TensorKit.jl/pull/605))
+- Caching is provided by [MemoizationKit.jl](https://github.com/QuantumKitHub/MemoizationKit.jl), which can inspect, resize and configure TensorKit's caches, also by memory size; this replaces the internal `@cached` machinery and the LRUCache.jl dependency ([#568](https://github.com/QuantumKitHub/TensorKit.jl/pull/568))
+- The type parameters of `TensorMap`, `Tensor`, `AdjointTensorMap`, `DiagonalTensorMap` and `BraidingTensor` are explicitly bounded by `T <: Number` and `S <: IndexSpace`, matching `AbstractTensorMap` ([#593](https://github.com/QuantumKitHub/TensorKit.jl/pull/593))
+- Precompilation workloads are only inferred for concrete types, behind an inference barrier per scalar type and arity (internal) ([#620](https://github.com/QuantumKitHub/TensorKit.jl/pull/620))
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+- The Enzyme and Mooncake rules of `permute!`, `transpose!`, `braid!` and `twist!` forward the `backend` and `allocator` to the intermediate out-of-place call, which now also always copies ([#619](https://github.com/QuantumKitHub/TensorKit.jl/pull/619))
+- `twist` of a fusion tree pair or block throws for a `Bool` mask of the wrong length, instead of interpreting it as indices ([#619](https://github.com/QuantumKitHub/TensorKit.jl/pull/619))
+- `DiagonalTensorMap`s can be allocated and freed through TensorOperations allocators such as `ManualAllocator` and `BufferAllocator`, e.g. as temporaries of `@tensor allocator = ...` ([#624](https://github.com/QuantumKitHub/TensorKit.jl/pull/624))
+- Index manipulations of tensors whose storage is a `PtrArray`, such as the temporaries of TensorOperations' `ManualAllocator`, treat them as CPU tensors ([#629](https://github.com/QuantumKitHub/TensorKit.jl/pull/629))
+- `blas_contract!` and `planarcontract!` rewind the allocator after freeing their temporaries, such that a `BufferAllocator` does not keep growing across contractions ([#628](https://github.com/QuantumKitHub/TensorKit.jl/pull/628))
+- Fixed an inference issue in the MatrixAlgebraKit factorization wrappers, where returning from inside `@timeit_debug` added a spurious `Nothing` to the return type ([#625](https://github.com/QuantumKitHub/TensorKit.jl/pull/625))
 
 ### Performance
 
-- `twist!` and `twist` on a `TensorMap`, a `DiagonalTensorMap` or their adjoints use a cached tree transformer and the index manipulation kernel instead of a loop over all fusion trees, which removes the per-subblock bookkeeping and turns a twist of a GPU tensor, diagonal or not, into a single kernel launch ([#595](https://github.com/QuantumKitHub/TensorKit.jl/issues/595))
-- Contractions of fermionic tensors fold the twist of one of the operands into the permutation that copies it, instead of twisting the copy in a separate pass ([#595](https://github.com/QuantumKitHub/TensorKit.jl/issues/595))
-- `foreachblock` with several tensors is type stable, which removes the dynamic dispatch on every call to it and to the factorizations that go through it
-- `taskforeach` with a single worker is a plain loop without an atomic counter, which lowers the cost per subblock of single-threaded index manipulations and planar traces
-- Tree transformers for sectors with multiple fusion channels share equal recoupling matrices, which only depend on the sectors, instead of storing one copy per transformer
-- The cached braids and transposes of fusion tree blocks keep their recoupling matrices in the scalar type of the tree transformers that use them, instead of a copy in that type for every transformer
+- `twist!` and `twist` on a `TensorMap`, a `DiagonalTensorMap` or their adjoints use a cached tree transformer and the index manipulation kernel instead of a loop over all fusion trees, which removes the per-subblock bookkeeping and turns a twist of a GPU tensor, diagonal or not, into a single kernel launch ([#599](https://github.com/QuantumKitHub/TensorKit.jl/pull/599), [#595](https://github.com/QuantumKitHub/TensorKit.jl/issues/595))
+- Contractions of fermionic tensors fold the twist of one of the operands into the permutation that copies it, instead of twisting the copy in a separate pass ([#612](https://github.com/QuantumKitHub/TensorKit.jl/pull/612), [#595](https://github.com/QuantumKitHub/TensorKit.jl/issues/595))
+- `foreachblock` with several tensors is type stable, which removes the dynamic dispatch on every call to it and to the factorizations that go through it ([#621](https://github.com/QuantumKitHub/TensorKit.jl/pull/621))
+- `taskforeach` with a single worker is a plain loop without an atomic counter, which lowers the cost per subblock of single-threaded index manipulations and planar traces ([#627](https://github.com/QuantumKitHub/TensorKit.jl/pull/627))
+- Tree transformers for sectors with multiple fusion channels share equal recoupling matrices, which only depend on the sectors, instead of storing one copy per transformer ([#630](https://github.com/QuantumKitHub/TensorKit.jl/pull/630))
+- The cached braids and transposes of fusion tree blocks keep their recoupling matrices in the scalar type of the tree transformers that use them, instead of a copy in that type for every transformer ([#630](https://github.com/QuantumKitHub/TensorKit.jl/pull/630))
+- Fusion tree block manipulations no longer construct and index the canonical destination block, but keep the trees of the result in the order in which they are produced; the buffers of the intermediate blocks of a braid are recycled, and blocks with a single tree are braided as their tree pair (internal) ([#580](https://github.com/QuantumKitHub/TensorKit.jl/pull/580))
+- Index manipulations of GPU-backed `DiagonalTensorMap`s, to a diagonal or a dense destination, run as one-dimensional strided kernels without a dense copy of the source ([#608](https://github.com/QuantumKitHub/TensorKit.jl/pull/608))
+- `normalize` and `normalize!` of GPU-backed tensors keep the 2-norm on the device instead of synchronizing to copy it to the host, using the vendor `nrm2` on CUDA ([#615](https://github.com/QuantumKitHub/TensorKit.jl/pull/615))
 
 ## [0.17.3](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.2...v0.17.3) - 2026-10-30
 
@@ -96,7 +125,6 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 - Fusion tree block manipulations of (named) product sectors are computed as Kronecker products of the manipulations of their parts, splitting off the `UniqueFusion` sectors, such that they share the caches of the individual sectors ([#592](https://github.com/QuantumKitHub/TensorKit.jl/pull/592))
 - The TensorOperations ChainRules rules no longer copy or retain `C` when `β = Zero()`, as is the case for every tensor allocated by `@tensor` ([#555](https://github.com/QuantumKitHub/TensorKit.jl/pull/555))
 - The Enzyme `norm` rule reuses the cached primal and the `tr` rule avoids an unnecessary copy ([#554](https://github.com/QuantumKitHub/TensorKit.jl/pull/554))
-- Fusion tree block manipulations no longer construct and index the canonical destination block, but keep the trees of the result in the order in which they are produced; the buffers of the intermediate blocks of a braid are recycled, and blocks with a single tree are braided as their tree pair (internal)
 
 ## [0.17.2](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.1...v0.17.2) - 2026-09-20
 
