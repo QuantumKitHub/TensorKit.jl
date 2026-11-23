@@ -49,6 +49,9 @@ When releasing a new version, move the "Unreleased" changes to a new version sec
 - `taskforeach` with a single worker is a plain loop without an atomic counter, which lowers the cost per subblock of single-threaded index manipulations and planar traces
 - Tree transformers for sectors with multiple fusion channels share equal recoupling matrices, which only depend on the sectors, instead of storing one copy per transformer
 - The cached braids and transposes of fusion tree blocks keep their recoupling matrices in the scalar type of the tree transformers that use them, instead of a copy in that type for every transformer
+- `fusiontrees(W)` stores the splitting and fusion trees of every coupled sector instead of every pair, and `fusionblocks` combines the trees of both sides with the same uncoupled sectors (internal) ([#600](https://github.com/QuantumKitHub/TensorKit.jl/pull/600))
+- `degeneracystructure(W)` stores the sizes, strides and offsets of the splitting and fusion trees instead of those of every subblock, from which the structure of a subblock is computed on access, and the tree transformers address subblocks by the tokens of their fusion tree pairs. This makes the cached structures considerably smaller and cheaper to build (internal) ([#600](https://github.com/QuantumKitHub/TensorKit.jl/pull/600))
+- Tree and trace transformers for sectors with multiple fusion channels keep the subblock tokens of all their blocks in one vector of `Int32` pairs, instead of two `Vector{Tuple{Int, Int}}` per block
 
 ## [0.17.3](https://github.com/QuantumKitHub/TensorKit.jl/compare/v0.17.2...v0.17.3) - 2026-10-30
 
