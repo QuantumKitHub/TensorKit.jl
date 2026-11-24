@@ -84,6 +84,9 @@ for V in spacelist
 
                 test_rrule(DiagonalTensorMap, D1.data, D1.domain)
                 test_rrule(DiagonalTensorMap, D.data, D.domain)
+                _, pullback = rrule(DiagonalTensorMap, D.data, D.domain)
+                dense_cotangent = randn(ComplexF64, space(D))
+                @test dot(pullback(dense_cotangent)[2], D.data) ≈ dot(dense_cotangent, D)
                 test_rrule(Base.getproperty, D, :data)
                 test_rrule(Base.getproperty, D1, :data)
 

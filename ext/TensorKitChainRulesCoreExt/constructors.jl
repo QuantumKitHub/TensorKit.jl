@@ -33,9 +33,10 @@ end
 function ChainRulesCore.rrule(::Type{<:DiagonalTensorMap}, data::DenseVector, args...; kwargs...)
     D = DiagonalTensorMap(data, args...; kwargs...)
     P = ProjectTo(data)
+    project_diagonal = ProjectTo(D)
     function DiagonalTensorMap_pullback(Δt_)
         # unclear if we're allowed to modify/take ownership of the input
-        Δt = copy(unthunk(Δt_))
+        Δt = copy(project_diagonal(unthunk(Δt_)))
         for (c, b) in blocks(Δt)
             scale!(b, dim(c))
         end
