@@ -138,6 +138,7 @@ function EnzymeRules.forward(
     end
 end
 
+@inline EnzymeRules.inactive(::typeof(TensorKit.recouplingmatrix), ::Any...) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.planar_trace), ::TensorKit.FusionTreePair, ::TensorKit.Index2Tuple, ::TensorKit.Index2Tuple) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.fusiontrees), ::Any) = nothing
 @inline EnzymeRules.inactive(::typeof(TensorKit.fusiontrees), ::Any, ::Any) = nothing
