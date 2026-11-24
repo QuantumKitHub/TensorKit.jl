@@ -798,6 +798,11 @@ end
 # computes `A = β * A + α * permutedims(op.(B), p)` for the strided arrays `A` and `B` within `a` and `b`
 function _add_strided!(a, b, (sz, strides_dst, offset_dst), (_, strides_src, offset_src), p, op::F, α, β) where {F}
     strides_src′ = TupleTools.getindices(strides_src, p)
+    # loop over dimensions of size 1 outermost, so that the innermost loop is a nontrivial one
+    sz, strides_dst, strides_src′ = _permutedims3(_singletons_last(sz), sz, strides_dst, strides_src′)
+    # fuse dimensions along which both arrays are contiguous, and move the size-1 dimensions this leaves outward
+    sz = _fusedims(sz, strides_dst, strides_src′)
+    sz, strides_dst, strides_src′ = _permutedims3(_singletons_last(sz), sz, strides_dst, strides_src′)
     if iszero(β)
         _stridedloop(sz, strides_dst, strides_src′, offset_dst + 1, offset_src + 1) do i, j
             @inbounds a[i] = α * op(b[j])
@@ -808,6 +813,19 @@ function _add_strided!(a, b, (sz, strides_dst, offset_dst), (_, strides_src, off
         end
     end
     return nothing
+end
+
+_permutedims3(q, ts...) = map(t -> TupleTools.getindices(t, q), ts)
+_singletons_last(sz::Dims{N}) where {N} = TupleTools.sortperm(ntuple(k -> k + N * (sz[k] == 1), Val(N)))
+
+# merges dimension `k + 1` into `k` wherever both arrays are contiguous across them, leaving size 1 at `k + 1`
+function _fusedims(sz::Dims{N}, s₁::Dims{N}, s₂::Dims{N}) where {N}
+    for k in (N - 1):-1:1
+        if s₁[k + 1] == sz[k] * s₁[k] && s₂[k + 1] == sz[k] * s₂[k]
+            sz = Base.setindex(Base.setindex(sz, sz[k] * sz[k + 1], k), 1, k + 1)
+        end
+    end
+    return sz
 end
 
 # calls `f(i, j)` for the positions of all corresponding entries of two strided arrays of size `sz`
