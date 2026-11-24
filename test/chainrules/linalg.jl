@@ -163,6 +163,7 @@ for V in spacelist
             A = randn(T, V[1] ⊗ V[2] ← (V[3] ⊗ V[4] ⊗ V[5])')
             test_rrule(LinearAlgebra.adjoint, A; atol, rtol)
             test_rrule(LinearAlgebra.norm, A, 2; atol, rtol)
+            test_rrule(LinearAlgebra.normalize, A, 2; atol, rtol)
 
             B = randn(T, space(A))
             test_rrule(LinearAlgebra.dot, A, B; atol, rtol)
