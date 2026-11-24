@@ -126,7 +126,7 @@ function ChainRulesCore.rrule(::typeof(normalize), a::AbstractTensorMap, p::Real
     y = scale(a, inv(n))
     function normalize_pullback(Δy_)
         Δy = unthunk(Δy_)
-        Δa = add(Δy, y, -real(dot(y, Δy))) / n
+        Δa = add(Δy, y, -real(dot(y, Δy)) / n, inv(n))
         return NoTangent(), ProjectTo(a)(Δa), NoTangent()
     end
     normalize_pullback(::AbstractZero) = NoTangent(), ZeroTangent(), NoTangent()
