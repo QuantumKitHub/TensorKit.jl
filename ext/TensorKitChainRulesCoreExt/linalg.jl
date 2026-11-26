@@ -123,10 +123,11 @@ end
 function ChainRulesCore.rrule(::typeof(normalize), a::AbstractTensorMap, p::Real = 2)
     p == 2 || error("currently only implemented for p = 2")
     n = norm(a, p)
+    invn = inv(n)
     y = normalize(a, p)
     function normalize_pullback(Δy_)
         Δy = unthunk(Δy_)
-        Δa = add(Δy, y, -real(dot(y, Δy)) / n, inv(n))
+        Δa = add(Δy, y, -real(dot(y, Δy)) * invn, invn)
         return NoTangent(), ProjectTo(a)(Δa), NoTangent()
     end
     normalize_pullback(::AbstractZero) = NoTangent(), ZeroTangent(), NoTangent()
