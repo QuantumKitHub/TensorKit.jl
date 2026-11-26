@@ -123,7 +123,7 @@ end
 function ChainRulesCore.rrule(::typeof(normalize), a::AbstractTensorMap, p::Real = 2)
     p == 2 || error("currently only implemented for p = 2")
     n = norm(a, p)
-    y = scale(a, inv(n))
+    y = normalize(a, p)
     function normalize_pullback(Δy_)
         Δy = unthunk(Δy_)
         Δa = add(Δy, y, -real(dot(y, Δy)) / n, inv(n))
