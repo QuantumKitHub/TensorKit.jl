@@ -116,6 +116,24 @@ function ChainRulesCore.rrule(::typeof(norm), a::AbstractTensorMap, p::Real = 2)
     return n, norm_pullback
 end
 
+# needed since GPU tensors have a specialized `normalize` that AD cannot trace through;
+# the norm is computed once in the forward pass and reused in the pullback
+# TODO revisit this once VectorInterface supports supplying a GPU vector for the output
+# of norm and inner
+function ChainRulesCore.rrule(::typeof(normalize), a::AbstractTensorMap, p::Real = 2)
+    p == 2 || error("currently only implemented for p = 2")
+    n = norm(a, p)
+    invn = inv(n)
+    y = normalize(a, p)
+    function normalize_pullback(Δy_)
+        Δy = unthunk(Δy_)
+        Δa = add(Δy, y, -real(dot(y, Δy)) * invn, invn)
+        return NoTangent(), ProjectTo(a)(Δa), NoTangent()
+    end
+    normalize_pullback(::AbstractZero) = NoTangent(), ZeroTangent(), NoTangent()
+    return y, normalize_pullback
+end
+
 function ChainRulesCore.rrule(::typeof(inv), A::AbstractTensorMap)
     Ainv = inv(A)
     inv_pullback = let Ainv = Ainv
