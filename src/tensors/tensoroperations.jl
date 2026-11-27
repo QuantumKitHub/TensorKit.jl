@@ -392,6 +392,7 @@ end
 
 # `tdst = twist(permute(tsrc, p), twistmask)`, with the twist folded into the coefficients of the permutation
 function permute_twist!(tdst::AbstractTensorMap, tsrc::AbstractTensorMap, p::Index2Tuple, twistmask, backend, allocator)
+    any(twistmask) || return TO.tensoradd!(tdst, tsrc, p, false, One(), Zero(), backend, allocator)
     tsrc′, p′, _, conjsrc = _unwrap_source(tsrc, p, nothing, false)
     return _braid!(tdst, tsrc′, p′, conjsrc, allind(tsrc′), twistmask, One(), Zero(), backend, allocator)
 end

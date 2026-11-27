@@ -34,6 +34,12 @@ function recoupling_scalartype(::Type{A}, ::Type{Tₛ}) where {A, Tₛ <: Number
     return Tₛ <: Real ? real(T) : complex(T)
 end
 
+function _treeindex(trees, f)
+    found, (_, i) = gettoken(trees, f)
+    found || throw(ArgumentError(lazy"fusion tree pair $f not found among the trees of the space"))
+    return i
+end
+
 # (coefficient, destination position, source position)
 const UniqueTransformerData{T} = Tuple{T, Int, Int}
 
@@ -99,7 +105,7 @@ function UniqueTreeTransformer(::Type{A}, transform, p, Vdst::HomSpace, Vsrc::Ho
 
     @timeit_debug GLOBAL_TIMER "symmetry: tree transform" for (isrc, (f₁, f₂)) in enumerate(src_trees)
         f_dst, coeff = transform(conjsrc ? (f₂, f₁) : (f₁, f₂))
-        _, (_, idst) = gettoken(dst_trees, f_dst)
+        idst = _treeindex(dst_trees, f_dst)
         data[isrc] = (convert(T, coeff), idst, isrc)
     end
 
@@ -136,12 +142,10 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst::HomSpace, Vsrc::H
             @timeit_debug GLOBAL_TIMER "bookkeeping: subblock positions" begin
                 # the token into the fusion tree `Indices` is the subblock position
                 inds_src = map(fusiontrees(fs_src)) do (f₁, f₂)
-                    _, (_, isrc) = gettoken(src_trees, conjsrc ? (f₂, f₁) : (f₁, f₂))
-                    return isrc
+                    return _treeindex(src_trees, conjsrc ? (f₂, f₁) : (f₁, f₂))
                 end
                 inds_dst = map(fusiontrees(fs_dst)) do f
-                    _, (_, idst) = gettoken(dst_trees, f)
-                    return idst
+                    return _treeindex(dst_trees, f)
                 end
             end
             data[i] = (convert(Matrix{T}, U), inds_dst, inds_src)
@@ -280,7 +284,7 @@ function TraceTransformer(::Type{A}, Vdst::HomSpace, Vsrc::HomSpace, p::Index2Tu
         for (isrc, f) in enumerate(src_trees)
             trace_sectors_match(f, q) || continue
             f′, coeff = planar_trace(f, p, q)
-            _, (_, idst) = gettoken(dst_trees, f′)
+            idst = _treeindex(dst_trees, f′)
             addcolumn!([idst], [convert(T, coeff)], isrc)
         end
     else
@@ -288,11 +292,10 @@ function TraceTransformer(::Type{A}, Vdst::HomSpace, Vsrc::HomSpace, p::Index2Tu
             trace_sectors_match(fs_src, q) || continue
             fs_dst, U = planar_trace(fs_src, p, q)
             inds_dst = map(fusiontrees(fs_dst)) do f
-                _, (_, idst) = gettoken(dst_trees, f)
-                return idst
+                return _treeindex(dst_trees, f)
             end
             for (i, f) in enumerate(fusiontrees(fs_src))
-                _, (_, isrc) = gettoken(src_trees, f)
+                isrc = _treeindex(src_trees, f)
                 addcolumn!(inds_dst, convert(Vector{T}, U[:, i]), isrc)
             end
         end
