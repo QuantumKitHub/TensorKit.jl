@@ -34,6 +34,31 @@ function recoupling_scalartype(::Type{A}, ::Type{Tₛ}) where {A, Tₛ <: Number
     return Tₛ <: Real ? real(T) : complex(T)
 end
 
+"""
+    SubblockGroup{T}
+
+Small subblocks of equal size and strides, which are transformed by a single loop over all of them
+rather than by one `tensoradd!` call per subblock. Entry `k` of a subblock lies at `rel_dst[k]`
+and `rel_src[k]` relative to the offsets of the destination and source subblock, where the source
+strides are permuted such that both refer to the same entry. Term `n` then computes
+`dst[offset_dst[n] .+ rel_dst] = α * coeff[n] * src[offset_src[n] .+ rel_src] + b * dst[offset_dst[n] .+ rel_dst]`,
+with `b = β` for the first term into every destination subblock and `b = 1` for the groups of
+further recoupling terms, which have `accumulate` set and are applied after all others.
+The terms are sorted by `offset_dst`. Offsets and relative positions are `Int32`; tensors with more
+than `typemax(Int32)` entries are not grouped.
+"""
+struct SubblockGroup{T}
+    rel_dst::Vector{Int32}
+    rel_src::Vector{Int32}
+    offset_dst::Vector{Int32}
+    offset_src::Vector{Int32}
+    coeff::Vector{T}
+    accumulate::Bool
+end
+
+# subblocks up to this length are transformed in `SubblockGroup`s
+const SUBBLOCKGROUP_MAXLENGTH = 1024
+
 # (coefficient, destination position, source position)
 const UniqueTransformerData{T} = Tuple{T, Int, Int}
 
@@ -43,12 +68,16 @@ const UniqueTransformerData{T} = Tuple{T, Int, Int}
 Tree transformation for `UniqueFusion` sectors, where every source subblock maps onto a single
 destination subblock with a scalar coefficient, stored as `(coeff, idst, isrc)`. The subblock
 structures of the destination and source spaces are kept alongside, such that the
-[`StridedSubblocks`](@ref) of both tensors can be created without further lookups.
+[`StridedSubblocks`](@ref) of both tensors can be created without further lookups. The small
+subblocks are also collected in [`SubblockGroup`](@ref)s, and `large` holds the positions in
+`data` of the others.
 """
 struct UniqueTreeTransformer{T, N} <: TreeTransformer
     data::Vector{UniqueTransformerData{T}}
     structure_dst::Vector{StridedStructure{N}}
     structure_src::Vector{StridedStructure{N}}
+    groups::Vector{SubblockGroup{T}}
+    large::Vector{Int}
 end
 
 # (recoupling matrix, destination positions, source positions)
@@ -61,12 +90,16 @@ Tree transformation for sectors with multiple fusion channels, where the subbloc
 [`FusionTreeBlock`](@ref) map onto the subblocks of the transformed block through a recoupling
 matrix, stored as `(U, inds_dst, inds_src)`, where `U[j, i]` maps source `i` onto destination `j`.
 The subblock structures of the destination and source spaces are kept alongside, such that the
-[`StridedSubblocks`](@ref) of both tensors can be created without further lookups.
+[`StridedSubblocks`](@ref) of both tensors can be created without further lookups. The blocks of
+small subblocks are also collected in [`SubblockGroup`](@ref)s, and `large` holds the positions in
+`data` of the others.
 """
 struct GenericTreeTransformer{T, N} <: TreeTransformer
     data::Vector{GenericTransformerData{T}}
     structure_dst::Vector{StridedStructure{N}}
     structure_src::Vector{StridedStructure{N}}
+    groups::Vector{SubblockGroup{T}}
+    large::Vector{Int}
 end
 
 # Both structure arrays are retained by the transformer, even when another cache also
@@ -74,10 +107,21 @@ end
 _cache_structure_size(t) = sizeof(t.structure_src) +
     (t.structure_src === t.structure_dst ? 0 : sizeof(t.structure_dst))
 
-MemoizationKit.cachesize(t::UniqueTreeTransformer) = sizeof(t) + _cache_payload_size(t.data) + _cache_structure_size(t)
+# The subblock groups hold their own offset and coefficient vectors; their relative positions are shared with
+# other transformers and counted by the cache of `subblockpositions`.
+function _cache_groups_size(t)
+    bytes = sizeof(t.groups) + sizeof(t.large)
+    for g in t.groups
+        bytes += sizeof(g.offset_dst) + sizeof(g.offset_src) + _cache_payload_size(g.coeff)
+    end
+    return bytes
+end
+
+MemoizationKit.cachesize(t::UniqueTreeTransformer) =
+    sizeof(t) + _cache_payload_size(t.data) + _cache_structure_size(t) + _cache_groups_size(t)
 
 # The recoupling matrices are shared with other transformers and counted by the cache of `recouplingmatrix`.
-MemoizationKit.cachesize(t::GenericTreeTransformer) = _cache_generic_size(t; matrices = false)
+MemoizationKit.cachesize(t::GenericTreeTransformer) = _cache_generic_size(t; matrices = false) + _cache_groups_size(t)
 
 function _cache_generic_size(t; matrices::Bool = true)
     bytes = sizeof(t) + sizeof(t.data) + _cache_structure_size(t)
@@ -105,7 +149,10 @@ function UniqueTreeTransformer(::Type{A}, transform, p, Vdst::HomSpace, Vsrc::Ho
 
     structure_dst = degeneracystructure(Vdst).subblockstructure
     structure_src = degeneracystructure(Vsrc).subblockstructure
-    transformer = UniqueTreeTransformer(data, structure_dst, structure_src)
+    groups, large = @timeit_debug GLOBAL_TIMER "bookkeeping: subblock groups" subblockgroups(
+        T, data, structure_dst, structure_src, linearize(p)
+    )
+    transformer = UniqueTreeTransformer(data, structure_dst, structure_src, groups, large)
 
     Δt = Base.time() - t₀
     @debug(lazy"Treetransformer for $Vsrc to $Vdst via $p", conjsrc, nblocks = length(data), Δt)
@@ -157,7 +204,10 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst::HomSpace, Vsrc::H
 
     # sort by (approximate) weight to facilitate multi-threading strategies
     @timeit_debug GLOBAL_TIMER "bookkeeping: sort" Base.permute!(data, sortperm(weights; rev = true))
-    transformer = GenericTreeTransformer{T, numind(Vdst)}(data, structure_dst, structure_src)
+    groups, large = @timeit_debug GLOBAL_TIMER "bookkeeping: subblock groups" subblockgroups(
+        T, data, structure_dst, structure_src, linearize(p)
+    )
+    transformer = GenericTreeTransformer{T, numind(Vdst)}(data, structure_dst, structure_src, groups, large)
 
     Δt = Base.time() - t₀
     @debug(
@@ -169,6 +219,72 @@ function GenericTreeTransformer(::Type{A}, transform, p, Vdst::HomSpace, Vsrc::H
     )
 
     return transformer
+end
+
+"""
+    subblockgroups(T, data, structure_dst, structure_src, p) -> (groups, large)
+
+Collect the terms of the transformer `data` that act on subblocks with at most
+`SUBBLOCKGROUP_MAXLENGTH` entries into [`SubblockGroup`](@ref)s by size and strides, with the
+accumulating groups last, and return them together with the positions in `data` of the other entries.
+"""
+function subblockgroups(::Type{T}, data, structure_dst::Vector{StridedStructure{N}}, structure_src, p) where {T, N}
+    terms = Tuple{T, Int, Int, Bool}[]
+    large = Int[]
+    # positions are stored as `Int32`
+    (_lastindex(structure_dst) > typemax(Int32) || _lastindex(structure_src) > typemax(Int32)) &&
+        return SubblockGroup{T}[], collect(eachindex(data))
+    for (n, (U, inds_dst, inds_src)) in enumerate(data)
+        if prod(first(structure_dst[first(inds_dst)])) > SUBBLOCKGROUP_MAXLENGTH
+            push!(large, n)
+        else
+            _push_terms!(terms, U, inds_dst, inds_src)
+        end
+    end
+    sort!(terms; by = term -> structure_dst[term[2]][3])
+
+    # strides of dimensions of size 1 are irrelevant, and set to zero to obtain fewer groups
+    groups = Dict{Tuple{Bool, NTuple{3, NTuple{N, Int}}}, SubblockGroup{T}}()
+    for (coeff, idst, isrc, accumulate) in terms
+        sz, strides_dst, offset_dst = structure_dst[idst]
+        _, strides_src, offset_src = structure_src[isrc]
+        strides_dst = map((n, s) -> n == 1 ? 0 : s, sz, strides_dst)
+        strides_src′ = map((n, s) -> n == 1 ? 0 : s, sz, TupleTools.getindices(strides_src, p))
+        group = get!(groups, (accumulate, (sz, strides_dst, strides_src′))) do
+            rel_dst, rel_src = subblockpositions(sz, strides_dst), subblockpositions(sz, strides_src′)
+            return SubblockGroup(rel_dst, rel_src, Int32[], Int32[], T[], accumulate)
+        end
+        push!(group.offset_dst, offset_dst)
+        push!(group.offset_src, offset_src)
+        push!(group.coeff, coeff)
+    end
+    # `copy` drops the spare capacity that `push!` leaves
+    groups′ = [
+        SubblockGroup(g.rel_dst, g.rel_src, copy(g.offset_dst), copy(g.offset_src), copy(g.coeff), g.accumulate)
+            for g in values(groups)
+    ]
+    return sort!(groups′; by = group -> group.accumulate), copy(large)
+end
+
+# the positions of the entries of a subblock relative to its offset, shared by all groups with the same shape and strides
+@cached function subblockpositions(sz::NTuple{N, Int}, strides::NTuple{N, Int})::Vector{Int32} where {N}
+    return vec(Int32[1 + sum((Tuple(I) .- 1) .* strides; init = 0) for I in CartesianIndices(sz)])
+end
+MemoizationKit.default_cache_settings(::typeof(subblockpositions)) = (; measure = "bytes", maxsize = 2^28)
+
+# the largest position addressed by the subblocks of `structure`
+_lastindex(structure) = maximum(((sz, str, offset),) -> offset + sum((sz .- 1) .* str; init = 0) + 1, structure; init = 0)
+
+_push_terms!(terms, coeff::Number, idst::Int, isrc::Int) = push!(terms, (coeff, idst, isrc, false))
+function _push_terms!(terms, U::AbstractMatrix, inds_dst, inds_src)
+    for (i, idst) in enumerate(inds_dst)
+        js = findall(!iszero, view(U, i, :))
+        isempty(js) && push!(js, 1) # such that β is still applied
+        for j in js
+            push!(terms, (U[i, j], idst, inds_src[j], j != first(js)))
+        end
+    end
+    return terms
 end
 
 """
